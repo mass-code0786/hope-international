@@ -1,0 +1,64 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { BottomNav } from '@/components/shell/BottomNav';
+import { Sidebar } from '@/components/shell/Sidebar';
+import { Topbar } from '@/components/shell/Topbar';
+import { useAuthStore } from '@/lib/store/authStore';
+import { useQuery } from '@tanstack/react-query';
+import { getMe } from '@/lib/services/authService';
+import { getSellerMe } from '@/lib/services/sellerService';
+import { queryKeys } from '@/lib/query/queryKeys';
+import { isDemoUser } from '@/lib/utils/demoMode';
+
+export function AppShell({ children }) {
+  const router = useRouter();
+  const { token, hydrated, hydrate, setUser, clearSession, user } = useAuthStore();
+  const demoMode = isDemoUser(user);
+
+  useEffect(() => {
+    if (!hydrated) hydrate();
+  }, [hydrated, hydrate]);
+
+  const meQuery = useQuery({
+    queryKey: queryKeys.me,
+    queryFn: getMe,
+    enabled: Boolean(token),
+    retry: false,
+    onError: () => {
+      clearSession();
+      router.replace('/login');
+    }
+  });
+
+  const sellerQuery = useQuery({
+    queryKey: queryKeys.sellerMe,
+    queryFn: getSellerMe,
+    enabled: Boolean(token),
+    retry: false,
+    staleTime: demoMode ? Infinity : 0
+  });
+
+  useEffect(() => {
+    if (meQuery.data) setUser(meQuery.data);
+  }, [meQuery.data, setUser]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!token) router.replace('/login');
+  }, [hydrated, token, router]);
+
+  return (
+    <div className="min-h-screen bg-bg text-text md:flex">
+      <Sidebar user={user} sellerActive={Boolean(sellerQuery.data?.canAccessDashboard)} />
+      <main className="w-full md:overflow-x-hidden md:bg-black/14">
+        <div className="mx-auto w-full max-w-7xl p-4 pb-24 md:p-6 md:pb-6">
+          <Topbar user={user} />
+          {children}
+        </div>
+      </main>
+      <BottomNav user={user} sellerActive={Boolean(sellerQuery.data?.canAccessDashboard)} />
+    </div>
+  );
+}

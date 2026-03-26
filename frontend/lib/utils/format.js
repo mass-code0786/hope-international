@@ -1,0 +1,130 @@
+export function currency(value = 0) {
+  const amount = Number.isFinite(Number(value)) ? Number(value) : 0;
+  return `USDT ${new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount)}`;
+}
+
+export function number(value = 0) {
+  return new Intl.NumberFormat('en-IN', {
+    maximumFractionDigits: 2
+  }).format(Number.isFinite(Number(value)) ? Number(value) : 0);
+}
+
+export function percentage(value = 0) {
+  return `${Number(value || 0).toFixed(1)}%`;
+}
+
+export function shortDate(value) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+}
+
+export function dateTime(value) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+const incomeSourceMap = {
+  direct_income: 'Direct Income',
+  matching_income: 'Matching Income',
+  reward_qualification: 'Reward Qualification',
+  cap_overflow: 'Cap Overflow',
+  manual_adjustment: 'Manual Adjustment',
+  order_purchase: 'Order Purchase'
+};
+
+const txTypeMap = {
+  credit: 'Credit',
+  debit: 'Debit'
+};
+
+const rankMap = {
+  'no rank': 'No Rank',
+  bronze: 'Bronze',
+  silver: 'Silver',
+  gold: 'Gold',
+  diamond: 'Diamond',
+  crown: 'Crown'
+};
+
+const orderStatusMap = {
+  pending: 'Pending',
+  paid: 'Paid',
+  cancelled: 'Cancelled'
+};
+
+const sellerApplicationStatusMap = {
+  pending: 'Pending Review',
+  approved: 'Approved',
+  rejected: 'Rejected'
+};
+
+const moderationStatusMap = {
+  pending: 'Pending Moderation',
+  approved: 'Approved',
+  rejected: 'Rejected'
+};
+
+export function incomeSourceLabel(source) {
+  if (!source) return 'Transaction';
+  return incomeSourceMap[source] || source.split('_').map(capitalize).join(' ');
+}
+
+export function txTypeLabel(type) {
+  if (!type) return 'Unknown';
+  return txTypeMap[type] || capitalize(type);
+}
+
+export function rankLabel(rank) {
+  if (!rank) return 'No Rank';
+  return rankMap[String(rank).toLowerCase()] || rank;
+}
+
+export function orderStatusLabel(status) {
+  if (!status) return 'Unknown';
+  return orderStatusMap[status] || capitalize(status);
+}
+
+export function orderStatusVariant(status) {
+  if (status === 'paid') return 'success';
+  if (status === 'cancelled') return 'danger';
+  return 'default';
+}
+
+function capitalize(value = '') {
+  if (!value) return '';
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+export function sellerApplicationStatusLabel(status) {
+  if (!status) return 'Not Applied';
+  return sellerApplicationStatusMap[status] || capitalize(status);
+}
+
+export function moderationStatusLabel(status) {
+  if (!status) return 'Pending Moderation';
+  return moderationStatusMap[status] || capitalize(status);
+}
+
+export function statusVariant(status) {
+  if (status === 'approved' || status === 'paid') return 'success';
+  if (status === 'rejected' || status === 'cancelled') return 'danger';
+  if (status === 'pending') return 'accent';
+  return 'default';
+}
