@@ -5,9 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node src/server.js",
+    "start": "npm run migrate && node src/server.js",
     "dev": "nodemon src/server.js",
-    "migrate": "node src/db/migrate.js",
+    "migrate": "node migrations/runMigrations.js",
     "seed": "node src/db/seed.js",
     "seed:dev": "node src/db/devSeed.js",
     "reset:dev": "node src/db/resetDev.js",
@@ -34,3 +34,4 @@
     "nodemon": "^3.1.14"
   }
 }
+
