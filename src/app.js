@@ -21,7 +21,6 @@ app.use(cors({
   credentials: true
 }));
 
-app.options('*', cors());
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan('combined'));
 app.use(
@@ -54,3 +53,4 @@ app.use((_req, res) => {
 app.use(errorHandler);
 
 module.exports = app;
+
