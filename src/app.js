@@ -22,6 +22,14 @@ app.use(
   })
 );
 
+app.get('/', (_req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Hope International backend is running',
+    service: 'hope-international-backend'
+  });
+});
+
 app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok' });
 });
@@ -35,3 +43,4 @@ app.use((_req, res) => {
 app.use(errorHandler);
 
 module.exports = app;
+
