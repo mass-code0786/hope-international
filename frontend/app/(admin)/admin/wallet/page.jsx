@@ -13,8 +13,6 @@ import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { createManualWalletAdjustment, getAdminWalletSummary, getAdminWalletTransactions } from '@/lib/services/admin';
 import { currency, incomeSourceLabel, shortDate } from '@/lib/utils/format';
-import { useAuthStore } from '@/lib/store/authStore';
-import { isDemoUser } from '@/lib/utils/demoMode';
 
 export default function AdminWalletPage() {
   const [filter, setFilter] = useState('all');
@@ -23,8 +21,6 @@ export default function AdminWalletPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [adjustForm, setAdjustForm] = useState({ userId: '', amount: '', type: 'credit', reason: '' });
   const queryClient = useQueryClient();
-  const user = useAuthStore((s) => s.user);
-  const demoMode = isDemoUser(user);
 
   const txQuery = useQuery({
     queryKey: [...queryKeys.adminWalletTransactions, filter, page],
@@ -62,13 +58,11 @@ export default function AdminWalletPage() {
         title="Wallet Operations"
         subtitle="Ledger visibility and secure manual adjustments"
         action={
-          <button onClick={() => setAdjustOpen(true)} disabled={demoMode} className="rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:opacity-60">
-            {demoMode ? 'Disabled in Demo' : 'Manual Adjustment'}
+          <button onClick={() => setAdjustOpen(true)} className="rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-black">
+            Manual Adjustment
           </button>
         }
       />
-
-      {demoMode ? <p className="text-xs text-amber-300">Demo mode is active. Wallet adjustments are blocked.</p> : null}
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className="card-surface p-4 text-sm">Total credits: <span className="font-semibold text-text">{currency(summary.total_credits)}</span></div>
@@ -110,7 +104,7 @@ export default function AdminWalletPage() {
           </div>
           <div className="mt-3 flex justify-end gap-2">
             <button onClick={() => setAdjustOpen(false)} className="rounded-xl border border-white/10 px-3 py-2 text-sm text-muted">Cancel</button>
-            <button onClick={() => setConfirmOpen(true)} disabled={demoMode} className="rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:opacity-60">Review & Confirm</button>
+            <button onClick={() => setConfirmOpen(true)} className="rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-black">Review & Confirm</button>
           </div>
         </div>
       ) : null}

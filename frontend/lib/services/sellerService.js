@@ -1,6 +1,4 @@
 import { apiFetch } from '@/lib/api/client';
-import { demoSellerMe } from '@/lib/demo/mockData';
-import { isDemoSessionActive } from '@/lib/utils/demoSession';
 
 function unwrap(payload) {
   if (!payload) return payload;
@@ -9,9 +7,6 @@ function unwrap(payload) {
 }
 
 export async function applyForSeller(payload) {
-  if (isDemoSessionActive()) {
-    throw new Error('Seller application is disabled in demo mode');
-  }
   const data = await apiFetch('/seller/apply', {
     method: 'POST',
     body: JSON.stringify(payload)
@@ -20,7 +15,6 @@ export async function applyForSeller(payload) {
 }
 
 export async function getSellerMe() {
-  if (isDemoSessionActive()) return demoSellerMe;
   const data = await apiFetch('/seller/me');
   const unwrapped = unwrap(data) || {};
 
@@ -34,9 +28,6 @@ export async function getSellerMe() {
 }
 
 export async function createSellerProduct(payload) {
-  if (isDemoSessionActive()) {
-    throw new Error('Product creation is disabled in demo mode');
-  }
   const data = await apiFetch('/seller/products', {
     method: 'POST',
     body: JSON.stringify(payload)
@@ -45,9 +36,6 @@ export async function createSellerProduct(payload) {
 }
 
 export async function updateSellerProduct(productId, payload) {
-  if (isDemoSessionActive()) {
-    throw new Error('Product updates are disabled in demo mode');
-  }
   const data = await apiFetch(`/seller/products/${productId}`, {
     method: 'PATCH',
     body: JSON.stringify(payload)

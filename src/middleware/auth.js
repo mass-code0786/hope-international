@@ -30,15 +30,6 @@ function requireAdmin(req, _res, next) {
   return next();
 }
 
-function blockDemoSession(actionLabel = 'This action') {
-  return (req, _res, next) => {
-    if (req.user?.is_demo) {
-      return next(new ApiError(403, `${actionLabel} is disabled in demo mode`));
-    }
-    return next();
-  };
-}
-
 async function requireSeller(req, _res, next) {
   if (!req.user) {
     return next(new ApiError(403, 'Seller access required'));
@@ -66,6 +57,5 @@ async function requireSeller(req, _res, next) {
 module.exports = {
   auth,
   requireAdmin,
-  requireSeller,
-  blockDemoSession
+  requireSeller
 };

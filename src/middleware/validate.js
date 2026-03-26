@@ -1,6 +1,24 @@
 const { ZodError } = require('zod');
 const { ApiError } = require('../utils/ApiError');
 
+function firstValidationMessage(error) {
+  const firstIssue = error.issues?.[0]?.message;
+  if (firstIssue) {
+    return firstIssue;
+  }
+
+  const flattened = error.flatten();
+  if (flattened.formErrors?.[0]) {
+    return flattened.formErrors[0];
+  }
+
+  const fieldMessages = Object.values(flattened.fieldErrors || {}).find(
+    (messages) => Array.isArray(messages) && messages[0]
+  );
+
+  return fieldMessages?.[0] || 'Validation failed';
+}
+
 function validate(schema) {
   return (req, _res, next) => {
     try {
@@ -16,7 +34,8 @@ function validate(schema) {
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        return next(new ApiError(400, 'Validation failed', error.flatten()));
+        const details = error.flatten();
+        return next(new ApiError(400, firstValidationMessage(error), details));
       }
       return next(error);
     }

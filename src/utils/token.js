@@ -2,17 +2,12 @@ const jwt = require('jsonwebtoken');
 const env = require('../config/env');
 
 function createAuthToken(user) {
-  return createAuthTokenWithOptions(user, {});
-}
-
-function createAuthTokenWithOptions(user, options = {}) {
   return jwt.sign(
     {
       sub: user.id,
       email: user.email,
       username: user.username,
-      role: user.role,
-      is_demo: Boolean(options.isDemo)
+      role: user.role
     },
     env.jwtSecret,
     { expiresIn: env.jwtExpiresIn }
@@ -20,6 +15,5 @@ function createAuthTokenWithOptions(user, options = {}) {
 }
 
 module.exports = {
-  createAuthToken,
-  createAuthTokenWithOptions
+  createAuthToken
 };

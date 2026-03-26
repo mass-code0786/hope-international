@@ -9,7 +9,7 @@ import { LogoFull } from '@/components/brand/HopeLogo';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { loginMutation, demoLoginMutation, getDemoRedirectPath, error, setError } = useAuthMutations();
+  const { loginMutation, error, setError } = useAuthMutations();
   const [form, setForm] = useState({ email: '', password: '' });
 
   async function onSubmit(e) {
@@ -24,17 +24,6 @@ export default function LoginPage() {
     }
   }
 
-  async function onDemoLogin(role, label) {
-    setError('');
-    try {
-      await demoLoginMutation.mutateAsync(role);
-      toast.success(`Logged in as ${label} demo`);
-      router.push(getDemoRedirectPath(role));
-    } catch (err) {
-      toast.error(err.message || 'Demo login failed');
-    }
-  }
-
   return (
     <div className="card-surface p-6 md:p-8">
       <div className="flex justify-center">
@@ -46,20 +35,6 @@ export default function LoginPage() {
         {error ? <p className="text-xs text-danger">{error}</p> : null}
         <button disabled={loginMutation.isPending} className="w-full rounded-xl bg-accent py-3 text-sm font-semibold text-black">{loginMutation.isPending ? 'Signing in...' : 'Login'}</button>
       </form>
-      <div className="mt-4 space-y-2">
-        <p className="text-xs uppercase tracking-[0.2em] text-muted">Demo Access</p>
-        <div className="grid gap-2 md:grid-cols-3">
-          <button onClick={() => onDemoLogin('user', 'User')} disabled={demoLoginMutation.isPending || loginMutation.isPending} className="rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-text disabled:opacity-60">
-            Demo User
-          </button>
-          <button onClick={() => onDemoLogin('seller', 'Seller')} disabled={demoLoginMutation.isPending || loginMutation.isPending} className="rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-text disabled:opacity-60">
-            Demo Seller
-          </button>
-          <button onClick={() => onDemoLogin('admin', 'Admin')} disabled={demoLoginMutation.isPending || loginMutation.isPending} className="rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-text disabled:opacity-60">
-            Demo Admin
-          </button>
-        </div>
-      </div>
       <p className="mt-4 text-sm text-muted">No account? <Link href="/register" className="text-accent">Create one</Link></p>
     </div>
   );

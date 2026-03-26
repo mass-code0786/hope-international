@@ -12,8 +12,6 @@ import { ShopSkeleton } from '@/components/ui/PageSkeletons';
 import { useProducts } from '@/hooks/useProducts';
 import { createOrder } from '@/lib/services/ordersService';
 import { queryKeys } from '@/lib/query/queryKeys';
-import { useAuthStore } from '@/lib/store/authStore';
-import { isDemoUser } from '@/lib/utils/demoMode';
 
 export default function ShopPage() {
   const { data, isLoading, isError, refetch } = useProducts();
@@ -21,8 +19,6 @@ export default function ShopPage() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [buyingProductId, setBuyingProductId] = useState('');
   const queryClient = useQueryClient();
-  const user = useAuthStore((s) => s.user);
-  const demoMode = isDemoUser(user);
 
   const buyMutation = useMutation({
     mutationFn: (product) => createOrder({ items: [{ productId: product.id, quantity: 1 }] }),
@@ -58,7 +54,6 @@ export default function ShopPage() {
     <div className="space-y-5">
       <SectionHeader title="Premium Shop" subtitle="Discover high-value qualifying products" />
       <ProductFilters search={search} setSearch={setSearch} activeCategory={activeCategory} setActiveCategory={setActiveCategory} />
-      {demoMode ? <p className="text-xs text-amber-300">Demo mode is active. Real order placement is disabled.</p> : null}
 
       {isLoading ? <ShopSkeleton /> : null}
       {isError ? <ErrorState message="Products could not be loaded. Please check your connection and retry." onRetry={refetch} /> : null}
@@ -74,7 +69,7 @@ export default function ShopPage() {
             product={product}
             onBuy={(p) => buyMutation.mutate(p)}
             isBuying={buyMutation.isPending && buyingProductId === product.id}
-            disableBuying={demoMode}
+            disableBuying={false}
           />
         ))}
       </div>

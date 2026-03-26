@@ -1,15 +1,4 @@
 import { apiFetch } from '@/lib/api/client';
-import {
-  demoAdminDashboard,
-  demoAdminMonthlyCompensation,
-  demoAdminMonthlyCompensationDetail,
-  demoAdminSettings,
-  demoAdminWalletSummary,
-  demoAdminWalletTransactions,
-  demoAdminWeeklyCompensation,
-  demoAdminWeeklyCompensationDetail
-} from '@/lib/demo/mockData';
-import { isDemoSessionActive } from '@/lib/utils/demoSession';
 
 function toEnvelope(payload) {
   if (payload && typeof payload === 'object' && Object.prototype.hasOwnProperty.call(payload, 'data')) {
@@ -40,15 +29,6 @@ function withQuery(params = {}) {
 }
 
 export async function getAdminDashboardOverview() {
-  if (isDemoSessionActive()) {
-    return {
-      data: demoAdminDashboard,
-      pagination: null,
-      summary: null,
-      message: ''
-    };
-  }
-
   const envelope = toEnvelope(await apiFetch('/admin/dashboard'));
   const data = envelope.data || {};
   return {
@@ -131,19 +111,14 @@ export async function getAdminOrderDetails(orderId) {
 }
 
 export async function getAdminWalletTransactions(params = {}) {
-  if (isDemoSessionActive()) return demoAdminWalletTransactions;
   return toEnvelope(await apiFetch(`/admin/wallet/transactions${withQuery(params)}`));
 }
 
 export async function getAdminWalletSummary() {
-  if (isDemoSessionActive()) return toEnvelope(demoAdminWalletSummary);
   return toEnvelope(await apiFetch('/admin/wallet/summary'));
 }
 
 export async function createManualWalletAdjustment(payload) {
-  if (isDemoSessionActive()) {
-    throw new Error('Wallet adjustment is disabled in demo mode');
-  }
   return toEnvelope(
     await apiFetch('/admin/wallet/adjust', {
       method: 'POST',
@@ -153,19 +128,14 @@ export async function createManualWalletAdjustment(payload) {
 }
 
 export async function getAdminWeeklyCompensation(params = {}) {
-  if (isDemoSessionActive()) return demoAdminWeeklyCompensation;
   return toEnvelope(await apiFetch(`/admin/compensation/weekly${withQuery(params)}`));
 }
 
 export async function getAdminWeeklyCompensationDetail(cycleId) {
-  if (isDemoSessionActive()) return demoAdminWeeklyCompensationDetail;
   return toEnvelope(await apiFetch(`/admin/compensation/weekly/${cycleId}`));
 }
 
 export async function runWeeklyMatching(payload) {
-  if (isDemoSessionActive()) {
-    throw new Error('Compensation runs are disabled in demo mode');
-  }
   return toEnvelope(
     await apiFetch('/admin/compensation/weekly/run', {
       method: 'POST',
@@ -175,19 +145,14 @@ export async function runWeeklyMatching(payload) {
 }
 
 export async function getAdminMonthlyCompensation(params = {}) {
-  if (isDemoSessionActive()) return demoAdminMonthlyCompensation;
   return toEnvelope(await apiFetch(`/admin/compensation/monthly${withQuery(params)}`));
 }
 
 export async function getAdminMonthlyCompensationDetail(cycleId) {
-  if (isDemoSessionActive()) return demoAdminMonthlyCompensationDetail;
   return toEnvelope(await apiFetch(`/admin/compensation/monthly/${cycleId}`));
 }
 
 export async function runMonthlyRewards(payload) {
-  if (isDemoSessionActive()) {
-    throw new Error('Compensation runs are disabled in demo mode');
-  }
   return toEnvelope(
     await apiFetch('/admin/compensation/monthly/run', {
       method: 'POST',
@@ -222,14 +187,10 @@ export async function getAdminTeamTree(userId, depth = 2) {
 }
 
 export async function getAdminSettings() {
-  if (isDemoSessionActive()) return toEnvelope(demoAdminSettings);
   return toEnvelope(await apiFetch('/admin/settings'));
 }
 
 export async function updateAdminSettings(payload) {
-  if (isDemoSessionActive()) {
-    throw new Error('Settings save is disabled in demo mode');
-  }
   return toEnvelope(
     await apiFetch('/admin/settings', {
       method: 'PATCH',
@@ -237,4 +198,3 @@ export async function updateAdminSettings(payload) {
     })
   );
 }
-

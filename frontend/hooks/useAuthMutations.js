@@ -2,10 +2,9 @@
 
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { demoLogin, login, register } from '@/lib/services/authService';
+import { login, register } from '@/lib/services/authService';
 import { useAuthStore } from '@/lib/store/authStore';
 import { queryKeys } from '@/lib/query/queryKeys';
-import { getDemoRedirectPath } from '@/lib/utils/demoSession';
 
 export function useAuthMutations() {
   const queryClient = useQueryClient();
@@ -43,20 +42,9 @@ export function useAuthMutations() {
     onError: (err) => setError(err.message)
   });
 
-  const demoLoginMutation = useMutation({
-    mutationFn: demoLogin,
-    onSuccess: async (data) => {
-      setSession({ token: data.token, user: data.user });
-      await refreshCoreQueries(data.user);
-    },
-    onError: (err) => setError(err.message)
-  });
-
   return {
     loginMutation,
     registerMutation,
-    demoLoginMutation,
-    getDemoRedirectPath,
     error,
     setError
   };

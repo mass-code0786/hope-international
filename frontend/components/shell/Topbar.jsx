@@ -4,13 +4,10 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Bell, ShoppingCart } from 'lucide-react';
 import { LogoMark } from '@/components/brand/HopeLogo';
-import { DemoModeBadge } from '@/components/ui/DemoModeBadge';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { isDemoUser } from '@/lib/utils/demoMode';
 import { subscribeCart } from '@/lib/utils/cart';
 
 export function Topbar({ user }) {
-  const demo = isDemoUser(user);
   const [cartCount, setCartCount] = useState(0);
 
   useEffect(() => {
@@ -31,7 +28,6 @@ export function Topbar({ user }) {
           </div>
           <div className="mt-1.5 flex items-center gap-2 overflow-hidden">
             <h2 className="truncate text-sm font-semibold text-text md:text-lg">{user?.username || 'Partner'}</h2>
-            {demo ? <DemoModeBadge /> : null}
           </div>
         </div>
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/[0.18] bg-accent/20 text-sm font-semibold text-accentSoft">

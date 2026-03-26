@@ -10,12 +10,10 @@ import { useQuery } from '@tanstack/react-query';
 import { getMe } from '@/lib/services/authService';
 import { getSellerMe } from '@/lib/services/sellerService';
 import { queryKeys } from '@/lib/query/queryKeys';
-import { isDemoUser } from '@/lib/utils/demoMode';
 
 export function AppShell({ children }) {
   const router = useRouter();
   const { token, hydrated, hydrate, setUser, clearSession, user } = useAuthStore();
-  const demoMode = isDemoUser(user);
 
   useEffect(() => {
     if (!hydrated) hydrate();
@@ -37,7 +35,7 @@ export function AppShell({ children }) {
     queryFn: getSellerMe,
     enabled: Boolean(token),
     retry: false,
-    staleTime: demoMode ? Infinity : 0
+    staleTime: 0
   });
 
   useEffect(() => {

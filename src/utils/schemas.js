@@ -9,6 +9,7 @@ const registerSchema = z.object({
       email: z.string().email(),
       password: z.string().min(8).max(128),
       sponsorId: uuid.optional(),
+      sponsorCode: z.string().min(1).max(120).optional(),
       parentId: uuid.optional(),
       placementSide: z.enum(['left', 'right']).optional(),
       preferredLeg: z.enum(['left', 'right']).optional()
@@ -21,14 +22,21 @@ const registerSchema = z.object({
         });
       }
 
-      if ((val.sponsorId && !val.preferredLeg) || (!val.sponsorId && val.preferredLeg)) {
+      if (val.sponsorId && val.sponsorCode) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'sponsorId and preferredLeg must be provided together'
+          message: 'Use either sponsorId or sponsorCode, not both'
         });
       }
 
-      if (val.parentId && val.sponsorId) {
+      if (!val.sponsorId && !val.sponsorCode && val.preferredLeg) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'preferredLeg requires sponsorId or sponsorCode'
+        });
+      }
+
+      if (val.parentId && (val.sponsorId || val.sponsorCode)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: 'Use either direct parent placement or sponsor leg placement, not both'
@@ -43,14 +51,6 @@ const loginSchema = z.object({
   body: z.object({
     email: z.string().email(),
     password: z.string().min(8).max(128)
-  }),
-  params: z.object({}),
-  query: z.object({})
-});
-
-const demoLoginSchema = z.object({
-  body: z.object({
-    role: z.enum(['user', 'seller', 'admin'])
   }),
   params: z.object({}),
   query: z.object({})
@@ -254,7 +254,6 @@ const sellerDocumentIdParamSchema = z.object({
 module.exports = {
   registerSchema,
   loginSchema,
-  demoLoginSchema,
   productCreateSchema,
   orderCreateSchema,
   matchingRunSchema,
@@ -272,3 +271,5 @@ module.exports = {
   sellerDocumentUploadSchema,
   sellerDocumentIdParamSchema
 };
+
+

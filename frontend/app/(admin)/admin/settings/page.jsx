@@ -10,13 +10,9 @@ import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { getAdminSettings, updateAdminSettings } from '@/lib/services/admin';
 import { REWARD_SLABS, RANKS } from '@/lib/constants/theme';
-import { useAuthStore } from '@/lib/store/authStore';
-import { isDemoUser } from '@/lib/utils/demoMode';
 
 export default function AdminSettingsPage() {
   const queryClient = useQueryClient();
-  const user = useAuthStore((s) => s.user);
-  const demoMode = isDemoUser(user);
   const settingsQuery = useQuery({ queryKey: queryKeys.adminSettings, queryFn: getAdminSettings });
   const [form, setForm] = useState({
     matchPercentage: 10,
@@ -63,7 +59,6 @@ export default function AdminSettingsPage() {
   return (
     <div className="space-y-5">
       <AdminSectionHeader title="Settings & Configuration" subtitle="Compensation and reward configuration from backend settings store" />
-      {demoMode ? <p className="text-xs text-amber-300">Demo mode is active. Settings updates are blocked.</p> : null}
 
       <div className="card-surface p-4">
         <p className="text-sm font-semibold text-text">Compensation Settings</p>
@@ -102,8 +97,8 @@ export default function AdminSettingsPage() {
           </label>
         </div>
         <div className="mt-4 flex justify-end">
-          <button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || demoMode} className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-black disabled:opacity-60">
-            {demoMode ? 'Disabled in Demo' : saveMutation.isPending ? 'Saving...' : 'Save Settings'}
+          <button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-black disabled:opacity-60">
+            {saveMutation.isPending ? 'Saving...' : 'Save Settings'}
           </button>
         </div>
       </div>

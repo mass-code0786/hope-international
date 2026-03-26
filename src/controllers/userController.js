@@ -5,10 +5,7 @@ const { sanitizeUser } = require('../utils/sanitize');
 
 const me = asyncHandler(async (req, res) => {
   const user = await userService.getProfile(req.user.sub);
-  res.status(200).json({
-    ...sanitizeUser(user),
-    is_demo: Boolean(req.user?.is_demo)
-  });
+  res.status(200).json(sanitizeUser(user));
 });
 
 const myChildren = asyncHandler(async (req, res) => {

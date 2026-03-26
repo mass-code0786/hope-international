@@ -12,13 +12,7 @@ const login = asyncHandler(async (req, res) => {
   res.status(200).json({ user: sanitizeUser(data.user), token: data.token });
 });
 
-const demoLogin = asyncHandler(async (req, res) => {
-  const data = await authService.demoLogin(req.body);
-  res.status(200).json({ user: sanitizeUser(data.user), token: data.token });
-});
-
 module.exports = {
   register,
-  login,
-  demoLogin
+  login
 };
