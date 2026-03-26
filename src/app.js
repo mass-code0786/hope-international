@@ -12,11 +12,16 @@ const app = express();
 app.use(helmet());
 app.use(cors({
   origin: [
-    'http://localhost:3000',
-    'https://hope-international.vercel.app'
+    'https://hope-international.vercel.app',
+    'https://hopeinternational.uk',
+    'https://www.hopeinternational.uk'
   ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
+
+app.options('*', cors());
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan('combined'));
 app.use(
@@ -49,5 +54,3 @@ app.use((_req, res) => {
 app.use(errorHandler);
 
 module.exports = app;
-
-
