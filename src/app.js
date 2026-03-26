@@ -10,7 +10,13 @@ const errorHandler = require('./middleware/errorHandler');
 const app = express();
 
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:3000',
+    'https://hope-international.vercel.app'
+  ],
+  credentials: true
+}));
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan('combined'));
 app.use(
@@ -43,4 +49,5 @@ app.use((_req, res) => {
 app.use(errorHandler);
 
 module.exports = app;
+
 
