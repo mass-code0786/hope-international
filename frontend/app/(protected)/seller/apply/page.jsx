@@ -127,7 +127,7 @@ export default function SellerApplyPage() {
 
       <div className="rounded-xl border border-slate-200 bg-white p-3">
         <p className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Policy</p>
-        <p className="mt-1 text-sm font-semibold text-slate-800">Activation Fee: 100 USDT</p>
+        <p className="mt-1 text-sm font-semibold text-slate-800">Activation Fee: 300 USDT</p>
         <p className="mt-0.5 text-[11px] text-slate-500">One-time fee is required before seller approval is finalized.</p>
       </div>
 
@@ -239,3 +239,4 @@ export default function SellerApplyPage() {
     </div>
   );
 }
+

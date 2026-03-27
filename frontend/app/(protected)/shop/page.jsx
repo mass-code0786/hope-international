@@ -38,6 +38,18 @@ const serviceCards = [
   { icon: Headset, title: 'Support' }
 ];
 
+const categoryKeywords = {
+  digital: ['digital', 'online', 'software', 'ebook', 'subscription'],
+  physical: ['physical', 'kit', 'pack', 'product'],
+  health: ['health', 'wellness', 'nutrition', 'supplement', 'care'],
+  beauty: ['beauty', 'skin', 'cosmetic', 'makeup'],
+  courses: ['course', 'training', 'class', 'digital'],
+  'grocery / rashan': ['grocery', 'rashan', 'ration', 'atta', 'rice', 'dal', 'oil', 'spice', 'daily-use'],
+  mobile: ['mobile', 'phone', 'smartphone', 'android', 'ios'],
+  gadgets: ['gadget', 'electronics', 'earbuds', 'charger', 'accessory', 'device'],
+  fashion: ['fashion', 'clothing', 'apparel', 'wear', 'shirt', 'shoe', 'style']
+};
+
 function SectionTitle({ title, subtitle, count }) {
   return (
     <div className="mb-2 flex items-end justify-between">
@@ -48,6 +60,17 @@ function SectionTitle({ title, subtitle, count }) {
       <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[9px] font-medium text-slate-600">{count}</span>
     </div>
   );
+}
+
+function categoryMatch(product, activeCategory) {
+  if (activeCategory === 'All') return true;
+
+  const haystack = `${product?.name || ''} ${product?.description || ''}`.toLowerCase();
+  const normalized = activeCategory.toLowerCase();
+  const keywords = categoryKeywords[normalized] || [];
+  const labelTokens = normalized.split(/[^a-z0-9]+/g).filter(Boolean);
+
+  return keywords.some((keyword) => haystack.includes(keyword)) || labelTokens.some((token) => haystack.includes(token));
 }
 
 export default function ShopPage() {
@@ -85,8 +108,8 @@ export default function ShopPage() {
     return products.filter((product) => {
       const text = `${product?.name || ''} ${product?.description || ''}`.toLowerCase();
       const matchesSearch = text.includes(search.toLowerCase());
-      if (activeCategory === 'All') return matchesSearch;
-      return matchesSearch && text.includes(activeCategory.toLowerCase());
+      const matchesCategory = categoryMatch(product, activeCategory);
+      return matchesSearch && matchesCategory;
     });
   }, [products, search, activeCategory]);
 
