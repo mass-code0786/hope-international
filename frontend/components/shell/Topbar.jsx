@@ -33,11 +33,11 @@ export function Topbar({ user }) {
     <header className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-2.5">
       <div className="flex min-w-0 items-center gap-2">
         <span
-          className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${
+          className={`inline-flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-lg border ${
             logoIsDark ? 'border-slate-200 bg-slate-100' : 'border-slate-600 bg-slate-800'
           }`}
         >
-          <LogoMark size={26} className={logoIsDark ? 'brightness-0' : 'brightness-0 invert'} />
+          <LogoMark size={28} className={`[&_svg]:object-contain ${logoIsDark ? 'brightness-0' : 'brightness-0 invert'}`} />
         </span>
         <div className="min-w-0">
           <p className="truncate text-[11px] font-semibold text-slate-800">Hope International</p>
@@ -60,3 +60,4 @@ export function Topbar({ user }) {
     </header>
   );
 }
+
