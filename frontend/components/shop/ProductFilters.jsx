@@ -1,36 +1,39 @@
 'use client';
 
-import { Search } from 'lucide-react';
+import { Grid3X3, Heart, Sparkles, Apple, Pill, BadgeHelp } from 'lucide-react';
 
-const categories = ['All', 'Digital', 'Physical', 'Health', 'Beauty', 'Courses'];
+const categories = [
+  { label: 'All', icon: Grid3X3 },
+  { label: 'Digital', icon: Sparkles },
+  { label: 'Physical', icon: BadgeHelp },
+  { label: 'Health', icon: Pill },
+  { label: 'Beauty', icon: Heart },
+  { label: 'Courses', icon: Apple }
+];
 
-export function ProductFilters({ search, setSearch, activeCategory, setActiveCategory }) {
+export function ProductFilters({ activeCategory, setActiveCategory }) {
   return (
-    <div className="space-y-3.5">
-      <label className="relative block">
-        <Search size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search for wellness, beauty, digital products..."
-          className="w-full rounded-2xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 py-3.5 pl-11 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-100"
-        />
-      </label>
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {categories.map((cat) => (
+    <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+      {categories.map((cat) => {
+        const Icon = cat.icon;
+        const active = activeCategory === cat.label;
+
+        return (
           <button
-            key={cat}
-            onClick={() => setActiveCategory(cat)}
-            className={`whitespace-nowrap rounded-full border px-4 py-2 text-xs font-medium transition ${
-              activeCategory === cat
-                ? 'border-amber-300 bg-gradient-to-r from-amber-100 to-orange-100 text-amber-900 shadow-[0_10px_20px_rgba(217,119,6,0.2)]'
-                : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+            key={cat.label}
+            type="button"
+            onClick={() => setActiveCategory(cat.label)}
+            className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1.5 text-[10px] font-medium transition ${
+              active
+                ? 'border-sky-300 bg-sky-50 text-sky-700'
+                : 'border-slate-200 bg-white text-slate-600'
             }`}
           >
-            {cat}
+            <Icon size={12} />
+            <span>{cat.label}</span>
           </button>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 }

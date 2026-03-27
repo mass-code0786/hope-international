@@ -37,15 +37,15 @@ export function BottomNav({ user, sellerActive = false }) {
   const items = getNavItems(user, sellerActive);
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-card/95 backdrop-blur md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white md:hidden">
       <div className={`mx-auto grid max-w-2xl ${items.length === 6 ? 'grid-cols-6' : 'grid-cols-5'}`}>
         {items.map((item) => {
           const Icon = iconMap[item.icon];
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
-            <Link key={item.href} href={item.href} className="flex flex-col items-center justify-center gap-1 py-3 text-xs">
-              <Icon size={18} className={active ? 'text-accent' : 'text-muted'} />
-              <span className={active ? 'text-accent' : 'text-muted'}>{item.label}</span>
+            <Link key={item.href} href={item.href} className="flex flex-col items-center justify-center gap-0.5 py-2 text-[9px]">
+              <Icon size={15} className={active ? 'text-sky-600' : 'text-slate-500'} />
+              <span className={active ? 'font-medium text-sky-600' : 'text-slate-500'}>{item.label}</span>
             </Link>
           );
         })}

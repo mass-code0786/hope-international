@@ -1,83 +1,98 @@
 'use client';
 
+import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { ArrowRight, ShoppingBag, Sparkles } from 'lucide-react';
-import { currency, number } from '@/lib/utils/format';
+import { ArrowRight, Plus, ShieldCheck, Star } from 'lucide-react';
+import { currency } from '@/lib/utils/format';
 import { addToCart } from '@/lib/utils/cart';
-
-function buildCardTheme(seed) {
-  const palette = [
-    ['from-[#fff5e6]', 'via-[#ffe9c7]', 'to-[#ffd7a3]'],
-    ['from-[#edf7ff]', 'via-[#dff0ff]', 'to-[#c8e6ff]'],
-    ['from-[#f7efff]', 'via-[#efe3ff]', 'to-[#e2d0ff]'],
-    ['from-[#eefbe8]', 'via-[#e0f6d8]', 'to-[#c7ecbe]']
-  ];
-
-  const value = String(seed || 'hope').split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  return palette[value % palette.length];
-}
 
 function getOfferPercent(product) {
   const base = String(product?.id || product?.name || 'hope')
     .split('')
     .reduce((sum, char) => sum + char.charCodeAt(0), 0);
 
-  return 8 + (base % 18);
+  return 10 + (base % 26);
+}
+
+function getRating(product) {
+  const base = String(product?.id || product?.name || 'hope')
+    .split('')
+    .reduce((sum, char) => sum + char.charCodeAt(0), 0);
+
+  return (4 + ((base % 9) / 10)).toFixed(1);
+}
+
+function getCategory(product) {
+  const text = `${product?.name || ''} ${product?.description || ''}`.toLowerCase();
+  if (text.includes('health') || text.includes('wellness')) return 'Health';
+  if (text.includes('beauty') || text.includes('skin')) return 'Beauty';
+  if (text.includes('course') || text.includes('digital')) return 'Digital';
+  if (text.includes('kit') || text.includes('pack')) return 'Physical';
+  return product?.is_qualifying ? 'Featured' : 'General';
+}
+
+function buildImageTheme(seed) {
+  const themes = [
+    'from-[#eef7ff] to-[#dbeafe]',
+    'from-[#fff7ed] to-[#fed7aa]',
+    'from-[#ecfeff] to-[#ccfbf1]',
+    'from-[#f5f3ff] to-[#ddd6fe]'
+  ];
+
+  const index = String(seed || 'hope')
+    .split('')
+    .reduce((sum, char) => sum + char.charCodeAt(0), 0);
+
+  return themes[index % themes.length];
 }
 
 export function ProductCard({ product, onBuy, isBuying = false, disableBuying = false }) {
   const safeProduct = product || {};
-  const [from, via, to] = buildCardTheme(safeProduct.id || safeProduct.name);
+  const href = safeProduct?.id ? `/shop/${encodeURIComponent(String(safeProduct.id))}` : '/shop';
   const offerPercent = getOfferPercent(safeProduct);
+  const currentPrice = Number(safeProduct.price || 0);
+  const oldPrice = currentPrice > 0 ? currentPrice * (1 + offerPercent / 100) : 0;
+  const rating = getRating(safeProduct);
+  const category = getCategory(safeProduct);
+  const imageTheme = buildImageTheme(safeProduct.id || safeProduct.name);
 
   return (
-    <article className="group overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-[0_16px_36px_rgba(15,23,42,0.08)] transition hover:-translate-y-[2px] hover:shadow-[0_24px_48px_rgba(15,23,42,0.12)]">
-      <div className={`relative h-40 bg-gradient-to-br ${from} ${via} ${to} p-4`}>
-        <span className="inline-flex items-center gap-1 rounded-full border border-white/80 bg-white/90 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-slate-700">
-          <Sparkles size={12} />
-          {safeProduct.is_qualifying ? 'QUALIFYING PICK' : 'EDITOR PICK'}
-        </span>
-        <span className="absolute right-4 top-4 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-2.5 py-1 text-[10px] font-semibold text-white shadow-[0_8px_16px_rgba(244,63,94,0.35)]">
+    <article className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_4px_12px_rgba(15,23,42,0.06)]">
+      <Link href={href} className={`block relative h-20 bg-gradient-to-br ${imageTheme}`}>
+        <span className="absolute left-1.5 top-1.5 rounded bg-rose-500 px-1 py-0.5 text-[8px] font-semibold text-white">
           -{offerPercent}%
         </span>
-        <div className="absolute bottom-4 right-4 rounded-full border border-white/85 bg-white/90 p-2 text-slate-700 shadow-[0_8px_16px_rgba(15,23,42,0.1)]">
-          <ShoppingBag size={14} />
-        </div>
-      </div>
+        <span className="absolute right-1.5 top-1.5 inline-flex items-center gap-0.5 rounded bg-white/90 px-1 py-0.5 text-[8px] font-medium text-slate-700">
+          <Star size={9} className="fill-amber-400 text-amber-400" />
+          {rating}
+        </span>
+      </Link>
 
-      <div className="space-y-3.5 p-4">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="line-clamp-1 text-[15px] font-semibold tracking-[-0.01em] text-slate-900">{safeProduct.name || 'Unnamed Product'}</h3>
-          <p className="text-[17px] font-bold tracking-[-0.01em] text-slate-900">{currency(safeProduct.price)}</p>
-        </div>
+      <div className="space-y-1.5 p-2">
+        <Link href={href} className="block">
+          <h3 className="line-clamp-2 min-h-[2rem] text-[10px] font-semibold leading-4 text-slate-900">{safeProduct.name || 'Unnamed Product'}</h3>
+        </Link>
 
-        <p className="line-clamp-2 text-xs leading-5 text-slate-500">
-          {safeProduct.description || 'Hope International premium product selected for high-value shoppers.'}
-        </p>
+        <p className="text-[9px] text-slate-500">{category}</p>
 
-        <div className="grid grid-cols-3 gap-2 rounded-2xl border border-slate-100 bg-gradient-to-b from-slate-50 to-white p-2.5 text-xs">
-          <div>
-            <p className="text-slate-400">BV</p>
-            <p className="font-semibold text-slate-700">{number(safeProduct.bv)}</p>
-          </div>
-          <div>
-            <p className="text-slate-400">PV</p>
-            <p className="font-semibold text-slate-700">{number(safeProduct.pv)}</p>
-          </div>
-          <div>
-            <p className="text-slate-400">Type</p>
-            <p className="font-semibold text-slate-700">{safeProduct.is_qualifying ? 'Prime' : 'Core'}</p>
-          </div>
+        <div className="flex items-center gap-1">
+          <p className="text-[11px] font-bold text-slate-900">{currency(currentPrice)}</p>
+          {oldPrice > 0 ? <p className="text-[8px] text-slate-400 line-through">{currency(oldPrice)}</p> : null}
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[8px] font-medium text-emerald-700">
+          <ShieldCheck size={9} />
+          {safeProduct.is_qualifying ? 'Qualifying' : 'Trusted'}
+        </div>
+
+        <div className="grid grid-cols-[1fr_auto] gap-1">
           <button
             disabled={isBuying || disableBuying}
             onClick={() => onBuy?.(safeProduct)}
-            className="inline-flex items-center justify-center gap-1 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-700 px-3 py-2.5 text-xs font-semibold text-white shadow-[0_10px_22px_rgba(15,23,42,0.22)] transition hover:from-slate-800 hover:to-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-0.5 rounded-lg bg-slate-900 px-1 py-1.5 text-[9px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {disableBuying ? 'Disabled in Demo' : isBuying ? 'Processing...' : 'Buy Now'}
-            {isBuying ? null : <ArrowRight size={14} />}
+            {disableBuying ? 'Disabled' : isBuying ? '...' : 'Buy'}
+            {isBuying ? null : <ArrowRight size={10} />}
           </button>
           <button
             onClick={() => {
@@ -88,9 +103,10 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
               }
               toast.success(`Added to cart (${nextCount})`);
             }}
-            className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+            className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-1.5 text-slate-700"
+            aria-label="Add to cart"
           >
-            Add to Cart
+            <Plus size={11} />
           </button>
         </div>
       </div>
