@@ -57,9 +57,9 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
   const imageTheme = buildImageTheme(safeProduct.id || safeProduct.name);
 
   return (
-    <article className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_4px_12px_rgba(15,23,42,0.06)]">
+    <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
       <Link href={href} className={`block relative h-20 bg-gradient-to-br ${imageTheme}`}>
-        <span className="absolute left-1.5 top-1.5 rounded bg-rose-500 px-1 py-0.5 text-[8px] font-semibold text-white">
+        <span className="absolute left-1.5 top-1.5 rounded bg-emerald-500 px-1 py-0.5 text-[8px] font-semibold text-white">
           -{offerPercent}%
         </span>
         <span className="absolute right-1.5 top-1.5 inline-flex items-center gap-0.5 rounded bg-white/90 px-1 py-0.5 text-[8px] font-medium text-slate-700">
@@ -89,7 +89,7 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
           <button
             disabled={isBuying || disableBuying}
             onClick={() => onBuy?.(safeProduct)}
-            className="inline-flex items-center justify-center gap-0.5 rounded-lg bg-slate-900 px-1 py-1.5 text-[9px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-0.5 rounded-[10px] bg-[#0ea5e9] px-1 py-1.5 text-[9px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
           >
             {disableBuying ? 'Disabled' : isBuying ? '...' : 'Buy'}
             {isBuying ? null : <ArrowRight size={10} />}
@@ -103,7 +103,7 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
               }
               toast.success(`Added to cart (${nextCount})`);
             }}
-            className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-1.5 text-slate-700"
+            className="inline-flex items-center justify-center rounded-[10px] border border-slate-200 bg-[#e2e8f0] px-1.5 text-slate-700"
             aria-label="Add to cart"
           >
             <Plus size={11} />

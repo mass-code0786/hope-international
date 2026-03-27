@@ -9,21 +9,21 @@ const config = {
   theme: {
     extend: {
       colors: {
-        bg: '#0a0a0a',
-        card: '#151515',
-        cardSoft: '#1c1c1c',
-        accent: '#d4af37',
-        accentSoft: '#f0d77a',
+        bg: '#f8fafc',
+        card: '#ffffff',
+        cardSoft: '#f1f5f9',
+        accent: '#0ea5e9',
+        accentSoft: '#ffffff',
         success: '#22c55e',
         danger: '#ef4444',
-        text: '#f5f5f5',
-        muted: '#9ca3af'
+        text: '#0f172a',
+        muted: '#64748b'
       },
       borderRadius: {
         xl2: '1.25rem'
       },
       boxShadow: {
-        soft: '0 10px 30px rgba(0,0,0,0.35)'
+        soft: '0 4px 12px rgba(0, 0, 0, 0.05)'
       }
     }
   },

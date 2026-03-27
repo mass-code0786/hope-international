@@ -29,8 +29,8 @@ export function ProductFilters({ activeCategory, setActiveCategory }) {
             onClick={() => setActiveCategory(cat.label)}
             className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1.5 text-[10px] font-medium transition ${
               active
-                ? 'border-sky-300 bg-sky-50 text-sky-700'
-                : 'border-slate-200 bg-white text-slate-600'
+                ? 'border-[#0ea5e9] bg-[#0ea5e9] text-white'
+                : 'border-slate-200 bg-[#f1f5f9] text-[#334155]'
             }`}
           >
             <Icon size={12} />
