@@ -46,7 +46,10 @@ const incomeSourceMap = {
   reward_qualification: 'Reward Qualification',
   cap_overflow: 'Cap Overflow',
   manual_adjustment: 'Manual Adjustment',
-  order_purchase: 'Order Purchase'
+  order_purchase: 'Order Purchase',
+  deposit_request: 'Deposit Request',
+  withdrawal_request: 'Withdrawal Request',
+  p2p_transfer: 'P2P Transfer'
 };
 
 const txTypeMap = {
@@ -66,7 +69,11 @@ const rankMap = {
 const orderStatusMap = {
   pending: 'Pending',
   paid: 'Paid',
-  cancelled: 'Cancelled'
+  cancelled: 'Cancelled',
+  completed: 'Completed',
+  approved: 'Approved',
+  rejected: 'Rejected',
+  failed: 'Failed'
 };
 
 const sellerApplicationStatusMap = {
@@ -123,8 +130,9 @@ export function moderationStatusLabel(status) {
 }
 
 export function statusVariant(status) {
-  if (status === 'approved' || status === 'paid') return 'success';
-  if (status === 'rejected' || status === 'cancelled') return 'danger';
-  if (status === 'pending') return 'accent';
+  if (status === 'approved' || status === 'paid' || status === 'completed' || status === 'processed') return 'success';
+  if (status === 'rejected' || status === 'cancelled' || status === 'failed') return 'danger';
+  if (status === 'pending' || status === 'processing') return 'warning';
   return 'default';
 }
+

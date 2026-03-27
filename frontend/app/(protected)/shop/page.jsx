@@ -1,9 +1,28 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Menu, Search, ShoppingCart, Truck, ShieldCheck, BadgePercent, Headset, User } from 'lucide-react';
+import {
+  Menu,
+  Search,
+  ShoppingCart,
+  Truck,
+  ShieldCheck,
+  BadgePercent,
+  Headset,
+  User,
+  X,
+  Wallet,
+  HandCoins,
+  ArrowUpDown,
+  History,
+  BadgeDollarSign,
+  Users,
+  Store,
+  LogOut,
+  Settings
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ProductFilters } from '@/components/shop/ProductFilters';
 import { ProductCard } from '@/components/shop/ProductCard';
@@ -16,6 +35,8 @@ import { createOrder } from '@/lib/services/ordersService';
 import { getHomepageBanners } from '@/lib/services/bannersService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { subscribeCart } from '@/lib/utils/cart';
+import { useAuthStore } from '@/lib/store/authStore';
+import { clearStoredToken } from '@/lib/utils/tokenStorage';
 
 const fallbackSlides = [
   {
@@ -53,6 +74,51 @@ const categoryKeywords = {
   physical: ['physical', 'kit', 'pack', 'product'],
   digital: ['digital', 'online', 'software', 'ebook', 'subscription', 'course', 'training']
 };
+
+const accountHubSections = [
+  {
+    title: 'Wallet & Finance',
+    items: [
+      { label: 'Wallet Overview', href: '/wallet', icon: Wallet },
+      { label: 'Deposit', href: '/deposit', icon: BadgeDollarSign },
+      { label: 'Withdrawal', href: '/withdraw', icon: HandCoins },
+      { label: 'P2P Transfer', href: '/p2p', icon: ArrowUpDown },
+      { label: 'Deposit History', href: '/history/deposit', icon: History },
+      { label: 'Withdrawal History', href: '/history/withdraw', icon: History }
+    ]
+  },
+  {
+    title: 'Income',
+    items: [
+      { label: 'All Income History', href: '/history/income', icon: History },
+      { label: 'Direct / Matching / Reward', href: '/income', icon: BadgeDollarSign }
+    ]
+  },
+  {
+    title: 'Orders / Shop',
+    items: [
+      { label: 'Order History', href: '/history/orders', icon: Store },
+      { label: 'Active / Completed / Cancelled', href: '/orders', icon: Store }
+    ]
+  },
+  {
+    title: 'Team / Plan',
+    items: [
+      { label: 'Team History', href: '/team', icon: Users },
+      { label: 'Referral History', href: '/team', icon: Users },
+      { label: 'Sponsor / Downline', href: '/team', icon: Users }
+    ]
+  },
+  {
+    title: 'Account',
+    items: [
+      { label: 'Profile', href: '/profile', icon: User },
+      { label: 'Referral Link', href: '/profile', icon: BadgePercent },
+      { label: 'Manage Wallet Address', href: '/wallet', icon: Wallet },
+      { label: 'Settings', href: '/profile', icon: Settings }
+    ]
+  }
+];
 
 function SectionTitle({ title, count }) {
   return (
@@ -106,15 +172,28 @@ function BannerCard({ banner }) {
 export default function ShopPage() {
   const { data, isLoading, isError, refetch } = useProducts();
   const bannersQuery = useQuery({ queryKey: queryKeys.homepageBanners, queryFn: getHomepageBanners });
+  const meQuery = useQuery({ queryKey: queryKeys.me });
+  const clearSession = useAuthStore((state) => state.clearSession);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [buyingProductId, setBuyingProductId] = useState('');
   const [cartCount, setCartCount] = useState(0);
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
   const bannerTrackRef = useRef(null);
   const queryClient = useQueryClient();
 
   useEffect(() => subscribeCart(setCartCount), []);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [menuOpen]);
 
   const buyMutation = useMutation({
     mutationFn: (product) => createOrder({ items: [{ productId: product.id, quantity: 1 }] }),
@@ -193,6 +272,7 @@ export default function ShopPage() {
   const trending = useMemo(() => [...filtered].sort((a, b) => Number(b.price || 0) - Number(a.price || 0)).slice(0, 12), [filtered]);
 
   const hasProducts = !isLoading && !isError && filtered.length > 0;
+  const user = meQuery.data || {};
 
   return (
     <div className="-mx-4 space-y-3 bg-[#f8fafc] px-3 pb-2 pt-0 sm:mx-0 sm:rounded-2xl sm:border sm:border-slate-200 sm:px-4 sm:py-3">
@@ -221,7 +301,11 @@ export default function ShopPage() {
           <Link href="/profile" className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700">
             <User size={14} />
           </Link>
-          <button className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700" aria-label="Open menu">
+          <button
+            onClick={() => setMenuOpen(true)}
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700"
+            aria-label="Open menu"
+          >
             <Menu size={14} />
           </button>
         </div>
@@ -363,8 +447,72 @@ export default function ShopPage() {
           </div>
         </section>
       ) : null}
+
+      {menuOpen ? (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <button className="absolute inset-0 bg-slate-950/30" aria-label="Close account panel" onClick={() => setMenuOpen(false)} />
+          <aside className="absolute right-0 top-0 h-full w-[88%] max-w-sm overflow-y-auto border-l border-slate-200 bg-[#f8fafc] p-3 shadow-2xl">
+            <div className="sticky top-0 z-10 mb-3 rounded-xl border border-slate-200 bg-white p-2.5">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold text-slate-900">{user?.first_name || user?.username || 'Account'}</p>
+                  <p className="truncate text-[10px] text-slate-500">@{user?.username || 'member'}</p>
+                  <p className="text-[10px] text-slate-400">ID: {String(user?.id || '-').slice(0, 8)}</p>
+                </div>
+                <button
+                  onClick={() => setMenuOpen(false)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700"
+                  aria-label="Close menu"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2.5 pb-3">
+              {accountHubSections.map((section) => (
+                <section key={section.title} className="rounded-xl border border-slate-200 bg-white p-2.5">
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">{section.title}</p>
+                  <div className="space-y-1">
+                    {section.items.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <Link
+                          key={`${section.title}-${item.label}`}
+                          href={item.href}
+                          onClick={() => setMenuOpen(false)}
+                          className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-2 py-1.5 text-[11px] text-slate-700"
+                        >
+                          <span className="inline-flex items-center gap-1.5">
+                            <Icon size={13} className="text-slate-500" />
+                            {item.label}
+                          </span>
+                          <span className="text-[10px] text-slate-400">Open</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
+            </div>
+
+            <button
+              onClick={async () => {
+                clearStoredToken();
+                clearSession();
+                await queryClient.clear();
+                setMenuOpen(false);
+                toast.success('Logged out');
+              }}
+              className="mb-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-semibold text-rose-600"
+            >
+              <LogOut size={14} />
+              Logout
+            </button>
+          </aside>
+        </div>
+      ) : null}
     </div>
   );
 }
-
 

@@ -150,6 +150,50 @@ const walletAdjustSchema = z.object({
   query: z.object({})
 });
 
+const walletBindSchema = z.object({
+  body: z.object({
+    walletAddress: z.string().min(8).max(255),
+    network: z.string().max(60).optional()
+  }),
+  params: z.object({}),
+  query: z.object({})
+});
+
+const walletDepositSchema = z.object({
+  body: z.object({
+    amount: z.number().positive(),
+    method: z.string().max(60).optional(),
+    instructions: z.string().max(800).optional(),
+    details: z.record(z.any()).optional()
+  }),
+  params: z.object({}),
+  query: z.object({})
+});
+
+const walletWithdrawalSchema = z.object({
+  body: z.object({
+    amount: z.number().positive(),
+    walletAddress: z.string().min(8).max(255).optional(),
+    network: z.string().max(60).optional(),
+    notes: z.string().max(800).optional()
+  }),
+  params: z.object({}),
+  query: z.object({})
+});
+
+const walletP2pSchema = z.object({
+  body: z.object({
+    toUsername: usernameSchema.optional(),
+    toUserId: uuid.optional(),
+    amount: z.number().positive(),
+    notes: z.string().max(500).optional()
+  }).refine((body) => Boolean(body.toUsername || body.toUserId), {
+    message: 'Recipient username or user ID is required'
+  }),
+  params: z.object({}),
+  query: z.object({})
+});
+
 const sellerApplySchema = z.object({
   body: z.object({
     legalName: z.string().min(2).max(255),
@@ -270,6 +314,10 @@ module.exports = {
   compensationWeeklyQuerySchema,
   compensationMonthlyQuerySchema,
   walletAdjustSchema,
+  walletBindSchema,
+  walletDepositSchema,
+  walletWithdrawalSchema,
+  walletP2pSchema,
   sellerApplySchema,
   sellerProductCreateSchema,
   sellerProductUpdateSchema,

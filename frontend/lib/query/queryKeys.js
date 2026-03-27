@@ -4,6 +4,10 @@ export const queryKeys = {
   sellerProducts: ['seller', 'products'],
   wallet: ['wallet'],
   walletTransactions: ['wallet', 'transactions'],
+  walletDeposits: ['wallet', 'deposits'],
+  walletWithdrawals: ['wallet', 'withdrawals'],
+  walletP2p: ['wallet', 'p2p'],
+  walletHubHistory: (type = 'all') => ['wallet', 'history', type],
   products: ['products'],
   orders: ['orders'],
   homepageBanners: ['homepage-banners'],
@@ -38,4 +42,5 @@ export const queryKeys = {
   monthlyCompensation: (monthStart, monthEnd) => ['monthly-compensation', monthStart, monthEnd],
   teamChildren: ['team-children']
 };
+
 
