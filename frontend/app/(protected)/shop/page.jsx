@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Menu, Search, ShoppingCart, Truck, ShieldCheck, BadgePercent, Headset } from 'lucide-react';
+import { Menu, Search, ShoppingCart, Truck, ShieldCheck, BadgePercent, Headset, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ProductFilters } from '@/components/shop/ProductFilters';
 import { ProductCard } from '@/components/shop/ProductCard';
@@ -18,14 +18,14 @@ import { subscribeCart } from '@/lib/utils/cart';
 
 const promoSlides = [
   {
-    title: 'Compact Daily Deals',
-    subtitle: 'Low prices with verified products',
-    cta: 'Shop Now',
+    title: 'Deals for Smart Shopping',
+    subtitle: 'Daily savings across your favorite categories',
+    cta: 'Shop Deals',
     theme: 'from-[#e0f2fe] to-[#dbeafe]'
   },
   {
     title: 'Fresh Arrivals',
-    subtitle: 'Recommended picks for your profile',
+    subtitle: 'New picks curated for your profile',
     cta: 'View Picks',
     theme: 'from-[#ecfeff] to-[#dcfce7]'
   }
@@ -39,24 +39,20 @@ const serviceCards = [
 ];
 
 const categoryKeywords = {
-  digital: ['digital', 'online', 'software', 'ebook', 'subscription'],
-  physical: ['physical', 'kit', 'pack', 'product'],
-  health: ['health', 'wellness', 'nutrition', 'supplement', 'care'],
-  beauty: ['beauty', 'skin', 'cosmetic', 'makeup'],
-  courses: ['course', 'training', 'class', 'digital'],
-  'grocery / rashan': ['grocery', 'rashan', 'ration', 'atta', 'rice', 'dal', 'oil', 'spice', 'daily-use'],
+  grocery: ['grocery', 'rashan', 'ration', 'atta', 'rice', 'dal', 'oil', 'spice', 'daily-use'],
+  fashion: ['fashion', 'clothing', 'apparel', 'wear', 'shirt', 'shoe', 'style'],
   mobile: ['mobile', 'phone', 'smartphone', 'android', 'ios'],
   gadgets: ['gadget', 'electronics', 'earbuds', 'charger', 'accessory', 'device'],
-  fashion: ['fashion', 'clothing', 'apparel', 'wear', 'shirt', 'shoe', 'style']
+  beauty: ['beauty', 'skin', 'cosmetic', 'makeup'],
+  health: ['health', 'wellness', 'nutrition', 'supplement', 'care'],
+  physical: ['physical', 'kit', 'pack', 'product'],
+  digital: ['digital', 'online', 'software', 'ebook', 'subscription', 'course', 'training']
 };
 
-function SectionTitle({ title, subtitle, count }) {
+function SectionTitle({ title, count }) {
   return (
-    <div className="mb-2 flex items-end justify-between">
-      <div>
-        <h3 className="text-[13px] font-semibold text-slate-900">{title}</h3>
-        <p className="text-[10px] text-slate-500">{subtitle}</p>
-      </div>
+    <div className="mb-2 flex items-center justify-between">
+      <h3 className="text-[13px] font-semibold text-slate-900">{title}</h3>
       <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[9px] font-medium text-slate-600">{count}</span>
     </div>
   );
@@ -116,17 +112,17 @@ export default function ShopPage() {
   const deals = useMemo(() => filtered.filter((item) => item.is_qualifying).slice(0, 12), [filtered]);
   const recommended = useMemo(() => filtered.slice(0, 12), [filtered]);
   const newArrivals = useMemo(() => [...filtered].slice(-12).reverse(), [filtered]);
+  const trending = useMemo(() => [...filtered].sort((a, b) => Number(b.price || 0) - Number(a.price || 0)).slice(0, 12), [filtered]);
 
   const hasProducts = !isLoading && !isError && filtered.length > 0;
 
   return (
-    <div className="-mx-4 space-y-3 bg-[#f5f5f5] px-3 pb-2 pt-0 sm:mx-0 sm:rounded-2xl sm:border sm:border-slate-200 sm:px-4 sm:py-3">
-      <section className="sticky top-0 z-20 rounded-xl border border-slate-200 bg-white p-2">
+    <div className="-mx-4 space-y-3 bg-[#f8fafc] px-3 pb-2 pt-0 sm:mx-0 sm:rounded-2xl sm:border sm:border-slate-200 sm:px-4 sm:py-3">
+      <section className="sticky top-0 z-20 rounded-xl border border-slate-200 bg-white p-2 shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
         <div className="flex items-center gap-1.5">
-          <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-lg border border-slate-200 bg-white">
-            <LogoMark size={17} />
+          <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-lg border border-slate-200 bg-[#f8fafc]">
+            <LogoMark size={16} />
           </span>
-          <span className="text-[10px] font-semibold text-slate-700">Hope</span>
 
           <label className="relative min-w-0 flex-1">
             <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -138,13 +134,16 @@ export default function ShopPage() {
             />
           </label>
 
-          <button className="relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700">
+          <Link href="/cart" className="relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700">
             <ShoppingCart size={14} />
             <span className="absolute -right-1 -top-1 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-rose-500 px-0.5 text-[8px] font-semibold text-white">
               {cartCount > 99 ? '99+' : cartCount}
             </span>
-          </button>
-          <button className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700">
+          </Link>
+          <Link href="/profile" className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700">
+            <User size={14} />
+          </Link>
+          <button className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700" aria-label="Open menu">
             <Menu size={14} />
           </button>
         </div>
@@ -158,10 +157,10 @@ export default function ShopPage() {
         {promoSlides.map((slide) => (
           <article
             key={slide.title}
-            className={`min-w-[80%] snap-start rounded-xl border border-slate-200 bg-gradient-to-r ${slide.theme} p-2.5`}
+            className={`min-w-[86%] snap-start rounded-xl border border-slate-200 bg-gradient-to-r ${slide.theme} p-2.5`}
           >
             <p className="text-[9px] font-medium uppercase tracking-wide text-slate-600">Hope Store</p>
-            <h2 className="mt-1 text-[14px] font-semibold leading-4 text-slate-900">{slide.title}</h2>
+            <h2 className="mt-1 text-[13px] font-semibold leading-4 text-slate-900">{slide.title}</h2>
             <p className="mt-1 text-[10px] text-slate-600">{slide.subtitle}</p>
             <button className="mt-2 rounded-full border border-slate-300 bg-white px-2.5 py-1 text-[10px] font-medium text-slate-700">{slide.cta}</button>
           </article>
@@ -192,7 +191,7 @@ export default function ShopPage() {
       {hasProducts ? (
         <section className="space-y-4 pb-14">
           <div>
-            <SectionTitle title="Deals of the Day" subtitle="Best offers for today" count={deals.length || 0} />
+            <SectionTitle title="Deals of the Day" count={deals.length || 0} />
             <div className="grid grid-cols-3 gap-1.5">
               {(deals.length ? deals : recommended).map((product) => (
                 <ProductCard
@@ -207,7 +206,7 @@ export default function ShopPage() {
           </div>
 
           <div>
-            <SectionTitle title="Recommended" subtitle="Picked for your profile" count={recommended.length} />
+            <SectionTitle title="Recommended" count={recommended.length} />
             <div className="grid grid-cols-3 gap-1.5">
               {recommended.map((product) => (
                 <ProductCard
@@ -222,11 +221,26 @@ export default function ShopPage() {
           </div>
 
           <div>
-            <SectionTitle title="New Arrivals" subtitle="Latest additions" count={newArrivals.length} />
+            <SectionTitle title="New Arrivals" count={newArrivals.length} />
             <div className="grid grid-cols-3 gap-1.5">
               {newArrivals.map((product) => (
                 <ProductCard
                   key={`new-${product.id}`}
+                  product={product}
+                  onBuy={(p) => buyMutation.mutate(p)}
+                  isBuying={buyMutation.isPending && buyingProductId === product.id}
+                  disableBuying={false}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <SectionTitle title="Trending" count={trending.length} />
+            <div className="grid grid-cols-3 gap-1.5">
+              {trending.map((product) => (
+                <ProductCard
+                  key={`trending-${product.id}`}
                   product={product}
                   onBuy={(p) => buyMutation.mutate(p)}
                   isBuying={buyMutation.isPending && buyingProductId === product.id}

@@ -1,18 +1,17 @@
 'use client';
 
-import { Grid3X3, Heart, Sparkles, Apple, Pill, BadgeHelp, ShoppingBasket, Smartphone, Cpu, Shirt } from 'lucide-react';
+import { Grid3X3, Heart, Sparkles, Pill, Package, ShoppingBasket, Smartphone, Cpu, Shirt } from 'lucide-react';
 
 const categories = [
   { label: 'All', icon: Grid3X3 },
-  { label: 'Digital', icon: Sparkles },
-  { label: 'Physical', icon: BadgeHelp },
-  { label: 'Health', icon: Pill },
-  { label: 'Beauty', icon: Heart },
-  { label: 'Courses', icon: Apple },
-  { label: 'Grocery / Rashan', icon: ShoppingBasket },
+  { label: 'Grocery', icon: ShoppingBasket },
+  { label: 'Fashion', icon: Shirt },
   { label: 'Mobile', icon: Smartphone },
   { label: 'Gadgets', icon: Cpu },
-  { label: 'Fashion', icon: Shirt }
+  { label: 'Beauty', icon: Heart },
+  { label: 'Health', icon: Pill },
+  { label: 'Physical', icon: Package },
+  { label: 'Digital', icon: Sparkles }
 ];
 
 export function ProductFilters({ activeCategory, setActiveCategory }) {

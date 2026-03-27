@@ -46,7 +46,7 @@ export function Topbar({ user }) {
       </div>
 
       <div className="flex items-center gap-1.5">
-        <Link href="/shop" className="relative inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700">
+        <Link href="/cart" className="relative inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700">
           <ShoppingCart size={14} />
           <span className="absolute -right-1 -top-1 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-rose-500 px-0.5 text-[8px] font-semibold text-white">
             {cartCount > 99 ? '99+' : cartCount}

@@ -59,6 +59,37 @@ export function addToCart(product, quantity = 1) {
   return getCartCount();
 }
 
+export function updateCartItemQuantity(productId, quantity) {
+  if (!productId || !canUseStorage()) return;
+
+  const items = readCart();
+  const idx = items.findIndex((item) => item.productId === productId);
+  if (idx < 0) return;
+
+  const safeQty = Math.max(0, Number(quantity || 0));
+  if (!safeQty) {
+    items.splice(idx, 1);
+  } else {
+    items[idx] = {
+      ...items[idx],
+      quantity: safeQty
+    };
+  }
+
+  writeCart(items);
+}
+
+export function removeFromCart(productId) {
+  if (!productId || !canUseStorage()) return;
+  const items = readCart().filter((item) => item.productId !== productId);
+  writeCart(items);
+}
+
+export function clearCart() {
+  if (!canUseStorage()) return;
+  writeCart([]);
+}
+
 export function subscribeCart(callback) {
   if (!canUseStorage()) return () => {};
 

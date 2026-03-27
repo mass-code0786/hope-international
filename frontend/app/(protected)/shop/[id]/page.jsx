@@ -5,7 +5,17 @@ import { useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { ArrowLeft, CheckCircle2, ShieldCheck, Star } from 'lucide-react';
+import {
+  ArrowLeft,
+  BadgePercent,
+  CheckCircle2,
+  Headset,
+  Heart,
+  Share2,
+  ShieldCheck,
+  Star,
+  Truck
+} from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
@@ -21,6 +31,14 @@ function getOfferPercent(product) {
     .reduce((sum, char) => sum + char.charCodeAt(0), 0);
 
   return 10 + (base % 26);
+}
+
+function getRating(product) {
+  const base = String(product?.id || product?.name || 'hope')
+    .split('')
+    .reduce((sum, char) => sum + char.charCodeAt(0), 0);
+
+  return (4 + ((base % 9) / 10)).toFixed(1);
 }
 
 function getCategory(product) {
@@ -71,7 +89,7 @@ export default function ProductDetailPage() {
         const scoreB = getCategory(b) === category ? 1 : 0;
         return scoreB - scoreA;
       })
-      .slice(0, 6);
+      .slice(0, 8);
   }, [products, product, id]);
 
   const buyMutation = useMutation({
@@ -94,8 +112,8 @@ export default function ProductDetailPage() {
   if (isLoading) {
     return (
       <div className="space-y-3">
-        <LoadingSkeleton className="h-8 w-28" />
-        <LoadingSkeleton className="h-52" />
+        <LoadingSkeleton className="h-10 w-full" />
+        <LoadingSkeleton className="h-64" />
         <LoadingSkeleton className="h-44" />
       </div>
     );
@@ -113,54 +131,77 @@ export default function ProductDetailPage() {
   const currentPrice = Number(product?.price || 0);
   const oldPrice = currentPrice > 0 ? currentPrice * (1 + offerPercent / 100) : 0;
   const category = getCategory(product);
+  const rating = getRating(product);
   const imageTheme = buildImageTheme(product.id || product.name);
 
-  return (
-    <div className="-mx-4 space-y-3 bg-[#f5f5f5] px-3 pb-28 pt-1 sm:mx-0 sm:rounded-2xl sm:border sm:border-slate-200 sm:px-4 sm:py-3 sm:pb-24">
-      <Link href="/shop" className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-700">
-        <ArrowLeft size={14} />
-        Back to shop
-      </Link>
+  const highlights = [
+    'Verified marketplace product',
+    'Fast dispatch and tracked support',
+    product.is_qualifying ? 'Qualifying item for network benefits' : 'Trusted and quality-checked item'
+  ];
 
-      <section className={`rounded-xl border border-slate-200 bg-gradient-to-br ${imageTheme} p-3`}>
-        <div className="flex items-center justify-between">
-          <span className="rounded bg-rose-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">-{offerPercent}% OFF</span>
-          <span className="inline-flex items-center gap-1 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-medium text-slate-700">
-            <Star size={10} className="fill-amber-400 text-amber-400" />
-            4.6
-          </span>
-        </div>
-        <div className="mt-2.5 h-36 rounded-lg border border-white/70 bg-white/60" />
-        <div className="mt-2 grid grid-cols-4 gap-1.5">
-          <div className="h-10 rounded-md border border-white/70 bg-white/70" />
-          <div className="h-10 rounded-md border border-white/70 bg-white/70" />
-          <div className="h-10 rounded-md border border-white/70 bg-white/70" />
-          <div className="h-10 rounded-md border border-white/70 bg-white/70" />
+  return (
+    <div className="-mx-4 space-y-3 bg-[#f8fafc] px-3 pb-28 pt-0 sm:mx-0 sm:rounded-2xl sm:border sm:border-slate-200 sm:px-4 sm:py-3 sm:pb-24">
+      <section className="sticky top-0 z-20 rounded-xl border border-slate-200 bg-white p-2 shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
+        <div className="flex items-center justify-between gap-2">
+          <Link href="/shop" className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700">
+            <ArrowLeft size={14} />
+          </Link>
+          <p className="truncate text-[12px] font-semibold text-slate-900">Product Details</p>
+          <div className="flex items-center gap-1">
+            <button className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700" aria-label="Wishlist">
+              <Heart size={14} />
+            </button>
+            <button className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700" aria-label="Share">
+              <Share2 size={14} />
+            </button>
+          </div>
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-3">
-        <h1 className="text-[16px] font-semibold text-slate-900">{product.name || 'Unnamed Product'}</h1>
-        <p className="mt-1 text-[11px] text-slate-500">Category: {category}</p>
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
+        <div className={`relative h-56 bg-gradient-to-br ${imageTheme}`}>
+          <span className="absolute left-2 top-2 rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">-{offerPercent}%</span>
+          <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-medium text-slate-700">
+            <Star size={10} className="fill-amber-400 text-amber-400" />
+            {rating}
+          </span>
+        </div>
+        <div className="grid grid-cols-4 gap-1.5 border-t border-slate-100 p-2">
+          {[0, 1, 2, 3].map((index) => (
+            <div key={index} className={`h-12 rounded-md border border-white/60 bg-gradient-to-br ${buildImageTheme(`${product.id}-${index}`)}`} />
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
+        <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">{category}</p>
+        <h1 className="mt-1 text-[16px] font-semibold leading-5 text-slate-900">{product.name || 'Unnamed Product'}</h1>
 
         <div className="mt-2 flex items-center gap-2">
-          <p className="text-[18px] font-bold text-slate-900">{currency(currentPrice)}</p>
-          {oldPrice > 0 ? <p className="text-[11px] text-slate-400 line-through">{currency(oldPrice)}</p> : null}
-          <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">Save {offerPercent}%</span>
+          <p className="text-[20px] font-bold text-slate-900">{currency(currentPrice)}</p>
+          {oldPrice > 0 ? <p className="text-[12px] text-slate-400 line-through">{currency(oldPrice)}</p> : null}
+          <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">Save {offerPercent}%</span>
         </div>
 
         <ul className="mt-3 space-y-1 text-[11px] text-slate-700">
-          <li className="inline-flex items-center gap-1"><CheckCircle2 size={12} className="text-emerald-600" /> Verified marketplace item</li>
-          <li className="inline-flex items-center gap-1"><CheckCircle2 size={12} className="text-emerald-600" /> Fast dispatch support</li>
-          <li className="inline-flex items-center gap-1"><CheckCircle2 size={12} className="text-emerald-600" /> Secure checkout and tracking</li>
+          {highlights.map((item) => (
+            <li key={item} className="inline-flex items-center gap-1">
+              <CheckCircle2 size={12} className="text-emerald-600" />
+              {item}
+            </li>
+          ))}
         </ul>
+      </section>
 
-        <p className="mt-3 text-[12px] leading-5 text-slate-600">
+      <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
+        <h2 className="text-[13px] font-semibold text-slate-900">Description</h2>
+        <p className="mt-1.5 text-[12px] leading-5 text-slate-600">
           {product.description || 'Premium catalog product from Hope International marketplace.'}
         </p>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-3">
+      <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
         <h2 className="text-[13px] font-semibold text-slate-900">Specifications & Details</h2>
         <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
@@ -172,46 +213,56 @@ export default function ProductDetailPage() {
             <p className="font-semibold text-slate-900">{number(product.bv)}</p>
           </div>
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
-            <p className="text-slate-500">Qualifying</p>
-            <p className="font-semibold text-slate-900">{product.is_qualifying ? 'Yes' : 'No'}</p>
-          </div>
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
             <p className="text-slate-500">SKU</p>
             <p className="font-semibold text-slate-900">HOP-{String(product.id).slice(0, 8)}</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
+            <p className="text-slate-500">Qualifying</p>
+            <p className="font-semibold text-slate-900">{product.is_qualifying ? 'Yes' : 'No'}</p>
           </div>
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-3">
+      <section className="grid grid-cols-2 gap-2">
+        <article className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
+          <p className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500"><BadgePercent size={11} /> Offer Info</p>
+          <p className="mt-1 text-[11px] text-slate-700">Current offer: {offerPercent}% off</p>
+          <p className="mt-0.5 text-[11px] text-slate-700">MRP: {oldPrice > 0 ? currency(oldPrice) : currency(currentPrice)}</p>
+        </article>
+        <article className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
+          <p className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500"><Truck size={11} /> Delivery</p>
+          <p className="mt-1 text-[11px] text-slate-700">Fast shipping support</p>
+          <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-slate-700"><Headset size={11} /> Assisted support</p>
+        </article>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
         <h2 className="text-[13px] font-semibold text-slate-900">Seller / Source Info</h2>
-        <p className="mt-1 text-[11px] text-slate-600">Source: Hope Verified Merchant Network</p>
-        <p className="mt-1 inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-[10px] font-medium text-emerald-700">
-          <ShieldCheck size={11} />
-          Verified supply and catalog control
+        <p className="mt-1 text-[11px] text-slate-600">Hope Verified Merchant Network</p>
+        <p className="mt-2 inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-[10px] font-medium text-emerald-700">
+          <ShieldCheck size={11} /> Verified supply and catalog quality control
         </p>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-3">
-        <h2 className="text-[13px] font-semibold text-slate-900">Pricing & Offer Info</h2>
-        <ul className="mt-1 space-y-1 text-[11px] text-slate-600">
-          <li>Current price: {currency(currentPrice)}</li>
-          <li>Reference MRP: {oldPrice > 0 ? currency(oldPrice) : currency(currentPrice)}</li>
-          <li>Current promotion: {offerPercent}% off</li>
-          <li>Offer validity: Limited-time marketplace campaign</li>
-        </ul>
-      </section>
-
       {relatedProducts.length ? (
-        <section className="rounded-xl border border-slate-200 bg-white p-3">
+        <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
           <h2 className="text-[13px] font-semibold text-slate-900">Related Products</h2>
-          <div className="mt-2 grid grid-cols-3 gap-2">
-            {relatedProducts.map((item) => (
-              <Link key={item.id} href={`/shop/${encodeURIComponent(String(item.id))}`} className="rounded-lg border border-slate-200 bg-slate-50 p-2">
-                <div className={`h-12 rounded-md bg-gradient-to-br ${buildImageTheme(item.id || item.name)}`} />
-                <p className="mt-1 line-clamp-2 text-[10px] font-medium text-slate-800">{item.name || 'Product'}</p>
-                <p className="mt-0.5 text-[10px] font-semibold text-slate-900">{currency(item.price)}</p>
-              </Link>
-            ))}
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {relatedProducts.map((item) => {
+              const itemOffer = getOfferPercent(item);
+              return (
+                <Link key={item.id} href={`/shop/${encodeURIComponent(String(item.id))}`} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                  <div className={`h-20 bg-gradient-to-br ${buildImageTheme(item.id || item.name)}`} />
+                  <div className="space-y-1 p-2">
+                    <p className="line-clamp-2 text-[10px] font-medium text-slate-800">{item.name || 'Product'}</p>
+                    <div className="flex items-center gap-1">
+                      <p className="text-[11px] font-bold text-slate-900">{currency(item.price)}</p>
+                      <p className="text-[9px] text-emerald-700">-{itemOffer}%</p>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </section>
       ) : null}
@@ -234,7 +285,7 @@ export default function ProductDetailPage() {
           <button
             onClick={() => buyMutation.mutate(product)}
             disabled={isBuying}
-            className="rounded-lg bg-slate-900 px-3 py-2 text-[12px] font-semibold text-white disabled:opacity-60"
+            className="rounded-lg bg-[#0ea5e9] px-3 py-2 text-[12px] font-semibold text-white disabled:opacity-60"
           >
             {isBuying ? 'Processing...' : 'Buy Now'}
           </button>

@@ -58,7 +58,7 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
 
   return (
     <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
-      <Link href={href} className={`block relative h-20 bg-gradient-to-br ${imageTheme}`}>
+      <Link href={href} className={`relative block h-24 bg-gradient-to-br ${imageTheme}`}>
         <span className="absolute left-1.5 top-1.5 rounded bg-emerald-500 px-1 py-0.5 text-[8px] font-semibold text-white">
           -{offerPercent}%
         </span>
@@ -73,16 +73,17 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
           <h3 className="line-clamp-2 min-h-[2rem] text-[10px] font-semibold leading-4 text-slate-900">{safeProduct.name || 'Unnamed Product'}</h3>
         </Link>
 
-        <p className="text-[9px] text-slate-500">{category}</p>
+        <div className="flex items-center justify-between gap-1">
+          <p className="truncate text-[9px] text-slate-500">{category}</p>
+          <div className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[8px] font-medium text-emerald-700">
+            <ShieldCheck size={9} />
+            {safeProduct.is_qualifying ? 'Qual' : 'Trust'}
+          </div>
+        </div>
 
         <div className="flex items-center gap-1">
           <p className="text-[11px] font-bold text-slate-900">{currency(currentPrice)}</p>
           {oldPrice > 0 ? <p className="text-[8px] text-slate-400 line-through">{currency(oldPrice)}</p> : null}
-        </div>
-
-        <div className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[8px] font-medium text-emerald-700">
-          <ShieldCheck size={9} />
-          {safeProduct.is_qualifying ? 'Qualifying' : 'Trusted'}
         </div>
 
         <div className="grid grid-cols-[1fr_auto] gap-1">
