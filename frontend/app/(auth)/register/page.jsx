@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useAuthMutations } from '@/hooks/useAuthMutations';
 import { LogoFull } from '@/components/brand/HopeLogo';
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { registerMutation, error, setError } = useAuthMutations();
@@ -67,5 +67,13 @@ export default function RegisterPage() {
       </form>
       <p className="mt-4 text-sm text-muted">Already have an account? <Link href="/login" className="text-accent">Login</Link></p>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="card-surface p-6 md:p-8" />}>
+      <RegisterPageContent />
+    </Suspense>
   );
 }
