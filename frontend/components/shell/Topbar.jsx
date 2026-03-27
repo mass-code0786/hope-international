@@ -15,8 +15,8 @@ export function Topbar({ user }) {
   return (
     <header className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-2.5">
       <div className="flex min-w-0 items-center gap-2">
-        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white">
-          <LogoMark size={18} />
+        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white">
+          <LogoMark size={24} />
         </span>
         <div className="min-w-0">
           <p className="truncate text-[11px] font-semibold text-slate-800">Hope International</p>
