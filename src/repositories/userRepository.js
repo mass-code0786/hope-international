@@ -27,20 +27,21 @@ async function getDefaultRank(client) {
 }
 
 async function findByEmail(client, email) {
-  const { rows } = await q(client).query('SELECT * FROM users WHERE email = $1', [email]);
+  const { rows } = await q(client).query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [email]);
   return rows[0] || null;
 }
 
 async function findByUsername(client, username) {
-  const { rows } = await q(client).query('SELECT * FROM users WHERE username = $1', [username]);
+  const { rows } = await q(client).query('SELECT * FROM users WHERE LOWER(username) = LOWER($1)', [username]);
   return rows[0] || null;
 }
 
 async function findById(client, id) {
   const { rows } = await q(client).query(
-    `SELECT u.*, r.name AS rank_name, r.min_bv AS rank_min_bv, r.cap_multiplier AS rank_cap_multiplier
+    `SELECT u.*, r.name AS rank_name, r.min_bv AS rank_min_bv, r.cap_multiplier AS rank_cap_multiplier, sponsor.username AS sponsor_username
      FROM users u
      JOIN ranks r ON r.id = u.rank_id
+     LEFT JOIN users sponsor ON sponsor.id = u.sponsor_id
      WHERE u.id = $1`,
     [id]
   );
@@ -49,12 +50,29 @@ async function findById(client, id) {
 
 async function createUser(client, payload) {
   const { rows } = await q(client).query(
-    `INSERT INTO users (username, email, password_hash, role, sponsor_id, parent_id, placement_side, rank_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `INSERT INTO users (
+      first_name,
+      last_name,
+      username,
+      email,
+      mobile_number,
+      country_code,
+      password_hash,
+      role,
+      sponsor_id,
+      parent_id,
+      placement_side,
+      rank_id
+    )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
      RETURNING *`,
     [
+      payload.firstName,
+      payload.lastName,
       payload.username,
       payload.email,
+      payload.mobileNumber,
+      payload.countryCode,
       payload.passwordHash,
       payload.role || 'user',
       payload.sponsorId || null,

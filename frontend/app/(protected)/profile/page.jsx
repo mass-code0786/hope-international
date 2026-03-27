@@ -29,8 +29,9 @@ export default function ProfilePage() {
   const user = meQuery.data || {};
   const referralLink = useMemo(() => {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    return `${appUrl}/register?ref=${user.id || ''}`;
-  }, [user.id]);
+    const referralCode = user.username || '';
+    return `${appUrl}/register?ref=${encodeURIComponent(referralCode)}`;
+  }, [user.username]);
 
   async function onLogout() {
     clearStoredToken();
@@ -55,7 +56,7 @@ export default function ProfilePage() {
 
       <div className="grid grid-cols-2 gap-2.5">
         <StatCard compact title="Username" value={user.username || '-'} subtitle={`ID: ${user.id || '-'}`} />
-        <StatCard compact title="Rank" value={rankLabel(user.rank_name)} subtitle={`Sponsor: ${user.sponsor_id || 'N/A'}`} />
+        <StatCard compact title="Rank" value={rankLabel(user.rank_name)} subtitle={`Sponsor: ${user.sponsor_username || user.sponsor_id || 'N/A'}`} />
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-3">

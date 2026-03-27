@@ -5,24 +5,44 @@ const walletRepository = require('../repositories/walletRepository');
 const { createAuthToken } = require('../utils/token');
 const { ApiError } = require('../utils/ApiError');
 
-const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function normalizeUsername(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function normalizeReferralCode(raw) {
+  const text = String(raw || '').trim();
+  if (!text) return '';
+
+  try {
+    const url = new URL(text);
+    const ref = url.searchParams.get('ref') || url.searchParams.get('sponsor') || '';
+    if (ref) return normalizeUsername(ref);
+  } catch (_error) {
+    // Not a full URL, continue to raw parsing.
+  }
+
+  if (text.includes('ref=')) {
+    const fromQuery = text.split('ref=')[1]?.split('&')[0] || '';
+    if (fromQuery) return normalizeUsername(fromQuery);
+  }
+
+  return normalizeUsername(text);
+}
 
 async function resolveSponsorId(client, payload) {
   if (payload.sponsorId) {
     return payload.sponsorId;
   }
 
-  const sponsorCode = payload.sponsorCode?.trim();
-  if (!sponsorCode) {
+  const referralValue = payload.referralUsername || payload.referralCode || payload.sponsorCode;
+  const sponsorUsername = normalizeReferralCode(referralValue);
+  if (!sponsorUsername) {
     return null;
   }
 
-  const sponsor = uuidRegex.test(sponsorCode)
-    ? await userRepository.findById(client, sponsorCode)
-    : await userRepository.findByUsername(client, sponsorCode);
-
+  const sponsor = await userRepository.findByUsername(client, sponsorUsername);
   if (!sponsor) {
-    throw new ApiError(404, 'Sponsor/referral code not found');
+    throw new ApiError(404, 'Referral username not found');
   }
 
   return sponsor.id;
@@ -55,12 +75,19 @@ async function resolvePlacementBySponsor(client, sponsorId, preferredLeg) {
 
 async function register(payload) {
   return withTransaction(async (client) => {
-    const existingEmail = await userRepository.findByEmail(client, payload.email);
+    const username = normalizeUsername(payload.username);
+    const firstName = String(payload.firstName || '').trim();
+    const lastName = String(payload.lastName || '').trim();
+    const email = String(payload.email || '').trim().toLowerCase();
+    const countryCode = String(payload.countryCode || '').trim();
+    const mobileNumber = String(payload.mobileNumber || '').trim();
+
+    const existingEmail = await userRepository.findByEmail(client, email);
     if (existingEmail) {
       throw new ApiError(409, 'Email already exists');
     }
 
-    const existingUsername = await userRepository.findByUsername(client, payload.username);
+    const existingUsername = await userRepository.findByUsername(client, username);
     if (existingUsername) {
       throw new ApiError(409, 'Username already exists');
     }
@@ -94,8 +121,12 @@ async function register(payload) {
 
     const passwordHash = await bcrypt.hash(payload.password, 12);
     const user = await userRepository.createUser(client, {
-      username: payload.username,
-      email: payload.email,
+      firstName,
+      lastName,
+      username,
+      email,
+      countryCode,
+      mobileNumber,
       passwordHash,
       sponsorId,
       parentId: placement.parentId,
@@ -118,14 +149,15 @@ async function register(payload) {
 }
 
 async function login(payload) {
-  const user = await userRepository.findByEmail(null, payload.email);
+  const username = normalizeUsername(payload.username);
+  const user = await userRepository.findByUsername(null, username);
   if (!user) {
-    throw new ApiError(401, 'Invalid email or password');
+    throw new ApiError(401, 'Invalid username or password');
   }
 
   const ok = await bcrypt.compare(payload.password, user.password_hash);
   if (!ok) {
-    throw new ApiError(401, 'Invalid email or password');
+    throw new ApiError(401, 'Invalid username or password');
   }
 
   const token = createAuthToken(user);

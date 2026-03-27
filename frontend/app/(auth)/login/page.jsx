@@ -10,7 +10,7 @@ import { LogoFull } from '@/components/brand/HopeLogo';
 export default function LoginPage() {
   const router = useRouter();
   const { loginMutation, error, setError } = useAuthMutations();
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ username: '', password: '' });
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -27,11 +27,32 @@ export default function LoginPage() {
   return (
     <div className="card-surface p-6 md:p-8">
       <div className="flex justify-center">
-        <LogoFull size={220} />
+        <LogoFull size={48} />
       </div>
       <form onSubmit={onSubmit} className="mt-6 space-y-3">
-        <input className="w-full rounded-xl border border-white/10 bg-cardSoft p-3 text-sm" placeholder="Email" type="email" required value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
-        <input className="w-full rounded-xl border border-white/10 bg-cardSoft p-3 text-sm" placeholder="Password" type="password" required value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} />
+        <label className="block space-y-1">
+          <span className="text-[11px] font-medium text-slate-600">Username</span>
+          <input
+            className="w-full rounded-xl border border-white/10 bg-cardSoft p-3 text-sm"
+            placeholder="Enter your username"
+            required
+            value={form.username}
+            onChange={(e) => setForm((p) => ({ ...p, username: e.target.value }))}
+          />
+        </label>
+
+        <label className="block space-y-1">
+          <span className="text-[11px] font-medium text-slate-600">Password</span>
+          <input
+            className="w-full rounded-xl border border-white/10 bg-cardSoft p-3 text-sm"
+            placeholder="Enter your password"
+            type="password"
+            required
+            value={form.password}
+            onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
+          />
+        </label>
+
         {error ? <p className="text-xs text-danger">{error}</p> : null}
         <button disabled={loginMutation.isPending} className="w-full rounded-xl bg-accent py-3 text-sm font-semibold text-black">{loginMutation.isPending ? 'Signing in...' : 'Login'}</button>
       </form>

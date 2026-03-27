@@ -1,15 +1,22 @@
 const { z } = require('zod');
 
 const uuid = z.string().uuid();
+const usernameSchema = z.string().min(3).max(32).regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscore');
 
 const registerSchema = z.object({
   body: z
     .object({
-      username: z.string().min(3).max(50),
+      firstName: z.string().min(1).max(120),
+      lastName: z.string().min(1).max(120),
+      username: usernameSchema,
+      mobileNumber: z.string().min(6).max(40),
+      countryCode: z.string().min(1).max(12),
       email: z.string().email(),
       password: z.string().min(8).max(128),
+      referralCode: z.string().min(1).max(500).optional(),
+      referralUsername: z.string().min(1).max(120).optional(),
       sponsorId: uuid.optional(),
-      sponsorCode: z.string().min(1).max(120).optional(),
+      sponsorCode: z.string().min(1).max(500).optional(),
       parentId: uuid.optional(),
       placementSide: z.enum(['left', 'right']).optional(),
       preferredLeg: z.enum(['left', 'right']).optional()
@@ -22,21 +29,22 @@ const registerSchema = z.object({
         });
       }
 
-      if (val.sponsorId && val.sponsorCode) {
+      const referralInputs = [val.sponsorId, val.sponsorCode, val.referralCode, val.referralUsername].filter(Boolean);
+      if (referralInputs.length > 1) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'Use either sponsorId or sponsorCode, not both'
+          message: 'Use only one referral field'
         });
       }
 
-      if (!val.sponsorId && !val.sponsorCode && val.preferredLeg) {
+      if (!val.sponsorId && !val.sponsorCode && !val.referralCode && !val.referralUsername && val.preferredLeg) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'preferredLeg requires sponsorId or sponsorCode'
+          message: 'preferredLeg requires referral details'
         });
       }
 
-      if (val.parentId && (val.sponsorId || val.sponsorCode)) {
+      if (val.parentId && (val.sponsorId || val.sponsorCode || val.referralCode || val.referralUsername)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: 'Use either direct parent placement or sponsor leg placement, not both'
@@ -49,7 +57,7 @@ const registerSchema = z.object({
 
 const loginSchema = z.object({
   body: z.object({
-    email: z.string().email(),
+    username: usernameSchema,
     password: z.string().min(8).max(128)
   }),
   params: z.object({}),
@@ -271,5 +279,3 @@ module.exports = {
   sellerDocumentUploadSchema,
   sellerDocumentIdParamSchema
 };
-
-
