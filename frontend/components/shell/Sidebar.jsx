@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Home, ShoppingBag, Network, Wallet, User, ClipboardList, Store } from 'lucide-react';
 import { THEME } from '@/lib/constants/theme';
 import { isSeller } from '@/lib/constants/access';
-import { Logo } from '@/components/common/Logo';
+import Logo from '@/components/common/Logo';
 
 function getItems(user, sellerActive) {
   const nav = [
@@ -33,7 +33,9 @@ export function Sidebar({ user, sellerActive = false }) {
   return (
     <aside className="hidden w-72 border-r border-white/10 bg-[#111111] p-6 md:block">
       <div className="mb-8 flex flex-col items-center">
-        <Logo size={52} className="border-white/10 bg-neutral-900/80" imageClassName="p-2" />
+        <div className="rounded-lg bg-neutral-900 p-2">
+          <Logo size={52} />
+        </div>
         <p className="mt-2 text-center text-xs text-muted">{THEME.tagline}</p>
       </div>
       <nav className="space-y-2">

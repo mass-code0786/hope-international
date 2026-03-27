@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ShoppingCart } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { Logo } from '@/components/common/Logo';
+import Logo from '@/components/common/Logo';
 import { subscribeCart } from '@/lib/utils/cart';
 import { initTheme } from '@/lib/utils/theme';
 
@@ -33,11 +33,9 @@ export function Topbar({ user }) {
     <header className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-2.5 shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
       <div className="flex min-w-0 items-center gap-2">
         <Link href="/shop" aria-label="Go to shop home" className="shrink-0">
-          <Logo
-            size={40}
-            className={isLight ? 'border-slate-200 bg-slate-100' : 'border-slate-700 bg-neutral-900/90'}
-            imageClassName="p-1.5"
-          />
+          <div className={isLight ? 'rounded-lg bg-white p-2' : 'rounded-lg bg-neutral-900 p-2'}>
+            <Logo size={40} />
+          </div>
         </Link>
         <div className="min-w-0">
           <p className="truncate text-[11px] font-semibold text-slate-800">{user?.first_name || user?.username || 'Partner'}</p>

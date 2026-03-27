@@ -1,7 +1,7 @@
 'use client';
 
 import { Bell, Search } from 'lucide-react';
-import { Logo } from '@/components/common/Logo';
+import Logo from '@/components/common/Logo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 export function AdminTopbar({ user }) {
@@ -9,7 +9,9 @@ export function AdminTopbar({ user }) {
     <header className="mb-5 flex flex-col gap-3 rounded-2xl border border-white/[0.16] bg-cardSoft/[0.95] p-4 md:flex-row md:items-center md:justify-between">
       <div className="min-w-0">
         <div className="mb-2">
-          <Logo size={42} className="border-white/10 bg-neutral-900/80" imageClassName="p-1.5" />
+          <div className="inline-flex rounded-lg bg-neutral-900 p-2">
+            <Logo size={42} />
+          </div>
         </div>
         <p className="text-xs uppercase tracking-[0.24em] text-muted">Administrator</p>
         <div className="flex items-center gap-2 overflow-hidden">

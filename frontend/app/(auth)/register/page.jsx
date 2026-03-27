@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useAuthMutations } from '@/hooks/useAuthMutations';
-import { LogoFull } from '@/components/brand/HopeLogo';
+import Logo from '@/components/common/Logo';
 import { COUNTRY_CODE_OPTIONS } from '@/lib/constants/countryCodes';
 
 function RegisterPageContent() {
@@ -59,10 +59,12 @@ function RegisterPageContent() {
 
   return (
     <div className="card-surface p-6 md:p-8">
-      <div className="flex justify-center">
-        <LogoFull size={48} />
+      <div className="mb-4 flex justify-center">
+        <div className="rounded-lg bg-white p-2 dark:bg-neutral-900">
+          <Logo />
+        </div>
       </div>
-      <p className="mt-4 text-center text-sm text-muted">Create your account and start sharing your referral username</p>
+      <p className="text-center text-sm text-muted">Create your account and start sharing your referral username</p>
 
       <form onSubmit={onSubmit} className="mt-6 space-y-3">
         <label className="block space-y-1">

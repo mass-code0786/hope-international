@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthMutations } from '@/hooks/useAuthMutations';
 import toast from 'react-hot-toast';
-import { LogoFull } from '@/components/brand/HopeLogo';
+import Logo from '@/components/common/Logo';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,10 +26,12 @@ export default function LoginPage() {
 
   return (
     <div className="card-surface p-6 md:p-8">
-      <div className="flex justify-center">
-        <LogoFull size={48} />
+      <div className="mb-6 flex justify-center">
+        <div className="rounded-lg bg-white p-2 dark:bg-neutral-900">
+          <Logo />
+        </div>
       </div>
-      <form onSubmit={onSubmit} className="mt-6 space-y-3">
+      <form onSubmit={onSubmit} className="space-y-3">
         <label className="block space-y-1">
           <span className="text-[11px] font-medium text-slate-600">Username</span>
           <input

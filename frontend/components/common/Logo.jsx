@@ -1,27 +1,28 @@
-'use client';
+import Image from 'next/image';
 
-const LOGO_ASPECT_RATIO = 1280 / 853;
-
-export function Logo({
-  size = 32,
-  variant = 'full',
+export default function Logo({
+  size = 40,
   className = '',
   imageClassName = '',
-  alt = 'Hope International logo'
+  alt = 'Hope International'
 }) {
-  const width = Math.round(size * LOGO_ASPECT_RATIO);
-  const paddingClass = variant === 'mark' ? 'p-1.5' : 'p-2';
+  const frameStyle = { width: size, height: size };
 
   return (
-    <span
-      className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100/90 ${className}`}
-      style={{ height: size, width }}
+    <div
+      className={`inline-flex items-center justify-center rounded-lg bg-white shadow-sm dark:bg-neutral-900 ${className}`}
+      style={frameStyle}
     >
-      <img
+      <Image
         src="/logo.svg"
         alt={alt}
-        className={`h-full w-full object-contain ${paddingClass} ${imageClassName}`}
+        width={Math.max(size - 8, 16)}
+        height={Math.max(size - 8, 16)}
+        priority
+        className={`object-contain ${imageClassName}`}
       />
-    </span>
+    </div>
   );
 }
+
+export { Logo as Logo };
