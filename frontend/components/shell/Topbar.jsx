@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ShoppingCart } from 'lucide-react';
-import { LogoMark } from '@/components/brand/HopeLogo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { subscribeCart } from '@/lib/utils/cart';
 import { initTheme } from '@/lib/utils/theme';
@@ -27,17 +26,18 @@ export function Topbar({ user }) {
     return () => window.removeEventListener('hope-theme-change', onThemeChange);
   }, []);
 
-  const logoIsDark = theme === 'light';
+  const isLight = theme === 'light';
 
   return (
     <header className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-2.5">
       <div className="flex min-w-0 items-center gap-2">
         <span
-          className={`inline-flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-lg border ${
-            logoIsDark ? 'border-slate-200 bg-slate-100' : 'border-slate-600 bg-slate-800'
+          className={`relative inline-flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-lg border ${
+            isLight ? 'border-slate-200 bg-[#f3f4f6]' : 'border-slate-600 bg-[#1f2937]'
           }`}
         >
-          <LogoMark size={28} className={`[&_svg]:object-contain ${logoIsDark ? 'brightness-0' : 'brightness-0 invert'}`} />
+          <span className={`text-[11px] font-extrabold tracking-[0.12em] ${isLight ? 'text-black' : 'text-white'}`}>HOPE</span>
+          <span className="absolute bottom-1 h-[2px] w-4 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500" />
         </span>
         <div className="min-w-0">
           <p className="truncate text-[11px] font-semibold text-slate-800">Hope International</p>
@@ -60,4 +60,3 @@ export function Topbar({ user }) {
     </header>
   );
 }
-
