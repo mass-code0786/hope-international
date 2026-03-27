@@ -32,6 +32,160 @@ const summary = asyncHandler(async (_req, res) => {
   });
 });
 
+const deposits = asyncHandler(async (req, res) => {
+  const filters = {
+    search: req.query.search,
+    status: req.query.status,
+    userId: req.query.userId,
+    dateFrom: req.query.dateFrom,
+    dateTo: req.query.dateTo
+  };
+
+  const result = await adminWalletService.listDeposits(filters, {
+    page: req.query.page,
+    limit: req.query.limit
+  });
+
+  return success(res, {
+    data: result.data,
+    pagination: result.pagination,
+    message: 'Admin deposits fetched successfully'
+  });
+});
+
+const reviewDeposit = asyncHandler(async (req, res) => {
+  const data = await adminWalletService.reviewDeposit(req.user.sub, req.params.id, {
+    status: req.body.status,
+    adminNote: req.body.adminNote
+  });
+
+  return success(res, {
+    data,
+    message: 'Deposit reviewed successfully'
+  });
+});
+
+const withdrawals = asyncHandler(async (req, res) => {
+  const filters = {
+    search: req.query.search,
+    status: req.query.status,
+    userId: req.query.userId,
+    dateFrom: req.query.dateFrom,
+    dateTo: req.query.dateTo
+  };
+
+  const result = await adminWalletService.listWithdrawals(filters, {
+    page: req.query.page,
+    limit: req.query.limit
+  });
+
+  return success(res, {
+    data: result.data,
+    pagination: result.pagination,
+    message: 'Admin withdrawals fetched successfully'
+  });
+});
+
+const reviewWithdrawal = asyncHandler(async (req, res) => {
+  const data = await adminWalletService.reviewWithdrawal(req.user.sub, req.params.id, {
+    status: req.body.status,
+    adminNote: req.body.adminNote
+  });
+
+  return success(res, {
+    data,
+    message: 'Withdrawal reviewed successfully'
+  });
+});
+
+const p2p = asyncHandler(async (req, res) => {
+  const filters = {
+    search: req.query.search,
+    senderId: req.query.senderId,
+    receiverId: req.query.receiverId,
+    dateFrom: req.query.dateFrom,
+    dateTo: req.query.dateTo
+  };
+
+  const result = await adminWalletService.listP2p(filters, {
+    page: req.query.page,
+    limit: req.query.limit
+  });
+
+  return success(res, {
+    data: result.data,
+    pagination: result.pagination,
+    message: 'Admin p2p transfers fetched successfully'
+  });
+});
+
+const bindings = asyncHandler(async (req, res) => {
+  const filters = {
+    search: req.query.search,
+    userId: req.query.userId
+  };
+
+  const result = await adminWalletService.listBindings(filters, {
+    page: req.query.page,
+    limit: req.query.limit
+  });
+
+  return success(res, {
+    data: result.data,
+    pagination: result.pagination,
+    message: 'Admin wallet bindings fetched successfully'
+  });
+});
+
+const upsertBinding = asyncHandler(async (req, res) => {
+  const data = await adminWalletService.upsertBinding(req.user.sub, req.params.userId, {
+    walletAddress: req.body.walletAddress,
+    network: req.body.network
+  });
+
+  return success(res, {
+    data,
+    message: 'Wallet binding updated successfully'
+  });
+});
+
+const removeBinding = asyncHandler(async (req, res) => {
+  const data = await adminWalletService.removeBinding(req.user.sub, req.params.userId);
+  return success(res, {
+    data,
+    message: 'Wallet binding removed successfully'
+  });
+});
+
+const income = asyncHandler(async (req, res) => {
+  const filters = {
+    search: req.query.search,
+    source: req.query.source,
+    userId: req.query.userId,
+    dateFrom: req.query.dateFrom,
+    dateTo: req.query.dateTo
+  };
+
+  const result = await adminWalletService.listIncome(filters, {
+    page: req.query.page,
+    limit: req.query.limit
+  });
+
+  return success(res, {
+    data: result.data,
+    pagination: result.pagination,
+    message: 'Admin income transactions fetched successfully'
+  });
+});
+
+const userFinancialOverview = asyncHandler(async (req, res) => {
+  const data = await adminWalletService.getUserFinancialOverview(req.params.id);
+  return success(res, {
+    data,
+    message: 'Admin user financial overview fetched successfully'
+  });
+});
+
 const adjust = asyncHandler(async (req, res) => {
   const data = await adminWalletService.adjustWallet(req.user.sub, {
     userId: req.body.userId,
@@ -49,5 +203,15 @@ const adjust = asyncHandler(async (req, res) => {
 module.exports = {
   transactions,
   summary,
+  deposits,
+  reviewDeposit,
+  withdrawals,
+  reviewWithdrawal,
+  p2p,
+  bindings,
+  upsertBinding,
+  removeBinding,
+  income,
+  userFinancialOverview,
   adjust
 };

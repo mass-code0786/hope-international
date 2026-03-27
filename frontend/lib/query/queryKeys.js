@@ -16,6 +16,7 @@ export const queryKeys = {
   adminUsers: ['admin', 'users'],
   adminUsersSearch: (q, page = 1, limit = 10) => ['admin', 'users', 'search', q, page, limit],
   adminUserDetail: (id) => ['admin', 'users', id],
+  adminUserFinancialOverview: (id) => ['admin', 'users', id, 'financial-overview'],
   adminRanks: ['admin', 'ranks'],
   adminProducts: ['admin', 'products'],
   adminBanners: ['admin', 'banners'],
@@ -25,6 +26,11 @@ export const queryKeys = {
   adminWallet: ['admin', 'wallet'],
   adminWalletSummary: ['admin', 'wallet', 'summary'],
   adminWalletTransactions: ['admin', 'wallet', 'transactions'],
+  adminDeposits: ['admin', 'deposits'],
+  adminWithdrawals: ['admin', 'withdrawals'],
+  adminP2p: ['admin', 'p2p'],
+  adminWalletBindings: ['admin', 'wallet-bindings'],
+  adminIncome: ['admin', 'income'],
   adminCompensation: ['admin', 'compensation'],
   adminCompensationWeekly: ['admin', 'compensation', 'weekly'],
   adminCompensationMonthly: ['admin', 'compensation', 'monthly'],
@@ -42,5 +48,3 @@ export const queryKeys = {
   monthlyCompensation: (monthStart, monthEnd) => ['monthly-compensation', monthStart, monthEnd],
   teamChildren: ['team-children']
 };
-
-

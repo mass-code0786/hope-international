@@ -1,12 +1,36 @@
 const express = require('express');
 const validate = require('../../middleware/validate');
 const adminWalletController = require('../../controllers/admin/adminWalletController');
-const { adminWalletTransactionsQuerySchema, adminWalletAdjustSchema } = require('../../utils/adminSchemas');
+const {
+  adminWalletTransactionsQuerySchema,
+  adminWalletAdjustSchema,
+  adminFinanceListQuerySchema,
+  adminWalletReviewSchema,
+  adminWalletBindingUpsertSchema,
+  adminWalletBindingParamSchema,
+  adminUserIdParamSchema
+} = require('../../utils/adminSchemas');
 
 const router = express.Router();
 
 router.get('/transactions', validate(adminWalletTransactionsQuerySchema), adminWalletController.transactions);
 router.get('/summary', adminWalletController.summary);
+
+router.get('/deposits', validate(adminFinanceListQuerySchema), adminWalletController.deposits);
+router.patch('/deposits/:id/status', validate(adminWalletReviewSchema), adminWalletController.reviewDeposit);
+
+router.get('/withdrawals', validate(adminFinanceListQuerySchema), adminWalletController.withdrawals);
+router.patch('/withdrawals/:id/status', validate(adminWalletReviewSchema), adminWalletController.reviewWithdrawal);
+
+router.get('/p2p', validate(adminFinanceListQuerySchema), adminWalletController.p2p);
+
+router.get('/bindings', validate(adminFinanceListQuerySchema), adminWalletController.bindings);
+router.patch('/bindings/:userId', validate(adminWalletBindingUpsertSchema), adminWalletController.upsertBinding);
+router.delete('/bindings/:userId', validate(adminWalletBindingParamSchema), adminWalletController.removeBinding);
+
+router.get('/income', validate(adminFinanceListQuerySchema), adminWalletController.income);
+router.get('/users/:id/financial-overview', validate(adminUserIdParamSchema), adminWalletController.userFinancialOverview);
+
 router.post('/adjust', validate(adminWalletAdjustSchema), adminWalletController.adjust);
 
 module.exports = router;

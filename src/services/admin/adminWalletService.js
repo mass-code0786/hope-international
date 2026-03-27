@@ -5,17 +5,237 @@ const adminRepository = require('../../repositories/adminRepository');
 const walletRepository = require('../../repositories/walletRepository');
 const walletService = require('../walletService');
 
-async function listTransactions(filters, paginationInput) {
-  const pagination = normalizePagination(paginationInput);
-  const result = await adminRepository.listWalletTransactions(null, filters, pagination);
+function buildPagedResult(result, pagination) {
   return {
     data: result.items,
     pagination: buildPagination({ page: pagination.page, limit: pagination.limit, total: result.total })
   };
 }
 
+async function listTransactions(filters, paginationInput) {
+  const pagination = normalizePagination(paginationInput);
+  const result = await adminRepository.listWalletTransactions(null, filters, pagination);
+  return buildPagedResult(result, pagination);
+}
+
 async function getSummary() {
   return adminRepository.getWalletSummary(null);
+}
+
+async function listDeposits(filters, paginationInput) {
+  const pagination = normalizePagination(paginationInput);
+  const result = await walletRepository.listDepositRequestsAdmin(null, filters, pagination);
+  return buildPagedResult(result, pagination);
+}
+
+async function reviewDeposit(adminUserId, requestId, payload) {
+  return withTransaction(async (client) => {
+    const request = await walletRepository.getDepositRequestById(client, requestId);
+    if (!request) {
+      throw new ApiError(404, 'Deposit request not found');
+    }
+    if (request.status !== 'pending') {
+      throw new ApiError(400, 'Only pending deposit requests can be reviewed');
+    }
+
+    const details = {
+      ...(request.details || {}),
+      adminNote: payload.adminNote || null,
+      reviewedBy: adminUserId,
+      reviewedAt: new Date().toISOString()
+    };
+
+    const updated = await walletRepository.updateDepositRequestStatus(client, requestId, {
+      status: payload.status,
+      details
+    });
+
+    if (payload.status === 'approved') {
+      await walletService.credit(
+        client,
+        request.user_id,
+        Number(request.amount),
+        'deposit_request',
+        request.id,
+        {
+          status: 'approved',
+          adminNote: payload.adminNote || null,
+          depositRequestId: request.id
+        },
+        adminUserId
+      );
+    }
+
+    await adminRepository.logAdminAction(client, {
+      adminUserId,
+      actionType: 'deposit.review',
+      targetEntity: 'wallet_deposit_requests',
+      targetId: request.id,
+      beforeData: request,
+      afterData: updated,
+      metadata: {
+        status: payload.status,
+        adminNote: payload.adminNote || null
+      }
+    });
+
+    return updated;
+  });
+}
+
+async function listWithdrawals(filters, paginationInput) {
+  const pagination = normalizePagination(paginationInput);
+  const result = await walletRepository.listWithdrawalRequestsAdmin(null, filters, pagination);
+  return buildPagedResult(result, pagination);
+}
+
+async function reviewWithdrawal(adminUserId, requestId, payload) {
+  return withTransaction(async (client) => {
+    const request = await walletRepository.getWithdrawalRequestById(client, requestId);
+    if (!request) {
+      throw new ApiError(404, 'Withdrawal request not found');
+    }
+    if (request.status !== 'pending') {
+      throw new ApiError(400, 'Only pending withdrawal requests can be reviewed');
+    }
+
+    const updated = await walletRepository.updateWithdrawalRequestStatus(client, requestId, {
+      status: payload.status,
+      adminNote: payload.adminNote || ''
+    });
+
+    if (payload.status === 'rejected') {
+      await walletService.credit(
+        client,
+        request.user_id,
+        Number(request.amount),
+        'withdrawal_request',
+        request.id,
+        {
+          status: 'reversed',
+          adminNote: payload.adminNote || null,
+          withdrawalRequestId: request.id
+        },
+        adminUserId
+      );
+    }
+
+    await adminRepository.logAdminAction(client, {
+      adminUserId,
+      actionType: 'withdrawal.review',
+      targetEntity: 'wallet_withdrawal_requests',
+      targetId: request.id,
+      beforeData: request,
+      afterData: updated,
+      metadata: {
+        status: payload.status,
+        adminNote: payload.adminNote || null
+      }
+    });
+
+    return updated;
+  });
+}
+
+async function listP2p(filters, paginationInput) {
+  const pagination = normalizePagination(paginationInput);
+  const result = await walletRepository.listP2pTransfersAdmin(null, filters, pagination);
+  return buildPagedResult(result, pagination);
+}
+
+async function listBindings(filters, paginationInput) {
+  const pagination = normalizePagination(paginationInput);
+  const result = await walletRepository.listWalletBindingsAdmin(null, filters, pagination);
+  return buildPagedResult(result, pagination);
+}
+
+async function upsertBinding(adminUserId, userId, payload) {
+  return withTransaction(async (client) => {
+    const before = await walletRepository.getWalletBinding(client, userId);
+    const updated = await walletRepository.upsertWalletBinding(client, userId, payload);
+
+    await adminRepository.logAdminAction(client, {
+      adminUserId,
+      actionType: 'wallet.binding.upsert',
+      targetEntity: 'user_wallet_bindings',
+      targetId: userId,
+      beforeData: before,
+      afterData: updated,
+      metadata: { userId }
+    });
+
+    return updated;
+  });
+}
+
+async function removeBinding(adminUserId, userId) {
+  return withTransaction(async (client) => {
+    const before = await walletRepository.getWalletBinding(client, userId);
+    if (!before) {
+      throw new ApiError(404, 'Wallet binding not found');
+    }
+
+    const removed = await walletRepository.removeWalletBinding(client, userId);
+
+    await adminRepository.logAdminAction(client, {
+      adminUserId,
+      actionType: 'wallet.binding.remove',
+      targetEntity: 'user_wallet_bindings',
+      targetId: userId,
+      beforeData: before,
+      afterData: removed,
+      metadata: { userId }
+    });
+
+    return removed;
+  });
+}
+
+async function listIncome(filters, paginationInput) {
+  const pagination = normalizePagination(paginationInput);
+  const result = await walletRepository.listIncomeTransactionsAdmin(null, filters, pagination);
+  return buildPagedResult(result, pagination);
+}
+
+async function getUserFinancialOverview(userId) {
+  const profile = await adminRepository.getUserProfile(null, userId);
+  if (!profile) {
+    throw new ApiError(404, 'User not found');
+  }
+
+  const [
+    wallet,
+    walletBinding,
+    deposits,
+    withdrawals,
+    p2p,
+    transactions,
+    orders
+  ] = await Promise.all([
+    walletRepository.getWallet(null, userId),
+    walletRepository.getWalletBinding(null, userId),
+    walletRepository.listDepositRequests(null, userId, 200),
+    walletRepository.listWithdrawalRequests(null, userId, 200),
+    walletRepository.listP2pTransfers(null, userId, 200),
+    walletRepository.listTransactions(null, userId, 300),
+    adminRepository.getUserOrders(null, userId, 200)
+  ]);
+
+  const incomeHistory = transactions.filter(
+    (item) => item.tx_type === 'credit' && ['direct_income', 'matching_income', 'reward_qualification'].includes(item.source)
+  );
+
+  return {
+    profile,
+    wallet,
+    walletBinding,
+    deposits,
+    withdrawals,
+    p2pTransfers: p2p,
+    incomeHistory,
+    orders,
+    transactions
+  };
 }
 
 async function adjustWallet(adminUserId, payload) {
@@ -60,5 +280,15 @@ async function adjustWallet(adminUserId, payload) {
 module.exports = {
   listTransactions,
   getSummary,
+  listDeposits,
+  reviewDeposit,
+  listWithdrawals,
+  reviewWithdrawal,
+  listP2p,
+  listBindings,
+  upsertBinding,
+  removeBinding,
+  listIncome,
+  getUserFinancialOverview,
   adjustWallet
 };

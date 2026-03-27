@@ -139,6 +139,45 @@ const adminWalletAdjustSchema = z.object({
   query: z.object({})
 });
 
+
+const adminFinanceListQuerySchema = z.object({
+  body: z.object({}),
+  params: z.object({}),
+  query: pagingQuery.extend({
+    search: z.string().optional(),
+    status: z.enum(['pending', 'approved', 'rejected', 'completed', 'failed']).optional(),
+    source: z.enum(['all', 'direct_income', 'matching_income', 'reward_qualification']).optional(),
+    userId: uuid.optional(),
+    senderId: uuid.optional(),
+    receiverId: uuid.optional(),
+    dateFrom: z.string().date().optional(),
+    dateTo: z.string().date().optional()
+  })
+});
+
+const adminWalletReviewSchema = z.object({
+  body: z.object({
+    status: z.enum(['approved', 'rejected']),
+    adminNote: z.string().max(1000).optional()
+  }),
+  params: z.object({ id: uuid }),
+  query: z.object({})
+});
+
+const adminWalletBindingUpsertSchema = z.object({
+  body: z.object({
+    walletAddress: z.string().min(8).max(255),
+    network: z.string().max(60).optional()
+  }),
+  params: z.object({ userId: uuid }),
+  query: z.object({})
+});
+
+const adminWalletBindingParamSchema = z.object({
+  body: z.object({}),
+  params: z.object({ userId: uuid }),
+  query: z.object({})
+});
 const adminWeeklyRunSchema = z.object({
   body: z.object({
     cycleStart: z.string().date(),
@@ -317,6 +356,10 @@ module.exports = {
   adminOrderIdParamSchema,
   adminWalletTransactionsQuerySchema,
   adminWalletAdjustSchema,
+  adminFinanceListQuerySchema,
+  adminWalletReviewSchema,
+  adminWalletBindingUpsertSchema,
+  adminWalletBindingParamSchema,
   adminWeeklyRunSchema,
   adminMonthlyRunSchema,
   adminSettlementRunSchema,
@@ -335,4 +378,5 @@ module.exports = {
   adminSellerApplicationReviewSchema,
   settingsUpdateSchema
 };
+
 

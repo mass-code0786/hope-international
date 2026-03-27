@@ -228,3 +228,62 @@ export async function deleteAdminBanner(id) {
     })
   );
 }
+
+export async function getAdminDeposits(params = {}) {
+  return toEnvelope(await apiFetch(`/admin/wallet/deposits${withQuery(params)}`));
+}
+
+export async function reviewAdminDeposit(id, payload) {
+  return toEnvelope(
+    await apiFetch(`/admin/wallet/deposits/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function getAdminWithdrawals(params = {}) {
+  return toEnvelope(await apiFetch(`/admin/wallet/withdrawals${withQuery(params)}`));
+}
+
+export async function reviewAdminWithdrawal(id, payload) {
+  return toEnvelope(
+    await apiFetch(`/admin/wallet/withdrawals/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function getAdminP2pTransfers(params = {}) {
+  return toEnvelope(await apiFetch(`/admin/wallet/p2p${withQuery(params)}`));
+}
+
+export async function getAdminWalletBindings(params = {}) {
+  return toEnvelope(await apiFetch(`/admin/wallet/bindings${withQuery(params)}`));
+}
+
+export async function updateAdminWalletBinding(userId, payload) {
+  return toEnvelope(
+    await apiFetch(`/admin/wallet/bindings/${userId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function removeAdminWalletBinding(userId) {
+  return toEnvelope(
+    await apiFetch(`/admin/wallet/bindings/${userId}`, {
+      method: 'DELETE'
+    })
+  );
+}
+
+export async function getAdminIncomeTransactions(params = {}) {
+  return toEnvelope(await apiFetch(`/admin/wallet/income${withQuery(params)}`));
+}
+
+export async function getAdminUserFinancialOverview(userId) {
+  return toEnvelope(await apiFetch(`/admin/wallet/users/${userId}/financial-overview`));
+}

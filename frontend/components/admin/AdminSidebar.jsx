@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, Boxes, ShoppingCart, Wallet, Cpu, Gift, Network, Settings, Image } from 'lucide-react';
+import { LayoutDashboard, Users, Boxes, ShoppingCart, Wallet, Cpu, Gift, Network, Settings, Image, ArrowDownCircle, ArrowUpCircle, Repeat2, Landmark, BadgeDollarSign } from 'lucide-react';
 import { THEME } from '@/lib/constants/theme';
 import { Logo } from '@/components/common/Logo';
 
@@ -12,6 +12,11 @@ const adminNav = [
   { href: '/admin/products', label: 'Products', icon: Boxes },
   { href: '/admin/banners', label: 'Banners', icon: Image },
   { href: '/admin/orders', label: 'Orders', icon: ShoppingCart },
+  { href: '/admin/deposits', label: 'Deposits', icon: ArrowDownCircle },
+  { href: '/admin/withdrawals', label: 'Withdrawals', icon: ArrowUpCircle },
+  { href: '/admin/p2p', label: 'P2P', icon: Repeat2 },
+  { href: '/admin/wallets', label: 'Wallet Bindings', icon: Landmark },
+  { href: '/admin/income', label: 'Income', icon: BadgeDollarSign },
   { href: '/admin/wallet', label: 'Wallet Ops', icon: Wallet },
   { href: '/admin/compensation', label: 'Compensation', icon: Cpu },
   { href: '/admin/rewards', label: 'Rewards', icon: Gift },
@@ -34,7 +39,7 @@ export function AdminSidebar() {
       </div>
       <nav className="space-y-2">
         {adminNav.map((item) => {
-          const active = pathname === item.href;
+          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
           return (
             <Link
