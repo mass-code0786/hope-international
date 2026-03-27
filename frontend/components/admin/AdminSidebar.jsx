@@ -30,9 +30,7 @@ export function AdminSidebar() {
   return (
     <aside className="hidden w-80 border-r border-white/10 bg-card p-6 lg:block">
       <div className="mb-8 flex flex-col items-center">
-        <div className="rounded-2xl border border-white/20 bg-white p-2">
-          <Logo size={40} variant="full" />
-        </div>
+        <Logo size={56} className="border-white/10 bg-neutral-900/80" imageClassName="p-2" />
         <p className="text-xs uppercase tracking-[0.25em] text-muted">Admin Console</p>
         <h1 className="text-center text-lg font-semibold text-accent">{THEME.appName}</h1>
         <p className="text-sm text-muted">Operational Control Center</p>

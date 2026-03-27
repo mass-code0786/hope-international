@@ -32,16 +32,16 @@ export function Topbar({ user }) {
   return (
     <header className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-2.5 shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
       <div className="flex min-w-0 items-center gap-2">
-        <span
-          className={`inline-flex h-[40px] w-[56px] shrink-0 items-center justify-center rounded-lg border px-1 ${
-            isLight ? 'border-slate-200 bg-[#f3f4f6]' : 'border-slate-300 bg-[#1f2937]'
-          }`}
-        >
-          <Logo size={34} variant="mark" />
-        </span>
+        <Link href="/shop" aria-label="Go to shop home" className="shrink-0">
+          <Logo
+            size={40}
+            className={isLight ? 'border-slate-200 bg-slate-100' : 'border-slate-700 bg-neutral-900/90'}
+            imageClassName="p-1.5"
+          />
+        </Link>
         <div className="min-w-0">
-          <p className="truncate text-[11px] font-semibold text-slate-800">Hope International</p>
-          <p className="truncate text-[10px] text-slate-500">{user?.username || 'Partner'}</p>
+          <p className="truncate text-[11px] font-semibold text-slate-800">{user?.first_name || user?.username || 'Partner'}</p>
+          <p className="truncate text-[10px] text-slate-500">@{user?.username || 'member'}</p>
         </div>
       </div>
 

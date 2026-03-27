@@ -33,9 +33,7 @@ export function Sidebar({ user, sellerActive = false }) {
   return (
     <aside className="hidden w-72 border-r border-white/10 bg-[#111111] p-6 md:block">
       <div className="mb-8 flex flex-col items-center">
-        <div className="rounded-2xl border border-white/15 bg-white p-2">
-          <Logo size={38} variant="full" />
-        </div>
+        <Logo size={52} className="border-white/10 bg-neutral-900/80" imageClassName="p-2" />
         <p className="mt-2 text-center text-xs text-muted">{THEME.tagline}</p>
       </div>
       <nav className="space-y-2">

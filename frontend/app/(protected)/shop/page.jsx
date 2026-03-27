@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { useMemo, useState, useEffect, useRef } from 'react';
@@ -278,9 +278,9 @@ export default function ShopPage() {
     <div className="-mx-4 space-y-3 bg-[#f8fafc] px-3 pb-2 pt-0 sm:mx-0 sm:rounded-2xl sm:border sm:border-slate-200 sm:px-4 sm:py-3">
       <section className="sticky top-0 z-20 rounded-xl border border-slate-200 bg-white p-2 shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
         <div className="flex items-center gap-1.5">
-          <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-lg border border-slate-200 bg-[#f8fafc]">
-            <Logo size={33} variant="mark" />
-          </span>
+          <Link href="/shop" aria-label="Go to shop home" className="shrink-0">
+            <Logo size={32} className="border-slate-200 bg-slate-100" imageClassName="p-1.5" />
+          </Link>
 
           <label className="relative min-w-0 flex-1">
             <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -515,4 +515,3 @@ export default function ShopPage() {
     </div>
   );
 }
-

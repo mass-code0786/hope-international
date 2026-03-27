@@ -8,13 +8,8 @@ export function AdminTopbar({ user }) {
   return (
     <header className="mb-5 flex flex-col gap-3 rounded-2xl border border-white/[0.16] bg-cardSoft/[0.95] p-4 md:flex-row md:items-center md:justify-between">
       <div className="min-w-0">
-        <div className="mb-1 inline-flex items-center gap-2.5">
-          <span className="inline-flex shrink-0 items-center justify-center rounded-xl border border-white/20 bg-white p-1.5">
-            <Logo size={34} variant="mark" />
-          </span>
-          <span className="hidden min-[390px]:inline text-[11px] font-semibold uppercase tracking-[0.14em] text-accentSoft/95">
-            Hope International
-          </span>
+        <div className="mb-2">
+          <Logo size={42} className="border-white/10 bg-neutral-900/80" imageClassName="p-1.5" />
         </div>
         <p className="text-xs uppercase tracking-[0.24em] text-muted">Administrator</p>
         <div className="flex items-center gap-2 overflow-hidden">
