@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { ArrowLeft, ShieldCheck, Star } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ShieldCheck, Star } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
@@ -116,13 +116,13 @@ export default function ProductDetailPage() {
   const imageTheme = buildImageTheme(product.id || product.name);
 
   return (
-    <div className="-mx-4 space-y-3 bg-[#f7f8fa] px-3 pb-14 pt-1 sm:mx-0 sm:rounded-2xl sm:border sm:border-slate-200 sm:px-4 sm:py-3">
+    <div className="-mx-4 space-y-3 bg-[#f5f5f5] px-3 pb-28 pt-1 sm:mx-0 sm:rounded-2xl sm:border sm:border-slate-200 sm:px-4 sm:py-3 sm:pb-24">
       <Link href="/shop" className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-700">
         <ArrowLeft size={14} />
         Back to shop
       </Link>
 
-      <section className={`rounded-xl border border-slate-200 bg-gradient-to-br ${imageTheme} p-4`}>
+      <section className={`rounded-xl border border-slate-200 bg-gradient-to-br ${imageTheme} p-3`}>
         <div className="flex items-center justify-between">
           <span className="rounded bg-rose-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">-{offerPercent}% OFF</span>
           <span className="inline-flex items-center gap-1 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-medium text-slate-700">
@@ -130,7 +130,13 @@ export default function ProductDetailPage() {
             4.6
           </span>
         </div>
-        <div className="mt-8 h-28 rounded-lg border border-white/60 bg-white/50" />
+        <div className="mt-2.5 h-36 rounded-lg border border-white/70 bg-white/60" />
+        <div className="mt-2 grid grid-cols-4 gap-1.5">
+          <div className="h-10 rounded-md border border-white/70 bg-white/70" />
+          <div className="h-10 rounded-md border border-white/70 bg-white/70" />
+          <div className="h-10 rounded-md border border-white/70 bg-white/70" />
+          <div className="h-10 rounded-md border border-white/70 bg-white/70" />
+        </div>
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white p-3">
@@ -143,11 +149,20 @@ export default function ProductDetailPage() {
           <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">Save {offerPercent}%</span>
         </div>
 
+        <ul className="mt-3 space-y-1 text-[11px] text-slate-700">
+          <li className="inline-flex items-center gap-1"><CheckCircle2 size={12} className="text-emerald-600" /> Verified marketplace item</li>
+          <li className="inline-flex items-center gap-1"><CheckCircle2 size={12} className="text-emerald-600" /> Fast dispatch support</li>
+          <li className="inline-flex items-center gap-1"><CheckCircle2 size={12} className="text-emerald-600" /> Secure checkout and tracking</li>
+        </ul>
+
         <p className="mt-3 text-[12px] leading-5 text-slate-600">
           {product.description || 'Premium catalog product from Hope International marketplace.'}
         </p>
+      </section>
 
-        <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+      <section className="rounded-xl border border-slate-200 bg-white p-3">
+        <h2 className="text-[13px] font-semibold text-slate-900">Specifications & Details</h2>
+        <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
             <p className="text-slate-500">PV</p>
             <p className="font-semibold text-slate-900">{number(product.pv)}</p>
@@ -165,37 +180,6 @@ export default function ProductDetailPage() {
             <p className="font-semibold text-slate-900">HOP-{String(product.id).slice(0, 8)}</p>
           </div>
         </div>
-
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <button
-            onClick={() => buyMutation.mutate(product)}
-            disabled={isBuying}
-            className="rounded-lg bg-slate-900 px-3 py-2 text-[12px] font-semibold text-white disabled:opacity-60"
-          >
-            {isBuying ? 'Processing...' : 'Buy Now'}
-          </button>
-          <button
-            onClick={() => {
-              const nextCount = addToCart(product, 1);
-              if (!nextCount) {
-                toast.error('Unable to add this product to cart');
-                return;
-              }
-              toast.success(`Added to cart (${nextCount})`);
-            }}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[12px] font-semibold text-slate-700"
-          >
-            Add to Cart
-          </button>
-        </div>
-      </section>
-
-      <section className="rounded-xl border border-slate-200 bg-white p-3">
-        <h2 className="text-[13px] font-semibold text-slate-900">Product Overview</h2>
-        <p className="mt-1 text-[11px] leading-5 text-slate-600">
-          This product is part of Hope International's marketplace catalog and is optimized for fast member checkout, verified quality,
-          and reliable fulfillment.
-        </p>
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white p-3">
@@ -208,7 +192,7 @@ export default function ProductDetailPage() {
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white p-3">
-        <h2 className="text-[13px] font-semibold text-slate-900">Pricing & Offer History</h2>
+        <h2 className="text-[13px] font-semibold text-slate-900">Pricing & Offer Info</h2>
         <ul className="mt-1 space-y-1 text-[11px] text-slate-600">
           <li>Current price: {currency(currentPrice)}</li>
           <li>Reference MRP: {oldPrice > 0 ? currency(oldPrice) : currency(currentPrice)}</li>
@@ -231,6 +215,31 @@ export default function ProductDetailPage() {
           </div>
         </section>
       ) : null}
+
+      <section className="fixed bottom-12 left-0 right-0 z-30 border-t border-slate-200 bg-white p-2 md:hidden">
+        <div className="mx-auto grid max-w-3xl grid-cols-2 gap-2">
+          <button
+            onClick={() => {
+              const nextCount = addToCart(product, 1);
+              if (!nextCount) {
+                toast.error('Unable to add this product to cart');
+                return;
+              }
+              toast.success(`Added to cart (${nextCount})`);
+            }}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[12px] font-semibold text-slate-700"
+          >
+            Add to Cart
+          </button>
+          <button
+            onClick={() => buyMutation.mutate(product)}
+            disabled={isBuying}
+            className="rounded-lg bg-slate-900 px-3 py-2 text-[12px] font-semibold text-white disabled:opacity-60"
+          >
+            {isBuying ? 'Processing...' : 'Buy Now'}
+          </button>
+        </div>
+      </section>
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Heart, Menu, Search, ShoppingCart, UserCircle2, Truck, ShieldCheck, BadgePercent } from 'lucide-react';
+import { Menu, Search, ShoppingCart, Truck, ShieldCheck, BadgePercent, Headset } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ProductFilters } from '@/components/shop/ProductFilters';
 import { ProductCard } from '@/components/shop/ProductCard';
@@ -32,9 +32,10 @@ const promoSlides = [
 ];
 
 const serviceCards = [
-  { icon: Truck, title: 'Fast', subtitle: 'Shipping' },
-  { icon: ShieldCheck, title: 'Secure', subtitle: 'Checkout' },
-  { icon: BadgePercent, title: 'Daily', subtitle: 'Offers' }
+  { icon: Truck, title: 'Fast Shipping' },
+  { icon: ShieldCheck, title: 'Secure Checkout' },
+  { icon: BadgePercent, title: 'Daily Offers' },
+  { icon: Headset, title: 'Support' }
 ];
 
 function SectionTitle({ title, subtitle, count }) {
@@ -89,31 +90,20 @@ export default function ShopPage() {
     });
   }, [products, search, activeCategory]);
 
-  const { featured, deals, recommended } = useMemo(() => {
-    const featuredList = filtered.slice(0, 12);
-    const featuredIds = new Set(featuredList.map((item) => item.id));
-
-    const dealList = filtered.filter((item) => item.is_qualifying && !featuredIds.has(item.id)).slice(0, 12);
-    const dealIds = new Set(dealList.map((item) => item.id));
-
-    const recommendedList = filtered.filter((item) => !featuredIds.has(item.id) && !dealIds.has(item.id));
-
-    return {
-      featured: featuredList,
-      deals: dealList,
-      recommended: recommendedList
-    };
-  }, [filtered]);
+  const deals = useMemo(() => filtered.filter((item) => item.is_qualifying).slice(0, 12), [filtered]);
+  const recommended = useMemo(() => filtered.slice(0, 12), [filtered]);
+  const newArrivals = useMemo(() => [...filtered].slice(-12).reverse(), [filtered]);
 
   const hasProducts = !isLoading && !isError && filtered.length > 0;
 
   return (
-    <div className="-mx-4 space-y-3 bg-[#f7f8fa] px-3 pb-2 pt-0 sm:mx-0 sm:rounded-2xl sm:border sm:border-slate-200 sm:px-4 sm:py-3">
-      <section className="sticky top-0 z-20 rounded-xl border border-slate-200 bg-white p-2 shadow-[0_2px_10px_rgba(15,23,42,0.05)]">
+    <div className="-mx-4 space-y-3 bg-[#f5f5f5] px-3 pb-2 pt-0 sm:mx-0 sm:rounded-2xl sm:border sm:border-slate-200 sm:px-4 sm:py-3">
+      <section className="sticky top-0 z-20 rounded-xl border border-slate-200 bg-white p-2">
         <div className="flex items-center gap-1.5">
-          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white">
-            <LogoMark size={18} />
+          <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-lg border border-slate-200 bg-white">
+            <LogoMark size={17} />
           </span>
+          <span className="text-[10px] font-semibold text-slate-700">Hope</span>
 
           <label className="relative min-w-0 flex-1">
             <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -131,12 +121,6 @@ export default function ShopPage() {
               {cartCount > 99 ? '99+' : cartCount}
             </span>
           </button>
-          <button className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700">
-            <Heart size={14} />
-          </button>
-          <Link href="/profile" className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700">
-            <UserCircle2 size={14} />
-          </Link>
           <button className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700">
             <Menu size={14} />
           </button>
@@ -161,16 +145,15 @@ export default function ShopPage() {
         ))}
       </section>
 
-      <section className="grid grid-cols-3 gap-1.5">
+      <section className="grid grid-cols-4 gap-1.5 rounded-lg border border-slate-200 bg-white p-1.5">
         {serviceCards.map((item) => {
           const Icon = item.icon;
           return (
-            <article key={item.title} className="rounded-lg border border-slate-200 bg-white p-1.5 text-center">
-              <span className="mx-auto inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-50 text-sky-700">
-                <Icon size={11} />
+            <article key={item.title} className="rounded-md bg-slate-50 p-1 text-center">
+              <span className="mx-auto inline-flex h-4 w-4 items-center justify-center rounded-full bg-sky-50 text-sky-700">
+                <Icon size={10} />
               </span>
-              <p className="mt-0.5 text-[9px] font-semibold text-slate-800">{item.title}</p>
-              <p className="text-[8px] text-slate-500">{item.subtitle}</p>
+              <p className="mt-0.5 text-[8px] font-medium text-slate-700">{item.title}</p>
             </article>
           );
         })}
@@ -188,7 +171,7 @@ export default function ShopPage() {
           <div>
             <SectionTitle title="Deals of the Day" subtitle="Best offers for today" count={deals.length || 0} />
             <div className="grid grid-cols-3 gap-1.5">
-              {(deals.length ? deals : featured).map((product) => (
+              {(deals.length ? deals : recommended).map((product) => (
                 <ProductCard
                   key={`deal-${product.id}`}
                   product={product}
@@ -201,11 +184,11 @@ export default function ShopPage() {
           </div>
 
           <div>
-            <SectionTitle title="Featured Products" subtitle="Top picks from catalog" count={featured.length} />
+            <SectionTitle title="Recommended" subtitle="Picked for your profile" count={recommended.length} />
             <div className="grid grid-cols-3 gap-1.5">
-              {featured.map((product) => (
+              {recommended.map((product) => (
                 <ProductCard
-                  key={`featured-${product.id}`}
+                  key={`recommended-${product.id}`}
                   product={product}
                   onBuy={(p) => buyMutation.mutate(p)}
                   isBuying={buyMutation.isPending && buyingProductId === product.id}
@@ -215,25 +198,22 @@ export default function ShopPage() {
             </div>
           </div>
 
-          {recommended.length ? (
-            <div>
-              <SectionTitle title="Recommended" subtitle="Based on your interest" count={recommended.length} />
-              <div className="grid grid-cols-3 gap-1.5">
-                {recommended.map((product) => (
-                  <ProductCard
-                    key={`rec-${product.id}`}
-                    product={product}
-                    onBuy={(p) => buyMutation.mutate(p)}
-                    isBuying={buyMutation.isPending && buyingProductId === product.id}
-                    disableBuying={false}
-                  />
-                ))}
-              </div>
+          <div>
+            <SectionTitle title="New Arrivals" subtitle="Latest additions" count={newArrivals.length} />
+            <div className="grid grid-cols-3 gap-1.5">
+              {newArrivals.map((product) => (
+                <ProductCard
+                  key={`new-${product.id}`}
+                  product={product}
+                  onBuy={(p) => buyMutation.mutate(p)}
+                  isBuying={buyMutation.isPending && buyingProductId === product.id}
+                  disableBuying={false}
+                />
+              ))}
             </div>
-          ) : null}
+          </div>
         </section>
       ) : null}
     </div>
   );
 }
-
