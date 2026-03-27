@@ -6,6 +6,7 @@ export const queryKeys = {
   walletTransactions: ['wallet', 'transactions'],
   products: ['products'],
   orders: ['orders'],
+  homepageBanners: ['homepage-banners'],
   admin: ['admin'],
   adminDashboard: ['admin', 'dashboard'],
   adminUsers: ['admin', 'users'],
@@ -13,6 +14,7 @@ export const queryKeys = {
   adminUserDetail: (id) => ['admin', 'users', id],
   adminRanks: ['admin', 'ranks'],
   adminProducts: ['admin', 'products'],
+  adminBanners: ['admin', 'banners'],
   adminProductDetail: (id) => ['admin', 'products', id],
   adminOrders: ['admin', 'orders'],
   adminOrderDetail: (id) => ['admin', 'orders', id],
@@ -36,3 +38,4 @@ export const queryKeys = {
   monthlyCompensation: (monthStart, monthEnd) => ['monthly-compensation', monthStart, monthEnd],
   teamChildren: ['team-children']
 };
+

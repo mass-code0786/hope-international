@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, Boxes, ShoppingCart, Wallet, Cpu, Gift, Network, Settings } from 'lucide-react';
+import { LayoutDashboard, Users, Boxes, ShoppingCart, Wallet, Cpu, Gift, Network, Settings, Image } from 'lucide-react';
 import { THEME } from '@/lib/constants/theme';
 import { LogoFull } from '@/components/brand/HopeLogo';
 
@@ -10,6 +10,7 @@ const adminNav = [
   { href: '/admin', label: 'Overview', icon: LayoutDashboard },
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/products', label: 'Products', icon: Boxes },
+  { href: '/admin/banners', label: 'Banners', icon: Image },
   { href: '/admin/orders', label: 'Orders', icon: ShoppingCart },
   { href: '/admin/wallet', label: 'Wallet Ops', icon: Wallet },
   { href: '/admin/compensation', label: 'Compensation', icon: Cpu },
@@ -50,3 +51,4 @@ export function AdminSidebar() {
     </aside>
   );
 }
+

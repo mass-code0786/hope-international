@@ -228,6 +228,55 @@ const teamSummaryParamSchema = z.object({
   query: z.object({})
 });
 
+
+const adminBannersQuerySchema = z.object({
+  body: z.object({}),
+  params: z.object({}),
+  query: pagingQuery.extend({
+    search: z.string().optional(),
+    isActive: z.enum(['true', 'false']).optional()
+  })
+});
+
+const adminBannerCreateSchema = z.object({
+  body: z.object({
+    imageUrl: z.string().min(3).max(1000000),
+    title: z.string().min(2).max(255),
+    subtitle: z.string().max(500).optional(),
+    ctaText: z.string().max(80).optional(),
+    targetLink: z.string().max(500).optional(),
+    sortOrder: z.number().int().min(0).max(100000).optional(),
+    isActive: z.boolean().optional(),
+    startAt: z.string().max(64).optional(),
+    endAt: z.string().max(64).optional()
+  }),
+  params: z.object({}),
+  query: z.object({})
+});
+
+const adminBannerUpdateSchema = z.object({
+  body: z.object({
+    imageUrl: z.string().min(3).max(1000000).optional(),
+    title: z.string().min(2).max(255).optional(),
+    subtitle: z.string().max(500).optional(),
+    ctaText: z.string().max(80).optional(),
+    targetLink: z.string().max(500).optional(),
+    sortOrder: z.number().int().min(0).max(100000).optional(),
+    isActive: z.boolean().optional(),
+    startAt: z.string().max(64).optional(),
+    endAt: z.string().max(64).optional()
+  }).refine((body) => Object.keys(body).length > 0, {
+    message: 'At least one field is required for update'
+  }),
+  params: z.object({ id: uuid }),
+  query: z.object({})
+});
+
+const adminBannerIdParamSchema = z.object({
+  body: z.object({}),
+  params: z.object({ id: uuid }),
+  query: z.object({})
+});
 const adminSellerApplicationsQuerySchema = z.object({
   body: z.object({}),
   params: z.object({}),
@@ -278,7 +327,12 @@ module.exports = {
   rewardStatusUpdateSchema,
   teamTreeQuerySchema,
   teamSummaryParamSchema,
+  adminBannersQuerySchema,
+  adminBannerCreateSchema,
+  adminBannerUpdateSchema,
+  adminBannerIdParamSchema,
   adminSellerApplicationsQuerySchema,
   adminSellerApplicationReviewSchema,
   settingsUpdateSchema
 };
+

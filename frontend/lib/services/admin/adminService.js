@@ -198,3 +198,33 @@ export async function updateAdminSettings(payload) {
     })
   );
 }
+
+export async function getAdminBanners(params = {}) {
+  return toEnvelope(await apiFetch(`/admin/banners${withQuery(params)}`));
+}
+
+export async function createAdminBanner(payload) {
+  return toEnvelope(
+    await apiFetch('/admin/banners', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function updateAdminBanner(id, payload) {
+  return toEnvelope(
+    await apiFetch(`/admin/banners/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function deleteAdminBanner(id) {
+  return toEnvelope(
+    await apiFetch(`/admin/banners/${id}`, {
+      method: 'DELETE'
+    })
+  );
+}

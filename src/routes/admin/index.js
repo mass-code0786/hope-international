@@ -10,6 +10,7 @@ const teamRoutes = require('./teamRoutes');
 const settingsRoutes = require('./settingsRoutes');
 const sellerApplicationsRoutes = require('./sellerApplicationsRoutes');
 const ranksRoutes = require('./ranksRoutes');
+const bannersRoutes = require('./bannersRoutes');
 
 const router = express.Router();
 
@@ -24,5 +25,7 @@ router.use('/team', teamRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/seller-applications', sellerApplicationsRoutes);
 router.use('/ranks', ranksRoutes);
+router.use('/banners', bannersRoutes);
 
 module.exports = router;
+

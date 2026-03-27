@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState, useEffect } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Menu, Search, ShoppingCart, Truck, ShieldCheck, BadgePercent, Headset, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ProductFilters } from '@/components/shop/ProductFilters';
@@ -13,20 +13,25 @@ import { ShopSkeleton } from '@/components/ui/PageSkeletons';
 import { LogoMark } from '@/components/brand/HopeLogo';
 import { useProducts } from '@/hooks/useProducts';
 import { createOrder } from '@/lib/services/ordersService';
+import { getHomepageBanners } from '@/lib/services/bannersService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { subscribeCart } from '@/lib/utils/cart';
 
-const promoSlides = [
+const fallbackSlides = [
   {
+    id: 'fallback-1',
     title: 'Deals for Smart Shopping',
     subtitle: 'Daily savings across your favorite categories',
-    cta: 'Shop Deals',
+    ctaText: 'Shop Deals',
+    targetLink: '/shop',
     theme: 'from-[#e0f2fe] to-[#dbeafe]'
   },
   {
+    id: 'fallback-2',
     title: 'Fresh Arrivals',
     subtitle: 'New picks curated for your profile',
-    cta: 'View Picks',
+    ctaText: 'View Picks',
+    targetLink: '/shop',
     theme: 'from-[#ecfeff] to-[#dcfce7]'
   }
 ];
@@ -69,12 +74,44 @@ function categoryMatch(product, activeCategory) {
   return keywords.some((keyword) => haystack.includes(keyword)) || labelTokens.some((token) => haystack.includes(token));
 }
 
+function resolveBannerTarget(targetLink) {
+  if (!targetLink) return '/shop';
+  if (targetLink.startsWith('http://') || targetLink.startsWith('https://')) return targetLink;
+  if (targetLink.startsWith('/')) return targetLink;
+  return `/${targetLink}`;
+}
+
+function BannerCard({ banner }) {
+  const target = resolveBannerTarget(banner.targetLink);
+  const content = (
+    <article className="h-full min-h-[132px] rounded-xl border border-slate-200 bg-gradient-to-r from-[#e0f2fe] to-[#dcfce7] p-3">
+      <p className="text-[9px] font-medium uppercase tracking-wide text-slate-600">Hope Marketplace</p>
+      <h2 className="mt-1 line-clamp-2 text-[14px] font-semibold leading-4 text-slate-900">{banner.title}</h2>
+      <p className="mt-1 line-clamp-2 text-[10px] text-slate-600">{banner.subtitle || 'Smart offers curated for your profile'}</p>
+      {banner.ctaText ? (
+        <span className="mt-3 inline-flex rounded-full border border-slate-300 bg-white px-2.5 py-1 text-[10px] font-medium text-slate-700">
+          {banner.ctaText}
+        </span>
+      ) : null}
+    </article>
+  );
+
+  if (target.startsWith('http://') || target.startsWith('https://')) {
+    return <a href={target} target="_blank" rel="noreferrer" className="block h-full">{content}</a>;
+  }
+
+  return <Link href={target} className="block h-full">{content}</Link>;
+}
+
 export default function ShopPage() {
   const { data, isLoading, isError, refetch } = useProducts();
+  const bannersQuery = useQuery({ queryKey: queryKeys.homepageBanners, queryFn: getHomepageBanners });
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [buyingProductId, setBuyingProductId] = useState('');
   const [cartCount, setCartCount] = useState(0);
+  const [activeBannerIndex, setActiveBannerIndex] = useState(0);
+  const bannerTrackRef = useRef(null);
   const queryClient = useQueryClient();
 
   useEffect(() => subscribeCart(setCartCount), []);
@@ -99,6 +136,47 @@ export default function ShopPage() {
   });
 
   const products = Array.isArray(data) ? data : [];
+  const liveBanners = Array.isArray(bannersQuery.data) ? bannersQuery.data : [];
+
+  const heroBanners = useMemo(() => {
+    if (liveBanners.length) {
+      return liveBanners.map((banner, idx) => ({
+        id: banner.id || `live-${idx}`,
+        imageUrl: banner.image_url || '',
+        title: banner.title || 'Special Offer',
+        subtitle: banner.subtitle || '',
+        ctaText: banner.cta_text || '',
+        targetLink: banner.target_link || '/shop'
+      }));
+    }
+
+    return fallbackSlides;
+  }, [liveBanners]);
+
+  useEffect(() => {
+    setActiveBannerIndex(0);
+    const track = bannerTrackRef.current;
+    if (track) {
+      track.scrollTo({ left: 0, behavior: 'auto' });
+    }
+  }, [heroBanners.length]);
+
+  useEffect(() => {
+    if (heroBanners.length <= 1) return undefined;
+
+    const timer = window.setInterval(() => {
+      setActiveBannerIndex((prev) => {
+        const next = (prev + 1) % heroBanners.length;
+        const track = bannerTrackRef.current;
+        if (track) {
+          track.scrollTo({ left: next * track.clientWidth, behavior: 'smooth' });
+        }
+        return next;
+      });
+    }, 4200);
+
+    return () => window.clearInterval(timer);
+  }, [heroBanners.length]);
 
   const filtered = useMemo(() => {
     return products.filter((product) => {
@@ -153,18 +231,52 @@ export default function ShopPage() {
         <ProductFilters activeCategory={activeCategory} setActiveCategory={setActiveCategory} />
       </section>
 
-      <section className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-0.5">
-        {promoSlides.map((slide) => (
-          <article
-            key={slide.title}
-            className={`min-w-[86%] snap-start rounded-xl border border-slate-200 bg-gradient-to-r ${slide.theme} p-2.5`}
-          >
-            <p className="text-[9px] font-medium uppercase tracking-wide text-slate-600">Hope Store</p>
-            <h2 className="mt-1 text-[13px] font-semibold leading-4 text-slate-900">{slide.title}</h2>
-            <p className="mt-1 text-[10px] text-slate-600">{slide.subtitle}</p>
-            <button className="mt-2 rounded-full border border-slate-300 bg-white px-2.5 py-1 text-[10px] font-medium text-slate-700">{slide.cta}</button>
-          </article>
-        ))}
+      <section className="space-y-2">
+        <div
+          ref={bannerTrackRef}
+          onScroll={(event) => {
+            const width = event.currentTarget.clientWidth || 1;
+            const index = Math.round(event.currentTarget.scrollLeft / width);
+            if (index !== activeBannerIndex) setActiveBannerIndex(index);
+          }}
+          className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth"
+        >
+          {heroBanners.map((banner) => (
+            <div key={banner.id} className="min-w-full snap-start pr-1">
+              {banner.imageUrl ? (
+                <Link href={resolveBannerTarget(banner.targetLink)} className="relative block overflow-hidden rounded-xl border border-slate-200">
+                  <img src={banner.imageUrl} alt={banner.title || 'Offer banner'} className="h-[132px] w-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-slate-900/45 via-slate-800/20 to-transparent p-3 text-white">
+                    <p className="line-clamp-2 text-[14px] font-semibold leading-4">{banner.title}</p>
+                    {banner.subtitle ? <p className="mt-1 line-clamp-2 text-[10px] text-white/90">{banner.subtitle}</p> : null}
+                    {banner.ctaText ? <span className="mt-2 inline-flex rounded-full border border-white/50 bg-white/20 px-2.5 py-1 text-[10px] font-medium">{banner.ctaText}</span> : null}
+                  </div>
+                </Link>
+              ) : (
+                <BannerCard banner={banner} />
+              )}
+            </div>
+          ))}
+        </div>
+
+        {heroBanners.length > 1 ? (
+          <div className="flex items-center justify-center gap-1">
+            {heroBanners.map((banner, idx) => (
+              <button
+                key={`${banner.id}-dot`}
+                onClick={() => {
+                  setActiveBannerIndex(idx);
+                  const track = bannerTrackRef.current;
+                  if (track) {
+                    track.scrollTo({ left: idx * track.clientWidth, behavior: 'smooth' });
+                  }
+                }}
+                className={`h-1.5 rounded-full transition-all ${idx === activeBannerIndex ? 'w-4 bg-sky-500' : 'w-1.5 bg-slate-300'}`}
+                aria-label={`Go to banner ${idx + 1}`}
+              />
+            ))}
+          </div>
+        ) : null}
       </section>
 
       <section className="grid grid-cols-4 gap-1.5 rounded-lg border border-slate-200 bg-white p-1.5">
