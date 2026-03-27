@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { BottomNav } from '@/components/shell/BottomNav';
 import { Sidebar } from '@/components/shell/Sidebar';
 import { Topbar } from '@/components/shell/Topbar';
@@ -13,6 +13,7 @@ import { queryKeys } from '@/lib/query/queryKeys';
 
 export function AppShell({ children }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { token, hydrated, hydrate, setUser, clearSession, user } = useAuthStore();
 
   useEffect(() => {
@@ -47,12 +48,14 @@ export function AppShell({ children }) {
     if (!token) router.replace('/login');
   }, [hydrated, token, router]);
 
+  const isShopRoute = pathname === '/shop' || pathname.startsWith('/shop/');
+
   return (
     <div className="min-h-screen bg-bg text-text md:flex">
       <Sidebar user={user} sellerActive={Boolean(sellerQuery.data?.canAccessDashboard)} />
       <main className="w-full md:overflow-x-hidden md:bg-black/14">
-        <div className="mx-auto w-full max-w-7xl p-4 pb-24 md:p-6 md:pb-6">
-          <Topbar user={user} />
+        <div className={`mx-auto w-full max-w-7xl pb-24 md:p-6 md:pb-6 ${isShopRoute ? 'p-3 md:p-6' : 'p-4 md:p-6'}`}>
+          {isShopRoute ? null : <Topbar user={user} />}
           {children}
         </div>
       </main>

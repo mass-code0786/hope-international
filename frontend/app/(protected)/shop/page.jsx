@@ -108,8 +108,8 @@ export default function ShopPage() {
   const hasProducts = !isLoading && !isError && filtered.length > 0;
 
   return (
-    <div className="-mx-4 space-y-3 bg-[#f7f8fa] px-3 pb-2 pt-1 sm:mx-0 sm:rounded-2xl sm:border sm:border-slate-200 sm:px-4 sm:py-3">
-      <section className="sticky top-1 z-20 rounded-xl border border-slate-200 bg-white p-2 shadow-[0_2px_10px_rgba(15,23,42,0.05)]">
+    <div className="-mx-4 space-y-3 bg-[#f7f8fa] px-3 pb-2 pt-0 sm:mx-0 sm:rounded-2xl sm:border sm:border-slate-200 sm:px-4 sm:py-3">
+      <section className="sticky top-0 z-20 rounded-xl border border-slate-200 bg-white p-2 shadow-[0_2px_10px_rgba(15,23,42,0.05)]">
         <div className="flex items-center gap-1.5">
           <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white">
             <LogoMark size={18} />
@@ -236,3 +236,4 @@ export default function ShopPage() {
     </div>
   );
 }
+
