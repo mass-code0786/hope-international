@@ -7,17 +7,18 @@ export default function Logo({
   alt = 'Hope International'
 }) {
   const frameStyle = { width: size, height: size };
+  const imageSize = Math.max(Math.round(size * 0.82), 16);
 
   return (
     <div
-      className={`inline-flex items-center justify-center rounded-lg bg-white shadow-sm dark:bg-neutral-900 ${className}`}
+      className={`inline-flex shrink-0 items-center justify-center ${className}`}
       style={frameStyle}
     >
       <Image
         src="/logo.svg"
         alt={alt}
-        width={Math.max(size - 8, 16)}
-        height={Math.max(size - 8, 16)}
+        width={imageSize}
+        height={imageSize}
         priority
         className={`object-contain ${imageClassName}`}
       />

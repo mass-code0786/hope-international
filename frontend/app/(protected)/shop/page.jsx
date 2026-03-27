@@ -29,7 +29,7 @@ import { ProductCard } from '@/components/shop/ProductCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { ShopSkeleton } from '@/components/ui/PageSkeletons';
-import { Logo } from '@/components/common/Logo';
+import Logo from '@/components/common/Logo';
 import { useProducts } from '@/hooks/useProducts';
 import { createOrder } from '@/lib/services/ordersService';
 import { getHomepageBanners } from '@/lib/services/bannersService';
@@ -279,7 +279,9 @@ export default function ShopPage() {
       <section className="sticky top-0 z-20 rounded-xl border border-slate-200 bg-white p-2 shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
         <div className="flex items-center gap-1.5">
           <Link href="/shop" aria-label="Go to shop home" className="shrink-0">
-            <Logo size={32} className="border-slate-200 bg-slate-100" imageClassName="p-1.5" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-900">
+              <Logo size={32} />
+            </div>
           </Link>
 
           <label className="relative min-w-0 flex-1">
