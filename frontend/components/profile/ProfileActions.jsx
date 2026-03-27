@@ -33,11 +33,11 @@ export function ProfileActions({ referralLink, onLogout }) {
   }
 
   return (
-    <div className="grid gap-3 md:grid-cols-2">
-      <button onClick={copyReferral} className="card-surface flex items-center justify-center gap-2 p-4 text-sm text-text"><Copy size={16} /> Copy Referral</button>
-      <button onClick={shareReferral} className="card-surface flex items-center justify-center gap-2 p-4 text-sm text-text"><Share2 size={16} /> Share Referral</button>
-      <button className="card-surface p-4 text-sm text-muted">KYC (Coming Soon)</button>
-      <button onClick={onLogout} className="card-surface flex items-center justify-center gap-2 p-4 text-sm text-danger"><LogOut size={16} /> Logout</button>
+    <div className="grid grid-cols-2 gap-2.5">
+      <button onClick={copyReferral} className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white p-2.5 text-[11px] text-slate-700"><Copy size={14} /> Copy</button>
+      <button onClick={shareReferral} className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white p-2.5 text-[11px] text-slate-700"><Share2 size={14} /> Share</button>
+      <button className="rounded-xl border border-slate-200 bg-white p-2.5 text-[11px] text-slate-500">KYC Soon</button>
+      <button onClick={onLogout} className="flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-[11px] text-rose-600"><LogOut size={14} /> Logout</button>
     </div>
   );
 }

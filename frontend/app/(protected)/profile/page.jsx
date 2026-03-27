@@ -40,32 +40,47 @@ export default function ProfilePage() {
     router.push('/login');
   }
 
+  async function copyReferralLink() {
+    try {
+      await navigator.clipboard.writeText(referralLink);
+      toast.success('Referral link copied');
+    } catch (_error) {
+      toast.error('Unable to copy referral link');
+    }
+  }
+
   return (
-    <div className="space-y-5">
-      <SectionHeader title="Profile" subtitle="Account, referral and settings" />
-      <div className="grid gap-4 md:grid-cols-2">
-        <StatCard title="Username" value={user.username || '-'} subtitle={`User ID: ${user.id || '-'}`} />
-        <StatCard title="Rank" value={rankLabel(user.rank_name)} subtitle={`Sponsor: ${user.sponsor_id || 'N/A'}`} />
-        <StatCard title="Referral Link" value="Share and earn 5% direct income" subtitle={referralLink} className="md:col-span-2" />
-        <div className="card-surface p-4 md:col-span-2">
-          <p className="text-sm text-muted">QR Code Section (Placeholder)</p>
-          <div className="mt-3 h-32 w-32 rounded-xl bg-white/5" />
-        </div>
-        <StatCard
-          title="Seller Console"
-          value={isSeller(user) ? 'Seller Account Active' : 'Become a Seller'}
-          subtitle={isSeller(user) ? 'Manage catalog and moderation status' : 'Apply to sell products on Hope International'}
-          className="md:col-span-2"
-          right={
-            <Link
-              href={isSeller(user) ? '/seller' : '/seller/apply'}
-              className="rounded-xl bg-accent px-3 py-1.5 text-xs font-semibold text-black"
-            >
-              {isSeller(user) ? 'Open Seller Hub' : 'Apply'}
-            </Link>
-          }
-        />
+    <div className="space-y-3">
+      <SectionHeader title="Profile" subtitle="Account and referral" />
+
+      <div className="grid grid-cols-2 gap-2.5">
+        <StatCard compact title="Username" value={user.username || '-'} subtitle={`ID: ${user.id || '-'}`} />
+        <StatCard compact title="Rank" value={rankLabel(user.rank_name)} subtitle={`Sponsor: ${user.sponsor_id || 'N/A'}`} />
       </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-3">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-semibold text-slate-800">Referral Link</p>
+          <button onClick={copyReferralLink} className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] text-slate-600">Copy</button>
+        </div>
+        <p className="mt-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-[10px] text-slate-600 break-all">{referralLink}</p>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-3">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <p className="text-xs font-semibold text-slate-800">Seller Console</p>
+            <p className="text-[10px] text-slate-500">{isSeller(user) ? 'Manage catalog and moderation status' : 'Apply to sell products'}</p>
+          </div>
+          <Link
+            href={isSeller(user) ? '/seller' : '/seller/apply'}
+            className="rounded-lg bg-slate-900 px-2.5 py-1.5 text-[10px] font-semibold text-white"
+          >
+            {isSeller(user) ? 'Open Hub' : 'Apply'}
+          </Link>
+        </div>
+      </div>
+
       <ProfileActions referralLink={referralLink} onLogout={onLogout} />
     </div>
   );

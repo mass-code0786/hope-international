@@ -51,10 +51,10 @@ export function AppShell({ children }) {
   const isShopRoute = pathname === '/shop' || pathname.startsWith('/shop/');
 
   return (
-    <div className="min-h-screen bg-bg text-text md:flex">
+    <div className="min-h-screen bg-[#f5f6f8] text-text md:flex">
       <Sidebar user={user} sellerActive={Boolean(sellerQuery.data?.canAccessDashboard)} />
-      <main className="w-full md:overflow-x-hidden md:bg-black/14">
-        <div className={`mx-auto w-full max-w-7xl pb-24 md:p-6 md:pb-6 ${isShopRoute ? 'p-3 md:p-6' : 'p-4 md:p-6'}`}>
+      <main className="w-full md:overflow-x-hidden">
+        <div className={`mx-auto w-full max-w-7xl pb-24 md:p-5 md:pb-6 ${isShopRoute ? 'p-3 md:p-5' : 'p-3.5 md:p-5'}`}>
           {isShopRoute ? null : <Topbar user={user} />}
           {children}
         </div>

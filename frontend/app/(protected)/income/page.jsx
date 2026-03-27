@@ -35,26 +35,26 @@ export default function IncomePage() {
   if (isError) return <ErrorState message="Income records are unavailable right now." onRetry={refetch} />;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       <SectionHeader
         title="Income Center"
-        subtitle="Direct, matching, reward and cap audit entries"
-        action={<button className="rounded-xl border border-white/10 px-3 py-2 text-xs text-muted">Export (Soon)</button>}
+        subtitle="Earnings and transaction audit"
+        action={<button className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] text-slate-500">Export</button>}
       />
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="Total Earnings" value={currency(direct + matching + reward)} emphasis="primary" />
-        <StatCard title="Direct Income" value={currency(direct)} />
-        <StatCard title="Matching Income" value={currency(matching)} />
-        <StatCard title="Reward Income" value={currency(reward)} />
+      <div className="grid grid-cols-2 gap-2.5">
+        <StatCard compact title="Total" value={currency(direct + matching + reward)} emphasis="primary" />
+        <StatCard compact title="Direct" value={currency(direct)} />
+        <StatCard compact title="Matching" value={currency(matching)} />
+        <StatCard compact title="Reward" value={currency(reward)} />
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5">
         {filters.map((item) => (
           <button
             key={item}
             onClick={() => setFilter(item)}
-            className={`whitespace-nowrap rounded-full px-4 py-2 text-xs ${filter === item ? 'bg-accent text-black' : 'bg-white/5 text-muted'}`}
+            className={`whitespace-nowrap rounded-full px-2.5 py-1.5 text-[10px] ${filter === item ? 'bg-sky-100 text-sky-700' : 'border border-slate-200 bg-white text-slate-600'}`}
           >
             {item === 'all' ? 'All' : incomeSourceLabel(item)}
           </button>

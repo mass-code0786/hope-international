@@ -46,47 +46,47 @@ export default function TeamPage() {
   }
 
   return (
-    <div className="space-y-5">
-      <SectionHeader title="Binary Team" subtitle="Track your network structure and growth" />
+    <div className="space-y-3">
+      <SectionHeader title="Binary Team" subtitle="Compact network overview" />
 
-      <div className="flex items-center gap-2">
-        <Badge variant={hasNestedTreeData ? 'success' : 'accent'}>{hasNestedTreeData ? 'Full Tree Data' : 'Direct Children View'}</Badge>
-        <p className="text-xs text-muted">
-          {hasNestedTreeData
-            ? 'Displaying expanded tree data from backend.'
-            : 'Displaying verified direct children while deeper tree API is pending.'}
-        </p>
+      <div className="rounded-xl border border-slate-200 bg-white p-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={hasNestedTreeData ? 'success' : 'accent'}>{hasNestedTreeData ? 'Full Tree Data' : 'Direct Children View'}</Badge>
+          <p className="text-[11px] text-slate-500">
+            {hasNestedTreeData
+              ? 'Displaying expanded tree data from backend.'
+              : 'Showing verified direct children while deeper tree API is pending.'}
+          </p>
+        </div>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="Total Team" value={children.length} />
-        <StatCard title="Left Team" value={leftCount} />
-        <StatCard title="Right Team" value={rightCount} />
-        <StatCard title="Active" value={children.length} subtitle="Inactive tracking pending dedicated endpoint" />
+      <div className="grid grid-cols-2 gap-2.5">
+        <StatCard compact title="Total Team" value={children.length} />
+        <StatCard compact title="Active" value={children.length} subtitle="Inactive endpoint pending" />
+        <StatCard compact title="Left Team" value={leftCount} />
+        <StatCard compact title="Right Team" value={rightCount} />
       </div>
 
-      <div className="flex gap-2">
-        <button onClick={() => setView('tree')} className={`rounded-xl px-3 py-2 text-xs ${view === 'tree' ? 'bg-accent text-black' : 'bg-white/5 text-muted'}`}>Tree View</button>
-        <button onClick={() => setView('list')} className={`rounded-xl px-3 py-2 text-xs ${view === 'list' ? 'bg-accent text-black' : 'bg-white/5 text-muted'}`}>List View</button>
+      <div className="flex gap-1.5">
+        <button onClick={() => setView('tree')} className={`rounded-lg px-2.5 py-1.5 text-[11px] ${view === 'tree' ? 'bg-sky-100 text-sky-700' : 'border border-slate-200 bg-white text-slate-600'}`}>Tree</button>
+        <button onClick={() => setView('list')} className={`rounded-lg px-2.5 py-1.5 text-[11px] ${view === 'list' ? 'bg-sky-100 text-sky-700' : 'border border-slate-200 bg-white text-slate-600'}`}>List</button>
       </div>
 
       {view === 'tree' ? (
-        <div className="card-surface p-4">
+        <div className="rounded-xl border border-slate-200 bg-white p-2.5">
           <TreeNode node={root} />
         </div>
       ) : (
-        <div className="space-y-3">
-          {children.length === 0 ? <EmptyState title="No team members yet" description="Start sharing your referral link to build both binary legs." /> : null}
+        <div className="space-y-2">
+          {children.length === 0 ? <EmptyState title="No team members yet" description="Share your referral link to build both binary legs." /> : null}
           {children.map((member, idx) => (
-            <div key={member?.id || idx} className="card-surface flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm font-medium text-text">{member?.username || 'Member'}</p>
-                <p className="text-xs text-muted">Joined {shortDate(member?.created_at)}</p>
-              </div>
-              <div className="flex items-center gap-3 text-xs">
+            <div key={member?.id || idx} className="rounded-xl border border-slate-200 bg-white p-2.5">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-sm font-medium text-slate-800">{member?.username || 'Member'}</p>
+                  <p className="text-[11px] text-slate-500">Joined {shortDate(member?.created_at)}</p>
+                </div>
                 <Badge variant="accent">{String(member?.placement_side || 'N/A').toUpperCase()}</Badge>
-                <span className="text-success">Active</span>
-                <span className="text-muted">BV/PV pending</span>
               </div>
             </div>
           ))}

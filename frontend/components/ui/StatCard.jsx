@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 
-export function StatCard({ title, value, subtitle, right, className = '', emphasis = 'default' }) {
+export function StatCard({ title, value, subtitle, right, className = '', emphasis = 'default', compact = false }) {
   const emphasisClass =
     emphasis === 'primary'
       ? 'border border-accent/[0.22] bg-gradient-to-br from-accent/[0.08] via-cardSoft/[0.95] to-card'
@@ -8,17 +8,22 @@ export function StatCard({ title, value, subtitle, right, className = '', emphas
         ? 'border border-success/[0.20] bg-gradient-to-br from-success/[0.08] via-cardSoft/[0.95] to-card'
         : 'border border-white/5';
 
+  const containerClass = compact ? 'p-3.5' : 'p-5';
+  const titleClass = compact ? 'text-[10px]' : 'text-xs';
+  const valueClass = compact ? 'mt-1.5 text-lg' : emphasis === 'primary' ? 'mt-2 text-3xl' : 'mt-2 text-2xl';
+  const subtitleClass = compact ? 'mt-1 text-xs' : 'mt-1 text-sm';
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`card-surface p-5 ${emphasisClass} ${className}`}
+      className={`card-surface ${containerClass} ${emphasisClass} ${className}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-wider text-muted">{title}</p>
-          <p className={`mt-2 font-semibold text-text ${emphasis === 'primary' ? 'text-3xl' : 'text-2xl'}`}>{value}</p>
-          {subtitle ? <p className="mt-1 text-sm text-muted">{subtitle}</p> : null}
+          <p className={`uppercase tracking-wider text-muted ${titleClass}`}>{title}</p>
+          <p className={`font-semibold text-text ${valueClass}`}>{value}</p>
+          {subtitle ? <p className={`text-muted ${subtitleClass}`}>{subtitle}</p> : null}
         </div>
         {right}
       </div>
