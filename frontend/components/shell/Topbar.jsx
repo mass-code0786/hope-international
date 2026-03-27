@@ -6,17 +6,38 @@ import { ShoppingCart } from 'lucide-react';
 import { LogoMark } from '@/components/brand/HopeLogo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { subscribeCart } from '@/lib/utils/cart';
+import { initTheme } from '@/lib/utils/theme';
 
 export function Topbar({ user }) {
   const [cartCount, setCartCount] = useState(0);
+  const [theme, setTheme] = useState('dark');
 
   useEffect(() => subscribeCart(setCartCount), []);
+
+  useEffect(() => {
+    setTheme(initTheme());
+
+    const onThemeChange = (event) => {
+      if (event?.detail === 'light' || event?.detail === 'dark') {
+        setTheme(event.detail);
+      }
+    };
+
+    window.addEventListener('hope-theme-change', onThemeChange);
+    return () => window.removeEventListener('hope-theme-change', onThemeChange);
+  }, []);
+
+  const logoIsDark = theme === 'light';
 
   return (
     <header className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-2.5">
       <div className="flex min-w-0 items-center gap-2">
-        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white">
-          <LogoMark size={24} />
+        <span
+          className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${
+            logoIsDark ? 'border-slate-200 bg-slate-100' : 'border-slate-600 bg-slate-800'
+          }`}
+        >
+          <LogoMark size={26} className={logoIsDark ? 'brightness-0' : 'brightness-0 invert'} />
         </span>
         <div className="min-w-0">
           <p className="truncate text-[11px] font-semibold text-slate-800">Hope International</p>
