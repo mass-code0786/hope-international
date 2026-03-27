@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, Users, Boxes, ShoppingCart, Wallet, Cpu, Gift, Network, Settings, Image } from 'lucide-react';
 import { THEME } from '@/lib/constants/theme';
-import { LogoFull } from '@/components/brand/HopeLogo';
+import { Logo } from '@/components/common/Logo';
 
 const adminNav = [
   { href: '/admin', label: 'Overview', icon: LayoutDashboard },
@@ -25,8 +25,8 @@ export function AdminSidebar() {
   return (
     <aside className="hidden w-80 border-r border-white/10 bg-card p-6 lg:block">
       <div className="mb-8 flex flex-col items-center">
-        <div className="rounded-2xl border border-accent/[0.28] bg-black/35 p-2">
-          <LogoFull size={132} />
+        <div className="rounded-2xl border border-white/20 bg-white p-2">
+          <Logo size={40} variant="full" />
         </div>
         <p className="text-xs uppercase tracking-[0.25em] text-muted">Admin Console</p>
         <h1 className="text-center text-lg font-semibold text-accent">{THEME.appName}</h1>
@@ -51,4 +51,3 @@ export function AdminSidebar() {
     </aside>
   );
 }
-

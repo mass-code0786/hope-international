@@ -10,7 +10,7 @@ import { ProductCard } from '@/components/shop/ProductCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { ShopSkeleton } from '@/components/ui/PageSkeletons';
-import { LogoMark } from '@/components/brand/HopeLogo';
+import { Logo } from '@/components/common/Logo';
 import { useProducts } from '@/hooks/useProducts';
 import { createOrder } from '@/lib/services/ordersService';
 import { getHomepageBanners } from '@/lib/services/bannersService';
@@ -199,7 +199,7 @@ export default function ShopPage() {
       <section className="sticky top-0 z-20 rounded-xl border border-slate-200 bg-white p-2 shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
         <div className="flex items-center gap-1.5">
           <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-lg border border-slate-200 bg-[#f8fafc]">
-            <LogoMark size={16} />
+            <Logo size={33} variant="mark" />
           </span>
 
           <label className="relative min-w-0 flex-1">
@@ -366,3 +366,5 @@ export default function ShopPage() {
     </div>
   );
 }
+
+

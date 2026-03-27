@@ -1,7 +1,7 @@
 'use client';
 
 import { Bell, Search } from 'lucide-react';
-import { LogoMark } from '@/components/brand/HopeLogo';
+import { Logo } from '@/components/common/Logo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 export function AdminTopbar({ user }) {
@@ -9,8 +9,8 @@ export function AdminTopbar({ user }) {
     <header className="mb-5 flex flex-col gap-3 rounded-2xl border border-white/[0.16] bg-cardSoft/[0.95] p-4 md:flex-row md:items-center md:justify-between">
       <div className="min-w-0">
         <div className="mb-1 inline-flex items-center gap-2.5">
-          <span className="inline-flex shrink-0 items-center justify-center rounded-xl border border-accent/[0.5] bg-gradient-to-br from-black/65 to-[#0b1324] p-1.5 shadow-[0_0_0_1px_rgba(212,175,55,0.12)]">
-            <LogoMark size={32} />
+          <span className="inline-flex shrink-0 items-center justify-center rounded-xl border border-white/20 bg-white p-1.5">
+            <Logo size={34} variant="mark" />
           </span>
           <span className="hidden min-[390px]:inline text-[11px] font-semibold uppercase tracking-[0.14em] text-accentSoft/95">
             Hope International

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ShoppingCart } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { Logo } from '@/components/common/Logo';
 import { subscribeCart } from '@/lib/utils/cart';
 import { initTheme } from '@/lib/utils/theme';
 
@@ -32,12 +33,11 @@ export function Topbar({ user }) {
     <header className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-2.5 shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
       <div className="flex min-w-0 items-center gap-2">
         <span
-          className={`relative inline-flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-lg border ${
-            isLight ? 'border-slate-200 bg-[#f3f4f6]' : 'border-slate-300 bg-[#e2e8f0]'
+          className={`inline-flex h-[40px] w-[56px] shrink-0 items-center justify-center rounded-lg border px-1 ${
+            isLight ? 'border-slate-200 bg-[#f3f4f6]' : 'border-slate-300 bg-[#1f2937]'
           }`}
         >
-          <span className="text-[11px] font-extrabold tracking-[0.12em] text-slate-900">HOPE</span>
-          <span className="absolute bottom-1 h-[2px] w-4 rounded-full bg-gradient-to-r from-[#0ea5e9] to-[#38bdf8]" />
+          <Logo size={34} variant="mark" />
         </span>
         <div className="min-w-0">
           <p className="truncate text-[11px] font-semibold text-slate-800">Hope International</p>

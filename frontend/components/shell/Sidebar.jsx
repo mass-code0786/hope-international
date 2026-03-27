@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Home, ShoppingBag, Network, Wallet, User, ClipboardList, Store } from 'lucide-react';
 import { THEME } from '@/lib/constants/theme';
 import { isSeller } from '@/lib/constants/access';
-import { LogoFull } from '@/components/brand/HopeLogo';
+import { Logo } from '@/components/common/Logo';
 
 function getItems(user, sellerActive) {
   const nav = [
@@ -33,8 +33,8 @@ export function Sidebar({ user, sellerActive = false }) {
   return (
     <aside className="hidden w-72 border-r border-white/10 bg-[#111111] p-6 md:block">
       <div className="mb-8 flex flex-col items-center">
-        <div className="rounded-2xl border border-accent/[0.28] bg-black/35 p-2">
-          <LogoFull size={124} />
+        <div className="rounded-2xl border border-white/15 bg-white p-2">
+          <Logo size={38} variant="full" />
         </div>
         <p className="mt-2 text-center text-xs text-muted">{THEME.tagline}</p>
       </div>
