@@ -9,6 +9,10 @@ function normalizeUsername(value) {
   return String(value || '').trim().toLowerCase();
 }
 
+function normalizeLoginIdentifier(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
 function normalizeReferralCode(raw) {
   const text = String(raw || '').trim();
   if (!text) return '';
@@ -149,15 +153,15 @@ async function register(payload) {
 }
 
 async function login(payload) {
-  const username = normalizeUsername(payload.username);
-  const user = await userRepository.findByUsername(null, username);
+  const identifier = normalizeLoginIdentifier(payload.username || payload.email);
+  const user = await userRepository.findByLogin(null, identifier);
   if (!user) {
-    throw new ApiError(401, 'Invalid username or password');
+    throw new ApiError(401, 'Invalid username/email or password');
   }
 
   const ok = await bcrypt.compare(payload.password, user.password_hash);
   if (!ok) {
-    throw new ApiError(401, 'Invalid username or password');
+    throw new ApiError(401, 'Invalid username/email or password');
   }
 
   const token = createAuthToken(user);

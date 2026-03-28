@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthMutations } from '@/hooks/useAuthMutations';
 import toast from 'react-hot-toast';
 import Logo from '@/components/common/Logo';
+import { canAccessAdminArea, isSeller } from '@/lib/constants/access';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,9 +17,21 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     try {
-      await loginMutation.mutateAsync(form);
+      const data = await loginMutation.mutateAsync(form);
+      const user = data?.user || null;
+      if (process.env.NODE_ENV !== 'production') {
+        console.info('[frontend.login.page] currentUser role', { username: user?.username, role: user?.role });
+      }
       toast.success('Logged in successfully');
-      router.push('/shop');
+      if (canAccessAdminArea(user)) {
+        router.push('/admin');
+        return;
+      }
+      if (isSeller(user)) {
+        router.push('/seller');
+        return;
+      }
+      router.push('/auctions');
     } catch (err) {
       toast.error(err.message || 'Login failed');
     }
@@ -36,7 +49,7 @@ export default function LoginPage() {
           <span className="text-[11px] font-medium text-slate-600">Username</span>
           <input
             className="w-full rounded-xl border border-white/10 bg-cardSoft p-3 text-sm"
-            placeholder="Enter your username"
+            placeholder="Enter your username or email"
             required
             value={form.username}
             onChange={(e) => setForm((p) => ({ ...p, username: e.target.value }))}

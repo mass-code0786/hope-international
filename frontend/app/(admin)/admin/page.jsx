@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar, Legend } from 'recharts';
 import { AdminSectionHeader } from '@/components/admin/AdminSectionHeader';
@@ -12,11 +13,19 @@ import { queryKeys } from '@/lib/query/queryKeys';
 import { currency, incomeSourceLabel, number, shortDate } from '@/lib/utils/format';
 import { getAdminDashboardOverview } from '@/lib/services/admin';
 
+function ChartFrame({ title, children }) {
+  return (
+    <div className="card-surface p-4">
+      <p className="mb-3 text-sm text-muted">{title}</p>
+      <div className="h-[260px] min-h-[260px] w-full min-w-0">
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboardPage() {
   const overviewQuery = useQuery({ queryKey: queryKeys.adminDashboard, queryFn: getAdminDashboardOverview });
-
-  if (overviewQuery.isLoading) return <AdminShellSkeleton />;
-  if (overviewQuery.isError) return <ErrorState message="Admin dashboard failed to load." onRetry={overviewQuery.refetch} />;
 
   const overview = overviewQuery.data?.data || {};
   const summary = overview.summary || {};
@@ -24,20 +33,27 @@ export default function AdminDashboardPage() {
   const orders = Array.isArray(overview.recentOrders) ? overview.recentOrders : [];
   const txs = Array.isArray(overview.recentTransactions) ? overview.recentTransactions : [];
 
-  const trendData = Array.isArray(charts.weeklySalesTrend)
-    ? charts.weeklySalesTrend.map((row) => ({
-      name: shortDate(row.week_start),
-      sales: Number(row.sales_amount || 0),
-      payout: Number(row.sales_bv || 0)
-    }))
-    : [];
+  const trendData = useMemo(() => (
+    Array.isArray(charts.weeklySalesTrend)
+      ? charts.weeklySalesTrend.map((row) => ({
+        name: shortDate(row.week_start),
+        sales: Number(row.sales_amount || 0),
+        payout: Number(row.sales_bv || 0)
+      }))
+      : []
+  ), [charts.weeklySalesTrend]);
 
-  const splitData = Array.isArray(charts.incomeDistribution)
-    ? charts.incomeDistribution.map((row) => ({
-      name: incomeSourceLabel(row.source),
-      value: Number(row.total_amount || 0)
-    }))
-    : [];
+  const splitData = useMemo(() => (
+    Array.isArray(charts.incomeDistribution)
+      ? charts.incomeDistribution.map((row) => ({
+        name: incomeSourceLabel(row.source),
+        value: Number(row.total_amount || 0)
+      }))
+      : []
+  ), [charts.incomeDistribution]);
+
+  if (overviewQuery.isLoading) return <AdminShellSkeleton />;
+  if (overviewQuery.isError) return <ErrorState message="Admin dashboard failed to load." onRetry={overviewQuery.refetch} />;
 
   return (
     <div className="space-y-5">
@@ -55,9 +71,8 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <div className="card-surface h-80 p-4">
-          <p className="mb-3 text-sm text-muted">Weekly Sales vs Payout Trend</p>
-          <ResponsiveContainer width="100%" height="88%">
+        <ChartFrame title="Weekly Sales vs Payout Trend">
+          <ResponsiveContainer width="100%" height="100%" minWidth={280} minHeight={240}>
             <AreaChart data={trendData}>
               <XAxis dataKey="name" stroke="#9ca3af" />
               <YAxis stroke="#9ca3af" />
@@ -66,11 +81,10 @@ export default function AdminDashboardPage() {
               <Area type="monotone" dataKey="payout" stroke="#22c55e" fill="#22c55e22" />
             </AreaChart>
           </ResponsiveContainer>
-        </div>
+        </ChartFrame>
 
-        <div className="card-surface h-80 p-4">
-          <p className="mb-3 text-sm text-muted">Income Distribution</p>
-          <ResponsiveContainer width="100%" height="88%">
+        <ChartFrame title="Income Distribution">
+          <ResponsiveContainer width="100%" height="100%" minWidth={280} minHeight={240}>
             <BarChart data={splitData}>
               <XAxis dataKey="name" stroke="#9ca3af" />
               <YAxis stroke="#9ca3af" />
@@ -79,7 +93,7 @@ export default function AdminDashboardPage() {
               <Bar dataKey="value" fill="#d4af37" radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </ChartFrame>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">

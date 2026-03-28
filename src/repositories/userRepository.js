@@ -36,6 +36,19 @@ async function findByUsername(client, username) {
   return rows[0] || null;
 }
 
+async function findByLogin(client, identifier) {
+  const { rows } = await q(client).query(
+    `SELECT *
+     FROM users
+     WHERE LOWER(username) = LOWER($1)
+        OR LOWER(email) = LOWER($1)
+     ORDER BY CASE WHEN LOWER(username) = LOWER($1) THEN 0 ELSE 1 END
+     LIMIT 1`,
+    [identifier]
+  );
+  return rows[0] || null;
+}
+
 async function findById(client, id) {
   const { rows } = await q(client).query(
     `SELECT u.*, r.name AS rank_name, r.min_bv AS rank_min_bv, r.cap_multiplier AS rank_cap_multiplier, sponsor.username AS sponsor_username
@@ -254,6 +267,7 @@ module.exports = {
   getDefaultRank,
   findByEmail,
   findByUsername,
+  findByLogin,
   findById,
   findAdminUser,
   updateAdminCredentials,

@@ -27,6 +27,9 @@ export function useAuthMutations() {
   const loginMutation = useMutation({
     mutationFn: login,
     onSuccess: async (data) => {
+      if (process.env.NODE_ENV !== 'production') {
+        console.info('[frontend.auth.login] response role', { username: data?.user?.username, role: data?.user?.role });
+      }
       setSession({ token: data.token, user: data.user });
       await refreshCoreQueries(data.user);
     },
@@ -36,6 +39,9 @@ export function useAuthMutations() {
   const registerMutation = useMutation({
     mutationFn: register,
     onSuccess: async (data) => {
+      if (process.env.NODE_ENV !== 'production') {
+        console.info('[frontend.auth.register] response role', { username: data?.user?.username, role: data?.user?.role });
+      }
       setSession({ token: data.token, user: data.user });
       await refreshCoreQueries(data.user);
     },

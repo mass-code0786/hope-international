@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
+import { canAccessAdminArea, isSeller } from '@/lib/constants/access';
 
 export default function ProtectedRootPage() {
   const router = useRouter();
@@ -14,12 +15,16 @@ export default function ProtectedRootPage() {
       return;
     }
 
-    if (user?.role === 'admin') {
+    if (process.env.NODE_ENV !== 'production') {
+      console.info('[frontend.protected.root] currentUser role', { username: user?.username, role: user?.role });
+    }
+
+    if (canAccessAdminArea(user)) {
       router.replace('/admin');
       return;
     }
 
-    if (user?.role === 'seller') {
+    if (isSeller(user)) {
       router.replace('/seller');
       return;
     }
