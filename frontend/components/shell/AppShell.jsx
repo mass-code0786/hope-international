@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getMe } from '@/lib/services/authService';
 import { getSellerMe } from '@/lib/services/sellerService';
 import { queryKeys } from '@/lib/query/queryKeys';
+import { ProfileSkeleton } from '@/components/ui/PageSkeletons';
 
 export function AppShell({ children }) {
   const router = useRouter();
@@ -23,20 +24,24 @@ export function AppShell({ children }) {
   const meQuery = useQuery({
     queryKey: queryKeys.me,
     queryFn: getMe,
-    enabled: Boolean(token),
+    enabled: hydrated && Boolean(token),
     retry: false,
+    initialData: user || undefined,
+    staleTime: 30_000,
     onError: () => {
       clearSession();
       router.replace('/login');
     }
   });
 
+  const resolvedUser = meQuery.data ?? user ?? null;
+
   const sellerQuery = useQuery({
     queryKey: queryKeys.sellerMe,
     queryFn: getSellerMe,
-    enabled: Boolean(token),
+    enabled: hydrated && Boolean(token),
     retry: false,
-    staleTime: 0
+    staleTime: 30_000
   });
 
   useEffect(() => {
@@ -49,17 +54,26 @@ export function AppShell({ children }) {
   }, [hydrated, token, router]);
 
   const isShopRoute = pathname === '/shop' || pathname.startsWith('/shop/');
+  const isAuthBootstrapping = !hydrated || (Boolean(token) && meQuery.isLoading && !resolvedUser);
+
+  if (isAuthBootstrapping) {
+    return (
+      <div className="min-h-screen bg-[#f5f6f8] p-3.5 md:p-5">
+        <ProfileSkeleton />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f5f6f8] text-text md:flex">
-      <Sidebar user={user} sellerActive={Boolean(sellerQuery.data?.canAccessDashboard)} />
+      <Sidebar user={resolvedUser} sellerActive={Boolean(sellerQuery.data?.canAccessDashboard)} />
       <main className="w-full md:overflow-x-hidden">
         <div className={`mx-auto w-full max-w-7xl pb-24 md:p-5 md:pb-6 ${isShopRoute ? 'p-3 md:p-5' : 'p-3.5 md:p-5'}`}>
-          {isShopRoute ? null : <Topbar user={user} />}
+          {isShopRoute ? null : <Topbar user={resolvedUser} />}
           {children}
         </div>
       </main>
-      <BottomNav user={user} sellerActive={Boolean(sellerQuery.data?.canAccessDashboard)} />
+      <BottomNav user={resolvedUser} sellerActive={Boolean(sellerQuery.data?.canAccessDashboard)} />
     </div>
   );
 }

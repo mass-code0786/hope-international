@@ -20,18 +20,25 @@ import { isSeller } from '@/lib/constants/access';
 export default function ProfilePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const meQuery = useQuery({ queryKey: queryKeys.me, queryFn: getMe });
   const clearSession = useAuthStore((s) => s.clearSession);
+  const token = useAuthStore((s) => s.token);
+  const hydrated = useAuthStore((s) => s.hydrated);
+  const sessionUser = useAuthStore((s) => s.user);
 
-  if (meQuery.isLoading) return <ProfileSkeleton />;
-  if (meQuery.isError) return <ErrorState message="Profile data could not be loaded." onRetry={meQuery.refetch} />;
+  const meQuery = useQuery({
+    queryKey: queryKeys.me,
+    queryFn: getMe,
+    enabled: hydrated && Boolean(token),
+    retry: false,
+    initialData: sessionUser || undefined
+  });
 
-  const user = meQuery.data || {};
+  const user = meQuery.data ?? sessionUser ?? null;
   const referralLink = useMemo(() => {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const referralCode = user.username || '';
+    const referralCode = user?.username || '';
     return `${appUrl}/register?ref=${encodeURIComponent(referralCode)}`;
-  }, [user.username]);
+  }, [user?.username]);
 
   async function onLogout() {
     clearStoredToken();
@@ -49,6 +56,10 @@ export default function ProfilePage() {
       toast.error('Unable to copy referral link');
     }
   }
+
+  if (!hydrated || (token && meQuery.isLoading && !user)) return <ProfileSkeleton />;
+  if (token && meQuery.isError && !user) return <ErrorState message="Profile data could not be loaded." onRetry={meQuery.refetch} />;
+  if (!user) return <ProfileSkeleton />;
 
   return (
     <div className="space-y-3">
@@ -96,4 +107,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
