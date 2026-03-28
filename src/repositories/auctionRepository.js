@@ -6,6 +6,16 @@ function coerceJsonArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
+async function getTableColumns(client, tableName) {
+  const { rows } = await q(client).query(
+    `SELECT column_name
+     FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = $1`,
+    [tableName]
+  );
+  return new Set(rows.map((row) => row.column_name));
+}
+
 function normalizeAuctionRow(row) {
   if (!row) return null;
   return {
@@ -161,61 +171,45 @@ async function getAuctionForUpdate(client, auctionId) {
 }
 
 async function createAuction(client, payload) {
+  const columns = await getTableColumns(client, 'auctions');
+  const fieldNames = [];
+  const values = [];
+
+  function addField(column, value) {
+    if (!columns.has(column)) return;
+    fieldNames.push(column);
+    values.push(value);
+  }
+
+  addField('product_id', payload.productId || null);
+  addField('title', payload.title);
+  addField('short_description', payload.shortDescription || null);
+  addField('description', payload.description || null);
+  addField('specifications', JSON.stringify(coerceJsonArray(payload.specifications)));
+  addField('image_url', payload.imageUrl || null);
+  addField('gallery', JSON.stringify(coerceJsonArray(payload.gallery)));
+  addField('starting_price', payload.startingPrice);
+  addField('min_bid_increment', payload.minBidIncrement);
+  addField('current_bid', payload.currentBid);
+  addField('entry_price', payload.entryPrice);
+  addField('hidden_capacity', payload.hiddenCapacity);
+  addField('stock_quantity', payload.stockQuantity);
+  addField('reward_mode', payload.rewardMode);
+  addField('reward_value', payload.rewardValue || null);
+  addField('total_entries', payload.totalEntries || 0);
+  addField('has_tie', payload.hasTie ?? false);
+  addField('winner_count', payload.winnerCount || 0);
+  addField('start_at', payload.startAt);
+  addField('end_at', payload.endAt);
+  addField('status', payload.status);
+  addField('is_active', payload.isActive ?? true);
+  addField('created_by', payload.createdBy || null);
+  addField('updated_by', payload.updatedBy || null);
+
+  const placeholders = fieldNames.map((_, index) => `${index + 1}`).join(', ');
   const { rows } = await q(client).query(
-    `INSERT INTO auctions (
-      product_id,
-      title,
-      short_description,
-      description,
-      specifications,
-      image_url,
-      gallery,
-      starting_price,
-      min_bid_increment,
-      current_bid,
-      entry_price,
-      hidden_capacity,
-      stock_quantity,
-      reward_mode,
-      reward_value,
-      total_entries,
-      has_tie,
-      winner_count,
-      start_at,
-      end_at,
-      status,
-      is_active,
-      created_by,
-      updated_by
-     )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
-     RETURNING *`,
-    [
-      payload.productId || null,
-      payload.title,
-      payload.shortDescription || null,
-      payload.description || null,
-      JSON.stringify(coerceJsonArray(payload.specifications)),
-      payload.imageUrl || null,
-      JSON.stringify(coerceJsonArray(payload.gallery)),
-      payload.startingPrice,
-      payload.minBidIncrement,
-      payload.currentBid,
-      payload.entryPrice,
-      payload.hiddenCapacity,
-      payload.stockQuantity,
-      payload.rewardMode,
-      payload.rewardValue || null,
-      payload.totalEntries || 0,
-      payload.hasTie ?? false,
-      payload.winnerCount || 0,
-      payload.startAt,
-      payload.endAt,
-      payload.status,
-      payload.isActive ?? true,
-      payload.createdBy || null,
-      payload.updatedBy || null
-    ]
+    `INSERT INTO auctions (${fieldNames.join(', ')}) VALUES (${placeholders}) RETURNING *`,
+    values
   );
 
   return {

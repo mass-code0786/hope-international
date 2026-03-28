@@ -9,12 +9,46 @@ function isAuctionSchemaError(error) {
   return ['42P01', '42703'].includes(error?.code);
 }
 
+async function safeAdminAuditLog(client, payload) {
+  try {
+    await adminRepository.logAdminAction(client, payload);
+  } catch (error) {
+    if (isAuctionSchemaError(error)) {
+      console.error('[admin.auctions.audit] schema mismatch', {
+        code: error.code,
+        message: error.message,
+        actionType: payload.actionType,
+        targetEntity: payload.targetEntity,
+        targetId: payload.targetId || null
+      });
+      return;
+    }
+    throw error;
+  }
+}
+
 async function assertAuctionProduct(client, productId) {
   const product = await adminRepository.getProductById(client, productId);
   if (!product) {
     throw new ApiError(400, 'Selected product was not found');
   }
   return product;
+}
+
+async function safeAuctionDetails(client, auctionId, fallbackAuction = null) {
+  try {
+    return await auctionService.getAuctionDetails(auctionId, null, { includeAdminFields: true });
+  } catch (error) {
+    if (isAuctionSchemaError(error)) {
+      console.error('[admin.auctions.details] schema mismatch', {
+        code: error.code,
+        message: error.message,
+        auctionId
+      });
+      return fallbackAuction || null;
+    }
+    throw error;
+  }
 }
 
 async function listAuctions(filters, paginationInput) {
@@ -69,7 +103,7 @@ async function listAuctions(filters, paginationInput) {
 }
 
 async function getAuction(auctionId) {
-  return auctionService.getAuctionDetails(auctionId, null, { includeAdminFields: true });
+  return withTransaction((client) => safeAuctionDetails(client, auctionId));
 }
 
 async function createAuction(adminUserId, payload) {
@@ -98,7 +132,7 @@ async function createAuction(adminUserId, payload) {
       updatedBy: adminUserId
     });
 
-    await adminRepository.logAdminAction(client, {
+    await safeAdminAuditLog(client, {
       adminUserId,
       actionType: 'auction.create',
       targetEntity: 'auction',
@@ -108,7 +142,7 @@ async function createAuction(adminUserId, payload) {
       metadata: { title: created.title, productId: product.id, productName: product.name, hiddenCapacity: created.hidden_capacity }
     });
 
-    return auctionService.getAuctionDetails(created.id, null, { includeAdminFields: true });
+    return safeAuctionDetails(client, created.id, created);
   });
 }
 
@@ -136,7 +170,7 @@ async function updateAuction(adminUserId, auctionId, payload) {
       updatedBy: adminUserId
     });
 
-    await adminRepository.logAdminAction(client, {
+    await safeAdminAuditLog(client, {
       adminUserId,
       actionType: 'auction.update',
       targetEntity: 'auction',
@@ -146,7 +180,7 @@ async function updateAuction(adminUserId, auctionId, payload) {
       metadata: { title: updated.title, productId: product.id, productName: product.name }
     });
 
-    return auctionService.getAuctionDetails(updated.id, null, { includeAdminFields: true });
+    return safeAuctionDetails(client, updated.id, updated);
   });
 }
 
@@ -210,9 +244,9 @@ async function changeAuctionState(adminUserId, auctionId, action, reason) {
       await auctionService.ensureAuctionResolved(client, auctionId);
     }
 
-    const updated = await auctionService.getAuctionDetails(auctionId, null, { includeAdminFields: true });
+    const updated = await safeAuctionDetails(client, auctionId);
 
-    await adminRepository.logAdminAction(client, {
+    await safeAdminAuditLog(client, {
       adminUserId,
       actionType: `auction.${action}`,
       targetEntity: 'auction',

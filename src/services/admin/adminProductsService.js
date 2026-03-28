@@ -9,6 +9,28 @@ function toMoney(value) {
   return Number(Number(value).toFixed(2));
 }
 
+function isSchemaError(error) {
+  return ['42P01', '42703'].includes(error?.code);
+}
+
+async function safeAdminAuditLog(client, payload) {
+  try {
+    await adminRepository.logAdminAction(client, payload);
+  } catch (error) {
+    if (isSchemaError(error)) {
+      console.error('[admin.products.audit] schema mismatch', {
+        code: error.code,
+        message: error.message,
+        actionType: payload.actionType,
+        targetEntity: payload.targetEntity,
+        targetId: payload.targetId || null
+      });
+      return;
+    }
+    throw error;
+  }
+}
+
 async function listProducts(filters, paginationInput) {
   const pagination = normalizePagination(paginationInput);
   const result = await adminRepository.listProducts(null, filters, pagination);
@@ -37,7 +59,7 @@ async function createProduct(adminUserId, payload) {
       pv
     });
 
-    await adminRepository.logAdminAction(client, {
+    await safeAdminAuditLog(client, {
       adminUserId,
       actionType: 'product.create',
       targetEntity: 'product',
@@ -104,7 +126,7 @@ async function updateProduct(adminUserId, productId, payload) {
       });
     }
 
-    await adminRepository.logAdminAction(client, {
+    await safeAdminAuditLog(client, {
       adminUserId,
       actionType: 'product.update',
       targetEntity: 'product',
