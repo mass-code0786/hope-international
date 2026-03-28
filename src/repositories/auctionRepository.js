@@ -86,6 +86,105 @@ async function attachWinnerRows(client, auctions) {
   }));
 }
 
+function buildCompatStatusCase(columns, nowPlaceholder) {
+  const endedByCapacity = columns.has('hidden_capacity') && (columns.has('total_entries') || columns.has('total_bids'))
+    ? `COALESCE(a.${columns.has('total_entries') ? 'total_entries' : 'total_bids'}, 0) >= COALESCE(a.hidden_capacity, 2147483647)`
+    : 'FALSE';
+
+  return `
+    CASE
+      WHEN ${(columns.has('status') ? "a.status = 'cancelled'" : 'FALSE')} OR ${(columns.has('cancelled_at') ? 'a.cancelled_at IS NOT NULL' : 'FALSE')} THEN 'cancelled'
+      WHEN ${(columns.has('status') ? "a.status = 'ended'" : 'FALSE')} OR ${(columns.has('closed_at') ? 'a.closed_at IS NOT NULL' : 'FALSE')} OR ${(columns.has('end_at') ? `a.end_at <= ${nowPlaceholder}` : 'FALSE')} OR ${endedByCapacity} THEN 'ended'
+      WHEN ${(columns.has('is_active') ? 'a.is_active = true' : 'TRUE')} AND ${(columns.has('start_at') ? `a.start_at <= ${nowPlaceholder}` : 'TRUE')} AND ${(columns.has('end_at') ? `a.end_at > ${nowPlaceholder}` : 'TRUE')} THEN 'live'
+      ELSE 'upcoming'
+    END
+  `;
+}
+
+async function listAuctionsCompat(client, filters, pagination) {
+  const columns = await getTableColumns(client, 'auctions');
+  const values = [filters.now || new Date().toISOString()];
+  const statusCase = buildCompatStatusCase(columns, '$1');
+  const displayCurrentBid = columns.has('entry_price')
+    ? 'COALESCE(a.entry_price, a.current_bid, a.starting_price)::numeric(14,2)'
+    : columns.has('current_bid')
+      ? 'COALESCE(a.current_bid, a.starting_price)::numeric(14,2)'
+      : 'a.starting_price::numeric(14,2)';
+  const totalEntriesExpr = columns.has('total_entries')
+    ? 'COALESCE(a.total_entries, 0)'
+    : columns.has('total_bids')
+      ? 'COALESCE(a.total_bids, 0)'
+      : '0';
+  const where = [];
+
+  if (filters.status && filters.status !== 'all') {
+    values.push(filters.status);
+    where.push(`${statusCase} = $${values.length}`);
+  }
+
+  if (filters.search) {
+    values.push(`%${filters.search}%`);
+    const searchTerms = [`a.title ILIKE $${values.length}`];
+    if (columns.has('short_description')) {
+      searchTerms.push(`COALESCE(a.short_description, '') ILIKE $${values.length}`);
+    }
+    where.push(`(${searchTerms.join(' OR ')})`);
+  }
+
+  if (filters.onlyActive === true && columns.has('is_active')) {
+    where.push('a.is_active = true');
+  }
+
+  if (filters.onlyActive === true && columns.has('status')) {
+    where.push(`a.status <> 'cancelled'`);
+  }
+
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const sortParts = [
+    `CASE ${statusCase} WHEN 'live' THEN 0 WHEN 'upcoming' THEN 1 WHEN 'ended' THEN 2 ELSE 3 END`
+  ];
+  if (columns.has('start_at')) sortParts.push(`CASE WHEN ${statusCase} = 'upcoming' THEN a.start_at END ASC`);
+  if (columns.has('created_at')) sortParts.push(`CASE WHEN ${statusCase} = 'live' THEN a.created_at END DESC`);
+  if (columns.has('closed_at')) sortParts.push(`CASE WHEN ${statusCase} = 'ended' THEN a.closed_at END DESC NULLS LAST`);
+  sortParts.push(columns.has('created_at') ? 'a.created_at DESC' : '1 DESC');
+  const sortSql = `ORDER BY ${sortParts.join(', ')}`;
+
+  const listValues = [...values, pagination.limit, pagination.offset];
+  const { rows } = await q(client).query(
+    `SELECT
+      a.*,
+      ${statusCase} AS computed_status,
+      ${displayCurrentBid} AS display_current_bid,
+      ${totalEntriesExpr}::int AS total_entries,
+      NULL::text AS winner_username,
+      NULL::text AS winner_email,
+      NULL::text AS created_by_username,
+      NULL::text AS updated_by_username,
+      NULL::text AS product_name,
+      NULL::text AS product_sku,
+      NULL::numeric AS product_price,
+      NULL::text AS product_description,
+      NULL::boolean AS product_is_active
+     FROM auctions a
+     ${whereSql}
+     ${sortSql}
+     LIMIT $${listValues.length - 1} OFFSET $${listValues.length}`,
+    listValues
+  );
+
+  const countResult = await q(client).query(
+    `SELECT COUNT(*)
+     FROM auctions a
+     ${whereSql}`,
+    values
+  );
+
+  return {
+    items: rows.map(normalizeAuctionRow),
+    total: Number(countResult.rows[0]?.count || 0)
+  };
+}
+
 async function listAuctions(client, filters, pagination) {
   const values = [filters.now || new Date().toISOString()];
   const statusCase = buildAuctionStatusCase('$1');
@@ -206,7 +305,7 @@ async function createAuction(client, payload) {
   addField('created_by', payload.createdBy || null);
   addField('updated_by', payload.updatedBy || null);
 
-  const placeholders = fieldNames.map((_, index) => `${index + 1}`).join(', ');
+  const placeholders = fieldNames.map((_, index) => `$${index + 1}`).join(', ');
   const { rows } = await q(client).query(
     `INSERT INTO auctions (${fieldNames.join(', ')}) VALUES (${placeholders}) RETURNING *`,
     values
@@ -496,6 +595,7 @@ async function listUserAuctionHistory(client, userId, filters, pagination) {
 
 module.exports = {
   listAuctions,
+  listAuctionsCompat,
   getAuctionById,
   getAuctionForUpdate,
   createAuction,

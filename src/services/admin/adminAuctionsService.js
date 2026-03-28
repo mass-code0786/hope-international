@@ -6,9 +6,10 @@ const auctionRepository = require('../../repositories/auctionRepository');
 const auctionService = require('../auctionService');
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const AUCTION_SCHEMA_ERROR_CODES = ['42P01', '42703', '42883', '42804'];
 
 function isAuctionSchemaError(error) {
-  return ['42P01', '42703'].includes(error?.code);
+  return AUCTION_SCHEMA_ERROR_CODES.includes(error?.code);
 }
 
 function normalizeProductId(productId) {
@@ -89,19 +90,6 @@ async function listAuctions(filters, paginationInput) {
       pagination: buildPagination({ page: pagination.page, limit: pagination.limit, total: result.total })
     };
   } catch (error) {
-    if (isAuctionSchemaError(error)) {
-      console.error('[admin.auctions.list] schema mismatch', {
-        code: error.code,
-        message: error.message,
-        filters,
-        pagination
-      });
-      return {
-        data: [],
-        pagination: buildPagination({ page: pagination.page, limit: pagination.limit, total: 0 })
-      };
-    }
-
     console.error('[admin.auctions.list] failed', {
       code: error?.code || null,
       message: error?.message || 'Unknown admin auctions list failure',
@@ -109,6 +97,32 @@ async function listAuctions(filters, paginationInput) {
       pagination,
       stack: error?.stack || null
     });
+
+    if (isAuctionSchemaError(error)) {
+      try {
+        const fallback = await withTransaction((client) => auctionRepository.listAuctionsCompat(client, {
+          ...filters,
+          onlyActive: false
+        }, pagination));
+        return {
+          data: fallback.items,
+          pagination: buildPagination({ page: pagination.page, limit: pagination.limit, total: fallback.total })
+        };
+      } catch (fallbackError) {
+        console.error('[admin.auctions.list] compat fallback failed', {
+          code: fallbackError?.code || null,
+          message: fallbackError?.message || 'Unknown compat auctions list failure',
+          filters,
+          pagination,
+          stack: fallbackError?.stack || null
+        });
+        return {
+          data: [],
+          pagination: buildPagination({ page: pagination.page, limit: pagination.limit, total: 0 })
+        };
+      }
+    }
+
     throw error;
   }
 }
