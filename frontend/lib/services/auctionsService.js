@@ -1,18 +1,22 @@
 import { apiFetch } from '@/lib/api/client';
 
 const allowedAuctionStatuses = new Set(['live', 'upcoming', 'ended', 'cancelled']);
+const auctionStatusAliases = {
+  active: 'live'
+};
 
 function normalizeAuctionParams(params = {}) {
   const next = {};
   if (typeof params.status === 'string') {
     const normalizedStatus = params.status.trim().toLowerCase();
-    if (allowedAuctionStatuses.has(normalizedStatus)) next.status = normalizedStatus;
+    const safeStatus = auctionStatusAliases[normalizedStatus] || normalizedStatus;
+    if (allowedAuctionStatuses.has(safeStatus)) next.status = safeStatus;
   }
   if (typeof params.search === 'string' && params.search.trim()) next.search = params.search.trim().slice(0, 120);
   const page = Number(params.page);
-  if (Number.isInteger(page) && page > 0) next.page = page;
+  next.page = Number.isInteger(page) && page > 0 ? page : 1;
   const limit = Number(params.limit);
-  if (Number.isInteger(limit) && limit > 0) next.limit = limit;
+  next.limit = Number.isInteger(limit) && limit > 0 ? limit : 24;
   return next;
 }
 
@@ -53,3 +57,4 @@ export async function placeAuctionBid(id, entryCount) {
 export async function getMyAuctionHistory(params = {}) {
   return toEnvelope(await apiFetch(`/auctions/me/history${withQuery(params)}`));
 }
+

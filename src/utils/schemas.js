@@ -241,13 +241,18 @@ const sellerDocumentUploadSchema = z.object({
 
 const sellerDocumentIdParamSchema = z.object({ body: z.object({}), params: z.object({ id: uuid }), query: z.object({}) });
 
+function firstQueryValue(value) {
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
 const pagingQuery = z.object({
-  page: z.union([z.string(), z.number()]).optional().transform((value) => {
+  page: z.preprocess((value) => firstQueryValue(value), z.union([z.string(), z.number()]).optional()).transform((value) => {
     if (value === undefined || value === null || value === '') return undefined;
     const parsed = Number(value);
     return Number.isInteger(parsed) && parsed > 0 ? String(parsed) : undefined;
   }),
-  limit: z.union([z.string(), z.number()]).optional().transform((value) => {
+  limit: z.preprocess((value) => firstQueryValue(value), z.union([z.string(), z.number()]).optional()).transform((value) => {
     if (value === undefined || value === null || value === '') return undefined;
     const parsed = Number(value);
     return Number.isInteger(parsed) && parsed > 0 ? String(parsed) : undefined;
@@ -256,9 +261,10 @@ const pagingQuery = z.object({
 
 const auctionStatuses = ['upcoming', 'live', 'ended', 'cancelled'];
 
-const auctionStatusSchema = z.string().optional().transform((value) => {
+const auctionStatusSchema = z.preprocess((value) => firstQueryValue(value), z.string().optional()).transform((value) => {
   if (value === undefined || value === null || value === '') return undefined;
   const normalized = String(value).trim().toLowerCase();
+  if (normalized === 'active') return 'live';
   return auctionStatuses.includes(normalized) ? normalized : undefined;
 });
 
@@ -267,7 +273,11 @@ const auctionListQuerySchema = z.object({
   params: z.object({}),
   query: pagingQuery.extend({
     status: auctionStatusSchema,
-    search: z.string().trim().max(120).optional()
+    search: z.preprocess((value) => firstQueryValue(value), z.string().optional()).transform((value) => {
+      if (value === undefined || value === null) return undefined;
+      const normalized = String(value).trim();
+      return normalized ? normalized.slice(0, 120) : undefined;
+    })
   })
 });
 
@@ -283,7 +293,7 @@ const auctionHistoryQuerySchema = z.object({
   body: z.object({}),
   params: z.object({}),
   query: pagingQuery.extend({
-    kind: z.string().optional().transform((value) => {
+    kind: z.preprocess((value) => firstQueryValue(value), z.string().optional()).transform((value) => {
       if (value === undefined || value === null || value === '') return undefined;
       const normalized = String(value).trim().toLowerCase();
       return ['bids', 'joined', 'wins', 'history'].includes(normalized) ? normalized : undefined;
@@ -319,3 +329,4 @@ module.exports = {
   auctionBidSchema,
   auctionHistoryQuerySchema
 };
+

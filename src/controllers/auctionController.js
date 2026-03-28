@@ -2,14 +2,32 @@ const asyncHandler = require('../utils/asyncHandler');
 const { success } = require('../utils/response');
 const auctionService = require('../services/auctionService');
 
+function normalizeListQuery(query = {}) {
+  const statusAliases = {
+    active: 'live'
+  };
+  const status = typeof query.status === 'string' ? query.status.trim().toLowerCase() : undefined;
+  const normalizedStatus = statusAliases[status] || status;
+  const safeStatus = ['live', 'upcoming', 'ended', 'cancelled'].includes(normalizedStatus) ? normalizedStatus : undefined;
+  const safeSearch = typeof query.search === 'string' && query.search.trim() ? query.search.trim().slice(0, 120) : undefined;
+  const safePage = Number.isInteger(Number(query.page)) && Number(query.page) > 0 ? String(Number(query.page)) : '1';
+  const safeLimit = Number.isInteger(Number(query.limit)) && Number(query.limit) > 0 ? String(Number(query.limit)) : '24';
+
+  return {
+    filters: {
+      status: safeStatus,
+      search: safeSearch
+    },
+    pagination: {
+      page: safePage,
+      limit: safeLimit
+    }
+  };
+}
+
 const list = asyncHandler(async (req, res) => {
-  const result = await auctionService.listAuctions(req.user?.sub || null, {
-    status: req.query.status,
-    search: req.query.search
-  }, {
-    page: req.query.page,
-    limit: req.query.limit
-  });
+  const { filters, pagination } = normalizeListQuery(req.query);
+  const result = await auctionService.listAuctions(req.user?.sub || null, filters, pagination);
 
   return success(res, {
     data: result.data,
@@ -57,3 +75,4 @@ module.exports = {
   placeBid,
   myHistory
 };
+
