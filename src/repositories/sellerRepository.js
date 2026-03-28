@@ -245,9 +245,11 @@ async function createSellerProduct(client, payload) {
       moderation_status,
       moderation_notes,
       moderated_by,
-      moderated_at
+      moderated_at,
+      image_url,
+      gallery
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, false, $8, $9, 'pending', $10, NULL, NULL)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, false, $8, $9, 'pending', $10, NULL, NULL, $11, $12)
     RETURNING *`,
     [
       payload.sku,
@@ -259,7 +261,9 @@ async function createSellerProduct(client, payload) {
       payload.bv,
       payload.isQualifying ?? true,
       payload.sellerProfileId,
-      payload.moderationNotes || null
+      payload.moderationNotes || null,
+      payload.imageUrl || null,
+      JSON.stringify(Array.isArray(payload.gallery) ? payload.gallery : [])
     ]
   );
   return rows[0];
@@ -298,8 +302,10 @@ async function updateSellerProduct(client, productId, payload) {
          bv = $7,
          pv = $8,
          is_qualifying = $9,
+         image_url = $10,
+         gallery = $11,
          moderation_status = 'pending',
-         moderation_notes = $10,
+         moderation_notes = $12,
          moderated_by = NULL,
          moderated_at = NULL,
          is_active = false
@@ -315,6 +321,8 @@ async function updateSellerProduct(client, productId, payload) {
       payload.bv,
       payload.pv,
       payload.isQualifying ?? true,
+      payload.imageUrl || null,
+      JSON.stringify(Array.isArray(payload.gallery) ? payload.gallery : []),
       payload.moderationNotes || null
     ]
   );
@@ -799,3 +807,4 @@ module.exports = {
   setUserRole,
   createProductModerationLog
 };
+

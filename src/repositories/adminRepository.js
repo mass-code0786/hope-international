@@ -437,8 +437,8 @@ async function getProductById(client, productId) {
 
 async function createProduct(client, payload) {
   const { rows } = await q(client).query(
-    `INSERT INTO products (sku, name, description, category, price, bv, pv, is_active, is_qualifying)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `INSERT INTO products (sku, name, description, category, price, bv, pv, is_active, is_qualifying, image_url, gallery)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
      RETURNING *`,
     [
       payload.sku,
@@ -449,7 +449,9 @@ async function createProduct(client, payload) {
       payload.bv,
       payload.pv,
       payload.isActive ?? true,
-      payload.isQualifying ?? true
+      payload.isQualifying ?? true,
+      payload.imageUrl || null,
+      JSON.stringify(Array.isArray(payload.gallery) ? payload.gallery : [])
     ]
   );
   return rows[0];
@@ -467,10 +469,12 @@ async function updateProduct(client, productId, payload) {
          pv = $8,
          is_active = $9,
          is_qualifying = $10,
-         moderation_status = $11,
-         moderation_notes = $12,
-         moderated_by = $13,
-         moderated_at = $14
+         image_url = $11,
+         gallery = $12,
+         moderation_status = $13,
+         moderation_notes = $14,
+         moderated_by = $15,
+         moderated_at = $16
      WHERE id = $1
      RETURNING *`,
     [
@@ -484,6 +488,8 @@ async function updateProduct(client, productId, payload) {
       payload.pv,
       payload.isActive ?? true,
       payload.isQualifying ?? true,
+      payload.imageUrl || null,
+      JSON.stringify(Array.isArray(payload.gallery) ? payload.gallery : []),
       payload.moderationStatus || 'approved',
       payload.moderationNotes || null,
       payload.moderatedBy || null,
@@ -980,3 +986,4 @@ module.exports = {
   getSettings,
   upsertSetting
 };
+

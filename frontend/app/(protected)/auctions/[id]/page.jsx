@@ -10,6 +10,14 @@ import { AuctionCountdown, AuctionStatusBadge, formatAuctionMoney } from '@/comp
 import { getAuctionDetails, placeAuctionBid } from '@/lib/services/auctionsService';
 import { queryKeys } from '@/lib/query/queryKeys';
 
+function getAuctionImages(auction) {
+  const ownGallery = Array.isArray(auction?.gallery) ? auction.gallery.filter(Boolean) : [];
+  const productGallery = Array.isArray(auction?.product_gallery) ? auction.product_gallery.filter(Boolean) : [];
+  const primary = auction?.image_url || ownGallery[0] || auction?.product_image_url || productGallery[0] || '';
+  const rest = [...ownGallery, ...productGallery].filter((item) => item && item !== primary);
+  return primary ? [primary, ...rest] : [];
+}
+
 export default function AuctionDetailPage() {
   const params = useParams();
   const auctionId = params?.id;
@@ -41,7 +49,7 @@ export default function AuctionDetailPage() {
   const status = auction?.computed_status || auction?.status;
   const entryPrice = Number(auction?.entry_price || auction?.display_current_bid || auction?.starting_price || 0.5);
   const entryOptions = [1, 3, 5].map((count) => ({ count, total: count * entryPrice }));
-  const images = auction?.gallery?.length ? auction.gallery : [auction?.image_url].filter(Boolean);
+  const images = getAuctionImages(auction);
 
   return (
     <div className="space-y-4">
@@ -87,21 +95,12 @@ export default function AuctionDetailPage() {
 
             <div className="mt-4 space-y-2">
               {entryOptions.map((option) => (
-                <button
-                  key={option.count}
-                  onClick={() => bidMutation.mutate(option.count)}
-                  disabled={bidMutation.isPending || status !== 'live'}
-                  className="flex w-full items-center justify-between rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-                >
+                <button key={option.count} onClick={() => bidMutation.mutate(option.count)} disabled={bidMutation.isPending || status !== 'live'} className="flex w-full items-center justify-between rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
                   <span>{status === 'live' ? `Buy ${option.count} entr${option.count > 1 ? 'ies' : 'y'}` : status === 'upcoming' ? 'Auction not started yet' : 'Entries closed'}</span>
                   <span>{formatAuctionMoney(option.total)}</span>
                 </button>
               ))}
-              {Array.isArray(auction.winners) && auction.winners.length > 0 ? (
-                <div className="rounded-2xl bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
-                  Winners: {auction.winners.map((winner) => winner.username).join(', ')}
-                </div>
-              ) : null}
+              {Array.isArray(auction.winners) && auction.winners.length > 0 ? <div className="rounded-2xl bg-emerald-50 px-3 py-2 text-xs text-emerald-700">Winners: {auction.winners.map((winner) => winner.username).join(', ')}</div> : null}
             </div>
           </div>
 

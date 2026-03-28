@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { ArrowRight, Plus, ShieldCheck, Star } from 'lucide-react';
+import { ArrowRight, ImageOff, Plus, ShieldCheck, Star } from 'lucide-react';
 import { currency } from '@/lib/utils/format';
 import { addToCart } from '@/lib/utils/cart';
 
@@ -46,6 +46,10 @@ function buildImageTheme(seed) {
   return themes[index % themes.length];
 }
 
+function getProductCover(product) {
+  return product?.image_url || product?.gallery?.[0] || '';
+}
+
 export function ProductCard({ product, onBuy, isBuying = false, disableBuying = false }) {
   const safeProduct = product || {};
   const href = safeProduct?.id ? `/shop/${encodeURIComponent(String(safeProduct.id))}` : '/shop';
@@ -55,6 +59,7 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
   const rating = getRating(safeProduct);
   const category = getCategory(safeProduct);
   const imageTheme = buildImageTheme(safeProduct.id || safeProduct.name);
+  const cover = getProductCover(safeProduct);
 
   return (
     <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
@@ -66,6 +71,13 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
           <Star size={9} className="fill-amber-400 text-amber-400" />
           {rating}
         </span>
+        {cover ? (
+          <img src={cover} alt={safeProduct.name || 'Product'} className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-slate-500">
+            <ImageOff size={18} />
+          </div>
+        )}
       </Link>
 
       <div className="space-y-1.5 p-2">

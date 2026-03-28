@@ -23,7 +23,11 @@ export default function AdminAuctionsPage() {
   }
 
   const envelope = auctionsQuery.data || {};
-  const rows = Array.isArray(envelope.data) ? envelope.data : [];
+  const rows = Array.isArray(envelope.data?.items)
+    ? envelope.data.items
+    : Array.isArray(envelope.data)
+      ? envelope.data
+      : [];
 
   return (
     <div className="space-y-5">

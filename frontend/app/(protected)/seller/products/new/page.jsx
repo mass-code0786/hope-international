@@ -17,9 +17,15 @@ const initialState = {
   category: '',
   price: '',
   bv: '',
+  imageUrl: '',
+  galleryText: '',
   isQualifying: true,
   moderationNotes: ''
 };
+
+function parseGallery(text) {
+  return String(text || '').split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
+}
 
 function CreateSellerProductContent() {
   const router = useRouter();
@@ -46,6 +52,8 @@ function CreateSellerProductContent() {
       ...form,
       price: Number(form.price),
       bv: Number(form.bv),
+      imageUrl: form.imageUrl || undefined,
+      gallery: parseGallery(form.galleryText),
       moderationNotes: form.category
         ? `${form.moderationNotes ? `${form.moderationNotes}\n` : ''}Category: ${form.category}`
         : form.moderationNotes

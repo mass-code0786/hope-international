@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { formatAuctionMoney } from '@/components/auctions/AuctionUi';
+import { compressImageFile, compressImageFiles } from '@/lib/utils/imageUpload';
 
 const EMPTY_FORM = {
   productId: '',
@@ -68,8 +69,15 @@ export function toAuctionFormValues(auction) {
   };
 }
 
+function PreviewImage({ src, alt }) {
+  if (!src) return <div className="flex h-24 items-center justify-center rounded-2xl border border-white/10 bg-cardSoft text-xs text-muted">No image</div>;
+  return <img src={src} alt={alt} className="h-24 w-full rounded-2xl border border-white/10 object-cover" />;
+}
+
 export function AuctionAdminForm({ initialValues, onSubmit, isSaving = false, submitLabel = 'Save Auction', products = [] }) {
   const [form, setForm] = useState(initialValues || EMPTY_FORM);
+  const [isUploadingMain, setIsUploadingMain] = useState(false);
+  const [isUploadingGallery, setIsUploadingGallery] = useState(false);
 
   useEffect(() => {
     setForm(initialValues || EMPTY_FORM);
@@ -83,6 +91,33 @@ export function AuctionAdminForm({ initialValues, onSubmit, isSaving = false, su
   const previewGallery = useMemo(() => parseGallery(form.galleryText), [form.galleryText]);
   const selectedProduct = useMemo(() => normalizedProducts.find((product) => String(product.id) === String(form.productId)) || null, [normalizedProducts, form.productId]);
   const hasValidProductId = isUuid(selectedProduct?.id || form.productId);
+  const productFallback = selectedProduct?.image_url || selectedProduct?.gallery?.[0] || '';
+
+  async function handleMainImageChange(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsUploadingMain(true);
+      const imageUrl = await compressImageFile(file, { maxWidth: 1400, maxHeight: 1400 });
+      setForm((prev) => ({ ...prev, imageUrl }));
+    } finally {
+      setIsUploadingMain(false);
+      event.target.value = '';
+    }
+  }
+
+  async function handleGalleryChange(event) {
+    const files = event.target.files;
+    if (!files?.length) return;
+    try {
+      setIsUploadingGallery(true);
+      const uploaded = await compressImageFiles(files, { maxWidth: 1400, maxHeight: 1400 });
+      setForm((prev) => ({ ...prev, galleryText: [...parseGallery(prev.galleryText), ...uploaded].join('\n') }));
+    } finally {
+      setIsUploadingGallery(false);
+      event.target.value = '';
+    }
+  }
 
   function handleSubmit() {
     const resolvedProductId = String(selectedProduct?.id || form.productId || '').trim();
@@ -140,14 +175,23 @@ export function AuctionAdminForm({ initialValues, onSubmit, isSaving = false, su
       </label>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <label className="space-y-2 text-sm text-muted">
-          <span>Image URL</span>
-          <input value={form.imageUrl} onChange={(e) => setForm((prev) => ({ ...prev, imageUrl: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-cardSoft px-3 py-2.5 text-sm text-text" />
-        </label>
-        <label className="space-y-2 text-sm text-muted">
-          <span>Gallery URLs</span>
+        <div className="space-y-2 text-sm text-muted">
+          <span>Primary auction image</span>
+          <input type="file" accept="image/*" onChange={handleMainImageChange} className="w-full rounded-2xl border border-white/10 bg-cardSoft px-3 py-2.5 text-sm text-text" />
+          <input value={form.imageUrl} onChange={(e) => setForm((prev) => ({ ...prev, imageUrl: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-cardSoft px-3 py-2.5 text-sm text-text" placeholder="Image URL or uploaded data URL" />
+          <p className="text-xs text-muted">{isUploadingMain ? 'Uploading image...' : 'If empty, user view falls back to the linked product image.'}</p>
+        </div>
+        <div className="space-y-2 text-sm text-muted">
+          <span>Gallery images</span>
+          <input type="file" accept="image/*" multiple onChange={handleGalleryChange} className="w-full rounded-2xl border border-white/10 bg-cardSoft px-3 py-2.5 text-sm text-text" />
           <textarea value={form.galleryText} onChange={(e) => setForm((prev) => ({ ...prev, galleryText: e.target.value }))} rows={4} placeholder="One URL per line" className="w-full rounded-2xl border border-white/10 bg-cardSoft px-3 py-2.5 text-sm text-text" />
-        </label>
+          <p className="text-xs text-muted">{isUploadingGallery ? 'Uploading gallery...' : `${previewGallery.length} gallery image${previewGallery.length === 1 ? '' : 's'}`}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <PreviewImage src={form.imageUrl || productFallback} alt={form.title || 'Auction preview'} />
+        {previewGallery.slice(0, 3).map((src, index) => <PreviewImage key={`${src}-${index}`} src={src} alt={`Gallery ${index + 1}`} />)}
       </div>
 
       <label className="space-y-2 text-sm text-muted">
@@ -208,10 +252,10 @@ export function AuctionAdminForm({ initialValues, onSubmit, isSaving = false, su
 
       <button
         onClick={handleSubmit}
-        disabled={isSaving || !form.productId || !hasValidProductId}
+        disabled={isSaving || isUploadingMain || isUploadingGallery || !form.productId || !hasValidProductId}
         className="rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {isSaving ? 'Saving...' : submitLabel}
+        {isSaving || isUploadingMain || isUploadingGallery ? 'Saving...' : submitLabel}
       </button>
     </div>
   );

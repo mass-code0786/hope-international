@@ -4,8 +4,8 @@ function q(client) {
 
 async function createProduct(client, payload) {
   const { rows } = await q(client).query(
-    `INSERT INTO products (sku, name, description, category, price, pv, bv, is_active, is_qualifying)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `INSERT INTO products (sku, name, description, category, price, pv, bv, is_active, is_qualifying, image_url, gallery)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
      RETURNING *`,
     [
       payload.sku,
@@ -16,7 +16,9 @@ async function createProduct(client, payload) {
       payload.pv,
       payload.bv,
       payload.isActive ?? true,
-      payload.isQualifying ?? true
+      payload.isQualifying ?? true,
+      payload.imageUrl || null,
+      JSON.stringify(Array.isArray(payload.gallery) ? payload.gallery : [])
     ]
   );
   return rows[0];

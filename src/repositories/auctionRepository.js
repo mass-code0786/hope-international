@@ -21,6 +21,7 @@ function normalizeAuctionRow(row) {
   return {
     ...row,
     gallery: coerceJsonArray(row.gallery),
+    product_gallery: coerceJsonArray(row.product_gallery),
     specifications: coerceJsonArray(row.specifications)
   };
 }
@@ -52,6 +53,8 @@ function buildAuctionSelect(nowPlaceholder) {
       p.sku AS product_sku,
       p.price AS product_price,
       p.description AS product_description,
+      p.image_url AS product_image_url,
+      p.gallery AS product_gallery,
       p.is_active AS product_is_active
     FROM auctions a
     LEFT JOIN users winner ON winner.id = a.winner_user_id
@@ -164,6 +167,8 @@ async function listAuctionsCompat(client, filters, pagination) {
       NULL::text AS product_sku,
       NULL::numeric AS product_price,
       NULL::text AS product_description,
+      NULL::text AS product_image_url,
+      '[]'::jsonb AS product_gallery,
       NULL::boolean AS product_is_active
      FROM auctions a
      ${whereSql}
@@ -555,6 +560,8 @@ async function listUserAuctionHistory(client, userId, filters, pagination) {
       p.sku AS product_sku,
       p.price AS product_price,
       p.description AS product_description,
+      p.image_url AS product_image_url,
+      p.gallery AS product_gallery,
       p.is_active AS product_is_active,
       EXISTS (SELECT 1 FROM auction_winners aw WHERE aw.auction_id = a.id AND aw.user_id = $1) AS is_winner,
       (
@@ -611,3 +618,6 @@ module.exports = {
   getUserBidStats,
   listUserAuctionHistory
 };
+
+
+

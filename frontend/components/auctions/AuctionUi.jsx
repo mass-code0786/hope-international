@@ -51,8 +51,17 @@ export function AuctionCountdown({ startAt, endAt, status }) {
   );
 }
 
+function getAuctionImages(auction) {
+  const ownGallery = Array.isArray(auction?.gallery) ? auction.gallery.filter(Boolean) : [];
+  const productGallery = Array.isArray(auction?.product_gallery) ? auction.product_gallery.filter(Boolean) : [];
+  const primary = auction?.image_url || ownGallery[0] || auction?.product_image_url || productGallery[0] || '';
+  const rest = [...ownGallery, ...productGallery].filter((item) => item && item !== primary);
+  return primary ? [primary, ...rest] : [];
+}
+
 export function AuctionCard({ auction }) {
-  const cover = auction.image_url || auction.gallery?.[0] || 'https://placehold.co/600x400/e2e8f0/334155?text=Auction';
+  const images = getAuctionImages(auction);
+  const cover = images[0] || 'https://placehold.co/600x400/e2e8f0/334155?text=Auction';
   const live = auction.computed_status || auction.status;
   const winnerCount = Array.isArray(auction.winners) ? auction.winners.length : 0;
 

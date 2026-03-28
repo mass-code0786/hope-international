@@ -15,6 +15,10 @@ import { useSellerProducts } from '@/hooks/useSellerProducts';
 import { updateSellerProduct } from '@/lib/services/sellerService';
 import { queryKeys } from '@/lib/query/queryKeys';
 
+function parseGallery(text) {
+  return String(text || '').split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
+}
+
 function EditSellerProductContent() {
   const params = useParams();
   const productId = Array.isArray(params?.id) ? params.id[0] : params?.id;
@@ -34,6 +38,8 @@ function EditSellerProductContent() {
       category: '',
       price: product.price ?? '',
       bv: product.bv ?? '',
+      imageUrl: product.image_url || '',
+      galleryText: Array.isArray(product.gallery) ? product.gallery.join('\n') : '',
       isQualifying: product.is_qualifying ?? true,
       moderationNotes: product.moderation_notes || ''
     });
@@ -59,6 +65,8 @@ function EditSellerProductContent() {
       ...form,
       price: Number(form.price),
       bv: Number(form.bv),
+      imageUrl: form.imageUrl || undefined,
+      gallery: parseGallery(form.galleryText),
       moderationNotes: form.category
         ? `${form.moderationNotes ? `${form.moderationNotes}\n` : ''}Category: ${form.category}`
         : form.moderationNotes

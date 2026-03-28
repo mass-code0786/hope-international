@@ -48,6 +48,8 @@ const adminProductCreateSchema = z.object({
     category: z.string().min(2).max(120).optional(),
     price: z.number().nonnegative(),
     bv: z.number().nonnegative(),
+    imageUrl: z.string().min(3).max(1000000).optional(),
+    gallery: z.array(z.string().min(3).max(1000000)).optional(),
     isActive: z.boolean().optional(),
     isQualifying: z.boolean().optional()
   }),
@@ -63,6 +65,8 @@ const adminProductUpdateSchema = z.object({
     category: z.string().min(2).max(120).optional(),
     price: z.number().nonnegative().optional(),
     bv: z.number().nonnegative().optional(),
+    imageUrl: z.string().min(3).max(1000000).optional(),
+    gallery: z.array(z.string().min(3).max(1000000)).optional(),
     isActive: z.boolean().optional(),
     isQualifying: z.boolean().optional(),
     moderationStatus: z.enum(['pending', 'approved', 'rejected']).optional(),
@@ -226,3 +230,4 @@ module.exports = {
   adminAuctionIdParamSchema,
   adminAuctionActionSchema
 };
+

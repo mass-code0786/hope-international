@@ -86,7 +86,10 @@ async function listAuctions(filters, paginationInput) {
     });
 
     return {
-      data: result.items,
+      items: Array.isArray(result.items) ? result.items : [],
+      total: Number(result.total || 0),
+      page: pagination.page,
+      limit: pagination.limit,
       pagination: buildPagination({ page: pagination.page, limit: pagination.limit, total: result.total })
     };
   } catch (error) {
@@ -105,7 +108,10 @@ async function listAuctions(filters, paginationInput) {
           onlyActive: false
         }, pagination));
         return {
-          data: fallback.items,
+          items: Array.isArray(fallback.items) ? fallback.items : [],
+          total: Number(fallback.total || 0),
+          page: pagination.page,
+          limit: pagination.limit,
           pagination: buildPagination({ page: pagination.page, limit: pagination.limit, total: fallback.total })
         };
       } catch (fallbackError) {
@@ -117,7 +123,10 @@ async function listAuctions(filters, paginationInput) {
           stack: fallbackError?.stack || null
         });
         return {
-          data: [],
+          items: [],
+          total: 0,
+          page: pagination.page,
+          limit: pagination.limit,
           pagination: buildPagination({ page: pagination.page, limit: pagination.limit, total: 0 })
         };
       }
@@ -133,6 +142,12 @@ async function getAuction(auctionId) {
 
 async function createAuction(adminUserId, payload) {
   return withTransaction(async (client) => {
+    console.error('[admin.auctions.create] payload', {
+      productId: payload?.productId ?? null,
+      productIdType: typeof payload?.productId,
+      title: payload?.title ?? null
+    });
+
     const normalizedProductId = normalizeProductId(payload.productId);
     const product = await assertAuctionProduct(client, normalizedProductId);
 
@@ -290,3 +305,4 @@ module.exports = {
   updateAuction,
   changeAuctionState
 };
+

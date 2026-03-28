@@ -89,6 +89,8 @@ async function updateProduct(adminUserId, productId, payload) {
       bv: payload.bv ?? before.bv,
       isActive: payload.isActive ?? before.is_active,
       isQualifying: payload.isQualifying ?? before.is_qualifying,
+      imageUrl: payload.imageUrl ?? before.image_url,
+      gallery: payload.gallery ?? before.gallery,
       moderationStatus: payload.moderationStatus ?? before.moderation_status,
       moderationNotes: payload.moderationNotes ?? before.moderation_notes
     };
@@ -146,3 +148,4 @@ module.exports = {
   createProduct,
   updateProduct
 };
+

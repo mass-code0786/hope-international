@@ -151,6 +151,8 @@ async function getProduct(userId, productId) {
     price: product.price,
     bv: product.bv,
     pv: product.pv,
+    image_url: product.image_url,
+    gallery: product.gallery,
     moderation_status: product.moderation_status,
     moderation_notes: product.moderation_notes,
     is_active: product.is_active,
@@ -310,3 +312,4 @@ module.exports = {
   listDocuments,
   deleteDocument
 };
+

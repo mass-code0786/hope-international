@@ -12,7 +12,12 @@ const list = asyncHandler(async (req, res) => {
   });
 
   return success(res, {
-    data: result.data,
+    data: {
+      items: result.items,
+      total: result.total,
+      page: result.page,
+      limit: result.limit
+    },
     pagination: result.pagination,
     message: 'Admin auctions fetched successfully'
   });
@@ -58,3 +63,4 @@ module.exports = {
   update,
   changeState
 };
+
