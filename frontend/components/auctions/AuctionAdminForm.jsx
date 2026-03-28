@@ -21,6 +21,12 @@ const EMPTY_FORM = {
   isActive: true
 };
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUuid(value) {
+  return UUID_PATTERN.test(String(value || '').trim());
+}
+
 function toLocalDateTimeInput(value) {
   if (!value) return '';
   const date = new Date(value);
@@ -44,7 +50,7 @@ function parseSpecs(text) {
 export function toAuctionFormValues(auction) {
   if (!auction) return EMPTY_FORM;
   return {
-    productId: auction.product_id || '',
+    productId: String(auction.product_id || ''),
     title: auction.title || '',
     shortDescription: auction.short_description || '',
     description: auction.description || '',
@@ -69,20 +75,52 @@ export function AuctionAdminForm({ initialValues, onSubmit, isSaving = false, su
     setForm(initialValues || EMPTY_FORM);
   }, [initialValues]);
 
+  const normalizedProducts = useMemo(() => (
+    Array.isArray(products)
+      ? products.map((product) => ({ ...product, id: String(product?.id || '') }))
+      : []
+  ), [products]);
   const previewGallery = useMemo(() => parseGallery(form.galleryText), [form.galleryText]);
-  const selectedProduct = useMemo(() => products.find((product) => product.id === form.productId) || null, [products, form.productId]);
+  const selectedProduct = useMemo(() => normalizedProducts.find((product) => String(product.id) === String(form.productId)) || null, [normalizedProducts, form.productId]);
+  const hasValidProductId = isUuid(selectedProduct?.id || form.productId);
+
+  function handleSubmit() {
+    const resolvedProductId = String(selectedProduct?.id || form.productId || '').trim();
+    if (!isUuid(resolvedProductId)) {
+      return;
+    }
+
+    onSubmit({
+      productId: resolvedProductId,
+      title: form.title,
+      shortDescription: form.shortDescription,
+      description: form.description,
+      imageUrl: form.imageUrl,
+      gallery: parseGallery(form.galleryText),
+      specifications: parseSpecs(form.specsText),
+      entryPrice: Number(form.entryPrice || 0.5),
+      hiddenCapacity: Number(form.hiddenCapacity || 1),
+      stockQuantity: Number(form.stockQuantity || 1),
+      rewardMode: form.rewardMode,
+      rewardValue: form.rewardMode === 'split' ? Number(form.rewardValue || 0.5) : undefined,
+      startAt: new Date(form.startAt).toISOString(),
+      endAt: new Date(form.endAt).toISOString(),
+      isActive: Boolean(form.isActive)
+    });
+  }
 
   return (
     <div className="space-y-4 rounded-3xl border border-white/10 bg-card p-5">
       <label className="space-y-2 text-sm text-muted">
         <span>Product</span>
-        <select value={form.productId} onChange={(e) => setForm((prev) => ({ ...prev, productId: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-cardSoft px-3 py-2.5 text-sm text-text">
+        <select value={form.productId} onChange={(e) => setForm((prev) => ({ ...prev, productId: String(e.target.value || '') }))} className="w-full rounded-2xl border border-white/10 bg-cardSoft px-3 py-2.5 text-sm text-text">
           <option value="">Select product</option>
-          {products.map((product) => (
-            <option key={product.id} value={product.id}>{product.name} ({product.sku})</option>
+          {normalizedProducts.map((product) => (
+            <option key={product.id} value={String(product.id)}>{product.name} ({product.sku})</option>
           ))}
         </select>
         {selectedProduct ? <p className="text-xs text-muted">Catalog price: ${Number(selectedProduct.price || 0).toFixed(2)}</p> : null}
+        {!hasValidProductId && form.productId ? <p className="text-xs text-rose-300">Selected product id is invalid. Please re-select a product.</p> : null}
       </label>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -169,24 +207,8 @@ export function AuctionAdminForm({ initialValues, onSubmit, isSaving = false, su
       </div>
 
       <button
-        onClick={() => onSubmit({
-          productId: form.productId,
-          title: form.title,
-          shortDescription: form.shortDescription,
-          description: form.description,
-          imageUrl: form.imageUrl,
-          gallery: parseGallery(form.galleryText),
-          specifications: parseSpecs(form.specsText),
-          entryPrice: Number(form.entryPrice || 0.5),
-          hiddenCapacity: Number(form.hiddenCapacity || 1),
-          stockQuantity: Number(form.stockQuantity || 1),
-          rewardMode: form.rewardMode,
-          rewardValue: form.rewardMode === 'split' ? Number(form.rewardValue || 0.5) : undefined,
-          startAt: new Date(form.startAt).toISOString(),
-          endAt: new Date(form.endAt).toISOString(),
-          isActive: Boolean(form.isActive)
-        })}
-        disabled={isSaving || !form.productId}
+        onClick={handleSubmit}
+        disabled={isSaving || !form.productId || !hasValidProductId}
         className="rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isSaving ? 'Saving...' : submitLabel}

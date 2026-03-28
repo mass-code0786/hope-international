@@ -5,8 +5,18 @@ const adminRepository = require('../../repositories/adminRepository');
 const auctionRepository = require('../../repositories/auctionRepository');
 const auctionService = require('../auctionService');
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function isAuctionSchemaError(error) {
   return ['42P01', '42703'].includes(error?.code);
+}
+
+function normalizeProductId(productId) {
+  const normalized = String(productId || '').trim();
+  if (!UUID_PATTERN.test(normalized)) {
+    throw new ApiError(400, 'Product id must be a valid UUID');
+  }
+  return normalized;
 }
 
 async function safeAdminAuditLog(client, payload) {
@@ -28,7 +38,8 @@ async function safeAdminAuditLog(client, payload) {
 }
 
 async function assertAuctionProduct(client, productId) {
-  const product = await adminRepository.getProductById(client, productId);
+  const normalizedProductId = normalizeProductId(productId);
+  const product = await adminRepository.getProductById(client, normalizedProductId);
   if (!product) {
     throw new ApiError(400, 'Selected product was not found');
   }
@@ -108,13 +119,12 @@ async function getAuction(auctionId) {
 
 async function createAuction(adminUserId, payload) {
   return withTransaction(async (client) => {
-    if (!payload.productId) {
-      throw new ApiError(400, 'Product is required');
-    }
-    const product = await assertAuctionProduct(client, payload.productId);
+    const normalizedProductId = normalizeProductId(payload.productId);
+    const product = await assertAuctionProduct(client, normalizedProductId);
 
     const sanitized = auctionService.sanitizeAuctionPayload({
       ...payload,
+      productId: normalizedProductId,
       status: 'upcoming',
       isActive: payload.isActive ?? true,
       totalEntries: 0,
@@ -128,6 +138,7 @@ async function createAuction(adminUserId, payload) {
 
     const created = await auctionRepository.createAuction(client, {
       ...sanitized,
+      productId: normalizedProductId,
       createdBy: adminUserId,
       updatedBy: adminUserId
     });
@@ -151,10 +162,7 @@ async function updateAuction(adminUserId, auctionId, payload) {
     const before = await auctionRepository.getAuctionForUpdate(client, auctionId);
     if (!before) throw new ApiError(404, 'Auction not found');
 
-    const nextProductId = payload.productId ?? before.product_id;
-    if (!nextProductId) {
-      throw new ApiError(400, 'Product is required');
-    }
+    const nextProductId = normalizeProductId(payload.productId ?? before.product_id);
     const product = await assertAuctionProduct(client, nextProductId);
 
     const merged = auctionService.sanitizeAuctionPayload({
@@ -167,6 +175,7 @@ async function updateAuction(adminUserId, auctionId, payload) {
 
     const updated = await auctionRepository.updateAuction(client, auctionId, {
       ...merged,
+      productId: nextProductId,
       updatedBy: adminUserId
     });
 
