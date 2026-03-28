@@ -6,15 +6,74 @@ function coerceJsonArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
+function normalizeAuctionRow(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    gallery: coerceJsonArray(row.gallery),
+    specifications: coerceJsonArray(row.specifications)
+  };
+}
+
 function buildAuctionStatusCase(nowPlaceholder) {
   return `
     CASE
       WHEN a.status = 'cancelled' OR a.cancelled_at IS NOT NULL THEN 'cancelled'
-      WHEN a.status = 'ended' OR a.closed_at IS NOT NULL OR a.end_at <= ${nowPlaceholder} THEN 'ended'
+      WHEN a.status = 'ended' OR a.closed_at IS NOT NULL OR a.end_at <= ${nowPlaceholder} OR a.total_entries >= a.hidden_capacity THEN 'ended'
       WHEN a.is_active = true AND a.start_at <= ${nowPlaceholder} AND a.end_at > ${nowPlaceholder} THEN 'live'
       ELSE 'upcoming'
     END
   `;
+}
+
+function buildAuctionSelect(nowPlaceholder) {
+  const statusCase = buildAuctionStatusCase(nowPlaceholder);
+  return `
+    SELECT
+      a.*,
+      ${statusCase} AS computed_status,
+      a.entry_price::numeric(14,2) AS display_current_bid,
+      a.total_entries,
+      winner.username AS winner_username,
+      winner.email AS winner_email,
+      creator.username AS created_by_username,
+      updater.username AS updated_by_username,
+      p.name AS product_name,
+      p.sku AS product_sku,
+      p.price AS product_price,
+      p.description AS product_description,
+      p.is_active AS product_is_active
+    FROM auctions a
+    LEFT JOIN users winner ON winner.id = a.winner_user_id
+    LEFT JOIN users creator ON creator.id = a.created_by
+    LEFT JOIN users updater ON updater.id = a.updated_by
+    LEFT JOIN products p ON p.id = a.product_id
+  `;
+}
+
+async function attachWinnerRows(client, auctions) {
+  if (!auctions.length) return auctions;
+  const ids = auctions.map((auction) => auction.id);
+  const { rows } = await q(client).query(
+    `SELECT aw.*, u.username, u.email
+     FROM auction_winners aw
+     JOIN users u ON u.id = aw.user_id
+     WHERE aw.auction_id = ANY($1::uuid[])
+     ORDER BY aw.created_at ASC`,
+    [ids]
+  );
+
+  const grouped = new Map();
+  rows.forEach((row) => {
+    const current = grouped.get(row.auction_id) || [];
+    current.push(row);
+    grouped.set(row.auction_id, current);
+  });
+
+  return auctions.map((auction) => ({
+    ...auction,
+    winners: grouped.get(auction.id) || []
+  }));
 }
 
 async function listAuctions(client, filters, pagination) {
@@ -29,7 +88,12 @@ async function listAuctions(client, filters, pagination) {
 
   if (filters.search) {
     values.push(`%${filters.search}%`);
-    where.push(`(a.title ILIKE $${values.length} OR COALESCE(a.short_description, '') ILIKE $${values.length})`);
+    where.push(`(
+      a.title ILIKE $${values.length}
+      OR COALESCE(a.short_description, '') ILIKE $${values.length}
+      OR COALESCE(p.name, '') ILIKE $${values.length}
+      OR COALESCE(p.sku, '') ILIKE $${values.length}
+    )`);
   }
 
   if (filters.onlyActive === true) {
@@ -46,20 +110,13 @@ async function listAuctions(client, filters, pagination) {
       ELSE 3
     END,
     CASE WHEN ${statusCase} = 'upcoming' THEN a.start_at END ASC,
-    CASE WHEN ${statusCase} = 'live' THEN a.end_at END ASC,
+    CASE WHEN ${statusCase} = 'live' THEN a.created_at END DESC,
+    CASE WHEN ${statusCase} = 'ended' THEN a.closed_at END DESC NULLS LAST,
     a.created_at DESC`;
 
   const listValues = [...values, pagination.limit, pagination.offset];
   const { rows } = await q(client).query(
-    `SELECT
-      a.*,
-      ${statusCase} AS computed_status,
-      COALESCE(a.current_bid, a.starting_price)::numeric(14,2) AS display_current_bid,
-      winner.username AS winner_username,
-      creator.username AS created_by_username
-     FROM auctions a
-     LEFT JOIN users winner ON winner.id = a.winner_user_id
-     LEFT JOIN users creator ON creator.id = a.created_by
+    `${buildAuctionSelect('$1')}
      ${whereSql}
      ${sortSql}
      LIMIT $${listValues.length - 1} OFFSET $${listValues.length}`,
@@ -69,16 +126,13 @@ async function listAuctions(client, filters, pagination) {
   const countResult = await q(client).query(
     `SELECT COUNT(*)
      FROM auctions a
+     LEFT JOIN products p ON p.id = a.product_id
      ${whereSql}`,
     values
   );
 
   return {
-    items: rows.map((row) => ({
-      ...row,
-      gallery: coerceJsonArray(row.gallery),
-      specifications: coerceJsonArray(row.specifications)
-    })),
+    items: await attachWinnerRows(client, rows.map(normalizeAuctionRow)),
     total: Number(countResult.rows[0]?.count || 0)
   };
 }
@@ -86,30 +140,16 @@ async function listAuctions(client, filters, pagination) {
 async function getAuctionById(client, auctionId, options = {}) {
   const now = options.now || new Date().toISOString();
   const { rows } = await q(client).query(
-    `SELECT
-      a.*,
-      ${buildAuctionStatusCase('$2')} AS computed_status,
-      COALESCE(a.current_bid, a.starting_price)::numeric(14,2) AS display_current_bid,
-      winner.username AS winner_username,
-      winner.email AS winner_email,
-      creator.username AS created_by_username,
-      updater.username AS updated_by_username
-     FROM auctions a
-     LEFT JOIN users winner ON winner.id = a.winner_user_id
-     LEFT JOIN users creator ON creator.id = a.created_by
-     LEFT JOIN users updater ON updater.id = a.updated_by
+    `${buildAuctionSelect('$2')}
      WHERE a.id = $1`,
     [auctionId, now]
   );
 
-  const auction = rows[0] || null;
+  const auction = normalizeAuctionRow(rows[0]);
   if (!auction) return null;
 
-  return {
-    ...auction,
-    gallery: coerceJsonArray(auction.gallery),
-    specifications: coerceJsonArray(auction.specifications)
-  };
+  const withWinners = await attachWinnerRows(client, [auction]);
+  return withWinners[0] || null;
 }
 
 async function getAuctionForUpdate(client, auctionId) {
@@ -117,18 +157,13 @@ async function getAuctionForUpdate(client, auctionId) {
     `SELECT * FROM auctions WHERE id = $1 FOR UPDATE`,
     [auctionId]
   );
-  const auction = rows[0] || null;
-  if (!auction) return null;
-  return {
-    ...auction,
-    gallery: coerceJsonArray(auction.gallery),
-    specifications: coerceJsonArray(auction.specifications)
-  };
+  return normalizeAuctionRow(rows[0] || null);
 }
 
 async function createAuction(client, payload) {
   const { rows } = await q(client).query(
     `INSERT INTO auctions (
+      product_id,
       title,
       short_description,
       description,
@@ -138,6 +173,14 @@ async function createAuction(client, payload) {
       starting_price,
       min_bid_increment,
       current_bid,
+      entry_price,
+      hidden_capacity,
+      stock_quantity,
+      reward_mode,
+      reward_value,
+      total_entries,
+      has_tie,
+      winner_count,
       start_at,
       end_at,
       status,
@@ -145,9 +188,10 @@ async function createAuction(client, payload) {
       created_by,
       updated_by
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
      RETURNING *`,
     [
+      payload.productId || null,
       payload.title,
       payload.shortDescription || null,
       payload.description || null,
@@ -157,6 +201,14 @@ async function createAuction(client, payload) {
       payload.startingPrice,
       payload.minBidIncrement,
       payload.currentBid,
+      payload.entryPrice,
+      payload.hiddenCapacity,
+      payload.stockQuantity,
+      payload.rewardMode,
+      payload.rewardValue || null,
+      payload.totalEntries || 0,
+      payload.hasTie ?? false,
+      payload.winnerCount || 0,
       payload.startAt,
       payload.endAt,
       payload.status,
@@ -165,40 +217,50 @@ async function createAuction(client, payload) {
       payload.updatedBy || null
     ]
   );
+
   return {
-    ...rows[0],
-    gallery: coerceJsonArray(rows[0]?.gallery),
-    specifications: coerceJsonArray(rows[0]?.specifications)
+    ...normalizeAuctionRow(rows[0]),
+    winners: []
   };
 }
 
 async function updateAuction(client, auctionId, payload) {
   const { rows } = await q(client).query(
     `UPDATE auctions
-     SET title = $2,
-         short_description = $3,
-         description = $4,
-         specifications = $5,
-         image_url = $6,
-         gallery = $7,
-         starting_price = $8,
-         min_bid_increment = $9,
-         current_bid = $10,
-         start_at = $11,
-         end_at = $12,
-         status = $13,
-         is_active = $14,
-         cancelled_at = $15,
-         closed_at = $16,
-         close_reason = $17,
-         winner_user_id = $18,
-         winning_bid_id = $19,
-         total_bids = $20,
-         updated_by = $21
+     SET product_id = $2,
+         title = $3,
+         short_description = $4,
+         description = $5,
+         specifications = $6,
+         image_url = $7,
+         gallery = $8,
+         starting_price = $9,
+         min_bid_increment = $10,
+         current_bid = $11,
+         entry_price = $12,
+         hidden_capacity = $13,
+         stock_quantity = $14,
+         reward_mode = $15,
+         reward_value = $16,
+         total_entries = $17,
+         has_tie = $18,
+         winner_count = $19,
+         start_at = $20,
+         end_at = $21,
+         status = $22,
+         is_active = $23,
+         cancelled_at = $24,
+         closed_at = $25,
+         close_reason = $26,
+         winner_user_id = $27,
+         winning_bid_id = $28,
+         total_bids = $29,
+         updated_by = $30
      WHERE id = $1
      RETURNING *`,
     [
       auctionId,
+      payload.productId || null,
       payload.title,
       payload.shortDescription || null,
       payload.description || null,
@@ -208,6 +270,14 @@ async function updateAuction(client, auctionId, payload) {
       payload.startingPrice,
       payload.minBidIncrement,
       payload.currentBid,
+      payload.entryPrice,
+      payload.hiddenCapacity,
+      payload.stockQuantity,
+      payload.rewardMode,
+      payload.rewardValue || null,
+      payload.totalEntries || 0,
+      payload.hasTie ?? false,
+      payload.winnerCount || 0,
       payload.startAt,
       payload.endAt,
       payload.status,
@@ -221,36 +291,35 @@ async function updateAuction(client, auctionId, payload) {
       payload.updatedBy || null
     ]
   );
-  const auction = rows[0] || null;
+
+  const auction = normalizeAuctionRow(rows[0] || null);
   if (!auction) return null;
-  return {
-    ...auction,
-    gallery: coerceJsonArray(auction.gallery),
-    specifications: coerceJsonArray(auction.specifications)
-  };
+  const withWinners = await attachWinnerRows(client, [auction]);
+  return withWinners[0] || null;
 }
 
 async function createBid(client, payload) {
   const { rows } = await q(client).query(
-    `INSERT INTO auction_bids (auction_id, user_id, amount)
-     VALUES ($1, $2, $3)
+    `INSERT INTO auction_bids (auction_id, user_id, amount, entry_count, total_amount)
+     VALUES ($1, $2, $3, $4, $5)
      RETURNING *`,
-    [payload.auctionId, payload.userId, payload.amount]
+    [payload.auctionId, payload.userId, payload.entryPrice, payload.entryCount, payload.totalAmount]
   );
   return rows[0];
 }
 
 async function upsertParticipant(client, payload) {
   const { rows } = await q(client).query(
-    `INSERT INTO auction_participants (auction_id, user_id, joined_at, last_bid_at, total_bids, highest_bid)
-     VALUES ($1, $2, NOW(), NOW(), 1, $3)
+    `INSERT INTO auction_participants (auction_id, user_id, joined_at, last_bid_at, total_bids, total_entries, highest_bid)
+     VALUES ($1, $2, NOW(), NOW(), 1, $3, $4)
      ON CONFLICT (auction_id, user_id)
      DO UPDATE SET
        last_bid_at = NOW(),
        total_bids = auction_participants.total_bids + 1,
+       total_entries = auction_participants.total_entries + EXCLUDED.total_entries,
        highest_bid = GREATEST(auction_participants.highest_bid, EXCLUDED.highest_bid)
      RETURNING *`,
-    [payload.auctionId, payload.userId, payload.amount]
+    [payload.auctionId, payload.userId, payload.entryCount, payload.totalAmount]
   );
   return rows[0];
 }
@@ -264,7 +333,7 @@ async function listAuctionBids(client, auctionId, limit = 50) {
      FROM auction_bids b
      JOIN users u ON u.id = b.user_id
      WHERE b.auction_id = $1
-     ORDER BY b.amount DESC, b.created_at ASC
+     ORDER BY b.created_at DESC
      LIMIT $2`,
     [auctionId, limit]
   );
@@ -280,7 +349,7 @@ async function listAuctionParticipants(client, auctionId) {
      FROM auction_participants p
      JOIN users u ON u.id = p.user_id
      WHERE p.auction_id = $1
-     ORDER BY p.highest_bid DESC, p.last_bid_at DESC NULLS LAST`,
+     ORDER BY p.total_entries DESC, p.last_bid_at ASC NULLS LAST`,
     [auctionId]
   );
   return rows;
@@ -291,11 +360,65 @@ async function getHighestBid(client, auctionId) {
     `SELECT *
      FROM auction_bids
      WHERE auction_id = $1
-     ORDER BY amount DESC, created_at ASC
+     ORDER BY entry_count DESC, created_at ASC
      LIMIT 1`,
     [auctionId]
   );
   return rows[0] || null;
+}
+
+async function getTopParticipants(client, auctionId) {
+  const { rows } = await q(client).query(
+    `WITH ranked AS (
+      SELECT p.*, MAX(p.total_entries) OVER () AS max_entries
+      FROM auction_participants p
+      WHERE p.auction_id = $1
+    )
+     SELECT ranked.*, u.username, u.email
+     FROM ranked
+     JOIN users u ON u.id = ranked.user_id
+     WHERE ranked.total_entries = ranked.max_entries
+       AND ranked.max_entries > 0
+     ORDER BY ranked.last_bid_at ASC NULLS LAST, ranked.joined_at ASC`,
+    [auctionId]
+  );
+  return rows;
+}
+
+async function replaceAuctionWinners(client, auctionId, winners) {
+  await q(client).query('DELETE FROM auction_winners WHERE auction_id = $1', [auctionId]);
+  if (!winners.length) return [];
+
+  const inserted = [];
+  for (const winner of winners) {
+    const { rows } = await q(client).query(
+      `INSERT INTO auction_winners (auction_id, user_id, winning_entry_count, allocation_ratio, allocation_quantity, reward_mode)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [
+        auctionId,
+        winner.userId,
+        winner.winningEntryCount,
+        winner.allocationRatio,
+        winner.allocationQuantity || null,
+        winner.rewardMode
+      ]
+    );
+    inserted.push(rows[0]);
+  }
+  return inserted;
+}
+
+async function listAuctionWinners(client, auctionId) {
+  const { rows } = await q(client).query(
+    `SELECT aw.*, u.username, u.email
+     FROM auction_winners aw
+     JOIN users u ON u.id = aw.user_id
+     WHERE aw.auction_id = $1
+     ORDER BY aw.created_at ASC`,
+    [auctionId]
+  );
+  return rows;
 }
 
 async function getUserBidStats(client, userId) {
@@ -303,7 +426,7 @@ async function getUserBidStats(client, userId) {
     `SELECT
       COALESCE((SELECT COUNT(*) FROM auction_bids WHERE user_id = $1), 0)::int AS my_bids,
       COALESCE((SELECT COUNT(*) FROM auction_participants WHERE user_id = $1), 0)::int AS auctions_joined,
-      COALESCE((SELECT COUNT(*) FROM auctions WHERE winner_user_id = $1), 0)::int AS won_auctions,
+      COALESCE((SELECT COUNT(*) FROM auction_winners WHERE user_id = $1), 0)::int AS won_auctions,
       COALESCE((SELECT COUNT(*) FROM auctions a WHERE EXISTS (SELECT 1 FROM auction_bids b WHERE b.auction_id = a.id AND b.user_id = $1) AND a.status IN ('ended', 'cancelled')), 0)::int AS auction_history`,
     [userId]
   );
@@ -316,7 +439,7 @@ async function listUserAuctionHistory(client, userId, filters, pagination) {
   const where = [`EXISTS (SELECT 1 FROM auction_bids ub WHERE ub.auction_id = a.id AND ub.user_id = $1)`];
 
   if (filters.kind === 'wins') {
-    where.push(`a.winner_user_id = $1`);
+    where.push(`EXISTS (SELECT 1 FROM auction_winners aw WHERE aw.auction_id = a.id AND aw.user_id = $1)`);
   } else if (filters.kind === 'joined') {
     where.push(`EXISTS (SELECT 1 FROM auction_participants ap WHERE ap.auction_id = a.id AND ap.user_id = $1)`);
   } else if (filters.kind === 'history') {
@@ -330,17 +453,36 @@ async function listUserAuctionHistory(client, userId, filters, pagination) {
     `SELECT
       a.*,
       ${statusCase} AS computed_status,
+      a.entry_price::numeric(14,2) AS display_current_bid,
       winner.username AS winner_username,
+      winner.email AS winner_email,
+      creator.username AS created_by_username,
+      updater.username AS updated_by_username,
+      p.name AS product_name,
+      p.sku AS product_sku,
+      p.price AS product_price,
+      p.description AS product_description,
+      p.is_active AS product_is_active,
+      EXISTS (SELECT 1 FROM auction_winners aw WHERE aw.auction_id = a.id AND aw.user_id = $1) AS is_winner,
       (
-        SELECT MAX(amount)
+        SELECT COALESCE(SUM(entry_count), 0)
         FROM auction_bids ub
         WHERE ub.auction_id = a.id
           AND ub.user_id = $1
-      ) AS my_highest_bid
+      ) AS my_entry_count,
+      (
+        SELECT COALESCE(SUM(total_amount), 0)
+        FROM auction_bids ub
+        WHERE ub.auction_id = a.id
+          AND ub.user_id = $1
+      ) AS my_total_spend
      FROM auctions a
      LEFT JOIN users winner ON winner.id = a.winner_user_id
+     LEFT JOIN users creator ON creator.id = a.created_by
+     LEFT JOIN users updater ON updater.id = a.updated_by
+     LEFT JOIN products p ON p.id = a.product_id
      ${whereSql}
-     ORDER BY a.end_at DESC, a.created_at DESC
+     ORDER BY a.closed_at DESC NULLS LAST, a.end_at DESC, a.created_at DESC
      LIMIT $${listValues.length - 1} OFFSET $${listValues.length}`,
     listValues
   );
@@ -353,11 +495,7 @@ async function listUserAuctionHistory(client, userId, filters, pagination) {
   );
 
   return {
-    items: rows.map((row) => ({
-      ...row,
-      gallery: coerceJsonArray(row.gallery),
-      specifications: coerceJsonArray(row.specifications)
-    })),
+    items: await attachWinnerRows(client, rows.map(normalizeAuctionRow)),
     total: Number(countResult.rows[0]?.count || 0)
   };
 }
@@ -373,7 +511,9 @@ module.exports = {
   listAuctionBids,
   listAuctionParticipants,
   getHighestBid,
+  getTopParticipants,
+  replaceAuctionWinners,
+  listAuctionWinners,
   getUserBidStats,
   listUserAuctionHistory
 };
-

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { Clock3, Gavel, Trophy, Users } from 'lucide-react';
+import { Clock3, Gavel, Trophy, Users, Package } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 
 export function formatAuctionMoney(value = 0) {
@@ -34,13 +34,11 @@ export function AuctionCountdown({ startAt, endAt, status }) {
     const diff = new Date(target).getTime() - now;
     if (!target || Number.isNaN(diff)) return 'Time unavailable';
     if (diff <= 0) return status === 'upcoming' ? 'Starting now' : 'Closed';
-
     const totalSeconds = Math.floor(diff / 1000);
     const days = Math.floor(totalSeconds / 86400);
     const hours = Math.floor((totalSeconds % 86400) / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
-
     if (days > 0) return `${days}d ${hours}h ${minutes}m`;
     return `${hours}h ${minutes}m ${seconds}s`;
   }, [target, now, status]);
@@ -56,6 +54,7 @@ export function AuctionCountdown({ startAt, endAt, status }) {
 export function AuctionCard({ auction }) {
   const cover = auction.image_url || auction.gallery?.[0] || 'https://placehold.co/600x400/e2e8f0/334155?text=Auction';
   const live = auction.computed_status || auction.status;
+  const winnerCount = Array.isArray(auction.winners) ? auction.winners.length : 0;
 
   return (
     <article className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_12px_32px_rgba(15,23,42,0.08)]">
@@ -68,25 +67,32 @@ export function AuctionCard({ auction }) {
       <div className="space-y-3 p-4">
         <div>
           <h3 className="text-sm font-semibold text-slate-900">{auction.title}</h3>
-          <p className="mt-1 line-clamp-2 text-xs text-slate-500">{auction.short_description || auction.description || 'Auction lot managed by admin.'}</p>
+          <p className="mt-1 line-clamp-2 text-xs text-slate-500">{auction.short_description || auction.description || 'Admin managed fixed-entry auction.'}</p>
         </div>
 
         <div className="grid grid-cols-2 gap-2 rounded-2xl bg-slate-50 p-3 text-xs text-slate-600">
           <div>
-            <p className="text-[10px] uppercase tracking-wide text-slate-400">Current bid</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">{formatAuctionMoney(auction.display_current_bid || auction.current_bid || auction.starting_price)}</p>
+            <p className="text-[10px] uppercase tracking-wide text-slate-400">Entry price</p>
+            <p className="mt-1 text-sm font-semibold text-slate-900">{formatAuctionMoney(auction.entry_price || auction.display_current_bid || auction.starting_price)}</p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-wide text-slate-400">Starting</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">{formatAuctionMoney(auction.starting_price)}</p>
+            <p className="text-[10px] uppercase tracking-wide text-slate-400">Entries placed</p>
+            <p className="mt-1 text-sm font-semibold text-slate-900">{Number(auction.total_entries || 0)}</p>
           </div>
         </div>
+
+        <div className="flex items-center justify-between gap-2 text-[11px] text-slate-500">
+          <span className="inline-flex items-center gap-1"><Users size={12} /> {Number(auction.total_bids || 0)} purchase events</span>
+          <span className="inline-flex items-center gap-1"><Package size={12} /> {auction.reward_mode === 'split' ? 'Shared reward' : `${auction.stock_quantity || 1} stock`}</span>
+        </div>
+
+        {winnerCount > 0 ? <p className="rounded-2xl bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{winnerCount} winner{winnerCount > 1 ? 's' : ''} declared</p> : null}
 
         <div className="flex items-center justify-between gap-2">
           <AuctionCountdown startAt={auction.start_at} endAt={auction.end_at} status={live} />
           <Link href={`/auctions/${auction.id}`} className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-3 py-2 text-[11px] font-semibold text-white">
             <Gavel size={12} />
-            {live === 'live' ? 'Bid now' : live === 'upcoming' ? 'Join auction' : 'View result'}
+            {live === 'live' ? 'Buy entries' : live === 'upcoming' ? 'View auction' : 'View result'}
           </Link>
         </div>
       </div>

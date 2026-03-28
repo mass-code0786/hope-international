@@ -22,16 +22,16 @@ export default function AuctionDetailPage() {
   });
 
   const bidMutation = useMutation({
-    mutationFn: (amount) => placeAuctionBid(auctionId, amount),
+    mutationFn: (entryCount) => placeAuctionBid(auctionId, entryCount),
     onSuccess: async (result) => {
-      toast.success(result.message || 'Bid placed');
+      toast.success(result.message || 'Entries purchased');
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.auctions }),
         queryClient.invalidateQueries({ queryKey: queryKeys.auctionDetail(auctionId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.auctionHistory() })
       ]);
     },
-    onError: (error) => toast.error(error.message || 'Bid failed')
+    onError: (error) => toast.error(error.message || 'Entry purchase failed')
   });
 
   if (detailQuery.isLoading) return <div className="rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-500">Loading auction...</div>;
@@ -39,12 +39,13 @@ export default function AuctionDetailPage() {
 
   const auction = detailQuery.data?.data;
   const status = auction?.computed_status || auction?.status;
-  const nextBid = Math.min(100, Number(auction?.display_current_bid || auction?.current_bid || auction?.starting_price || 0.5) + Number(auction?.min_bid_increment || 0.5));
+  const entryPrice = Number(auction?.entry_price || auction?.display_current_bid || auction?.starting_price || 0.5);
+  const entryOptions = [1, 3, 5].map((count) => ({ count, total: count * entryPrice }));
   const images = auction?.gallery?.length ? auction.gallery : [auction?.image_url].filter(Boolean);
 
   return (
     <div className="space-y-4">
-      <SectionHeader title={auction.title} subtitle="Live bidding, history, and winner visibility" action={<Link href="/auctions" className="text-xs font-semibold text-sky-600">Back</Link>} />
+      <SectionHeader title={auction.title} subtitle="Fixed entry highest count auction with hidden capacity" action={<Link href="/auctions" className="text-xs font-semibold text-sky-600">Back</Link>} />
 
       <section className="grid gap-4 lg:grid-cols-[1.3fr_0.9fr]">
         <div className="space-y-3">
@@ -73,31 +74,39 @@ export default function AuctionDetailPage() {
         <div className="space-y-3">
           <div className="rounded-[28px] border border-slate-200 bg-white p-4">
             <div className="flex items-center justify-between gap-2">
-              <AuctionStatusBadge status={status} won={Boolean(auction.winner_user_id)} />
+              <AuctionStatusBadge status={status} won={Boolean(auction.isWinner)} />
               <AuctionCountdown startAt={auction.start_at} endAt={auction.end_at} status={status} />
             </div>
 
             <div className="mt-4 grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm">
-              <div className="flex items-center justify-between"><span className="text-slate-500">Current bid</span><strong className="text-slate-900">{formatAuctionMoney(auction.display_current_bid || auction.current_bid)}</strong></div>
-              <div className="flex items-center justify-between"><span className="text-slate-500">Starting price</span><strong className="text-slate-900">{formatAuctionMoney(auction.starting_price)}</strong></div>
-              <div className="flex items-center justify-between"><span className="text-slate-500">Minimum increment</span><strong className="text-slate-900">{formatAuctionMoney(auction.min_bid_increment)}</strong></div>
-              <div className="flex items-center justify-between"><span className="text-slate-500">Your highest bid</span><strong className="text-slate-900">{formatAuctionMoney(auction.myHighestBid)}</strong></div>
+              <div className="flex items-center justify-between"><span className="text-slate-500">Fixed entry price</span><strong className="text-slate-900">{formatAuctionMoney(entryPrice)}</strong></div>
+              <div className="flex items-center justify-between"><span className="text-slate-500">Your entries</span><strong className="text-slate-900">{Number(auction.myEntryCount || 0)}</strong></div>
+              <div className="flex items-center justify-between"><span className="text-slate-500">Your spend</span><strong className="text-slate-900">{formatAuctionMoney(auction.myTotalSpend || 0)}</strong></div>
+              <div className="flex items-center justify-between"><span className="text-slate-500">Reward mode</span><strong className="text-slate-900">{auction.reward_mode === 'split' ? 'Shared reward' : `${auction.stock_quantity || 1} stock`}</strong></div>
             </div>
 
             <div className="mt-4 space-y-2">
-              <button
-                onClick={() => bidMutation.mutate(nextBid)}
-                disabled={bidMutation.isPending || status !== 'live'}
-                className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-              >
-                {bidMutation.isPending ? 'Submitting bid...' : status === 'live' ? `Place ${formatAuctionMoney(nextBid)} bid` : status === 'upcoming' ? 'Auction not started yet' : 'Bidding closed'}
-              </button>
-              {auction.winner_user_id ? <p className="rounded-2xl bg-emerald-50 px-3 py-2 text-xs text-emerald-700">Winner: {auction.winner_username || 'Recorded winner'}</p> : null}
+              {entryOptions.map((option) => (
+                <button
+                  key={option.count}
+                  onClick={() => bidMutation.mutate(option.count)}
+                  disabled={bidMutation.isPending || status !== 'live'}
+                  className="flex w-full items-center justify-between rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                >
+                  <span>{status === 'live' ? `Buy ${option.count} entr${option.count > 1 ? 'ies' : 'y'}` : status === 'upcoming' ? 'Auction not started yet' : 'Entries closed'}</span>
+                  <span>{formatAuctionMoney(option.total)}</span>
+                </button>
+              ))}
+              {Array.isArray(auction.winners) && auction.winners.length > 0 ? (
+                <div className="rounded-2xl bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                  Winners: {auction.winners.map((winner) => winner.username).join(', ')}
+                </div>
+              ) : null}
             </div>
           </div>
 
           <div className="rounded-[28px] border border-slate-200 bg-white p-4">
-            <p className="text-sm font-semibold text-slate-900">Bid History</p>
+            <p className="text-sm font-semibold text-slate-900">Entry History</p>
             <div className="mt-3 space-y-2">
               {(auction.bidHistory || []).slice(0, 12).map((bid) => (
                 <div key={bid.id} className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
@@ -105,23 +114,23 @@ export default function AuctionDetailPage() {
                     <p className="font-semibold text-slate-900">{bid.username}</p>
                     <p>{new Date(bid.created_at).toLocaleString()}</p>
                   </div>
-                  <strong className="text-sm text-slate-900">{formatAuctionMoney(bid.amount)}</strong>
+                  <strong className="text-sm text-slate-900">{bid.entry_count} entries</strong>
                 </div>
               ))}
-              {!(auction.bidHistory || []).length ? <p className="text-xs text-slate-500">No bids yet.</p> : null}
+              {!(auction.bidHistory || []).length ? <p className="text-xs text-slate-500">No entries yet.</p> : null}
             </div>
           </div>
 
           <div className="rounded-[28px] border border-slate-200 bg-white p-4">
-            <p className="text-sm font-semibold text-slate-900">Participants</p>
+            <p className="text-sm font-semibold text-slate-900">Leaderboard</p>
             <div className="mt-3 space-y-2">
               {(auction.participants || []).slice(0, 8).map((participant) => (
                 <div key={participant.user_id} className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
                   <div>
                     <p className="font-semibold text-slate-900">{participant.username}</p>
-                    <p>{participant.total_bids} bids</p>
+                    <p>{participant.total_bids} purchase events</p>
                   </div>
-                  <strong className="text-sm text-slate-900">{formatAuctionMoney(participant.highest_bid)}</strong>
+                  <strong className="text-sm text-slate-900">{participant.total_entries} entries</strong>
                 </div>
               ))}
             </div>

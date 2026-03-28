@@ -27,10 +27,10 @@ export default function AdminAuctionsPage() {
 
   return (
     <div className="space-y-5">
-      <AdminSectionHeader title="Auctions" subtitle="Create, monitor, close, cancel, and review winners" action={<Link href="/admin/auctions/new" className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-black">New Auction</Link>} />
+      <AdminSectionHeader title="Auctions" subtitle="Fixed-entry auctions with hidden capacity, wallet deduction, and multi-winner tie handling." action={<Link href="/admin/auctions/new" className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-black">New Auction</Link>} />
 
       <div className="flex flex-wrap gap-3">
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search auctions" className="w-full max-w-sm rounded-2xl border border-white/10 bg-cardSoft px-3 py-2 text-sm text-text" />
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search auctions or products" className="w-full max-w-sm rounded-2xl border border-white/10 bg-cardSoft px-3 py-2 text-sm text-text" />
         <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-2xl border border-white/10 bg-cardSoft px-3 py-2 text-sm text-text">
           <option value="all">All</option>
           <option value="live">Live</option>
@@ -45,11 +45,12 @@ export default function AdminAuctionsPage() {
       <DataTable
         columns={[
           { key: 'title', title: 'Auction', className: 'col-span-3' },
-          { key: 'display_current_bid', title: 'Current', className: 'col-span-2', render: (row) => `$${Number(row.display_current_bid || row.current_bid || 0).toFixed(2)}` },
-          { key: 'starting_price', title: 'Start', className: 'col-span-1', render: (row) => `$${Number(row.starting_price || 0).toFixed(2)}` },
-          { key: 'computed_status', title: 'Status', className: 'col-span-2', render: (row) => <StatusBadge status={row.computed_status || row.status} /> },
-          { key: 'winner_username', title: 'Winner', className: 'col-span-2', render: (row) => row.winner_username || '-' },
-          { key: 'action', title: 'Action', className: 'col-span-2', render: (row) => <Link href={`/admin/auctions/${row.id}`} className="rounded-lg bg-white/5 px-2 py-1 text-xs">Open</Link> }
+          { key: 'product_name', title: 'Product', className: 'col-span-2', render: (row) => row.product_name || '-' },
+          { key: 'entry_price', title: 'Entry', className: 'col-span-1', render: (row) => `$${Number(row.entry_price || 0).toFixed(2)}` },
+          { key: 'total_entries', title: 'Entries', className: 'col-span-1', render: (row) => Number(row.total_entries || 0) },
+          { key: 'computed_status', title: 'Status', className: 'col-span-1', render: (row) => <StatusBadge status={row.computed_status || row.status} /> },
+          { key: 'winner_count', title: 'Winners', className: 'col-span-1', render: (row) => Number(row.winner_count || 0) },
+          { key: 'action', title: 'Action', className: 'col-span-1', render: (row) => <Link href={`/admin/auctions/${row.id}`} className="rounded-lg bg-white/5 px-2 py-1 text-xs">Open</Link> }
         ]}
         rows={rows}
       />

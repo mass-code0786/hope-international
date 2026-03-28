@@ -5,6 +5,14 @@ const adminRepository = require('../../repositories/adminRepository');
 const auctionRepository = require('../../repositories/auctionRepository');
 const auctionService = require('../auctionService');
 
+async function assertAuctionProduct(client, productId) {
+  const product = await adminRepository.getProductById(client, productId);
+  if (!product) {
+    throw new ApiError(400, 'Selected product was not found');
+  }
+  return product;
+}
+
 async function listAuctions(filters, paginationInput) {
   const pagination = normalizePagination(paginationInput);
   const result = await withTransaction(async (client) => {
@@ -14,7 +22,7 @@ async function listAuctions(filters, paginationInput) {
     }, pagination);
 
     for (const auction of initial.items) {
-      if (auction.computed_status === 'ended' && auction.status !== 'cancelled' && !auction.winner_user_id && !auction.closed_at) {
+      if (auction.computed_status === 'ended' && auction.status !== 'cancelled') {
         await auctionService.ensureAuctionResolved(client, auction.id);
       }
     }
@@ -32,16 +40,23 @@ async function listAuctions(filters, paginationInput) {
 }
 
 async function getAuction(auctionId) {
-  return auctionService.getAuctionDetails(auctionId);
+  return auctionService.getAuctionDetails(auctionId, null, { includeAdminFields: true });
 }
 
 async function createAuction(adminUserId, payload) {
   return withTransaction(async (client) => {
+    if (!payload.productId) {
+      throw new ApiError(400, 'Product is required');
+    }
+    const product = await assertAuctionProduct(client, payload.productId);
+
     const sanitized = auctionService.sanitizeAuctionPayload({
       ...payload,
       status: 'upcoming',
-      currentBid: payload.startingPrice,
-      isActive: payload.isActive ?? true
+      isActive: payload.isActive ?? true,
+      totalEntries: 0,
+      hasTie: false,
+      winnerCount: 0
     });
 
     if (!sanitized.title) {
@@ -61,10 +76,10 @@ async function createAuction(adminUserId, payload) {
       targetId: created.id,
       beforeData: null,
       afterData: created,
-      metadata: { title: created.title }
+      metadata: { title: created.title, productId: product.id, productName: product.name, hiddenCapacity: created.hidden_capacity }
     });
 
-    return auctionRepository.getAuctionById(client, created.id);
+    return auctionService.getAuctionDetails(created.id, null, { includeAdminFields: true });
   });
 }
 
@@ -73,7 +88,16 @@ async function updateAuction(adminUserId, auctionId, payload) {
     const before = await auctionRepository.getAuctionForUpdate(client, auctionId);
     if (!before) throw new ApiError(404, 'Auction not found');
 
-    const merged = auctionService.sanitizeAuctionPayload(payload, before);
+    const nextProductId = payload.productId ?? before.product_id;
+    if (!nextProductId) {
+      throw new ApiError(400, 'Product is required');
+    }
+    const product = await assertAuctionProduct(client, nextProductId);
+
+    const merged = auctionService.sanitizeAuctionPayload({
+      ...payload,
+      productId: nextProductId
+    }, before);
     if (!merged.title) {
       throw new ApiError(400, 'Auction title is required');
     }
@@ -90,10 +114,10 @@ async function updateAuction(adminUserId, auctionId, payload) {
       targetId: auctionId,
       beforeData: before,
       afterData: updated,
-      metadata: { title: updated.title }
+      metadata: { title: updated.title, productId: product.id, productName: product.name }
     });
 
-    return auctionRepository.getAuctionById(client, updated.id);
+    return auctionService.getAuctionDetails(updated.id, null, { includeAdminFields: true });
   });
 }
 
@@ -104,16 +128,12 @@ async function changeAuctionState(adminUserId, auctionId, action, reason) {
 
     let patch;
     if (action === 'close') {
-      const highestBid = await auctionRepository.getHighestBid(client, auctionId);
       patch = {
         ...auctionService.sanitizeAuctionPayload({}, before),
         status: 'ended',
         isActive: false,
         closedAt: before.closed_at || new Date().toISOString(),
         closeReason: reason || 'Closed manually',
-        winnerUserId: highestBid?.user_id || null,
-        winningBidId: highestBid?.id || null,
-        currentBid: highestBid?.amount || before.current_bid || before.starting_price,
         updatedBy: adminUserId
       };
     } else if (action === 'cancel') {
@@ -135,7 +155,9 @@ async function changeAuctionState(adminUserId, auctionId, action, reason) {
           startAt: before.start_at,
           endAt: before.end_at,
           cancelledAt: null,
-          closedAt: null
+          closedAt: null,
+          totalEntries: before.total_entries,
+          hiddenCapacity: before.hidden_capacity
         }),
         cancelledAt: null,
         closedAt: null,
@@ -153,7 +175,13 @@ async function changeAuctionState(adminUserId, auctionId, action, reason) {
       throw new ApiError(400, 'Unsupported auction action');
     }
 
-    const updated = await auctionRepository.updateAuction(client, auctionId, patch);
+    await auctionRepository.updateAuction(client, auctionId, patch);
+
+    if (action === 'close') {
+      await auctionService.ensureAuctionResolved(client, auctionId);
+    }
+
+    const updated = await auctionService.getAuctionDetails(auctionId, null, { includeAdminFields: true });
 
     await adminRepository.logAdminAction(client, {
       adminUserId,
@@ -165,7 +193,7 @@ async function changeAuctionState(adminUserId, auctionId, action, reason) {
       metadata: { reason: reason || null }
     });
 
-    return auctionRepository.getAuctionById(client, auctionId);
+    return updated;
   });
 }
 

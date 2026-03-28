@@ -1,14 +1,21 @@
 'use client';
 
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { AdminSectionHeader } from '@/components/admin/AdminSectionHeader';
 import { AuctionAdminForm } from '@/components/auctions/AuctionAdminForm';
-import { createAdminAuction } from '@/lib/services/admin';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { queryKeys } from '@/lib/query/queryKeys';
+import { createAdminAuction, getAdminProducts } from '@/lib/services/admin';
 
 export default function AdminNewAuctionPage() {
   const router = useRouter();
+  const productsQuery = useQuery({
+    queryKey: [...queryKeys.adminProducts, 'auction-form'],
+    queryFn: () => getAdminProducts({ page: 1, limit: 200, isActive: 'true' })
+  });
+
   const createMutation = useMutation({
     mutationFn: createAdminAuction,
     onSuccess: (result) => {
@@ -18,10 +25,20 @@ export default function AdminNewAuctionPage() {
     onError: (error) => toast.error(error.message || 'Auction could not be created')
   });
 
+  if (productsQuery.isLoading) {
+    return <div className="rounded-3xl border border-white/10 bg-card p-6 text-sm text-muted">Loading products...</div>;
+  }
+
+  if (productsQuery.isError) {
+    return <ErrorState message="Products could not be loaded for auction creation." onRetry={productsQuery.refetch} />;
+  }
+
+  const products = Array.isArray(productsQuery.data?.data) ? productsQuery.data.data : [];
+
   return (
     <div className="space-y-5">
-      <AdminSectionHeader title="New Auction" subtitle="Admin-managed image, pricing, timing, and winner flow" />
-      <AuctionAdminForm onSubmit={(payload) => createMutation.mutate(payload)} isSaving={createMutation.isPending} submitLabel="Create Auction" />
+      <AdminSectionHeader title="New Auction" subtitle="Select a product, set the fixed entry price, keep capacity hidden, and control tie payouts." />
+      <AuctionAdminForm products={products} onSubmit={(payload) => createMutation.mutate(payload)} isSaving={createMutation.isPending} submitLabel="Create Auction" />
     </div>
   );
 }

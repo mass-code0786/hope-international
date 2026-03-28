@@ -9,7 +9,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { StatusBadge } from '@/components/admin/StatusBadge';
 import { AuctionAdminForm, toAuctionFormValues } from '@/components/auctions/AuctionAdminForm';
 import { formatAuctionMoney } from '@/components/auctions/AuctionUi';
-import { getAdminAuctionDetails, runAdminAuctionAction, updateAdminAuction } from '@/lib/services/admin';
+import { getAdminAuctionDetails, getAdminProducts, runAdminAuctionAction, updateAdminAuction } from '@/lib/services/admin';
 import { queryKeys } from '@/lib/query/queryKeys';
 
 export default function AdminAuctionDetailPage() {
@@ -22,6 +22,11 @@ export default function AdminAuctionDetailPage() {
     queryKey: queryKeys.adminAuctionDetail(auctionId),
     queryFn: () => getAdminAuctionDetails(auctionId),
     enabled: Boolean(auctionId)
+  });
+
+  const productsQuery = useQuery({
+    queryKey: [...queryKeys.adminProducts, 'auction-form'],
+    queryFn: () => getAdminProducts({ page: 1, limit: 200, isActive: 'true' })
   });
 
   const updateMutation = useMutation({
@@ -48,28 +53,34 @@ export default function AdminAuctionDetailPage() {
     onError: (error) => toast.error(error.message || 'Auction action failed')
   });
 
-  if (detailQuery.isLoading) return <div className="rounded-3xl border border-white/10 bg-card p-6 text-sm text-muted">Loading auction...</div>;
+  if (detailQuery.isLoading || productsQuery.isLoading) return <div className="rounded-3xl border border-white/10 bg-card p-6 text-sm text-muted">Loading auction...</div>;
   if (detailQuery.isError) return <ErrorState message="Admin auction details could not be loaded." onRetry={detailQuery.refetch} />;
+  if (productsQuery.isError) return <ErrorState message="Products could not be loaded for auction editing." onRetry={productsQuery.refetch} />;
 
   const auction = detailQuery.data?.data;
+  const products = Array.isArray(productsQuery.data?.data) ? productsQuery.data.data : [];
   const initialValues = useMemo(() => toAuctionFormValues(auction), [auction]);
 
   return (
     <div className="space-y-5">
-      <AdminSectionHeader title={auction.title} subtitle="Review bids, participants, winner, and admin controls" action={<button onClick={() => router.push('/admin/auctions')} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-muted">Back</button>} />
+      <AdminSectionHeader title={auction.title} subtitle="Review entry purchases, participants, winners, hidden capacity, and tie allocation." action={<button onClick={() => router.push('/admin/auctions')} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-muted">Back</button>} />
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-        <AuctionAdminForm initialValues={initialValues} onSubmit={(payload) => updateMutation.mutate(payload)} isSaving={updateMutation.isPending} submitLabel="Update Auction" />
+        <AuctionAdminForm products={products} initialValues={initialValues} onSubmit={(payload) => updateMutation.mutate(payload)} isSaving={updateMutation.isPending} submitLabel="Update Auction" />
 
         <div className="space-y-4 rounded-3xl border border-white/10 bg-card p-5">
           <div className="flex items-center justify-between gap-2">
             <StatusBadge status={auction.computed_status || auction.status} />
-            <p className="text-xs text-muted">Total bids: {auction.total_bids || 0}</p>
+            <p className="text-xs text-muted">Purchase events: {auction.total_bids || 0}</p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-cardSoft p-4 text-sm text-muted">
-            <div className="flex items-center justify-between"><span>Current bid</span><strong className="text-text">{formatAuctionMoney(auction.display_current_bid || auction.current_bid)}</strong></div>
-            <div className="mt-2 flex items-center justify-between"><span>Winner</span><strong className="text-text">{auction.winner_username || '-'}</strong></div>
-            <div className="mt-2 flex items-center justify-between"><span>Window</span><strong className="text-text">{new Date(auction.start_at).toLocaleString()} to {new Date(auction.end_at).toLocaleString()}</strong></div>
+            <div className="flex items-center justify-between"><span>Product</span><strong className="text-right text-text">{auction.product_name || auction.title}</strong></div>
+            <div className="mt-2 flex items-center justify-between"><span>Entry price</span><strong className="text-text">{formatAuctionMoney(auction.entry_price || auction.display_current_bid)}</strong></div>
+            <div className="mt-2 flex items-center justify-between"><span>Total entries</span><strong className="text-text">{Number(auction.total_entries || 0)}</strong></div>
+            <div className="mt-2 flex items-center justify-between"><span>Hidden capacity</span><strong className="text-text">{Number(auction.hidden_capacity || 0)}</strong></div>
+            <div className="mt-2 flex items-center justify-between"><span>Tie state</span><strong className="text-text">{auction.has_tie ? `Yes (${auction.winner_count || 0} winners)` : 'No'}</strong></div>
+            <div className="mt-2 flex items-center justify-between"><span>Reward mode</span><strong className="text-text">{auction.reward_mode === 'split' ? `Split ${formatAuctionMoney(auction.reward_value || 0)}` : `${auction.stock_quantity || 1} stock`}</strong></div>
+            <div className="mt-2 flex items-center justify-between"><span>Window</span><strong className="text-right text-text">{new Date(auction.start_at).toLocaleString()} to {new Date(auction.end_at).toLocaleString()}</strong></div>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -80,22 +91,38 @@ export default function AdminAuctionDetailPage() {
           </div>
 
           <div>
+            <p className="text-sm font-semibold text-text">Winners</p>
+            <div className="mt-3 space-y-2">
+              {(auction.winners || []).map((winner) => (
+                <div key={winner.user_id} className="flex items-center justify-between rounded-2xl border border-white/10 bg-cardSoft px-3 py-2 text-xs text-muted">
+                  <div>
+                    <p className="font-semibold text-text">{winner.username}</p>
+                    <p>{winner.winning_entry_count} entries</p>
+                  </div>
+                  <strong className="text-sm text-text">{winner.allocation_quantity ?? winner.allocation_ratio}</strong>
+                </div>
+              ))}
+              {!(auction.winners || []).length ? <p className="text-xs text-muted">No winners yet.</p> : null}
+            </div>
+          </div>
+
+          <div>
             <p className="text-sm font-semibold text-text">Participants</p>
             <div className="mt-3 space-y-2">
               {(auction.participants || []).slice(0, 12).map((participant) => (
                 <div key={participant.user_id} className="flex items-center justify-between rounded-2xl border border-white/10 bg-cardSoft px-3 py-2 text-xs text-muted">
                   <div>
                     <p className="font-semibold text-text">{participant.username}</p>
-                    <p>{participant.total_bids} bids</p>
+                    <p>{participant.total_bids} purchase events</p>
                   </div>
-                  <strong className="text-sm text-text">{formatAuctionMoney(participant.highest_bid)}</strong>
+                  <strong className="text-sm text-text">{participant.total_entries} entries</strong>
                 </div>
               ))}
             </div>
           </div>
 
           <div>
-            <p className="text-sm font-semibold text-text">Latest Bids</p>
+            <p className="text-sm font-semibold text-text">Latest Entry Purchases</p>
             <div className="mt-3 space-y-2">
               {(auction.bidHistory || []).slice(0, 12).map((bid) => (
                 <div key={bid.id} className="flex items-center justify-between rounded-2xl border border-white/10 bg-cardSoft px-3 py-2 text-xs text-muted">
@@ -103,7 +130,7 @@ export default function AdminAuctionDetailPage() {
                     <p className="font-semibold text-text">{bid.username}</p>
                     <p>{new Date(bid.created_at).toLocaleString()}</p>
                   </div>
-                  <strong className="text-sm text-text">{formatAuctionMoney(bid.amount)}</strong>
+                  <strong className="text-sm text-text">{bid.entry_count} entries</strong>
                 </div>
               ))}
             </div>

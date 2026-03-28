@@ -38,16 +38,16 @@ export default function AuctionsPage() {
       <section className="overflow-hidden rounded-[28px] bg-[radial-gradient(circle_at_top_left,_rgba(125,211,252,0.35),_transparent_45%),linear-gradient(135deg,#0f172a,#111827)] p-5 text-white shadow-[0_20px_60px_rgba(15,23,42,0.24)]">
         <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-medium text-white/80">
           <Sparkles size={12} />
-          Admin-curated live bidding
+          Fixed entry highest count auctions
         </div>
         <h1 className="mt-4 text-2xl font-semibold">Auctions</h1>
-        <p className="mt-2 max-w-md text-sm text-white/75">Browse upcoming drops, follow live countdowns, and place bids directly from your account.</p>
+        <p className="mt-2 max-w-md text-sm text-white/75">Buy entries at a fixed price. Hidden capacity closes the auction automatically, and the highest entry count wins.</p>
         <label className="mt-4 block rounded-2xl bg-white/10 p-1.5 backdrop-blur">
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search auction title" className="w-full rounded-xl border-0 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none" />
         </label>
       </section>
 
-      <SectionHeader title="Auction Lots" subtitle="Mobile-first live, upcoming, and completed auctions" />
+      <SectionHeader title="Auction Lots" subtitle="Hidden-capacity entry auctions managed by admin" />
 
       <div className="flex gap-2 overflow-x-auto pb-1">
         {tabs.map((tab) => (
@@ -71,7 +71,7 @@ export default function AuctionsPage() {
       <div className="rounded-3xl border border-slate-200 bg-white p-4 text-xs text-slate-500">
         <div className="flex items-center gap-2 text-slate-700">
           <Gavel size={14} />
-          Bids are accepted only while the auction is live and must stay within the admin-defined $0.50 to $100.00 range.
+          Hidden capacity is never shown to users. Each entry purchase uses the fixed admin-set price and the highest total entry count wins when the auction closes.
         </div>
       </div>
     </div>

@@ -23,32 +23,17 @@ const registerSchema = z.object({
     })
     .superRefine((val, ctx) => {
       if ((val.parentId && !val.placementSide) || (!val.parentId && val.placementSide)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'parentId and placementSide must be provided together'
-        });
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'parentId and placementSide must be provided together' });
       }
-
       const referralInputs = [val.sponsorId, val.sponsorCode, val.referralCode, val.referralUsername].filter(Boolean);
       if (referralInputs.length > 1) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Use only one referral field'
-        });
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Use only one referral field' });
       }
-
       if (!val.sponsorId && !val.sponsorCode && !val.referralCode && !val.referralUsername && val.preferredLeg) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'preferredLeg requires referral details'
-        });
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'preferredLeg requires referral details' });
       }
-
       if (val.parentId && (val.sponsorId || val.sponsorCode || val.referralCode || val.referralUsername)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Use either direct parent placement or sponsor leg placement, not both'
-        });
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Use either direct parent placement or sponsor leg placement, not both' });
       }
     }),
   params: z.object({}),
@@ -82,14 +67,7 @@ const productCreateSchema = z.object({
 const orderCreateSchema = z.object({
   body: z.object({
     chargeWallet: z.boolean().optional().default(false),
-    items: z
-      .array(
-        z.object({
-          productId: uuid,
-          quantity: z.number().int().positive()
-        })
-      )
-      .min(1)
+    items: z.array(z.object({ productId: uuid, quantity: z.number().int().positive() })).min(1)
   }),
   params: z.object({}),
   query: z.object({})
@@ -105,11 +83,7 @@ const matchingRunSchema = z.object({
   query: z.object({})
 });
 
-const matchingResultQuerySchema = z.object({
-  body: z.object({}),
-  params: z.object({ cycleId: uuid }),
-  query: z.object({})
-});
+const matchingResultQuerySchema = z.object({ body: z.object({}), params: z.object({ cycleId: uuid }), query: z.object({}) });
 
 const monthlyRewardRunSchema = z.object({
   body: z.object({
@@ -124,59 +98,35 @@ const monthlyRewardRunSchema = z.object({
 const compensationWeeklyQuerySchema = z.object({
   body: z.object({}),
   params: z.object({}),
-  query: z.object({
-    cycleStart: z.string().date(),
-    cycleEnd: z.string().date()
-  })
+  query: z.object({ cycleStart: z.string().date(), cycleEnd: z.string().date() })
 });
 
 const compensationMonthlyQuerySchema = z.object({
   body: z.object({}),
   params: z.object({}),
-  query: z.object({
-    monthStart: z.string().date(),
-    monthEnd: z.string().date()
-  })
+  query: z.object({ monthStart: z.string().date(), monthEnd: z.string().date() })
 });
 
 const walletAdjustSchema = z.object({
-  body: z.object({
-    userId: uuid,
-    amount: z.number().positive(),
-    type: z.enum(['credit', 'debit']),
-    note: z.string().max(300).optional()
-  }),
+  body: z.object({ userId: uuid, amount: z.number().positive(), type: z.enum(['credit', 'debit']), note: z.string().max(300).optional() }),
   params: z.object({}),
   query: z.object({})
 });
 
 const walletBindSchema = z.object({
-  body: z.object({
-    walletAddress: z.string().min(8).max(255),
-    network: z.string().max(60).optional()
-  }),
+  body: z.object({ walletAddress: z.string().min(8).max(255), network: z.string().max(60).optional() }),
   params: z.object({}),
   query: z.object({})
 });
 
 const walletDepositSchema = z.object({
-  body: z.object({
-    amount: z.number().positive(),
-    method: z.string().max(60).optional(),
-    instructions: z.string().max(800).optional(),
-    details: z.record(z.any()).optional()
-  }),
+  body: z.object({ amount: z.number().positive(), method: z.string().max(60).optional(), instructions: z.string().max(800).optional(), details: z.record(z.any()).optional() }),
   params: z.object({}),
   query: z.object({})
 });
 
 const walletWithdrawalSchema = z.object({
-  body: z.object({
-    amount: z.number().positive(),
-    walletAddress: z.string().min(8).max(255).optional(),
-    network: z.string().max(60).optional(),
-    notes: z.string().max(800).optional()
-  }),
+  body: z.object({ amount: z.number().positive(), walletAddress: z.string().min(8).max(255).optional(), network: z.string().max(60).optional(), notes: z.string().max(800).optional() }),
   params: z.object({}),
   query: z.object({})
 });
@@ -187,9 +137,7 @@ const walletP2pSchema = z.object({
     toUserId: uuid.optional(),
     amount: z.number().positive(),
     notes: z.string().max(500).optional()
-  }).refine((body) => Boolean(body.toUsername || body.toUserId), {
-    message: 'Recipient username or user ID is required'
-  }),
+  }).refine((body) => Boolean(body.toUsername || body.toUserId), { message: 'Recipient username or user ID is required' }),
   params: z.object({}),
   query: z.object({})
 });
@@ -209,14 +157,12 @@ const sellerApplySchema = z.object({
     country: z.string().max(120).optional(),
     postalCode: z.string().max(30).optional(),
     kycDetails: z.record(z.any()).optional(),
-    documents: z.array(
-      z.object({
-        documentType: z.string().min(2).max(80),
-        documentNumber: z.string().max(120).optional(),
-        documentUrl: z.string().url(),
-        notes: z.string().max(300).optional()
-      })
-    ).min(1)
+    documents: z.array(z.object({
+      documentType: z.string().min(2).max(80),
+      documentNumber: z.string().max(120).optional(),
+      documentUrl: z.string().url(),
+      notes: z.string().max(300).optional()
+    })).min(1)
   }),
   params: z.object({}),
   query: z.object({})
@@ -252,11 +198,7 @@ const sellerProductUpdateSchema = z.object({
   query: z.object({})
 });
 
-const sellerProductIdParamSchema = z.object({
-  body: z.object({}),
-  params: z.object({ id: uuid }),
-  query: z.object({})
-});
+const sellerProductIdParamSchema = z.object({ body: z.object({}), params: z.object({ id: uuid }), query: z.object({}) });
 
 const sellerOrdersQuerySchema = z.object({
   body: z.object({}),
@@ -297,38 +239,42 @@ const sellerDocumentUploadSchema = z.object({
   query: z.object({})
 });
 
-const sellerDocumentIdParamSchema = z.object({
-  body: z.object({}),
-  params: z.object({ id: uuid }),
-  query: z.object({})
-});
+const sellerDocumentIdParamSchema = z.object({ body: z.object({}), params: z.object({ id: uuid }), query: z.object({}) });
 
 const pagingQuery = z.object({
-  page: z.string().regex(/^\d+$/).optional(),
-  limit: z.string().regex(/^\d+$/).optional()
+  page: z.union([z.string(), z.number()]).optional().transform((value) => {
+    if (value === undefined || value === null || value === '') return undefined;
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed > 0 ? String(parsed) : undefined;
+  }),
+  limit: z.union([z.string(), z.number()]).optional().transform((value) => {
+    if (value === undefined || value === null || value === '') return undefined;
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed > 0 ? String(parsed) : undefined;
+  })
 });
 
 const auctionStatuses = ['upcoming', 'live', 'ended', 'cancelled'];
+
+const auctionStatusSchema = z.string().optional().transform((value) => {
+  if (value === undefined || value === null || value === '') return undefined;
+  const normalized = String(value).trim().toLowerCase();
+  return auctionStatuses.includes(normalized) ? normalized : undefined;
+});
 
 const auctionListQuerySchema = z.object({
   body: z.object({}),
   params: z.object({}),
   query: pagingQuery.extend({
-    status: z.enum(auctionStatuses).optional(),
-    search: z.string().max(120).optional()
+    status: auctionStatusSchema,
+    search: z.string().trim().max(120).optional()
   })
 });
 
-const auctionIdParamSchema = z.object({
-  body: z.object({}),
-  params: z.object({ id: uuid }),
-  query: z.object({})
-});
+const auctionIdParamSchema = z.object({ body: z.object({}), params: z.object({ id: uuid }), query: z.object({}) });
 
 const auctionBidSchema = z.object({
-  body: z.object({
-    amount: z.number().min(0.5).max(100)
-  }),
+  body: z.object({ entryCount: z.number().int().positive().max(100) }),
   params: z.object({ id: uuid }),
   query: z.object({})
 });
@@ -337,7 +283,11 @@ const auctionHistoryQuerySchema = z.object({
   body: z.object({}),
   params: z.object({}),
   query: pagingQuery.extend({
-    kind: z.enum(['bids', 'joined', 'wins', 'history']).optional()
+    kind: z.string().optional().transform((value) => {
+      if (value === undefined || value === null || value === '') return undefined;
+      const normalized = String(value).trim().toLowerCase();
+      return ['bids', 'joined', 'wins', 'history'].includes(normalized) ? normalized : undefined;
+    })
   })
 });
 
