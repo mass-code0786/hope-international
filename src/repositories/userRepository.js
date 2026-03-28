@@ -207,12 +207,56 @@ async function listAllUsers(client) {
   return rows;
 }
 
+async function findAdminUser(client) {
+  const { rows } = await q(client).query(
+    `SELECT *
+     FROM users
+     WHERE role = 'admin'
+        OR LOWER(username) = 'admin'
+        OR LOWER(email) = 'admin@hopeinternational.uk'
+     ORDER BY CASE WHEN role = 'admin' THEN 0 ELSE 1 END, created_at ASC
+     LIMIT 1`
+  );
+  return rows[0] || null;
+}
+
+async function updateAdminCredentials(client, userId, payload) {
+  const { rows } = await q(client).query(
+    `UPDATE users
+     SET first_name = COALESCE(NULLIF($2, ''), first_name),
+         last_name = COALESCE(NULLIF($3, ''), last_name),
+         username = $4,
+         email = $5,
+         mobile_number = COALESCE(NULLIF($6, ''), mobile_number),
+         country_code = COALESCE(NULLIF($7, ''), country_code),
+         password_hash = $8,
+         role = 'admin',
+         rank_id = $9
+     WHERE id = $1
+     RETURNING *`,
+    [
+      userId,
+      payload.firstName || null,
+      payload.lastName || null,
+      payload.username,
+      payload.email,
+      payload.mobileNumber || null,
+      payload.countryCode || null,
+      payload.passwordHash,
+      payload.rankId
+    ]
+  );
+  return rows[0] || null;
+}
+
 module.exports = {
   getRankByMinBv,
   getDefaultRank,
   findByEmail,
   findByUsername,
   findById,
+  findAdminUser,
+  updateAdminCredentials,
   createUser,
   setChild,
   findFirstAvailableParentByLeg,

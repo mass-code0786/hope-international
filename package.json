@@ -12,7 +12,8 @@
     "seed:dev": "node src/db/devSeed.js",
     "reset:dev": "node src/db/resetDev.js",
     "reseed:dev": "npm run reset:dev && npm run migrate && npm run seed:dev",
-    "full-reset:dev": "npm run reseed:dev"
+    "full-reset:dev": "npm run reseed:dev",
+    "admin:bootstrap": "node src/scripts/bootstrapAdmin.js"
   },
   "keywords": [],
   "author": "",
@@ -34,4 +35,3 @@
     "nodemon": "^3.1.14"
   }
 }
-

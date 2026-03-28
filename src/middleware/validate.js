@@ -23,9 +23,9 @@ function validate(schema) {
   return (req, _res, next) => {
     try {
       const parsed = schema.parse({
-        body: req.body,
-        query: req.query,
-        params: req.params
+        body: req.body ?? {},
+        query: req.query ?? {},
+        params: req.params ?? {}
       });
 
       req.body = parsed.body;
@@ -35,6 +35,13 @@ function validate(schema) {
     } catch (error) {
       if (error instanceof ZodError) {
         const details = error.flatten();
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[validate] request validation failed', {
+            method: req.method,
+            path: req.originalUrl,
+            message: firstValidationMessage(error)
+          });
+        }
         return next(new ApiError(400, firstValidationMessage(error), details));
       }
       return next(error);
