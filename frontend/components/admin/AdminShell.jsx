@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -17,6 +17,7 @@ import { clearStoredToken } from '@/lib/utils/tokenStorage';
 export function AdminShell({ children }) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { token, hydrated, hydrate, user, setUser, clearSession } = useAuthStore();
 
   useEffect(() => {
@@ -63,9 +64,19 @@ export function AdminShell({ children }) {
     }
   }, [hydrated, resolvedUser]);
 
+  useEffect(() => {
+    if (!mobileMenuOpen) return undefined;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [mobileMenuOpen]);
+
   async function onLogout() {
     clearStoredToken();
     clearSession();
+    setMobileMenuOpen(false);
     await queryClient.clear();
     toast.success('Logged out successfully');
     router.replace('/login');
@@ -91,10 +102,10 @@ export function AdminShell({ children }) {
 
   return (
     <div className="min-h-screen bg-bg text-text lg:flex">
-      <AdminSidebar />
-      <main className="w-full">
+      <AdminSidebar mobileOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+      <main className="w-full min-w-0">
         <div className="mx-auto w-full max-w-[1600px] p-4 pb-10 md:p-6">
-          <AdminTopbar user={resolvedUser} onLogout={onLogout} />
+          <AdminTopbar user={resolvedUser} onLogout={onLogout} onOpenMenu={() => setMobileMenuOpen(true)} />
           {children}
         </div>
       </main>
