@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, ShoppingBag, Network, Wallet, User, Store } from 'lucide-react';
+import { Gavel, ShoppingBag, Network, Wallet, User, Store } from 'lucide-react';
 import { isSeller } from '@/lib/constants/access';
 
 const iconMap = {
-  home: Home,
+  auctions: Gavel,
   'shopping-bag': ShoppingBag,
   network: Network,
   wallet: Wallet,
@@ -16,7 +16,7 @@ const iconMap = {
 
 function getNavItems(user, sellerActive) {
   const items = [
-    { href: '/shop', label: 'Home', icon: 'home' },
+    { href: '/auctions', label: 'Auctions', icon: 'auctions' },
     { href: '/shop', label: 'Shop', icon: 'shopping-bag' },
     { href: '/team', label: 'Team', icon: 'network' },
     { href: '/income', label: 'Income', icon: 'wallet' }
@@ -42,7 +42,7 @@ export function BottomNav({ user, sellerActive = false }) {
         {items.map((item, index) => {
           const Icon = iconMap[item.icon];
           const active = index === 0
-            ? pathname === '/shop' || pathname.startsWith('/shop/')
+            ? pathname === '/auctions' || pathname.startsWith('/auctions/')
             : pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
             <Link key={`${item.href}-${item.label}`} href={item.href} className="flex flex-col items-center justify-center gap-0.5 py-2 text-[9px]">

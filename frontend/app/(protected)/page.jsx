@@ -24,7 +24,7 @@ export default function ProtectedRootPage() {
       return;
     }
 
-    router.replace('/shop');
+    router.replace('/auctions');
   }, [user, hydrated, hydrate, router]);
 
   return <div className="card-surface p-4 text-sm text-muted">Redirecting to your workspace...</div>;

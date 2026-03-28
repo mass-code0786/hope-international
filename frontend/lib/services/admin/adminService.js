@@ -287,3 +287,37 @@ export async function getAdminIncomeTransactions(params = {}) {
 export async function getAdminUserFinancialOverview(userId) {
   return toEnvelope(await apiFetch(`/admin/wallet/users/${userId}/financial-overview`));
 }
+export async function getAdminAuctions(params = {}) {
+  return toEnvelope(await apiFetch('/admin/auctions' + withQuery(params)));
+}
+
+export async function getAdminAuctionDetails(id) {
+  return toEnvelope(await apiFetch('/admin/auctions/' + id));
+}
+
+export async function createAdminAuction(payload) {
+  return toEnvelope(
+    await apiFetch('/admin/auctions', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function updateAdminAuction(id, payload) {
+  return toEnvelope(
+    await apiFetch('/admin/auctions/' + id, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function runAdminAuctionAction(id, payload) {
+  return toEnvelope(
+    await apiFetch('/admin/auctions/' + id + '/actions', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  );
+}

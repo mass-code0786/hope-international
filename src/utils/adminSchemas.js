@@ -139,7 +139,6 @@ const adminWalletAdjustSchema = z.object({
   query: z.object({})
 });
 
-
 const adminFinanceListQuerySchema = z.object({
   body: z.object({}),
   params: z.object({}),
@@ -178,6 +177,7 @@ const adminWalletBindingParamSchema = z.object({
   params: z.object({ userId: uuid }),
   query: z.object({})
 });
+
 const adminWeeklyRunSchema = z.object({
   body: z.object({
     cycleStart: z.string().date(),
@@ -267,7 +267,6 @@ const teamSummaryParamSchema = z.object({
   query: z.object({})
 });
 
-
 const adminBannersQuerySchema = z.object({
   body: z.object({}),
   params: z.object({}),
@@ -316,6 +315,7 @@ const adminBannerIdParamSchema = z.object({
   params: z.object({ id: uuid }),
   query: z.object({})
 });
+
 const adminSellerApplicationsQuerySchema = z.object({
   body: z.object({}),
   params: z.object({}),
@@ -337,6 +337,75 @@ const adminSellerApplicationReviewSchema = z.object({
         message: 'rejectionReason is required when status is rejected'
       });
     }
+  }),
+  params: z.object({ id: uuid }),
+  query: z.object({})
+});
+
+const adminAuctionStatuses = ['upcoming', 'live', 'ended', 'cancelled'];
+const adminAuctionSpecsSchema = z.array(z.object({
+  label: z.string().min(1).max(100),
+  value: z.string().min(1).max(300)
+})).optional();
+const adminAuctionGallerySchema = z.array(z.string().min(3).max(1000000)).optional();
+
+const adminAuctionsQuerySchema = z.object({
+  body: z.object({}),
+  params: z.object({}),
+  query: pagingQuery.extend({
+    search: z.string().optional(),
+    status: z.enum(adminAuctionStatuses).optional()
+  })
+});
+
+const adminAuctionCreateSchema = z.object({
+  body: z.object({
+    title: z.string().min(2).max(255),
+    shortDescription: z.string().max(400).optional(),
+    description: z.string().max(4000).optional(),
+    imageUrl: z.string().max(1000000).optional(),
+    gallery: adminAuctionGallerySchema,
+    specifications: adminAuctionSpecsSchema,
+    startingPrice: z.number().min(0.5).max(100),
+    minBidIncrement: z.number().min(0.5).max(100).optional(),
+    startAt: z.string().datetime(),
+    endAt: z.string().datetime(),
+    isActive: z.boolean().optional()
+  }),
+  params: z.object({}),
+  query: z.object({})
+});
+
+const adminAuctionUpdateSchema = z.object({
+  body: z.object({
+    title: z.string().min(2).max(255).optional(),
+    shortDescription: z.string().max(400).optional(),
+    description: z.string().max(4000).optional(),
+    imageUrl: z.string().max(1000000).optional(),
+    gallery: adminAuctionGallerySchema,
+    specifications: adminAuctionSpecsSchema,
+    startingPrice: z.number().min(0.5).max(100).optional(),
+    minBidIncrement: z.number().min(0.5).max(100).optional(),
+    startAt: z.string().datetime().optional(),
+    endAt: z.string().datetime().optional(),
+    isActive: z.boolean().optional()
+  }).refine((body) => Object.keys(body).length > 0, {
+    message: 'At least one field is required for update'
+  }),
+  params: z.object({ id: uuid }),
+  query: z.object({})
+});
+
+const adminAuctionIdParamSchema = z.object({
+  body: z.object({}),
+  params: z.object({ id: uuid }),
+  query: z.object({})
+});
+
+const adminAuctionActionSchema = z.object({
+  body: z.object({
+    action: z.enum(['close', 'cancel', 'activate', 'deactivate']),
+    reason: z.string().max(255).optional()
   }),
   params: z.object({ id: uuid }),
   query: z.object({})
@@ -376,7 +445,10 @@ module.exports = {
   adminBannerIdParamSchema,
   adminSellerApplicationsQuerySchema,
   adminSellerApplicationReviewSchema,
-  settingsUpdateSchema
+  settingsUpdateSchema,
+  adminAuctionsQuerySchema,
+  adminAuctionCreateSchema,
+  adminAuctionUpdateSchema,
+  adminAuctionIdParamSchema,
+  adminAuctionActionSchema
 };
-
-

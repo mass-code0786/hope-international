@@ -303,6 +303,44 @@ const sellerDocumentIdParamSchema = z.object({
   query: z.object({})
 });
 
+const pagingQuery = z.object({
+  page: z.string().regex(/^\d+$/).optional(),
+  limit: z.string().regex(/^\d+$/).optional()
+});
+
+const auctionStatuses = ['upcoming', 'live', 'ended', 'cancelled'];
+
+const auctionListQuerySchema = z.object({
+  body: z.object({}),
+  params: z.object({}),
+  query: pagingQuery.extend({
+    status: z.enum(auctionStatuses).optional(),
+    search: z.string().max(120).optional()
+  })
+});
+
+const auctionIdParamSchema = z.object({
+  body: z.object({}),
+  params: z.object({ id: uuid }),
+  query: z.object({})
+});
+
+const auctionBidSchema = z.object({
+  body: z.object({
+    amount: z.number().min(0.5).max(100)
+  }),
+  params: z.object({ id: uuid }),
+  query: z.object({})
+});
+
+const auctionHistoryQuerySchema = z.object({
+  body: z.object({}),
+  params: z.object({}),
+  query: pagingQuery.extend({
+    kind: z.enum(['bids', 'joined', 'wins', 'history']).optional()
+  })
+});
+
 module.exports = {
   registerSchema,
   loginSchema,
@@ -325,5 +363,9 @@ module.exports = {
   sellerOrdersQuerySchema,
   sellerPayoutsQuerySchema,
   sellerDocumentUploadSchema,
-  sellerDocumentIdParamSchema
+  sellerDocumentIdParamSchema,
+  auctionListQuerySchema,
+  auctionIdParamSchema,
+  auctionBidSchema,
+  auctionHistoryQuerySchema
 };

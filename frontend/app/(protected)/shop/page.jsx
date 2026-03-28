@@ -102,6 +102,15 @@ const accountHubSections = [
     ]
   },
   {
+    title: 'Auctions',
+    items: [
+      { label: 'Browse Auctions', href: '/auctions', icon: HandCoins },
+      { label: 'My Bids', href: '/history/auctions?kind=bids', icon: History },
+      { label: 'Auctions Joined', href: '/history/auctions?kind=joined', icon: History },
+      { label: 'Won Auctions', href: '/history/auctions?kind=wins', icon: History }
+    ]
+  },
+  {
     title: 'Team / Plan',
     items: [
       { label: 'Team History', href: '/team', icon: Users },
@@ -517,3 +526,5 @@ export default function ShopPage() {
     </div>
   );
 }
+
+

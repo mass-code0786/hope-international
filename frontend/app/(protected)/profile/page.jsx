@@ -82,7 +82,18 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      <div className="rounded-xl border border-slate-200 bg-white p-3">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <p className="text-xs font-semibold text-slate-800">Auction Hub</p>
+            <p className="text-[10px] text-slate-500">Review bids, joined auctions, winners, and auction history</p>
+          </div>
+          <Link href="/history/auctions" className="rounded-lg bg-sky-600 px-2.5 py-1.5 text-[10px] font-semibold text-white">Open</Link>
+        </div>
+      </div>
+
       <ProfileActions referralLink={referralLink} onLogout={onLogout} />
     </div>
   );
 }
+

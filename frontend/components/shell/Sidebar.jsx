@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, ShoppingBag, Network, Wallet, User, ClipboardList, Store } from 'lucide-react';
+import { Home, Gavel, ShoppingBag, Network, Wallet, User, ClipboardList, Store } from 'lucide-react';
 import { THEME } from '@/lib/constants/theme';
 import { isSeller } from '@/lib/constants/access';
 import Logo from '@/components/common/Logo';
@@ -10,6 +10,7 @@ import Logo from '@/components/common/Logo';
 function getItems(user, sellerActive) {
   const nav = [
     { href: '/', label: 'Dashboard', icon: Home },
+    { href: '/auctions', label: 'Auctions', icon: Gavel },
     { href: '/shop', label: 'Shop', icon: ShoppingBag },
     { href: '/team', label: 'Team', icon: Network },
     { href: '/income', label: 'Income', icon: Wallet },

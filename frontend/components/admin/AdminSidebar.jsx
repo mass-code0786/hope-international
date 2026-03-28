@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, Boxes, ShoppingCart, Wallet, Cpu, Gift, Network, Settings, Image, ArrowDownCircle, ArrowUpCircle, Repeat2, Landmark, BadgeDollarSign } from 'lucide-react';
+import { LayoutDashboard, Users, Boxes, ShoppingCart, Wallet, Cpu, Gift, Network, Settings, Image, ArrowDownCircle, ArrowUpCircle, Repeat2, Landmark, BadgeDollarSign, Gavel } from 'lucide-react';
 import { THEME } from '@/lib/constants/theme';
 import Logo from '@/components/common/Logo';
 
@@ -10,6 +10,7 @@ const adminNav = [
   { href: '/admin', label: 'Overview', icon: LayoutDashboard },
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/products', label: 'Products', icon: Boxes },
+  { href: '/admin/auctions', label: 'Auctions', icon: Gavel },
   { href: '/admin/banners', label: 'Banners', icon: Image },
   { href: '/admin/orders', label: 'Orders', icon: ShoppingCart },
   { href: '/admin/deposits', label: 'Deposits', icon: ArrowDownCircle },
