@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { AdminSectionHeader } from '@/components/admin/AdminSectionHeader';
@@ -48,11 +48,11 @@ export default function AdminRewardsPage() {
   const pagination = rewardsEnvelope.pagination || {};
   const summary = summaryQuery.data?.data || {};
 
-  const stats = useMemo(() => ({
+  const stats = {
     qualified: Number(summary.qualified_count || 0),
     pending: Number(summary.pending_count || 0),
     processed: Number(summary.processed_count || 0)
-  }), [summary]);
+  };
 
   return (
     <div className="space-y-5">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { AdminSectionHeader } from '@/components/admin/AdminSectionHeader';
@@ -137,10 +137,7 @@ export default function AdminBannersPage() {
   const banners = Array.isArray(envelope.data) ? envelope.data : [];
   const pagination = envelope.pagination || {};
 
-  const filtered = useMemo(
-    () => banners.filter((banner) => `${banner.title || ''} ${banner.subtitle || ''}`.toLowerCase().includes(search.toLowerCase())),
-    [banners, search]
-  );
+  const filtered = banners.filter((banner) => (String(banner.title || '') + ' ' + String(banner.subtitle || '')).toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className="space-y-5">

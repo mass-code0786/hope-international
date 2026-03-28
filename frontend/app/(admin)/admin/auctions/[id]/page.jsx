@@ -1,6 +1,5 @@
 'use client';
 
-import { useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -59,7 +58,7 @@ export default function AdminAuctionDetailPage() {
 
   const auction = detailQuery.data?.data;
   const products = Array.isArray(productsQuery.data?.data) ? productsQuery.data.data : [];
-  const initialValues = useMemo(() => toAuctionFormValues(auction), [auction]);
+  const initialValues = toAuctionFormValues(auction);
 
   return (
     <div className="space-y-5">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AdminSectionHeader } from '@/components/admin/AdminSectionHeader';
 import { FilterBar } from '@/components/admin/FilterBar';
@@ -49,19 +49,17 @@ export default function AdminTeamPage() {
   const root = treeData.root || null;
   const hasDepth = depth > 1;
 
-  const tree = useMemo(() => {
-    if (!root) return null;
-    function normalize(node, side = 'Root') {
-      return {
-        id: node.id,
-        name: node.username || node.name || 'Member',
-        side: node.placementSide || side,
-        status: node.isActive ? 'active' : 'inactive',
-        children: Array.isArray(node.children) ? node.children.map((child) => normalize(child, child.placementSide || 'N/A')) : []
-      };
-    }
-    return normalize(root);
-  }, [root]);
+  function normalizeTreeNode(node, side = 'Root') {
+    return {
+      id: node.id,
+      name: node.username || node.name || 'Member',
+      side: node.placementSide || side,
+      status: node.isActive ? 'active' : 'inactive',
+      children: Array.isArray(node.children) ? node.children.map((child) => normalizeTreeNode(child, child.placementSide || 'N/A')) : []
+    };
+  }
+
+  const tree = root ? normalizeTreeNode(root) : null;
 
   return (
     <div className="space-y-5">

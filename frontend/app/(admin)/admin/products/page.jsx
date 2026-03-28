@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { AdminSectionHeader } from '@/components/admin/AdminSectionHeader';
@@ -63,7 +63,7 @@ export default function AdminProductsPage() {
   const envelope = productsQuery.data || {};
   const products = Array.isArray(envelope.data) ? envelope.data : [];
   const pagination = envelope.pagination || {};
-  const filtered = useMemo(() => products.filter((p) => `${p.name || ''} ${p.sku || ''}`.toLowerCase().includes(search.toLowerCase())), [products, search]);
+  const filtered = products.filter((p) => (String(p.name || '') + ' ' + String(p.sku || '')).toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className="space-y-5">

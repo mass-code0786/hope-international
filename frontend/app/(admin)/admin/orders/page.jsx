@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AdminSectionHeader } from '@/components/admin/AdminSectionHeader';
 import { FilterBar } from '@/components/admin/FilterBar';
@@ -36,16 +36,12 @@ export default function AdminOrdersPage() {
   const envelope = ordersQuery.data || {};
   const orders = Array.isArray(envelope.data) ? envelope.data : [];
   const pagination = envelope.pagination || {};
-  const filtered = useMemo(
-    () =>
-      orders.filter((o) => {
-        const text = `${o.id || ''} ${o.status || ''}`.toLowerCase();
-        const matchesSearch = text.includes(search.toLowerCase());
-        const matchesStatus = status === 'all' ? true : o.status === status;
-        return matchesSearch && matchesStatus;
-      }),
-    [orders, search, status]
-  );
+  const filtered = orders.filter((o) => {
+    const text = (String(o.id || '') + ' ' + String(o.status || '')).toLowerCase();
+    const matchesSearch = text.includes(search.toLowerCase());
+    const matchesStatus = status === 'all' ? true : o.status === status;
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className="space-y-5">

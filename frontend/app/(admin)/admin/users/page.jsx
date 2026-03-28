@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { AdminSectionHeader } from '@/components/admin/AdminSectionHeader';
@@ -72,13 +72,11 @@ export default function AdminUsersPage() {
   const ranks = Array.isArray(ranksEnvelope.data) ? ranksEnvelope.data : [];
   const activeRanks = ranks.filter((rank) => rank?.is_active);
 
-  const filtered = useMemo(() => {
-    return users.filter((u) => {
-      const text = `${u.username || ''} ${u.email || ''} ${u.id || ''}`.toLowerCase();
-      const matchesSearch = text.includes(search.toLowerCase());
-      return matchesSearch;
-    });
-  }, [users, search]);
+  const filtered = users.filter((u) => {
+    const text = String(u.username || '') + ' ' + String(u.email || '') + ' ' + String(u.id || '');
+    const matchesSearch = text.includes(search.toLowerCase());
+    return matchesSearch;
+  });
 
   return (
     <div className="space-y-5">

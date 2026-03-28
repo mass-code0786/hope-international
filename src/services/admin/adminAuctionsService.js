@@ -56,6 +56,14 @@ async function listAuctions(filters, paginationInput) {
         pagination: buildPagination({ page: pagination.page, limit: pagination.limit, total: 0 })
       };
     }
+
+    console.error('[admin.auctions.list] failed', {
+      code: error?.code || null,
+      message: error?.message || 'Unknown admin auctions list failure',
+      filters,
+      pagination,
+      stack: error?.stack || null
+    });
     throw error;
   }
 }
