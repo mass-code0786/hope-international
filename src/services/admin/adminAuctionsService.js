@@ -5,6 +5,10 @@ const adminRepository = require('../../repositories/adminRepository');
 const auctionRepository = require('../../repositories/auctionRepository');
 const auctionService = require('../auctionService');
 
+function isAuctionSchemaError(error) {
+  return ['42P01', '42703'].includes(error?.code);
+}
+
 async function assertAuctionProduct(client, productId) {
   const product = await adminRepository.getProductById(client, productId);
   if (!product) {
@@ -15,28 +19,45 @@ async function assertAuctionProduct(client, productId) {
 
 async function listAuctions(filters, paginationInput) {
   const pagination = normalizePagination(paginationInput);
-  const result = await withTransaction(async (client) => {
-    const initial = await auctionRepository.listAuctions(client, {
-      ...filters,
-      onlyActive: false
-    }, pagination);
 
-    for (const auction of initial.items) {
-      if (auction.computed_status === 'ended' && auction.status !== 'cancelled') {
-        await auctionService.ensureAuctionResolved(client, auction.id);
+  try {
+    const result = await withTransaction(async (client) => {
+      const initial = await auctionRepository.listAuctions(client, {
+        ...filters,
+        onlyActive: false
+      }, pagination);
+
+      for (const auction of initial.items) {
+        if (auction.computed_status === 'ended' && auction.status !== 'cancelled') {
+          await auctionService.ensureAuctionResolved(client, auction.id);
+        }
       }
+
+      return auctionRepository.listAuctions(client, {
+        ...filters,
+        onlyActive: false
+      }, pagination);
+    });
+
+    return {
+      data: result.items,
+      pagination: buildPagination({ page: pagination.page, limit: pagination.limit, total: result.total })
+    };
+  } catch (error) {
+    if (isAuctionSchemaError(error)) {
+      console.error('[admin.auctions.list] schema mismatch', {
+        code: error.code,
+        message: error.message,
+        filters,
+        pagination
+      });
+      return {
+        data: [],
+        pagination: buildPagination({ page: pagination.page, limit: pagination.limit, total: 0 })
+      };
     }
-
-    return auctionRepository.listAuctions(client, {
-      ...filters,
-      onlyActive: false
-    }, pagination);
-  });
-
-  return {
-    data: result.items,
-    pagination: buildPagination({ page: pagination.page, limit: pagination.limit, total: result.total })
-  };
+    throw error;
+  }
 }
 
 async function getAuction(auctionId) {
