@@ -351,6 +351,26 @@ const adminLandingCountryUpdateSchema = z.object({
 
 const adminLandingEntityIdParamSchema = z.object({ body: z.object({}), params: z.object({ id: uuid }), query: z.object({}) });
 
+const supportCategories = ['order_issue', 'payment_issue', 'auction_issue', 'account_issue', 'seller_issue', 'other'];
+const supportStatuses = ['open', 'replied', 'closed'];
+
+const adminSupportThreadsQuerySchema = z.object({
+  body: z.object({}),
+  params: z.object({}),
+  query: pagingQuery.extend({
+    search: z.string().max(120).optional(),
+    status: z.enum(supportStatuses).optional(),
+    category: z.enum(supportCategories).optional(),
+    userId: uuid.optional(),
+    dateFrom: z.string().date().optional(),
+    dateTo: z.string().date().optional()
+  })
+});
+
+const adminSupportThreadIdParamSchema = z.object({ body: z.object({}), params: z.object({ id: uuid }), query: z.object({}) });
+const adminSupportMessageCreateSchema = z.object({ body: z.object({ message: z.string().min(1).max(5000) }), params: z.object({ id: uuid }), query: z.object({}) });
+const adminSupportStatusUpdateSchema = z.object({ body: z.object({ status: z.enum(supportStatuses) }), params: z.object({ id: uuid }), query: z.object({}) });
+
 module.exports = {
   adminUsersQuerySchema,
   adminUserSearchQuerySchema,

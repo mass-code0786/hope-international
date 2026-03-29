@@ -13,6 +13,7 @@ const ranksRoutes = require('./ranksRoutes');
 const bannersRoutes = require('./bannersRoutes');
 const auctionsRoutes = require('./auctionsRoutes');
 const landingRoutes = require('./landingRoutes');
+const supportRoutes = require('./supportRoutes');
 
 const router = express.Router();
 
@@ -30,6 +31,6 @@ router.use('/ranks', ranksRoutes);
 router.use('/banners', bannersRoutes);
 router.use('/auctions', auctionsRoutes);
 router.use('/landing', landingRoutes);
+router.use('/support', supportRoutes);
 
 module.exports = router;
-

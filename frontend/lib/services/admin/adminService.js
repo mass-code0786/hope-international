@@ -447,3 +447,29 @@ export async function deleteAdminLandingCountry(id) {
     })
   );
 }
+
+export async function getAdminSupportThreads(params = {}) {
+  return toEnvelope(await apiFetch(`/admin/support/threads${withQuery(params)}`));
+}
+
+export async function getAdminSupportThread(threadId) {
+  return toEnvelope(await apiFetch(`/admin/support/threads/${threadId}`));
+}
+
+export async function sendAdminSupportMessage(threadId, payload) {
+  return toEnvelope(
+    await apiFetch(`/admin/support/threads/${threadId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function updateAdminSupportStatus(threadId, status) {
+  return toEnvelope(
+    await apiFetch(`/admin/support/threads/${threadId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status })
+    })
+  );
+}

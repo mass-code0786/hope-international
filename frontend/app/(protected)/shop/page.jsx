@@ -61,7 +61,7 @@ const serviceCards = [
   { icon: Truck, title: 'Fast Shipping' },
   { icon: ShieldCheck, title: 'Secure Checkout' },
   { icon: BadgePercent, title: 'Daily Offers' },
-  { icon: Headset, title: 'Support' }
+  { icon: Headset, title: 'Support', href: '/support' }
 ];
 
 const categoryKeywords = {
@@ -377,14 +377,20 @@ export default function ShopPage() {
       <section className="grid grid-cols-4 gap-1.5 rounded-lg border border-slate-200 bg-white p-1.5">
         {serviceCards.map((item) => {
           const Icon = item.icon;
-          return (
-            <article key={item.title} className="rounded-md bg-slate-50 p-1 text-center">
+          const card = (
+            <article className="rounded-md bg-slate-50 p-1 text-center transition hover:bg-slate-100">
               <span className="mx-auto inline-flex h-4 w-4 items-center justify-center rounded-full bg-sky-50 text-sky-700">
                 <Icon size={10} />
               </span>
               <p className="mt-0.5 text-[8px] font-medium text-slate-700">{item.title}</p>
             </article>
           );
+
+          if (item.href) {
+            return <Link key={item.title} href={item.href}>{card}</Link>;
+          }
+
+          return <div key={item.title}>{card}</div>;
         })}
       </section>
 

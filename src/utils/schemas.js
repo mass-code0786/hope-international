@@ -307,6 +307,34 @@ const auctionHistoryQuerySchema = z.object({
   })
 });
 
+const supportCategories = ['order_issue', 'payment_issue', 'auction_issue', 'account_issue', 'seller_issue', 'other'];
+const supportStatuses = ['open', 'replied', 'closed'];
+
+const supportThreadsQuerySchema = z.object({
+  body: z.object({}),
+  params: z.object({}),
+  query: pagingQuery.extend({
+    status: z.preprocess((value) => firstQueryValue(value), z.enum(supportStatuses).optional()),
+    category: z.preprocess((value) => firstQueryValue(value), z.enum(supportCategories).optional()),
+    search: z.preprocess((value) => firstQueryValue(value), z.string().max(120).optional()),
+    dateFrom: z.preprocess((value) => firstQueryValue(value), z.string().date().optional()),
+    dateTo: z.preprocess((value) => firstQueryValue(value), z.string().date().optional())
+  })
+});
+
+const supportThreadCreateSchema = z.object({
+  body: z.object({
+    subject: z.string().min(2).max(160),
+    category: z.enum(supportCategories),
+    message: z.string().min(1).max(5000)
+  }),
+  params: z.object({}),
+  query: z.object({})
+});
+
+const supportThreadIdParamSchema = z.object({ body: z.object({}), params: z.object({ id: uuid }), query: z.object({}) });
+const supportMessageCreateSchema = z.object({ body: z.object({ message: z.string().min(1).max(5000) }), params: z.object({ id: uuid }), query: z.object({}) });
+
 module.exports = {
   registerSchema,
   loginSchema,

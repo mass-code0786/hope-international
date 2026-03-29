@@ -13,6 +13,8 @@ export const queryKeys = {
   auctionDetail: (id) => ['auctions', id],
   auctionHistory: (kind = 'bids') => ['auctions', 'history', kind],
   orders: ['orders'],
+  supportThreads: ['support', 'threads'],
+  supportThreadDetail: (id) => ['support', 'threads', id],
   homepageBanners: ['homepage-banners'],
   admin: ['admin'],
   adminDashboard: ['admin', 'dashboard'],
@@ -53,6 +55,7 @@ export const queryKeys = {
   monthlyCompensation: (monthStart, monthEnd) => ['monthly-compensation', monthStart, monthEnd],
   teamChildren: ['team-children'],
   landingPage: ['landing-page'],
-  adminLanding: ['admin', 'landing']
+  adminLanding: ['admin', 'landing'],
+  adminSupport: ['admin', 'support'],
+  adminSupportDetail: (id) => ['admin', 'support', id]
 };
-

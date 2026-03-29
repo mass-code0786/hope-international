@@ -10,6 +10,7 @@ const sellerRoutes = require('./sellerRoutes');
 const bannerRoutes = require('./bannerRoutes');
 const auctionRoutes = require('./auctionRoutes');
 const landingRoutes = require('./landingRoutes');
+const supportRoutes = require('./supportRoutes');
 const { auth, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
@@ -24,6 +25,7 @@ router.use('/seller', sellerRoutes);
 router.use('/banners', bannerRoutes);
 router.use('/auctions', auctionRoutes);
 router.use('/landing', landingRoutes);
+router.use('/support', supportRoutes);
 router.use('/admin', auth(), requireAdmin, adminRoutes);
 
 module.exports = router;
