@@ -27,6 +27,9 @@ const IDS = {
     sellerBeautyRejected: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa4',
     adminCourse: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa5'
   },
+  auctions: {
+    sampleLive: 'abababab-abab-4bab-8bab-ababababab11'
+  },
   orders: {
     paidOne: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1',
     paidTwo: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2',
@@ -449,6 +452,84 @@ async function seedDevData() {
       ]
     );
 
+
+    const auctionCountResult = await client.query('SELECT COUNT(*)::int AS count FROM auctions');
+    if (Number(auctionCountResult.rows[0]?.count || 0) === 0) {
+      await client.query(
+        `INSERT INTO auctions (
+          id,
+          product_id,
+          title,
+          short_description,
+          description,
+          specifications,
+          image_url,
+          gallery,
+          starting_price,
+          min_bid_increment,
+          current_bid,
+          entry_price,
+          hidden_capacity,
+          stock_quantity,
+          reward_mode,
+          reward_value,
+          total_entries,
+          has_tie,
+          winner_count,
+          start_at,
+          end_at,
+          status,
+          is_active,
+          created_by,
+          updated_by
+        )
+        VALUES (
+          $1, $2, 'Hope Wellness Flash Auction', 'Sample live auction for storefront verification',
+          'Safe dev seed auction used to verify the Auctions page renders live cards correctly.',
+          $3::jsonb, $4, $5::jsonb,
+          5.00, 5.00, 5.00, 5.00,
+          120, 1, 'stock', NULL, 0, false, 0,
+          NOW() - INTERVAL '1 hour', NOW() + INTERVAL '3 days', 'live', true, $6, $6
+        )
+        ON CONFLICT (id)
+        DO UPDATE SET
+          product_id = EXCLUDED.product_id,
+          title = EXCLUDED.title,
+          short_description = EXCLUDED.short_description,
+          description = EXCLUDED.description,
+          specifications = EXCLUDED.specifications,
+          image_url = EXCLUDED.image_url,
+          gallery = EXCLUDED.gallery,
+          starting_price = EXCLUDED.starting_price,
+          min_bid_increment = EXCLUDED.min_bid_increment,
+          current_bid = EXCLUDED.current_bid,
+          entry_price = EXCLUDED.entry_price,
+          hidden_capacity = EXCLUDED.hidden_capacity,
+          stock_quantity = EXCLUDED.stock_quantity,
+          reward_mode = EXCLUDED.reward_mode,
+          reward_value = EXCLUDED.reward_value,
+          total_entries = EXCLUDED.total_entries,
+          has_tie = EXCLUDED.has_tie,
+          winner_count = EXCLUDED.winner_count,
+          start_at = EXCLUDED.start_at,
+          end_at = EXCLUDED.end_at,
+          status = EXCLUDED.status,
+          is_active = EXCLUDED.is_active,
+          created_by = EXCLUDED.created_by,
+          updated_by = EXCLUDED.updated_by`,
+        [
+          IDS.auctions.sampleLive,
+          IDS.products.adminWellness,
+          JSON.stringify([
+            { label: 'Reward', value: 'Hope Wellness Combo' },
+            { label: 'Entry', value: 'Fixed $5.00 per bid' }
+          ]),
+          'https://placehold.co/900x600/e2e8f0/334155?text=Hope+Auction',
+          JSON.stringify(['https://placehold.co/900x600/e2e8f0/334155?text=Hope+Auction']),
+          IDS.users.admin
+        ]
+      );
+    }
     await client.query(
       `INSERT INTO orders (
         id,
@@ -887,3 +968,4 @@ if (require.main === module) {
       await pool.end();
     });
 }
+

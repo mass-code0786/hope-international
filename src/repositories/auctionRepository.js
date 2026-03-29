@@ -104,8 +104,16 @@ function buildCompatStatusCase(columns, nowPlaceholder) {
   `;
 }
 
+function normalizeListPagination(pagination = {}) {
+  const limit = Number(pagination.limit) || 50;
+  const page = Number(pagination.page) || 1;
+  const offset = (page - 1) * limit;
+  return { limit, page, offset };
+}
+
 async function listAuctionsCompat(client, filters, pagination) {
   const columns = await getTableColumns(client, 'auctions');
+  const { limit, offset } = normalizeListPagination(pagination);
   const values = [filters.now || new Date().toISOString()];
   const statusCase = buildCompatStatusCase(columns, '$1');
   const displayCurrentBid = columns.has('entry_price')
@@ -152,7 +160,8 @@ async function listAuctionsCompat(client, filters, pagination) {
   sortParts.push(columns.has('created_at') ? 'a.created_at DESC' : '1 DESC');
   const sortSql = `ORDER BY ${sortParts.join(', ')}`;
 
-  const listValues = [...values, pagination.limit, pagination.offset];
+  const listValues = [...values, limit, offset];
+  console.log('[auction.list.params]', { limit, offset });
   const { rows } = await q(client).query(
     `SELECT
       a.*,
@@ -191,6 +200,7 @@ async function listAuctionsCompat(client, filters, pagination) {
 }
 
 async function listAuctions(client, filters, pagination) {
+  const { limit, offset } = normalizeListPagination(pagination);
   const values = [filters.now || new Date().toISOString()];
   const statusCase = buildAuctionStatusCase('$1');
   const where = [];
@@ -228,7 +238,8 @@ async function listAuctions(client, filters, pagination) {
     CASE WHEN ${statusCase} = 'ended' THEN a.closed_at END DESC NULLS LAST,
     a.created_at DESC`;
 
-  const listValues = [...values, pagination.limit, pagination.offset];
+  const listValues = [...values, limit, offset];
+  console.log('[auction.list.params]', { limit, offset });
   const { rows } = await q(client).query(
     `${buildAuctionSelect('$1')}
      ${whereSql}
@@ -618,6 +629,8 @@ module.exports = {
   getUserBidStats,
   listUserAuctionHistory
 };
+
+
 
 
 

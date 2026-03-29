@@ -1,11 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Gavel, Sparkles } from 'lucide-react';
+import { Clock3, Gavel, RefreshCw, Sparkles } from 'lucide-react';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { EmptyState } from '@/components/ui/EmptyState';
 import { AuctionCard } from '@/components/auctions/AuctionUi';
 import { getAuctions } from '@/lib/services/auctionsService';
 import { queryKeys } from '@/lib/query/queryKeys';
@@ -13,9 +12,52 @@ import { queryKeys } from '@/lib/query/queryKeys';
 const tabs = [
   { label: 'Live', value: 'live' },
   { label: 'Upcoming', value: 'upcoming' },
-  { label: 'Ended', value: 'ended' },
-  { label: 'Cancelled', value: 'cancelled' }
+  { label: 'Ended', value: 'ended' }
 ];
+
+function AuctionGridSkeleton() {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      {Array.from({ length: 5 }).map((_, index) => (
+        <div key={index} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="flex gap-3 p-3">
+            <div className="h-24 w-24 shrink-0 animate-pulse rounded-2xl bg-slate-200" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="h-4 w-3/4 animate-pulse rounded bg-slate-200" />
+              <div className="h-3 w-full animate-pulse rounded bg-slate-100" />
+              <div className="h-3 w-5/6 animate-pulse rounded bg-slate-100" />
+              <div className="h-14 animate-pulse rounded-2xl bg-slate-100" />
+              <div className="flex gap-2">
+                <div className="h-6 w-16 animate-pulse rounded-full bg-slate-100" />
+                <div className="h-6 w-20 animate-pulse rounded-full bg-slate-100" />
+              </div>
+            </div>
+          </div>
+          <div className="h-10 animate-pulse border-t border-slate-100 bg-slate-50" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PremiumEmptyState({ status, search }) {
+  return (
+    <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_14px_40px_rgba(15,23,42,0.05)]">
+      <div className="bg-[radial-gradient(circle_at_top_left,_rgba(125,211,252,0.35),_transparent_40%),linear-gradient(180deg,#ffffff,#f8fafc)] px-5 py-8 text-center sm:px-8">
+        <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-[0_12px_24px_rgba(15,23,42,0.18)]">
+          <Clock3 size={18} />
+        </div>
+        <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-700">Auction Board</p>
+        <h3 className="mt-2 text-lg font-semibold text-slate-900">{status === 'live' ? 'No live auctions available right now' : `No ${status} auctions available right now`}</h3>
+        <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">{search ? 'Try clearing your search or switching tabs to browse other auction windows.' : 'Fresh auction lots will appear here as soon as the next round opens.'}</p>
+        <div className="mt-5 flex items-center justify-center gap-2 text-[11px] text-slate-500">
+          <span className="rounded-full border border-slate-200 bg-white px-3 py-1">Fixed-price entry auctions</span>
+          <span className="rounded-full border border-slate-200 bg-white px-3 py-1">Hidden capacity close</span>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 export default function AuctionsPage() {
   const [status, setStatus] = useState('live');
@@ -26,52 +68,67 @@ export default function AuctionsPage() {
     queryFn: () => getAuctions({ status, search, page: 1, limit: 24 })
   });
 
-  if (auctionsQuery.isError) {
-    return <ErrorState message="Auctions could not be loaded." onRetry={auctionsQuery.refetch} />;
-  }
-
   const envelope = auctionsQuery.data || {};
   const auctions = Array.isArray(envelope.data) ? envelope.data : [];
+  const stats = useMemo(() => ({
+    live: status === 'live' ? auctions.length : null,
+    upcoming: status === 'upcoming' ? auctions.length : null,
+    ended: status === 'ended' ? auctions.length : null
+  }), [auctions.length, status]);
+  const isEmpty = !auctionsQuery.isLoading && !auctionsQuery.isError && auctions.length === 0;
 
   return (
-    <div className="space-y-4">
-      <section className="overflow-hidden rounded-[28px] bg-[radial-gradient(circle_at_top_left,_rgba(125,211,252,0.35),_transparent_45%),linear-gradient(135deg,#0f172a,#111827)] p-5 text-white shadow-[0_20px_60px_rgba(15,23,42,0.24)]">
-        <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-medium text-white/80">
+    <div className="-mx-4 space-y-3 bg-[#f8fafc] px-3 pb-4 pt-0 sm:mx-0 sm:space-y-4 sm:rounded-2xl sm:border sm:border-slate-200 sm:px-4 sm:py-4">
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:p-5">
+        <div className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-sky-50 px-3 py-1 text-[11px] font-medium text-sky-700">
           <Sparkles size={12} />
-          Fixed entry highest count auctions
+          Fixed entry auctions
         </div>
-        <h1 className="mt-4 text-2xl font-semibold">Auctions</h1>
-        <p className="mt-2 max-w-md text-sm text-white/75">Buy entries at a fixed price. Hidden capacity closes the auction automatically, and the highest entry count wins.</p>
-        <label className="mt-4 block rounded-2xl bg-white/10 p-1.5 backdrop-blur">
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search auction title" className="w-full rounded-xl border-0 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none" />
-        </label>
+        <h1 className="mt-3 text-xl font-semibold text-slate-900 sm:text-2xl">Auctions</h1>
+        <p className="mt-1 max-w-md text-sm leading-6 text-slate-500">Browse compact live lots, track countdowns, and jump into fixed-price bidding without leaving the storefront flow.</p>
+
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          {tabs.map((tab) => (
+            <button
+              key={tab.value}
+              onClick={() => setStatus(tab.value)}
+              className={`rounded-2xl border px-3 py-2 text-left transition ${status === tab.value ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-slate-50 text-slate-700'}`}
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] opacity-75">{tab.label}</p>
+              <p className="mt-1 text-sm font-semibold">{stats[tab.value] ?? 'View'}</p>
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-3 flex gap-2">
+          <label className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search auctions" className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400" />
+          </label>
+          <button onClick={() => auctionsQuery.refetch()} className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600">
+            <RefreshCw size={15} />
+          </button>
+        </div>
       </section>
 
-      <SectionHeader title="Auction Lots" subtitle="Hidden-capacity entry auctions managed by admin" />
+      <SectionHeader
+        title={status === 'live' ? 'Live Auctions' : status === 'upcoming' ? 'Upcoming Auctions' : 'Ended Auctions'}
+        subtitle={status === 'live' ? 'Countdown-led lots ready for bidding' : status === 'upcoming' ? 'Scheduled lots opening soon' : 'Recently closed auction results'}
+      />
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {tabs.map((tab) => (
-          <button
-            key={tab.value}
-            onClick={() => setStatus(tab.value)}
-            className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-semibold ${status === tab.value ? 'bg-slate-900 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {auctionsQuery.isLoading ? <AuctionGridSkeleton /> : null}
+      {auctionsQuery.isError ? <ErrorState message="Auctions could not be loaded." onRetry={auctionsQuery.refetch} /> : null}
+      {isEmpty ? <PremiumEmptyState status={status} search={search} /> : null}
 
-      {auctionsQuery.isLoading ? <div className="rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-500">Loading auctions...</div> : null}
-      {!auctionsQuery.isLoading && auctions.length === 0 ? <EmptyState title="No auctions found" description="Adjust the status filter or search term to find more lots." /> : null}
+      {!auctionsQuery.isLoading && !auctionsQuery.isError && auctions.length > 0 ? (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {auctions.map((auction) => <AuctionCard key={auction.id} auction={auction} />)}
+        </div>
+      ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {auctions.map((auction) => <AuctionCard key={auction.id} auction={auction} />)}
-      </div>
-
-      <div className="rounded-3xl border border-slate-200 bg-white p-4 text-xs text-slate-500">
-        <div className="flex items-center gap-2 text-slate-700">
-          <Gavel size={14} />
-          Hidden capacity is never shown to users. Each entry purchase uses the fixed admin-set price and the highest total entry count wins when the auction closes.
+      <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-[11px] text-slate-500 shadow-[0_6px_20px_rgba(15,23,42,0.04)]">
+        <div className="flex items-start gap-2 text-slate-700">
+          <Gavel size={14} className="mt-0.5 shrink-0" />
+          Fixed bid price is shown on every card. Live lots keep a visible countdown, while upcoming and ended lots stay grouped under the same tabbed layout for a consistent storefront experience.
         </div>
       </div>
     </div>
