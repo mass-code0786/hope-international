@@ -9,10 +9,10 @@ function formatPriceLabel(value) {
 }
 
 function mapFeaturedItem(item) {
-  const resolvedTitle = item.title || item.product_name || 'Hope Marketplace Offer';
-  const resolvedDescription = item.description || item.product_description || 'Discover a featured Hope International opportunity.';
+  const resolvedTitle = item.title || item.product_name || 'Hope product';
+  const resolvedDescription = item.description || item.product_description || 'See what is available on Hope International.';
   const resolvedImageUrl = item.image_url || item.product_image_url || '';
-  const resolvedPriceLabel = item.price_label || formatPriceLabel(item.product_price) || item.promo_text || 'Featured access';
+  const resolvedPriceLabel = item.price_label || formatPriceLabel(item.product_price) || item.promo_text || 'Featured';
 
   return {
     id: item.id,
@@ -99,19 +99,19 @@ async function getPublicLandingPage() {
   return {
     settings: {
       heroBadge: settings?.hero_badge || 'Hope International',
-      heroHeadline: settings?.hero_headline || 'Global commerce with rewards, trust, and premium access.',
-      heroSubheadline: settings?.hero_subheadline || 'Discover featured products, business opportunity highlights, and a cleaner path into the Hope International ecosystem.',
+      heroHeadline: settings?.hero_headline || 'Products, offers, and updates in one place.',
+      heroSubheadline: settings?.hero_subheadline || 'Browse featured products, see what Hope International offers, and create an account when you are ready.',
       heroPrimaryCtaText: settings?.hero_primary_cta_text || 'Create account',
       heroSecondaryCtaText: settings?.hero_secondary_cta_text || 'Login',
       heroImageUrl: settings?.hero_image_url || '',
-      heroBackgroundNote: settings?.hero_background_note || 'Trusted by members across growing markets',
-      featuredSectionTitle: settings?.featured_section_title || 'Featured opportunities',
-      benefitsSectionTitle: settings?.benefits_section_title || 'Why members choose Hope',
-      detailsSectionTitle: settings?.details_section_title || 'Products and opportunity highlights',
-      testimonialsSectionTitle: settings?.testimonials_section_title || 'Member voices',
-      statsSectionTitle: settings?.stats_section_title || 'Momentum you can see',
+      heroBackgroundNote: settings?.hero_background_note || 'Available across multiple countries',
+      featuredSectionTitle: settings?.featured_section_title || 'Featured products',
+      benefitsSectionTitle: settings?.benefits_section_title || 'Why choose Hope',
+      detailsSectionTitle: settings?.details_section_title || 'More to explore',
+      testimonialsSectionTitle: settings?.testimonials_section_title || 'What members say',
+      statsSectionTitle: settings?.stats_section_title || 'At a glance',
       countriesSectionTitle: settings?.countries_section_title || 'Serving members globally',
-      footerSupportText: settings?.footer_support_text || 'Need help getting started? Our support team is ready to guide you.',
+      footerSupportText: settings?.footer_support_text || 'Need help getting started? Contact the Hope International support team.',
       footerContactEmail: settings?.footer_contact_email || 'support@hopeinternational.local',
       sectionOrder: order,
       sectionVisibility: visibility

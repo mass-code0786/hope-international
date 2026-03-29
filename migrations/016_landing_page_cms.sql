@@ -1,19 +1,19 @@
 CREATE TABLE IF NOT EXISTS landing_page_settings (
   id BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK (id = TRUE),
   hero_badge VARCHAR(80) NOT NULL DEFAULT 'Hope International',
-  hero_headline VARCHAR(255) NOT NULL DEFAULT 'Global commerce with rewards, trust, and premium access.',
-  hero_subheadline VARCHAR(500) NOT NULL DEFAULT 'Discover featured products, business opportunity highlights, and a cleaner path into the Hope International ecosystem.',
+  hero_headline VARCHAR(255) NOT NULL DEFAULT 'Products, offers, and updates in one place.',
+  hero_subheadline VARCHAR(500) NOT NULL DEFAULT 'Browse featured products, see what Hope International offers, and create an account when you are ready.',
   hero_primary_cta_text VARCHAR(80) NOT NULL DEFAULT 'Create account',
   hero_secondary_cta_text VARCHAR(80) NOT NULL DEFAULT 'Login',
   hero_image_url TEXT NULL,
-  hero_background_note VARCHAR(120) NOT NULL DEFAULT 'Trusted by members across growing markets',
-  featured_section_title VARCHAR(120) NOT NULL DEFAULT 'Featured opportunities',
-  benefits_section_title VARCHAR(120) NOT NULL DEFAULT 'Why members choose Hope',
-  details_section_title VARCHAR(120) NOT NULL DEFAULT 'Products and opportunity highlights',
-  testimonials_section_title VARCHAR(120) NOT NULL DEFAULT 'Member voices',
-  stats_section_title VARCHAR(120) NOT NULL DEFAULT 'Momentum you can see',
+  hero_background_note VARCHAR(120) NOT NULL DEFAULT 'Available across multiple countries',
+  featured_section_title VARCHAR(120) NOT NULL DEFAULT 'Featured products',
+  benefits_section_title VARCHAR(120) NOT NULL DEFAULT 'Why choose Hope',
+  details_section_title VARCHAR(120) NOT NULL DEFAULT 'More to explore',
+  testimonials_section_title VARCHAR(120) NOT NULL DEFAULT 'What members say',
+  stats_section_title VARCHAR(120) NOT NULL DEFAULT 'At a glance',
   countries_section_title VARCHAR(120) NOT NULL DEFAULT 'Serving members globally',
-  footer_support_text VARCHAR(200) NOT NULL DEFAULT 'Need help getting started? Our support team is ready to guide you.',
+  footer_support_text VARCHAR(200) NOT NULL DEFAULT 'Need help getting started? Contact the Hope International support team.',
   footer_contact_email VARCHAR(255) NOT NULL DEFAULT 'support@hopeinternational.local',
   section_order JSONB NOT NULL DEFAULT '["hero","featured","benefits","details","testimonials","stats","countries","footer"]'::jsonb,
   section_visibility JSONB NOT NULL DEFAULT '{"hero":true,"featured":true,"benefits":true,"details":true,"testimonials":true,"stats":true,"countries":true,"footer":true}'::jsonb,
@@ -145,61 +145,61 @@ VALUES (TRUE)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO landing_featured_items (title, description, image_url, price_label, promo_text, cta_text, target_link, sort_order, is_active)
-SELECT 'Hope Elite Starter Pack', 'A premium onboarding bundle designed to help new members start fast with curated commerce essentials.', 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=1200&q=80', 'Limited access bundle', 'Member favourite', 'Join now', '/register', 1, TRUE
-WHERE NOT EXISTS (SELECT 1 FROM landing_featured_items WHERE title = 'Hope Elite Starter Pack');
+SELECT 'Hope Starter Pack', 'A simple way for new members to explore the platform and get started.', 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=1200&q=80', 'Getting started', 'Popular', 'Join now', '/register', 1, TRUE
+WHERE NOT EXISTS (SELECT 1 FROM landing_featured_items WHERE title = 'Hope Starter Pack');
 
 INSERT INTO landing_featured_items (title, description, image_url, price_label, promo_text, cta_text, target_link, sort_order, is_active)
-SELECT 'Seller Growth Toolkit', 'A showcase for entrepreneurs who want cleaner storefront exposure, trusted operations, and seller momentum.', 'https://images.unsplash.com/photo-1556740749-887f6717d7e4?auto=format&fit=crop&w=1200&q=80', 'Built for scale', 'Seller opportunity', 'Explore', '/register', 2, TRUE
-WHERE NOT EXISTS (SELECT 1 FROM landing_featured_items WHERE title = 'Seller Growth Toolkit');
+SELECT 'Seller Tools', 'A closer look at product visibility, seller access, and growth tools on Hope International.', 'https://images.unsplash.com/photo-1556740749-887f6717d7e4?auto=format&fit=crop&w=1200&q=80', 'For sellers', 'New', 'Explore', '/register', 2, TRUE
+WHERE NOT EXISTS (SELECT 1 FROM landing_featured_items WHERE title = 'Seller Tools');
 
 INSERT INTO landing_featured_items (title, description, image_url, price_label, promo_text, cta_text, target_link, sort_order, is_active)
-SELECT 'Global Rewards Access', 'A premium pathway into member rewards, referral visibility, and marketplace participation.', 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=1200&q=80', 'Member benefits unlocked', 'High-demand access', 'View highlights', '#details', 3, TRUE
-WHERE NOT EXISTS (SELECT 1 FROM landing_featured_items WHERE title = 'Global Rewards Access');
+SELECT 'Member Highlights', 'Browse selected products, offers, and updates before creating your account.', 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=1200&q=80', 'Featured', 'Updated', 'View highlights', '#details', 3, TRUE
+WHERE NOT EXISTS (SELECT 1 FROM landing_featured_items WHERE title = 'Member Highlights');
 
 INSERT INTO landing_content_blocks (section_key, title, subtitle, body_text, icon_name, accent_label, layout_style, sort_order, is_active)
-SELECT 'benefits', 'Secure shopping environment', 'Protected access', 'Members enter through a controlled account system with clearer trust signals, curated offers, and consistent access patterns.', 'shield-check', 'Security', 'icon-card', 1, TRUE
-WHERE NOT EXISTS (SELECT 1 FROM landing_content_blocks WHERE section_key = 'benefits' AND title = 'Secure shopping environment');
+SELECT 'benefits', 'Secure shopping', 'Protected access', 'Browse products and sign in through a secure member account system.', 'shield-check', 'Security', 'icon-card', 1, TRUE
+WHERE NOT EXISTS (SELECT 1 FROM landing_content_blocks WHERE section_key = 'benefits' AND title = 'Secure shopping');
 
 INSERT INTO landing_content_blocks (section_key, title, subtitle, body_text, icon_name, accent_label, layout_style, sort_order, is_active)
-SELECT 'benefits', 'Global opportunity reach', 'International access', 'Hope International helps members discover products, promotions, and business opportunity messaging across multiple markets.', 'globe-2', 'Global', 'icon-card', 2, TRUE
-WHERE NOT EXISTS (SELECT 1 FROM landing_content_blocks WHERE section_key = 'benefits' AND title = 'Global opportunity reach');
+SELECT 'benefits', 'Global access', 'Multiple countries', 'Hope International supports members across growing regions and markets.', 'globe-2', 'Global', 'icon-card', 2, TRUE
+WHERE NOT EXISTS (SELECT 1 FROM landing_content_blocks WHERE section_key = 'benefits' AND title = 'Global access');
 
 INSERT INTO landing_content_blocks (section_key, title, subtitle, body_text, icon_name, accent_label, layout_style, sort_order, is_active)
-SELECT 'benefits', 'Seller and rewards momentum', 'Commerce plus growth', 'Support a stronger network with opportunity-focused offers, seller visibility, and better progression through premium presentation.', 'sparkles', 'Momentum', 'icon-card', 3, TRUE
-WHERE NOT EXISTS (SELECT 1 FROM landing_content_blocks WHERE section_key = 'benefits' AND title = 'Seller and rewards momentum');
+SELECT 'benefits', 'Seller opportunities', 'Commerce tools', 'See product updates, seller options, and useful highlights in one place.', 'sparkles', 'Seller', 'icon-card', 3, TRUE
+WHERE NOT EXISTS (SELECT 1 FROM landing_content_blocks WHERE section_key = 'benefits' AND title = 'Seller opportunities');
 
 INSERT INTO landing_content_blocks (section_key, title, subtitle, body_text, image_url, accent_label, cta_text, target_link, layout_style, sort_order, is_active)
-SELECT 'details', 'Curated product storytelling', 'Premium merchandising', 'Turn product launches and spotlight campaigns into richer editorial sections with image-led storytelling, cleaner hierarchy, and stronger conversion intent.', 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1400&q=80', 'Showcase', 'Create account', '/register', 'image-right', 1, TRUE
-WHERE NOT EXISTS (SELECT 1 FROM landing_content_blocks WHERE section_key = 'details' AND title = 'Curated product storytelling');
+SELECT 'details', 'Product highlights', 'Featured items and offers', 'Use this space to show important product details, current offers, and useful updates for visitors.', 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1400&q=80', 'Products', 'Create account', '/register', 'image-right', 1, TRUE
+WHERE NOT EXISTS (SELECT 1 FROM landing_content_blocks WHERE section_key = 'details' AND title = 'Product highlights');
 
 INSERT INTO landing_content_blocks (section_key, title, subtitle, body_text, image_url, accent_label, cta_text, target_link, layout_style, sort_order, is_active)
-SELECT 'details', 'Business opportunity spotlight', 'For members and sellers', 'Use flexible highlight blocks for member rewards, referral narratives, seller growth messages, and launch-specific landing campaigns without code changes.', 'https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1400&q=80', 'Opportunity', 'Login', '/login', 'image-left', 2, TRUE
-WHERE NOT EXISTS (SELECT 1 FROM landing_content_blocks WHERE section_key = 'details' AND title = 'Business opportunity spotlight');
+SELECT 'details', 'Business updates', 'For members and sellers', 'Share simple updates about member benefits, seller tools, and new opportunities.', 'https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1400&q=80', 'Updates', 'Login', '/login', 'image-left', 2, TRUE
+WHERE NOT EXISTS (SELECT 1 FROM landing_content_blocks WHERE section_key = 'details' AND title = 'Business updates');
 
 INSERT INTO landing_testimonials (reviewer_name, reviewer_role, review_text, rating, sort_order, is_active)
-SELECT 'Amara Joseph', 'Marketplace member', 'The presentation feels more trustworthy and premium than a normal commerce portal. It made registration feel intentional.', 5, 1, TRUE
+SELECT 'Amara Joseph', 'Member', 'The site is easy to understand and makes it simple to get started.', 5, 1, TRUE
 WHERE NOT EXISTS (SELECT 1 FROM landing_testimonials WHERE reviewer_name = 'Amara Joseph');
 
 INSERT INTO landing_testimonials (reviewer_name, reviewer_role, review_text, rating, sort_order, is_active)
-SELECT 'Daniel Mensah', 'Independent seller', 'The platform gives products and seller opportunity the kind of visibility that feels built for growth rather than clutter.', 5, 2, TRUE
+SELECT 'Daniel Mensah', 'Seller', 'I can quickly see the products and seller information I need.', 5, 2, TRUE
 WHERE NOT EXISTS (SELECT 1 FROM landing_testimonials WHERE reviewer_name = 'Daniel Mensah');
 
 INSERT INTO landing_testimonials (reviewer_name, reviewer_role, review_text, rating, sort_order, is_active)
-SELECT 'Grace Bello', 'Community lead', 'The landing experience sets the tone correctly. It feels clean, global, and more credible for new visitors.', 4, 3, TRUE
+SELECT 'Grace Bello', 'Community lead', 'The public homepage feels clean, clear, and easier for new visitors.', 4, 3, TRUE
 WHERE NOT EXISTS (SELECT 1 FROM landing_testimonials WHERE reviewer_name = 'Grace Bello');
 
 INSERT INTO landing_countries (country_code, country_name, flag_emoji, sort_order, is_active)
-SELECT code, name, flag, sort_order, TRUE
+SELECT code, name, '', sort_order, TRUE
 FROM (VALUES
-  ('NG', 'Nigeria', '????', 1),
-  ('GH', 'Ghana', '????', 2),
-  ('KE', 'Kenya', '????', 3),
-  ('IN', 'India', '????', 4),
-  ('AE', 'United Arab Emirates', '????', 5),
-  ('GB', 'United Kingdom', '????', 6),
-  ('US', 'United States', '????', 7),
-  ('CA', 'Canada', '????', 8),
-  ('ZA', 'South Africa', '????', 9),
-  ('SG', 'Singapore', '????', 10)
-) AS seed(code, name, flag, sort_order)
+  ('NG', 'Nigeria', 1),
+  ('GH', 'Ghana', 2),
+  ('KE', 'Kenya', 3),
+  ('IN', 'India', 4),
+  ('AE', 'United Arab Emirates', 5),
+  ('GB', 'United Kingdom', 6),
+  ('US', 'United States', 7),
+  ('CA', 'Canada', 8),
+  ('ZA', 'South Africa', 9),
+  ('SG', 'Singapore', 10)
+) AS seed(code, name, sort_order)
 WHERE NOT EXISTS (SELECT 1 FROM landing_countries existing WHERE existing.country_code = seed.code);

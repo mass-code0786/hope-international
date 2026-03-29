@@ -48,10 +48,10 @@ function resolveDestination(user) {
   return '/auctions';
 }
 
-function ActionLink({ href, primary = false, children }) {
+function ActionLink({ href, primary = false, children, compact = false }) {
   const className = primary
-    ? 'inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_32px_rgba(15,23,42,0.2)] transition hover:bg-slate-900'
-    : 'inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white/75 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-white';
+    ? `inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 ${compact ? 'px-4 py-2.5 text-sm' : 'px-5 py-3 text-sm'} font-semibold text-white shadow-[0_18px_32px_rgba(15,23,42,0.2)] transition hover:bg-slate-900`
+    : `inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white/75 ${compact ? 'px-4 py-2.5 text-sm' : 'px-5 py-3 text-sm'} font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-white`;
 
   if (href.startsWith('#')) {
     return <a href={href} className={className}>{children}</a>;
@@ -86,10 +86,21 @@ function ReviewStars({ rating }) {
   return (
     <div className="flex items-center gap-1 text-amber-400">
       {Array.from({ length: 5 }).map((_, index) => (
-        <span key={index}>{index < rating ? '*' : '-'}</span>
+        <span key={index}>{index < rating ? '\u2605' : '\u2606'}</span>
       ))}
     </div>
   );
+}
+
+function getFlagEmoji(countryCode, providedFlag) {
+  if (providedFlag && !/[?]/.test(providedFlag)) {
+    return providedFlag;
+  }
+
+  const code = String(countryCode || '').trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(code)) return '';
+
+  return String.fromCodePoint(...[...code].map((char) => 127397 + char.charCodeAt(0)));
 }
 
 function BenefitCard({ item }) {
@@ -120,8 +131,7 @@ function FeaturedCard({ item }) {
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{item.priceLabel}</p>
         <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-slate-950">{item.title}</h3>
         <p className="mt-3 text-sm leading-6 text-slate-600">{item.description}</p>
-        <div className="mt-5 flex items-center justify-between gap-3">
-          <span className="text-xs text-slate-400">Premium landing showcase</span>
+        <div className="mt-5 flex items-center justify-end gap-3">
           <ActionLink href={item.targetLink || '/register'} primary>
             {item.ctaText || 'Explore'}
             <ArrowRight size={16} />
@@ -243,7 +253,10 @@ export default function PublicLandingPage() {
     { label: 'Members', value: data.stats.totalMembers }
   ];
 
-  const repeatedCountries = [...data.countries, ...data.countries];
+  const repeatedCountries = [...data.countries, ...data.countries].map((item) => ({
+    ...item,
+    flagEmoji: getFlagEmoji(item.countryCode, item.flagEmoji)
+  }));
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#f5f7fb] text-slate-950">
@@ -261,20 +274,17 @@ export default function PublicLandingPage() {
       </div>
 
       <div className="relative mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
-        <header className="rounded-full border border-white/70 bg-white/85 px-4 py-3 shadow-[0_12px_32px_rgba(15,23,42,0.08)] backdrop-blur">
-          <div className="flex items-center justify-between gap-3">
+        <header className="rounded-[28px] border border-white/70 bg-white/90 px-4 py-3 shadow-[0_12px_32px_rgba(15,23,42,0.08)] backdrop-blur sm:px-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-950 shadow-[0_14px_28px_rgba(15,23,42,0.18)]">
-                <Logo size={34} className="invert" />
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm sm:h-12 sm:w-12">
+                <Logo size={34} />
               </div>
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Hope International</p>
-                <p className="text-sm font-medium text-slate-700">Premium marketplace access</p>
-              </div>
+              <p className="text-sm font-semibold tracking-[-0.02em] text-slate-950 sm:text-base">Hope International</p>
             </div>
-            <div className="flex items-center gap-2">
-              <Link href="/login" className="inline-flex rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Login</Link>
-              <Link href="/register" className="inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white">Register</Link>
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+              <ActionLink href="/login" compact>Login</ActionLink>
+              <ActionLink href="/register" primary compact>Register</ActionLink>
             </div>
           </div>
         </header>
@@ -304,16 +314,15 @@ export default function PublicLandingPage() {
                 </div>
                 <div className="mt-6 flex flex-wrap gap-3 text-xs font-medium text-slate-500">
                   <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-2"><ShieldCheck size={14} className="text-emerald-500" /> Secure account access</span>
-                  <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-2"><Globe2 size={14} className="text-sky-500" /> Global member reach</span>
-                  <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-2"><Store size={14} className="text-violet-500" /> Seller-ready growth</span>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-2"><Globe2 size={14} className="text-sky-500" /> Countries and regions</span>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-2"><Store size={14} className="text-violet-500" /> Products and seller updates</span>
                 </div>
               </div>
 
               <div className="space-y-4">
                 <div className="relative overflow-hidden rounded-[30px] border border-slate-200 bg-[linear-gradient(135deg,#0f172a,#1e293b_55%,#0ea5e9)] p-5 text-white shadow-[0_26px_60px_rgba(15,23,42,0.22)]">
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">{data.settings.heroBackgroundNote}</p>
-                  <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em]">A polished public home for products, trust, and business opportunity.</h2>
-                  <p className="mt-3 text-sm leading-7 text-white/80">Designed to give new visitors a premium first impression before they ever enter the application.</p>
+                  <p className="mt-3 max-w-xs text-sm leading-7 text-white/80">View products, explore updates, and create an account to get started.</p>
                   <div className="mt-6 grid grid-cols-3 gap-3">
                     {statsCards.map((stat) => (
                       <div key={stat.label} className="rounded-2xl border border-white/10 bg-white/10 px-3 py-4 backdrop-blur-sm">
@@ -328,15 +337,7 @@ export default function PublicLandingPage() {
                   {data.settings.heroImageUrl ? (
                     <img src={data.settings.heroImageUrl} alt="Hope International highlight" className="h-64 w-full object-cover" />
                   ) : (
-                    <div className="h-64 bg-[linear-gradient(135deg,#dbeafe,#f8fafc_45%,#dcfce7)] p-5">
-                      <div className="flex h-full flex-col justify-between rounded-[24px] border border-white/70 bg-white/70 p-5 backdrop-blur">
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Public homepage system</p>
-                        <div>
-                          <p className="text-2xl font-semibold tracking-[-0.04em] text-slate-950">Mobile-first marketing presence</p>
-                          <p className="mt-2 text-sm leading-7 text-slate-600">Featured products, premium trust sections, public stats, and admin-managed content blocks in one flow.</p>
-                        </div>
-                      </div>
-                    </div>
+                    <div className="h-64 bg-[linear-gradient(135deg,#dbeafe,#f8fafc_45%,#dcfce7)]" />
                   )}
                 </div>
               </div>
@@ -351,7 +352,7 @@ export default function PublicLandingPage() {
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Featured products</p>
                 <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-slate-950">{data.settings.featuredSectionTitle}</h2>
               </div>
-              <a href="#details" className="text-sm font-semibold text-sky-600">Explore highlights</a>
+              <a href="#details" className="text-sm font-semibold text-sky-600">View more</a>
             </div>
             <div className="grid gap-5 md:grid-cols-3">
               {data.featuredItems.map((item) => <FeaturedCard key={item.id} item={item} />)}
@@ -374,7 +375,7 @@ export default function PublicLandingPage() {
         {sections.includes('details') ? (
           <section id="details" className="pt-12">
             <div className="mb-5 max-w-2xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Promotional content</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Highlights</p>
               <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-slate-950">{data.settings.detailsSectionTitle}</h2>
             </div>
             <div className="space-y-5">
@@ -393,7 +394,7 @@ export default function PublicLandingPage() {
               {data.testimonials.map((item) => (
                 <div key={item.id} className="rounded-[28px] border border-white/70 bg-white/90 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
                   <ReviewStars rating={item.rating} />
-                  <p className="mt-4 text-sm leading-7 text-slate-600">“{item.reviewText}”</p>
+                  <p className="mt-4 text-sm leading-7 text-slate-600">{item.reviewText}</p>
                   <div className="mt-5 border-t border-slate-100 pt-4">
                     <p className="font-semibold text-slate-950">{item.reviewerName}</p>
                     <p className="text-sm text-slate-500">{item.reviewerRole || 'Hope member'}</p>
@@ -416,7 +417,6 @@ export default function PublicLandingPage() {
                   <div key={stat.label} className="rounded-[28px] border border-white bg-white/85 p-5 shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{stat.label}</p>
                     <p className="mt-3 text-4xl font-semibold tracking-[-0.05em] text-slate-950"><CountUp value={stat.value} /></p>
-                    <p className="mt-2 text-sm text-slate-600">Live showcase data from the public Hope homepage system.</p>
                   </div>
                 ))}
               </div>
@@ -431,10 +431,10 @@ export default function PublicLandingPage() {
               <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-slate-950">{data.settings.countriesSectionTitle}</h2>
             </div>
             <div className="overflow-hidden rounded-[30px] border border-white/70 bg-white/90 py-4 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
-              <div className="flex w-max gap-4 px-4" style={{ animation: 'hopeLandingMarquee 24s linear infinite' }}>
+              <div className="flex w-max gap-3 px-4" style={{ animation: 'hopeLandingMarquee 24s linear infinite' }}>
                 {repeatedCountries.map((item, index) => (
-                  <div key={`${item.id || item.countryCode}-${index}`} className="inline-flex items-center gap-3 rounded-full border border-slate-200 bg-slate-50 px-4 py-3">
-                    <span className="text-2xl leading-none">{item.flagEmoji}</span>
+                  <div key={`${item.id || item.countryCode}-${index}`} className="inline-flex min-w-[158px] items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <span className="text-2xl leading-none">{item.flagEmoji || '•'}</span>
                     <div>
                       <p className="text-sm font-semibold text-slate-900">{item.countryName}</p>
                       <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">{item.countryCode}</p>
@@ -455,10 +455,7 @@ export default function PublicLandingPage() {
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
                       <Logo size={34} className="invert" />
                     </div>
-                    <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/60">Hope International</p>
-                      <p className="text-sm text-white/80">Public marketing homepage</p>
-                    </div>
+                    <p className="text-base font-semibold tracking-[-0.02em] text-white">Hope International</p>
                   </div>
                   <p className="mt-5 max-w-xl text-sm leading-7 text-white/75">{data.settings.footerSupportText}</p>
                   <p className="mt-3 text-sm font-medium text-white/90">{data.settings.footerContactEmail}</p>
@@ -476,8 +473,8 @@ export default function PublicLandingPage() {
                     <p className="font-semibold text-white">Get started</p>
                     <div className="mt-3 flex flex-col gap-2 text-white/75">
                       <Link href="/register">Register</Link>
-                      <Link href="/login">Member access</Link>
-                      <Link href="/register">Seller access</Link>
+                      <Link href="/login">Login</Link>
+                      <Link href="/register">Create account</Link>
                     </div>
                   </div>
                 </div>
@@ -489,4 +486,3 @@ export default function PublicLandingPage() {
     </div>
   );
 }
-
