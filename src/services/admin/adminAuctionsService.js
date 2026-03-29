@@ -49,7 +49,7 @@ async function assertAuctionProduct(client, productId) {
 
 async function safeAuctionDetails(client, auctionId, fallbackAuction = null) {
   try {
-    return await auctionService.getAuctionDetails(auctionId, null, { includeAdminFields: true });
+    return await auctionService.getAuctionDetailsWithClient(client, auctionId, null, { includeAdminFields: true });
   } catch (error) {
     if (isAuctionSchemaError(error)) {
       console.error('[admin.auctions.details] schema mismatch', {
@@ -305,4 +305,6 @@ module.exports = {
   updateAuction,
   changeAuctionState
 };
+
+
 

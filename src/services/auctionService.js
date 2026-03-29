@@ -313,8 +313,12 @@ async function listAuctions(_userId, filters = {}, paginationInput = {}, options
   };
 }
 
+async function getAuctionDetailsWithClient(client, auctionId, currentUserId = null, options = {}) {
+  return buildAuctionDetails(client, auctionId, currentUserId, options);
+}
+
 async function getAuctionDetails(auctionId, currentUserId = null, options = {}) {
-  return withTransaction((client) => buildAuctionDetails(client, auctionId, currentUserId, options));
+  return withTransaction((client) => getAuctionDetailsWithClient(client, auctionId, currentUserId, options));
 }
 
 async function placeBid(auctionId, userId, payload) {
@@ -424,6 +428,7 @@ module.exports = {
   MAX_AUCTION_PRICE,
   listAuctions,
   getAuctionDetails,
+  getAuctionDetailsWithClient,
   placeBid,
   listMyAuctionHistory,
   ensureAuctionResolved,
@@ -431,3 +436,5 @@ module.exports = {
   deriveAuctionStatus,
   validateAuctionRange
 };
+
+
