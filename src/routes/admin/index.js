@@ -12,6 +12,7 @@ const sellerApplicationsRoutes = require('./sellerApplicationsRoutes');
 const ranksRoutes = require('./ranksRoutes');
 const bannersRoutes = require('./bannersRoutes');
 const auctionsRoutes = require('./auctionsRoutes');
+const landingRoutes = require('./landingRoutes');
 
 const router = express.Router();
 
@@ -28,5 +29,7 @@ router.use('/seller-applications', sellerApplicationsRoutes);
 router.use('/ranks', ranksRoutes);
 router.use('/banners', bannersRoutes);
 router.use('/auctions', auctionsRoutes);
+router.use('/landing', landingRoutes);
 
 module.exports = router;
+

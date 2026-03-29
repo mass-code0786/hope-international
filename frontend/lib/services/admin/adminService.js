@@ -321,3 +321,129 @@ export async function runAdminAuctionAction(id, payload) {
     })
   );
 }
+
+export async function getAdminLanding() {
+  return toEnvelope(await apiFetch('/admin/landing'));
+}
+
+export async function updateAdminLandingSettings(payload) {
+  return toEnvelope(
+    await apiFetch('/admin/landing/settings', {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function updateAdminLandingStats(payload) {
+  return toEnvelope(
+    await apiFetch('/admin/landing/stats', {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function createAdminLandingFeaturedItem(payload) {
+  return toEnvelope(
+    await apiFetch('/admin/landing/featured-items', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function updateAdminLandingFeaturedItem(id, payload) {
+  return toEnvelope(
+    await apiFetch(`/admin/landing/featured-items/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function deleteAdminLandingFeaturedItem(id) {
+  return toEnvelope(
+    await apiFetch(`/admin/landing/featured-items/${id}`, {
+      method: 'DELETE'
+    })
+  );
+}
+
+export async function createAdminLandingContentBlock(payload) {
+  return toEnvelope(
+    await apiFetch('/admin/landing/content-blocks', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function updateAdminLandingContentBlock(id, payload) {
+  return toEnvelope(
+    await apiFetch(`/admin/landing/content-blocks/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function deleteAdminLandingContentBlock(id) {
+  return toEnvelope(
+    await apiFetch(`/admin/landing/content-blocks/${id}`, {
+      method: 'DELETE'
+    })
+  );
+}
+
+export async function createAdminLandingTestimonial(payload) {
+  return toEnvelope(
+    await apiFetch('/admin/landing/testimonials', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function updateAdminLandingTestimonial(id, payload) {
+  return toEnvelope(
+    await apiFetch(`/admin/landing/testimonials/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function deleteAdminLandingTestimonial(id) {
+  return toEnvelope(
+    await apiFetch(`/admin/landing/testimonials/${id}`, {
+      method: 'DELETE'
+    })
+  );
+}
+
+export async function createAdminLandingCountry(payload) {
+  return toEnvelope(
+    await apiFetch('/admin/landing/countries', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function updateAdminLandingCountry(id, payload) {
+  return toEnvelope(
+    await apiFetch(`/admin/landing/countries/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function deleteAdminLandingCountry(id) {
+  return toEnvelope(
+    await apiFetch(`/admin/landing/countries/${id}`, {
+      method: 'DELETE'
+    })
+  );
+}

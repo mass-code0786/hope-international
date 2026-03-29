@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { X, LayoutDashboard, Users, Boxes, ShoppingCart, Wallet, Cpu, Gift, Network, Settings, Image, ArrowDownCircle, ArrowUpCircle, Repeat2, Landmark, BadgeDollarSign, Gavel } from 'lucide-react';
+import { X, LayoutDashboard, Users, Boxes, ShoppingCart, Wallet, Cpu, Gift, Network, Settings, Image, ArrowDownCircle, ArrowUpCircle, Repeat2, Landmark, BadgeDollarSign, Gavel, Sparkles } from 'lucide-react';
 import { THEME } from '@/lib/constants/theme';
 import Logo from '@/components/common/Logo';
 
@@ -12,6 +12,7 @@ export const adminNav = [
   { href: '/admin/products', label: 'Products', icon: Boxes },
   { href: '/admin/auctions', label: 'Auctions', icon: Gavel },
   { href: '/admin/banners', label: 'Banners', icon: Image },
+  { href: '/admin/landing', label: 'Landing Page', icon: Sparkles },
   { href: '/admin/orders', label: 'Orders', icon: ShoppingCart },
   { href: '/admin/deposits', label: 'Deposits', icon: ArrowDownCircle },
   { href: '/admin/withdrawals', label: 'Withdrawals', icon: ArrowUpCircle },
@@ -98,3 +99,4 @@ export function AdminSidebar({ mobileOpen = false, onClose = () => {} }) {
     </>
   );
 }
+

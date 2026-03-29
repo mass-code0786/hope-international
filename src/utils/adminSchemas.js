@@ -224,6 +224,133 @@ const adminAuctionUpdateSchema = z.object({ body: adminAuctionBaseBody.partial()
 const adminAuctionIdParamSchema = z.object({ body: z.object({}), params: z.object({ id: uuid }), query: z.object({}) });
 const adminAuctionActionSchema = z.object({ body: z.object({ action: z.enum(['close', 'cancel', 'activate', 'deactivate']), reason: z.string().max(255).optional() }), params: z.object({ id: uuid }), query: z.object({}) });
 
+const landingSectionOrderValues = ['hero', 'featured', 'benefits', 'details', 'testimonials', 'stats', 'countries', 'footer'];
+const landingContentSectionValues = ['benefits', 'details'];
+const landingLayoutStyleValues = ['icon-card', 'image-left', 'image-right'];
+const landingSectionOrderSchema = z.array(z.enum(landingSectionOrderValues)).min(1).optional();
+const landingVisibilitySchema = z.record(z.boolean()).optional();
+const nullableNonNegativeInt = z.union([z.number().int().min(0), z.null()]).optional();
+
+const adminLandingSettingsUpdateSchema = z.object({
+  body: z.object({
+    heroBadge: z.string().min(2).max(80).optional(),
+    heroHeadline: z.string().min(3).max(255).optional(),
+    heroSubheadline: z.string().min(10).max(500).optional(),
+    heroPrimaryCtaText: z.string().min(2).max(80).optional(),
+    heroSecondaryCtaText: z.string().min(2).max(80).optional(),
+    heroImageUrl: z.string().max(1000000).optional(),
+    heroBackgroundNote: z.string().max(120).optional(),
+    featuredSectionTitle: z.string().min(2).max(120).optional(),
+    benefitsSectionTitle: z.string().min(2).max(120).optional(),
+    detailsSectionTitle: z.string().min(2).max(120).optional(),
+    testimonialsSectionTitle: z.string().min(2).max(120).optional(),
+    statsSectionTitle: z.string().min(2).max(120).optional(),
+    countriesSectionTitle: z.string().min(2).max(120).optional(),
+    footerSupportText: z.string().min(4).max(200).optional(),
+    footerContactEmail: z.string().max(255).optional(),
+    sectionOrder: landingSectionOrderSchema,
+    sectionVisibility: landingVisibilitySchema
+  }).refine((body) => Object.keys(body).length > 0, { message: 'At least one field is required for update' }),
+  params: z.object({}),
+  query: z.object({})
+});
+
+const adminLandingStatsUpdateSchema = z.object({
+  body: z.object({
+    totalVisitors: z.number().int().min(0).optional(),
+    totalVisitorsOverride: nullableNonNegativeInt,
+    totalReviewsOverride: nullableNonNegativeInt,
+    totalMembersOverride: nullableNonNegativeInt
+  }).refine((body) => Object.keys(body).length > 0, { message: 'At least one field is required for update' }),
+  params: z.object({}),
+  query: z.object({})
+});
+
+const landingFeaturedItemBody = z.object({
+  productId: z.union([uuid, z.null()]).optional(),
+  title: z.string().min(2).max(255).optional(),
+  description: z.string().max(1000).optional(),
+  imageUrl: z.string().max(1000000).optional(),
+  priceLabel: z.string().max(120).optional(),
+  promoText: z.string().max(120).optional(),
+  ctaText: z.string().max(80).optional(),
+  targetLink: z.string().max(500).optional(),
+  sortOrder: z.number().int().min(0).max(100000).optional(),
+  isActive: z.boolean().optional()
+});
+
+const adminLandingFeaturedItemCreateSchema = z.object({
+  body: landingFeaturedItemBody.superRefine((body, ctx) => {
+    if (!body.productId && !body.title?.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['title'], message: 'title is required when productId is not provided' });
+    }
+  }),
+  params: z.object({}),
+  query: z.object({})
+});
+
+const adminLandingFeaturedItemUpdateSchema = z.object({
+  body: landingFeaturedItemBody.refine((body) => Object.keys(body).length > 0, { message: 'At least one field is required for update' }),
+  params: z.object({ id: uuid }),
+  query: z.object({})
+});
+
+const landingContentBlockBody = z.object({
+  sectionKey: z.enum(landingContentSectionValues),
+  title: z.string().min(2).max(255),
+  subtitle: z.string().max(255).optional(),
+  bodyText: z.string().max(5000).optional(),
+  imageUrl: z.string().max(1000000).optional(),
+  iconName: z.string().max(60).optional(),
+  accentLabel: z.string().max(120).optional(),
+  ctaText: z.string().max(80).optional(),
+  targetLink: z.string().max(500).optional(),
+  layoutStyle: z.enum(landingLayoutStyleValues).optional(),
+  sortOrder: z.number().int().min(0).max(100000).optional(),
+  isActive: z.boolean().optional()
+});
+
+const adminLandingContentBlockCreateSchema = z.object({ body: landingContentBlockBody, params: z.object({}), query: z.object({}) });
+const adminLandingContentBlockUpdateSchema = z.object({
+  body: landingContentBlockBody.partial().refine((body) => Object.keys(body).length > 0, { message: 'At least one field is required for update' }),
+  params: z.object({ id: uuid }),
+  query: z.object({})
+});
+
+const landingTestimonialBody = z.object({
+  reviewerName: z.string().min(2).max(160),
+  reviewerRole: z.string().max(160).optional(),
+  reviewText: z.string().min(10).max(2000),
+  rating: z.number().int().min(1).max(5).optional(),
+  avatarUrl: z.string().max(1000000).optional(),
+  sortOrder: z.number().int().min(0).max(100000).optional(),
+  isActive: z.boolean().optional()
+});
+
+const adminLandingTestimonialCreateSchema = z.object({ body: landingTestimonialBody, params: z.object({}), query: z.object({}) });
+const adminLandingTestimonialUpdateSchema = z.object({
+  body: landingTestimonialBody.partial().refine((body) => Object.keys(body).length > 0, { message: 'At least one field is required for update' }),
+  params: z.object({ id: uuid }),
+  query: z.object({})
+});
+
+const landingCountryBody = z.object({
+  countryCode: z.string().min(2).max(8),
+  countryName: z.string().min(2).max(80),
+  flagEmoji: z.string().min(1).max(12),
+  sortOrder: z.number().int().min(0).max(100000).optional(),
+  isActive: z.boolean().optional()
+});
+
+const adminLandingCountryCreateSchema = z.object({ body: landingCountryBody, params: z.object({}), query: z.object({}) });
+const adminLandingCountryUpdateSchema = z.object({
+  body: landingCountryBody.partial().refine((body) => Object.keys(body).length > 0, { message: 'At least one field is required for update' }),
+  params: z.object({ id: uuid }),
+  query: z.object({})
+});
+
+const adminLandingEntityIdParamSchema = z.object({ body: z.object({}), params: z.object({ id: uuid }), query: z.object({}) });
+
 module.exports = {
   adminUsersQuerySchema,
   adminUserSearchQuerySchema,
@@ -263,7 +390,16 @@ module.exports = {
   adminAuctionCreateSchema,
   adminAuctionUpdateSchema,
   adminAuctionIdParamSchema,
-  adminAuctionActionSchema
+  adminAuctionActionSchema,
+  adminLandingSettingsUpdateSchema,
+  adminLandingStatsUpdateSchema,
+  adminLandingFeaturedItemCreateSchema,
+  adminLandingFeaturedItemUpdateSchema,
+  adminLandingContentBlockCreateSchema,
+  adminLandingContentBlockUpdateSchema,
+  adminLandingTestimonialCreateSchema,
+  adminLandingTestimonialUpdateSchema,
+  adminLandingCountryCreateSchema,
+  adminLandingCountryUpdateSchema,
+  adminLandingEntityIdParamSchema
 };
-
-

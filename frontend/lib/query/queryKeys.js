@@ -51,5 +51,8 @@ export const queryKeys = {
   monthlyCompensationRoot: ['monthly-compensation'],
   weeklyCompensation: (cycleStart, cycleEnd) => ['weekly-compensation', cycleStart, cycleEnd],
   monthlyCompensation: (monthStart, monthEnd) => ['monthly-compensation', monthStart, monthEnd],
-  teamChildren: ['team-children']
+  teamChildren: ['team-children'],
+  landingPage: ['landing-page'],
+  adminLanding: ['admin', 'landing']
 };
+

@@ -1,17 +1,18 @@
 import { NextResponse } from 'next/server';
 
-const publicRoutes = ['/login', '/register'];
+const authRoutes = ['/login', '/register'];
 
 export function middleware(req) {
   const token = req.cookies.get('hope_token')?.value;
   const { pathname } = req.nextUrl;
-  const isPublic = publicRoutes.some((route) => pathname.startsWith(route));
+  const isRootPath = pathname === '/';
+  const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
 
-  if (!token && !isPublic) {
+  if (!token && !isRootPath && !isAuthRoute) {
     return NextResponse.redirect(new URL('/login', req.url));
   }
 
-  if (token && isPublic) {
+  if (token && isAuthRoute) {
     return NextResponse.redirect(new URL('/', req.url));
   }
 
