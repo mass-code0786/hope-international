@@ -1,0 +1,4 @@
+ALTER TABLE auctions
+  ADD COLUMN IF NOT EXISTS category VARCHAR(120),
+  ADD COLUMN IF NOT EXISTS item_condition VARCHAR(120),
+  ADD COLUMN IF NOT EXISTS shipping_details TEXT;

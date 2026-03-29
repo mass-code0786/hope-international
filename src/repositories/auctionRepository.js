@@ -303,6 +303,9 @@ async function createAuction(client, payload) {
   addField('specifications', JSON.stringify(coerceJsonArray(payload.specifications)));
   addField('image_url', payload.imageUrl || null);
   addField('gallery', JSON.stringify(coerceJsonArray(payload.gallery)));
+  addField('category', payload.category || null);
+  addField('item_condition', payload.itemCondition || null);
+  addField('shipping_details', payload.shippingDetails || null);
   addField('starting_price', payload.startingPrice);
   addField('min_bid_increment', payload.minBidIncrement);
   addField('current_bid', payload.currentBid);
@@ -343,28 +346,31 @@ async function updateAuction(client, auctionId, payload) {
          specifications = $6,
          image_url = $7,
          gallery = $8,
-         starting_price = $9,
-         min_bid_increment = $10,
-         current_bid = $11,
-         entry_price = $12,
-         hidden_capacity = $13,
-         stock_quantity = $14,
-         reward_mode = $15,
-         reward_value = $16,
-         total_entries = $17,
-         has_tie = $18,
-         winner_count = $19,
-         start_at = $20,
-         end_at = $21,
-         status = $22,
-         is_active = $23,
-         cancelled_at = $24,
-         closed_at = $25,
-         close_reason = $26,
-         winner_user_id = $27,
-         winning_bid_id = $28,
-         total_bids = $29,
-         updated_by = $30
+         category = $9,
+         item_condition = $10,
+         shipping_details = $11,
+         starting_price = $12,
+         min_bid_increment = $13,
+         current_bid = $14,
+         entry_price = $15,
+         hidden_capacity = $16,
+         stock_quantity = $17,
+         reward_mode = $18,
+         reward_value = $19,
+         total_entries = $20,
+         has_tie = $21,
+         winner_count = $22,
+         start_at = $23,
+         end_at = $24,
+         status = $25,
+         is_active = $26,
+         cancelled_at = $27,
+         closed_at = $28,
+         close_reason = $29,
+         winner_user_id = $30,
+         winning_bid_id = $31,
+         total_bids = $32,
+         updated_by = $33
      WHERE id = $1
      RETURNING *`,
     [
@@ -376,6 +382,9 @@ async function updateAuction(client, auctionId, payload) {
       JSON.stringify(coerceJsonArray(payload.specifications)),
       payload.imageUrl || null,
       JSON.stringify(coerceJsonArray(payload.gallery)),
+      payload.category || null,
+      payload.itemCondition || null,
+      payload.shippingDetails || null,
       payload.startingPrice,
       payload.minBidIncrement,
       payload.currentBid,
@@ -629,6 +638,9 @@ module.exports = {
   getUserBidStats,
   listUserAuctionHistory
 };
+
+
+
 
 
 

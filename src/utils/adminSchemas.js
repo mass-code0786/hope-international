@@ -165,14 +165,20 @@ const adminSellerApplicationReviewSchema = z.object({ body: z.object({ status: z
 const adminAuctionStatuses = ['upcoming', 'live', 'ended', 'cancelled'];
 const adminAuctionSpecsSchema = z.array(z.object({ label: z.string().min(1).max(100), value: z.string().min(1).max(300) })).optional();
 const adminAuctionGallerySchema = z.array(z.string().min(3).max(1000000)).optional();
-const adminAuctionBody = z.object({
-  productId: uuid,
-  title: z.string().min(2).max(255),
+const adminAuctionSourceModes = ['existing', 'standalone'];
+const adminAuctionModeSchema = z.enum(adminAuctionSourceModes).optional();
+const adminAuctionBaseBody = z.object({
+  sourceMode: adminAuctionModeSchema,
+  productId: uuid.optional(),
+  title: z.string().min(2).max(255).optional(),
   shortDescription: z.string().max(400).optional(),
   description: z.string().max(4000).optional(),
   imageUrl: z.string().max(1000000).optional(),
   gallery: adminAuctionGallerySchema,
   specifications: adminAuctionSpecsSchema,
+  category: z.string().min(2).max(120).optional(),
+  itemCondition: z.string().max(120).optional(),
+  shippingDetails: z.string().max(1000).optional(),
   entryPrice: z.number().min(0.5).max(100),
   hiddenCapacity: z.number().int().positive(),
   stockQuantity: z.number().int().positive().optional(),
@@ -183,9 +189,38 @@ const adminAuctionBody = z.object({
   isActive: z.boolean().optional()
 });
 
+function validateAuctionCreateMode(body, ctx) {
+  const mode = body.sourceMode || (body.productId ? 'existing' : 'standalone');
+
+  if (mode === 'existing') {
+    if (!body.productId) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['productId'], message: 'productId is required when using an existing product' });
+    }
+  }
+
+  if (mode === 'standalone') {
+    if (!body.title?.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['title'], message: 'title is required for auction-only items' });
+    }
+    if (!body.shortDescription?.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['shortDescription'], message: 'shortDescription is required for auction-only items' });
+    }
+    if (!body.imageUrl?.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['imageUrl'], message: 'imageUrl is required for auction-only items' });
+    }
+    if (!body.category?.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['category'], message: 'category is required for auction-only items' });
+    }
+  }
+
+  if ((body.rewardMode || 'stock') === 'split' && body.rewardValue === undefined) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rewardValue'], message: 'rewardValue is required when rewardMode is split' });
+  }
+}
+
 const adminAuctionsQuerySchema = z.object({ body: z.object({}), params: z.object({}), query: pagingQuery.extend({ search: z.string().optional(), status: z.enum(adminAuctionStatuses).optional() }) });
-const adminAuctionCreateSchema = z.object({ body: adminAuctionBody, params: z.object({}), query: z.object({}) });
-const adminAuctionUpdateSchema = z.object({ body: adminAuctionBody.partial().refine((body) => Object.keys(body).length > 0, { message: 'At least one field is required for update' }), params: z.object({ id: uuid }), query: z.object({}) });
+const adminAuctionCreateSchema = z.object({ body: adminAuctionBaseBody.superRefine(validateAuctionCreateMode), params: z.object({}), query: z.object({}) });
+const adminAuctionUpdateSchema = z.object({ body: adminAuctionBaseBody.partial().refine((body) => Object.keys(body).length > 0, { message: 'At least one field is required for update' }), params: z.object({ id: uuid }), query: z.object({}) });
 const adminAuctionIdParamSchema = z.object({ body: z.object({}), params: z.object({ id: uuid }), query: z.object({}) });
 const adminAuctionActionSchema = z.object({ body: z.object({ action: z.enum(['close', 'cancel', 'activate', 'deactivate']), reason: z.string().max(255).optional() }), params: z.object({ id: uuid }), query: z.object({}) });
 
@@ -230,4 +265,5 @@ module.exports = {
   adminAuctionIdParamSchema,
   adminAuctionActionSchema
 };
+
 

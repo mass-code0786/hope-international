@@ -59,6 +59,7 @@ export default function AdminAuctionDetailPage() {
   const auction = detailQuery.data?.data;
   const products = Array.isArray(productsQuery.data?.data) ? productsQuery.data.data : [];
   const initialValues = toAuctionFormValues(auction);
+  const sourceMode = auction.product_id ? 'Existing catalog product' : 'Standalone auction item';
 
   return (
     <div className="space-y-5">
@@ -73,13 +74,17 @@ export default function AdminAuctionDetailPage() {
             <p className="text-xs text-muted">Purchase events: {auction.total_bids || 0}</p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-cardSoft p-4 text-sm text-muted">
-            <div className="flex items-center justify-between"><span>Product</span><strong className="text-right text-text">{auction.product_name || auction.title}</strong></div>
+            <div className="flex items-center justify-between"><span>Source</span><strong className="text-right text-text">{sourceMode}</strong></div>
+            <div className="mt-2 flex items-center justify-between"><span>Product</span><strong className="text-right text-text">{auction.product_name || 'Auction-only item'}</strong></div>
             <div className="mt-2 flex items-center justify-between"><span>Entry price</span><strong className="text-text">{formatAuctionMoney(auction.entry_price || auction.display_current_bid)}</strong></div>
             <div className="mt-2 flex items-center justify-between"><span>Total entries</span><strong className="text-text">{Number(auction.total_entries || 0)}</strong></div>
             <div className="mt-2 flex items-center justify-between"><span>Hidden capacity</span><strong className="text-text">{Number(auction.hidden_capacity || 0)}</strong></div>
+            <div className="mt-2 flex items-center justify-between"><span>Category</span><strong className="text-text">{auction.category || 'Not set'}</strong></div>
+            <div className="mt-2 flex items-center justify-between"><span>Condition</span><strong className="text-text">{auction.item_condition || 'Not set'}</strong></div>
             <div className="mt-2 flex items-center justify-between"><span>Tie state</span><strong className="text-text">{auction.has_tie ? `Yes (${auction.winner_count || 0} winners)` : 'No'}</strong></div>
             <div className="mt-2 flex items-center justify-between"><span>Reward mode</span><strong className="text-text">{auction.reward_mode === 'split' ? `Split ${formatAuctionMoney(auction.reward_value || 0)}` : `${auction.stock_quantity || 1} stock`}</strong></div>
             <div className="mt-2 flex items-center justify-between"><span>Window</span><strong className="text-right text-text">{new Date(auction.start_at).toLocaleString()} to {new Date(auction.end_at).toLocaleString()}</strong></div>
+            {auction.shipping_details ? <p className="mt-3 text-xs leading-5 text-muted">Shipping: {auction.shipping_details}</p> : null}
           </div>
 
           <div className="grid grid-cols-2 gap-2">

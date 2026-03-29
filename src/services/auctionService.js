@@ -87,6 +87,9 @@ function sanitizeAuctionPayload(payload, before = null) {
     specifications: normalizeSpecs(payload.specifications ?? before?.specifications ?? []),
     imageUrl: String(payload.imageUrl ?? before?.image_url ?? '').trim(),
     gallery: normalizeGallery(payload.gallery ?? before?.gallery ?? [], String(payload.imageUrl ?? before?.image_url ?? '').trim()),
+    category: String(payload.category ?? before?.category ?? '').trim() || null,
+    itemCondition: String(payload.itemCondition ?? before?.item_condition ?? '').trim() || null,
+    shippingDetails: String(payload.shippingDetails ?? before?.shipping_details ?? '').trim() || null,
     startingPrice: entryPrice,
     minBidIncrement: entryPrice,
     currentBid: entryPrice,
@@ -436,5 +439,7 @@ module.exports = {
   deriveAuctionStatus,
   validateAuctionRange
 };
+
+
 
 

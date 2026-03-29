@@ -20,6 +20,14 @@ function normalizeProductId(productId) {
   return normalized;
 }
 
+function normalizeSourceMode(mode, fallback = 'existing') {
+  return mode === 'standalone' ? 'standalone' : fallback;
+}
+
+function toShortDescription(value) {
+  return String(value || '').trim().slice(0, 400);
+}
+
 async function safeAdminAuditLog(client, payload) {
   try {
     await adminRepository.logAdminAction(client, payload);
@@ -45,6 +53,70 @@ async function assertAuctionProduct(client, productId) {
     throw new ApiError(400, 'Selected product was not found');
   }
   return product;
+}
+
+function resolveAuctionSourceMode(payload, before = null) {
+  if (payload?.sourceMode) return normalizeSourceMode(payload.sourceMode);
+  if (payload?.productId) return 'existing';
+  if (before?.product_id) return 'existing';
+  return 'standalone';
+}
+
+function requireStandaloneField(value, message) {
+  if (String(value || '').trim()) return;
+  throw new ApiError(400, message);
+}
+
+async function buildAuctionSourcePayload(client, payload, before = null) {
+  const sourceMode = resolveAuctionSourceMode(payload, before);
+
+  if (sourceMode === 'existing') {
+    const productId = payload.productId ?? before?.product_id;
+    const product = await assertAuctionProduct(client, productId);
+    const productGallery = Array.isArray(product.gallery) ? product.gallery : [];
+    const fallbackImage = product.image_url || productGallery[0] || '';
+
+    return {
+      sourceMode,
+      product,
+      productId: product.id,
+      title: String(payload.title ?? before?.title ?? product.name ?? '').trim(),
+      shortDescription: toShortDescription(payload.shortDescription ?? before?.short_description ?? product.description ?? ''),
+      description: String(payload.description ?? before?.description ?? product.description ?? '').trim(),
+      imageUrl: String(payload.imageUrl ?? before?.image_url ?? fallbackImage).trim(),
+      gallery: Array.isArray(payload.gallery)
+        ? payload.gallery
+        : Array.isArray(before?.gallery) && before.gallery.length
+          ? before.gallery
+          : productGallery,
+      specifications: payload.specifications ?? before?.specifications ?? [],
+      category: String(payload.category ?? before?.category ?? product.category ?? '').trim(),
+      itemCondition: String(payload.itemCondition ?? before?.item_condition ?? '').trim(),
+      shippingDetails: String(payload.shippingDetails ?? before?.shipping_details ?? '').trim()
+    };
+  }
+
+  const standalone = {
+    sourceMode,
+    product: null,
+    productId: null,
+    title: String(payload.title ?? before?.title ?? '').trim(),
+    shortDescription: toShortDescription(payload.shortDescription ?? before?.short_description ?? ''),
+    description: String(payload.description ?? before?.description ?? '').trim(),
+    imageUrl: String(payload.imageUrl ?? before?.image_url ?? '').trim(),
+    gallery: Array.isArray(payload.gallery) ? payload.gallery : (before?.gallery || []),
+    specifications: payload.specifications ?? before?.specifications ?? [],
+    category: String(payload.category ?? before?.category ?? '').trim(),
+    itemCondition: String(payload.itemCondition ?? before?.item_condition ?? '').trim(),
+    shippingDetails: String(payload.shippingDetails ?? before?.shipping_details ?? '').trim()
+  };
+
+  requireStandaloneField(standalone.title, 'Auction title is required for auction-only items');
+  requireStandaloneField(standalone.shortDescription, 'Short description is required for auction-only items');
+  requireStandaloneField(standalone.imageUrl, 'Primary image is required for auction-only items');
+  requireStandaloneField(standalone.category, 'Category is required for auction-only items');
+
+  return standalone;
 }
 
 async function safeAuctionDetails(client, auctionId, fallbackAuction = null) {
@@ -142,18 +214,20 @@ async function getAuction(auctionId) {
 
 async function createAuction(adminUserId, payload) {
   return withTransaction(async (client) => {
-    console.error('[admin.auctions.create] payload', {
-      productId: payload?.productId ?? null,
-      productIdType: typeof payload?.productId,
-      title: payload?.title ?? null
-    });
-
-    const normalizedProductId = normalizeProductId(payload.productId);
-    const product = await assertAuctionProduct(client, normalizedProductId);
+    const source = await buildAuctionSourcePayload(client, payload);
 
     const sanitized = auctionService.sanitizeAuctionPayload({
       ...payload,
-      productId: normalizedProductId,
+      productId: source.productId,
+      title: source.title,
+      shortDescription: source.shortDescription,
+      description: source.description,
+      imageUrl: source.imageUrl,
+      gallery: source.gallery,
+      specifications: source.specifications,
+      category: source.category,
+      itemCondition: source.itemCondition,
+      shippingDetails: source.shippingDetails,
       status: 'upcoming',
       isActive: payload.isActive ?? true,
       totalEntries: 0,
@@ -167,7 +241,7 @@ async function createAuction(adminUserId, payload) {
 
     const created = await auctionRepository.createAuction(client, {
       ...sanitized,
-      productId: normalizedProductId,
+      productId: source.productId,
       createdBy: adminUserId,
       updatedBy: adminUserId
     });
@@ -179,7 +253,13 @@ async function createAuction(adminUserId, payload) {
       targetId: created.id,
       beforeData: null,
       afterData: created,
-      metadata: { title: created.title, productId: product.id, productName: product.name, hiddenCapacity: created.hidden_capacity }
+      metadata: {
+        title: created.title,
+        productId: source.product?.id || null,
+        productName: source.product?.name || null,
+        sourceMode: source.sourceMode,
+        hiddenCapacity: created.hidden_capacity
+      }
     });
 
     return safeAuctionDetails(client, created.id, created);
@@ -191,20 +271,28 @@ async function updateAuction(adminUserId, auctionId, payload) {
     const before = await auctionRepository.getAuctionForUpdate(client, auctionId);
     if (!before) throw new ApiError(404, 'Auction not found');
 
-    const nextProductId = normalizeProductId(payload.productId ?? before.product_id);
-    const product = await assertAuctionProduct(client, nextProductId);
-
+    const source = await buildAuctionSourcePayload(client, payload, before);
     const merged = auctionService.sanitizeAuctionPayload({
       ...payload,
-      productId: nextProductId
+      productId: source.productId,
+      title: payload.title ?? source.title,
+      shortDescription: payload.shortDescription ?? source.shortDescription,
+      description: payload.description ?? source.description,
+      imageUrl: payload.imageUrl ?? source.imageUrl,
+      gallery: payload.gallery ?? source.gallery,
+      specifications: payload.specifications ?? source.specifications,
+      category: payload.category ?? source.category,
+      itemCondition: payload.itemCondition ?? source.itemCondition,
+      shippingDetails: payload.shippingDetails ?? source.shippingDetails
     }, before);
+
     if (!merged.title) {
       throw new ApiError(400, 'Auction title is required');
     }
 
     const updated = await auctionRepository.updateAuction(client, auctionId, {
       ...merged,
-      productId: nextProductId,
+      productId: source.productId,
       updatedBy: adminUserId
     });
 
@@ -215,7 +303,12 @@ async function updateAuction(adminUserId, auctionId, payload) {
       targetId: auctionId,
       beforeData: before,
       afterData: updated,
-      metadata: { title: updated.title, productId: product.id, productName: product.name }
+      metadata: {
+        title: updated.title,
+        productId: source.product?.id || null,
+        productName: source.product?.name || null,
+        sourceMode: source.sourceMode
+      }
     });
 
     return safeAuctionDetails(client, updated.id, updated);
@@ -305,6 +398,3 @@ module.exports = {
   updateAuction,
   changeAuctionState
 };
-
-
-

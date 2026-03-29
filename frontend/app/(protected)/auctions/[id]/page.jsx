@@ -50,6 +50,11 @@ export default function AuctionDetailPage() {
   const entryPrice = Number(auction?.entry_price || auction?.display_current_bid || auction?.starting_price || 0.5);
   const entryOptions = [1, 3, 5].map((count) => ({ count, total: count * entryPrice }));
   const images = getAuctionImages(auction);
+  const detailSpecs = [
+    ...(Array.isArray(auction.specifications) ? auction.specifications : []),
+    ...(auction.category ? [{ label: 'Category', value: auction.category }] : []),
+    ...(auction.item_condition ? [{ label: 'Condition', value: auction.item_condition }] : [])
+  ];
 
   return (
     <div className="space-y-4">
@@ -68,8 +73,9 @@ export default function AuctionDetailPage() {
           <div className="rounded-3xl border border-slate-200 bg-white p-4">
             <p className="text-sm font-semibold text-slate-900">Details</p>
             <p className="mt-2 text-sm leading-6 text-slate-600">{auction.description || auction.short_description || 'No additional details were added for this auction lot.'}</p>
+            {auction.shipping_details ? <p className="mt-3 rounded-2xl bg-slate-50 px-3 py-2 text-sm text-slate-600">Shipping: {auction.shipping_details}</p> : null}
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              {(auction.specifications || []).map((item) => (
+              {detailSpecs.map((item) => (
                 <div key={`${item.label}-${item.value}`} className="rounded-2xl bg-slate-50 p-3 text-sm">
                   <p className="text-[10px] uppercase tracking-wide text-slate-400">{item.label}</p>
                   <p className="mt-1 font-medium text-slate-900">{item.value}</p>
