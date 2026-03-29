@@ -89,6 +89,7 @@ export function AuctionCard({ auction }) {
   const status = normalizeAuctionStatus(auction?.storefront_status, auction?.computed_status, auction?.status);
   const rewardText = auction?.reward_mode === 'split' ? 'Shared reward' : `${auction?.stock_quantity || 1} stock`;
   const description = auction?.short_description || auction?.description || auction?.product_description || 'Admin managed fixed-entry auction.';
+  const totalEntries = Number(auction?.total_entries || 0);
 
   return (
     <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
@@ -98,7 +99,7 @@ export function AuctionCard({ auction }) {
         <div className="absolute left-2 top-2">
           <AuctionStatusBadge status={status} won={Boolean(auction?.is_winner || auction?.isWinner)} />
         </div>
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/18 via-slate-950/4 to-transparent p-2">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/22 via-slate-950/6 to-transparent p-2">
           <div className="rounded-xl bg-white/88 px-2.5 py-2 shadow-[0_8px_20px_rgba(15,23,42,0.10)] backdrop-blur-sm">
             <p className="text-[9px] uppercase tracking-[0.18em] text-slate-400">Entry Price</p>
             <p className="mt-1 text-lg font-semibold text-slate-900">{formatAuctionMoney(getAuctionPrice(auction))}</p>
@@ -112,10 +113,12 @@ export function AuctionCard({ auction }) {
           <p className="mt-1 line-clamp-2 min-h-[2rem] text-[11px] leading-4 text-slate-500">{description}</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500">
-          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1"><Users size={11} /> {Number(auction?.total_entries || 0)}</span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1"><Package size={11} /> {rewardText}</span>
-        </div>
+        {(totalEntries > 0 || rewardText) ? (
+          <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500">
+            {totalEntries > 0 ? <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1"><Users size={11} /> {totalEntries}</span> : null}
+            {rewardText ? <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1"><Package size={11} /> {rewardText}</span> : null}
+          </div>
+        ) : null}
 
         <div className="flex min-h-[32px] items-center justify-between gap-2">
           <AuctionCountdown startAt={auction?.start_at} endAt={auction?.end_at} status={status} compact />

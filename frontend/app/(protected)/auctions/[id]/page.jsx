@@ -37,7 +37,7 @@ function InfoPill({ icon: Icon, label, value }) {
         <Icon size={11} />
         {label}
       </div>
-      <p className="mt-1 text-sm font-semibold text-slate-900">{value}</p>
+      <div className="mt-1 text-sm font-semibold text-slate-900">{value}</div>
     </div>
   );
 }
@@ -95,6 +95,9 @@ export default function AuctionDetailPage() {
   const isLive = status === 'live';
   const isEnded = status === 'ended';
   const winners = Array.isArray(auction?.winners) ? auction.winners : [];
+  const myEntryCount = Number(auction?.myEntryCount || 0);
+  const myTotalSpend = Number(auction?.myTotalSpend || 0);
+  const hasParticipation = myEntryCount > 0 || myTotalSpend > 0;
 
   return (
     <div className="-mx-4 bg-[#f8fafc] px-3 pb-28 pt-0 sm:mx-0 sm:rounded-2xl sm:border sm:border-slate-200 sm:px-4 sm:py-4">
@@ -135,9 +138,9 @@ export default function AuctionDetailPage() {
 
           <div className="mt-4 grid grid-cols-2 gap-2">
             <InfoPill icon={Gavel} label="Entry Price" value={formatAuctionMoney(entryPrice)} />
-            <InfoPill icon={Users} label="Your Entries" value={Number(auction?.myEntryCount || 0)} />
             <InfoPill icon={Package} label="Reward" value={auction?.reward_mode === 'split' ? 'Shared reward' : `${auction?.stock_quantity || 1} stock`} />
-            <InfoPill icon={Clock3} label={status === 'upcoming' ? 'Starts' : 'Ends'} value={<span><AuctionCountdown startAt={auction?.start_at} endAt={auction?.end_at} status={status} compact /></span>} />
+            <InfoPill icon={Clock3} label={status === 'upcoming' ? 'Starts' : 'Ends'} value={<AuctionCountdown startAt={auction?.start_at} endAt={auction?.end_at} status={status} compact />} />
+            {myEntryCount > 0 ? <InfoPill icon={Users} label="Your Entries" value={myEntryCount} /> : null}
           </div>
         </section>
 
@@ -150,8 +153,7 @@ export default function AuctionDetailPage() {
               </div>
               <AuctionCountdown startAt={auction?.start_at} endAt={auction?.end_at} status={status} />
             </div>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="rounded-2xl bg-slate-50 px-3 py-3"><p className="text-xs text-slate-500">Your spend</p><p className="mt-1 font-semibold text-slate-900">{formatAuctionMoney(auction?.myTotalSpend || 0)}</p></div>
+            <div className="grid grid-cols-1 gap-2 text-sm">
               <div className="rounded-2xl bg-slate-50 px-3 py-3"><p className="text-xs text-slate-500">Auction status</p><p className="mt-1 font-semibold text-slate-900">{isLive ? 'Open for entries' : isEnded ? 'Closed' : 'Scheduled'}</p></div>
             </div>
             <WinnerNote auction={auction} />
@@ -180,12 +182,14 @@ export default function AuctionDetailPage() {
           </div>
         </DetailCard>
 
-        <DetailCard title="Your Participation">
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div className="rounded-2xl bg-slate-50 px-3 py-3"><p className="text-xs text-slate-500">Entries bought</p><p className="mt-1 font-semibold text-slate-900">{Number(auction?.myEntryCount || 0)}</p></div>
-            <div className="rounded-2xl bg-slate-50 px-3 py-3"><p className="text-xs text-slate-500">Total spent</p><p className="mt-1 font-semibold text-slate-900">{formatAuctionMoney(auction?.myTotalSpend || 0)}</p></div>
-          </div>
-        </DetailCard>
+        {hasParticipation ? (
+          <DetailCard title="Your Participation">
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              {myEntryCount > 0 ? <div className="rounded-2xl bg-slate-50 px-3 py-3"><p className="text-xs text-slate-500">Entries bought</p><p className="mt-1 font-semibold text-slate-900">{myEntryCount}</p></div> : null}
+              {myTotalSpend > 0 ? <div className="rounded-2xl bg-slate-50 px-3 py-3"><p className="text-xs text-slate-500">Total spent</p><p className="mt-1 font-semibold text-slate-900">{formatAuctionMoney(myTotalSpend)}</p></div> : null}
+            </div>
+          </DetailCard>
+        ) : null}
 
         {(auction?.bidHistory || []).length ? (
           <DetailCard title="Recent Bids">
@@ -206,8 +210,8 @@ export default function AuctionDetailPage() {
         <DetailCard title="How It Works">
           <div className="space-y-2 text-sm leading-6 text-slate-600">
             <p className="flex gap-2"><ShieldCheck size={16} className="mt-1 shrink-0 text-sky-600" />Each entry uses the fixed price shown above.</p>
-            <p className="flex gap-2"><BadgeInfo size={16} className="mt-1 shrink-0 text-sky-600" />The hidden capacity is not shown publicly and closes the auction automatically.</p>
-            <p className="flex gap-2"><Trophy size={16} className="mt-1 shrink-0 text-sky-600" />When the auction closes, the highest total entry count wins. Ties can produce multiple winners.</p>
+            <p className="flex gap-2"><Trophy size={16} className="mt-1 shrink-0 text-sky-600" />When the auction closes, the highest total entry count wins.</p>
+            <p className="flex gap-2"><BadgeInfo size={16} className="mt-1 shrink-0 text-sky-600" />If there is a tie, multiple winners can be declared.</p>
           </div>
         </DetailCard>
       </div>
