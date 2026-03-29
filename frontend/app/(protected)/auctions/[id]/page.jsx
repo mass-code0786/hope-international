@@ -99,7 +99,7 @@ export default function AuctionDetailPage() {
   const hasParticipation = myEntryCount > 0 || myTotalSpend > 0;
 
   return (
-    <div className="-mx-4 bg-[#f8fafc] px-3 pb-[calc(7.5rem+env(safe-area-inset-bottom))] pt-0 sm:mx-0 sm:rounded-2xl sm:border sm:border-slate-200 sm:px-4 sm:py-4 sm:pb-6">
+    <div className="-mx-4 bg-[#f8fafc] px-3 pb-[calc(8.5rem+env(safe-area-inset-bottom))] pt-0 sm:mx-0 sm:rounded-2xl sm:border sm:border-slate-200 sm:px-4 sm:py-4 sm:pb-6">
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-3">
           <Link href="/auctions" className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-[0_6px_16px_rgba(15,23,42,0.05)]">
@@ -215,19 +215,19 @@ export default function AuctionDetailPage() {
         </DetailCard>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-3 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
+      <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] z-40 px-3 md:hidden">
         {isLive ? (
-          <div className="mx-auto flex max-w-xl items-center gap-2">
-            <div className="min-w-0 flex-1 rounded-2xl bg-slate-100 px-3 py-2.5">
+          <div className="mx-auto flex max-w-xl items-center gap-2 rounded-[28px] border border-slate-200 bg-white/96 p-2 shadow-[0_18px_36px_rgba(15,23,42,0.14)] backdrop-blur">
+            <div className="min-w-0 flex-1 rounded-2xl bg-slate-100 px-3 py-2">
               <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Entry Price</p>
-              <p className="mt-1 text-base font-semibold text-slate-900">{formatAuctionMoney(entryPrice)}</p>
+              <p className="mt-1 text-[15px] font-semibold text-slate-900">{formatAuctionMoney(entryPrice)}</p>
             </div>
-            <button onClick={() => bidMutation.mutate(1)} disabled={bidMutation.isPending} className="inline-flex min-h-[56px] flex-1 items-center justify-center rounded-2xl bg-slate-900 px-4 py-4 text-sm font-semibold text-white shadow-[0_14px_28px_rgba(15,23,42,0.22)] disabled:cursor-not-allowed disabled:bg-slate-300">
+            <button onClick={() => bidMutation.mutate(1)} disabled={bidMutation.isPending} className="inline-flex min-h-[52px] flex-1 items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-[0_14px_28px_rgba(15,23,42,0.22)] disabled:cursor-not-allowed disabled:bg-slate-300">
               {bidMutation.isPending ? 'Processing...' : 'Bid Now'}
             </button>
           </div>
         ) : (
-          <div className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm text-slate-600">
+          <div className="mx-auto max-w-xl rounded-[28px] border border-slate-200 bg-white/96 px-4 py-3 text-center text-sm text-slate-600 shadow-[0_18px_36px_rgba(15,23,42,0.12)] backdrop-blur">
             {isEnded ? (winners.length ? `Auction ended. Winner${winners.length > 1 ? 's' : ''}: ${winners.map((winner) => winner.username).join(', ')}` : 'Auction ended. Results will appear here once declared.') : 'Auction has not started yet.'}
           </div>
         )}
