@@ -57,7 +57,7 @@ export function AuctionCountdown({ startAt, endAt, status, compact = false }) {
   const prefix = safeStatus === 'upcoming' ? 'Starts' : safeStatus === 'live' ? 'Ends' : null;
 
   return (
-    <div className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-700">
+    <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[10px] font-semibold text-slate-700 shadow-[0_4px_10px_rgba(15,23,42,0.04)]">
       <Clock3 size={11} />
       {prefix ? `${prefix} ${compact ? '' : 'in '}${content}`.trim() : content}
     </div>
@@ -87,46 +87,32 @@ export function AuctionCard({ auction }) {
   const images = getAuctionImages(auction);
   const cover = images[0] || 'https://placehold.co/900x900/e2e8f0/334155?text=Auction';
   const status = normalizeAuctionStatus(auction?.storefront_status, auction?.computed_status, auction?.status);
-  const rewardText = auction?.reward_mode === 'split' ? 'Shared reward' : `${auction?.stock_quantity || 1} stock`;
-  const description = auction?.short_description || auction?.description || auction?.product_description || 'Admin managed fixed-entry auction.';
-  const totalEntries = Number(auction?.total_entries || 0);
+  const stockQuantity = Number(auction?.stock_quantity || 0);
 
   return (
     <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
-      <div className="relative aspect-[4/5.4] overflow-hidden bg-[linear-gradient(180deg,#f8fafc,#eef2ff)]">
+      <div className="relative aspect-[4/5] overflow-hidden bg-[linear-gradient(180deg,#f8fafc,#eef2ff)]">
         <img src={cover} alt={auction?.title || 'Auction'} className="h-full w-full object-contain p-2" />
-        <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-white/50 to-transparent" />
-        <div className="absolute left-2 top-2">
+        <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2">
           <AuctionStatusBadge status={status} won={Boolean(auction?.is_winner || auction?.isWinner)} />
-        </div>
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/22 via-slate-950/6 to-transparent p-2">
-          <div className="rounded-xl bg-white/88 px-2.5 py-2 shadow-[0_8px_20px_rgba(15,23,42,0.10)] backdrop-blur-sm">
-            <p className="text-[9px] uppercase tracking-[0.18em] text-slate-400">Entry Price</p>
-            <p className="mt-1 text-lg font-semibold text-slate-900">{formatAuctionMoney(getAuctionPrice(auction))}</p>
-          </div>
+          {stockQuantity > 0 ? <span className="rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold text-slate-700 shadow-sm">{stockQuantity} stock</span> : null}
         </div>
       </div>
 
       <div className="space-y-3 p-3">
         <div>
           <h3 className="line-clamp-2 min-h-[2.5rem] text-[13px] font-semibold leading-5 text-slate-900">{auction?.title || 'Untitled auction'}</h3>
-          <p className="mt-1 line-clamp-2 min-h-[2rem] text-[11px] leading-4 text-slate-500">{description}</p>
         </div>
 
-        {(totalEntries > 0 || rewardText) ? (
-          <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500">
-            {totalEntries > 0 ? <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1"><Users size={11} /> {totalEntries}</span> : null}
-            {rewardText ? <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1"><Package size={11} /> {rewardText}</span> : null}
-          </div>
-        ) : null}
-
-        <div className="flex min-h-[32px] items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <AuctionCountdown startAt={auction?.start_at} endAt={auction?.end_at} status={status} compact />
-          <Link href={`/auctions/${auction?.id}`} className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-3 py-1.5 text-[11px] font-semibold text-white">
-            {getAuctionCta(status)}
-            <ArrowRight size={12} />
-          </Link>
+          <span className="text-[11px] font-semibold text-slate-900">{formatAuctionMoney(getAuctionPrice(auction))}</span>
         </div>
+
+        <Link href={`/auctions/${auction?.id}`} className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-slate-900 px-3 py-2.5 text-[11px] font-semibold text-white shadow-[0_12px_24px_rgba(15,23,42,0.18)]">
+          {getAuctionCta(status)}
+          <ArrowRight size={12} />
+        </Link>
       </div>
     </article>
   );

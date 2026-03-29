@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Clock3, Gavel, RefreshCw, Sparkles } from 'lucide-react';
+import { Clock3, RefreshCw, Sparkles } from 'lucide-react';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { AuctionCard } from '@/components/auctions/AuctionUi';
@@ -20,13 +20,11 @@ function AuctionGridSkeleton() {
     <div className="grid grid-cols-2 gap-3">
       {Array.from({ length: 6 }).map((_, index) => (
         <div key={index} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <div className="aspect-[4/4.6] animate-pulse bg-slate-100" />
+          <div className="aspect-[4/4.8] animate-pulse bg-slate-100" />
           <div className="space-y-3 p-3">
             <div className="h-4 w-4/5 animate-pulse rounded bg-slate-200" />
-            <div className="h-3 w-full animate-pulse rounded bg-slate-100" />
-            <div className="h-3 w-5/6 animate-pulse rounded bg-slate-100" />
-            <div className="h-14 animate-pulse rounded-2xl bg-slate-100" />
-            <div className="h-7 animate-pulse rounded-full bg-slate-100" />
+            <div className="h-8 animate-pulse rounded-2xl bg-slate-100" />
+            <div className="h-10 animate-pulse rounded-full bg-slate-100" />
           </div>
         </div>
       ))}
@@ -44,10 +42,6 @@ function PremiumEmptyState({ status, search }) {
         <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-700">Auction Board</p>
         <h3 className="mt-2 text-lg font-semibold text-slate-900">{status === 'live' ? 'No live auctions available right now' : `No ${status} auctions available right now`}</h3>
         <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">{search ? 'Try clearing your search or switching tabs to browse other auction windows.' : 'Fresh auction lots will appear here as soon as the next round opens.'}</p>
-        <div className="mt-5 flex items-center justify-center gap-2 text-[11px] text-slate-500">
-          <span className="rounded-full border border-slate-200 bg-white px-3 py-1">2-up mobile grid</span>
-          <span className="rounded-full border border-slate-200 bg-white px-3 py-1">Fixed-price entries</span>
-        </div>
       </div>
     </section>
   );
@@ -79,7 +73,7 @@ export default function AuctionsPage() {
           Fixed entry auctions
         </div>
         <h1 className="mt-3 text-xl font-semibold text-slate-900 sm:text-2xl">Auctions</h1>
-        <p className="mt-1 max-w-md text-sm leading-6 text-slate-500">Browse auction lots in a clean product grid with clear images, quick status, and fixed-price bid entry.</p>
+        <p className="mt-1 max-w-md text-sm leading-6 text-slate-500">Browse current lots, track time remaining, and open any item to place a bid.</p>
 
         <div className="mt-4 grid grid-cols-3 gap-2">
           {tabs.map((tab) => (
@@ -106,7 +100,7 @@ export default function AuctionsPage() {
 
       <SectionHeader
         title={status === 'live' ? 'Live Auctions' : status === 'upcoming' ? 'Upcoming Auctions' : 'Ended Auctions'}
-        subtitle={status === 'live' ? 'Two-column mobile grid for quick scanning and bidding' : status === 'upcoming' ? 'Scheduled lots opening soon' : 'Recently closed auction results'}
+        subtitle={status === 'live' ? 'Clean auction cards built for quick scanning and fast bidding' : status === 'upcoming' ? 'Scheduled lots opening soon' : 'Recently closed auction results'}
       />
 
       {auctionsQuery.isLoading ? <AuctionGridSkeleton /> : null}
@@ -118,13 +112,6 @@ export default function AuctionsPage() {
           {auctions.map((auction) => <AuctionCard key={auction.id} auction={auction} />)}
         </div>
       ) : null}
-
-      <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-[11px] text-slate-500 shadow-[0_6px_20px_rgba(15,23,42,0.04)]">
-        <div className="flex items-start gap-2 text-slate-700">
-          <Gavel size={14} className="mt-0.5 shrink-0" />
-          Auction cards now follow a 2-column mobile shopping grid with larger image areas, readable entry pricing, and fast access to bidding or result views.
-        </div>
-      </div>
     </div>
   );
 }
