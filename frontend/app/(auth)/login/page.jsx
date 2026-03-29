@@ -55,12 +55,12 @@ export default function LoginPage() {
           </span>
         </div>
 
-        <div className="mb-6 flex flex-col items-center text-center">
+        <div className="mb-5 flex flex-col items-center text-center">
           <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-[24px] border border-slate-200/80 bg-white shadow-[0_18px_32px_rgba(148,163,184,0.18)]">
             <Logo size={58} />
           </div>
           <h1 className="text-[1.75rem] font-semibold tracking-[-0.04em] text-slate-950">Hope International</h1>
-          <p className="mt-2 max-w-xs text-sm leading-6 text-slate-600">Premium marketplace access for members, sellers, and admin operations.</p>
+
         </div>
 
         <div className="mb-5 rounded-[24px] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(248,250,252,0.95),rgba(255,255,255,0.82))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
@@ -117,7 +117,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="mt-4 text-center text-sm text-slate-500">Protected login with role-based access and secure session handling.</p>
+
 
         <div className="mt-5 flex items-center justify-center gap-3 text-center text-sm text-slate-500">
           <span className="h-px flex-1 bg-slate-200" />
