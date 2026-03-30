@@ -19,7 +19,8 @@ const registerSchema = z.object({
       sponsorCode: z.string().min(1).max(500).optional(),
       parentId: uuid.optional(),
       placementSide: z.enum(['left', 'right']).optional(),
-      preferredLeg: z.enum(['left', 'right']).optional()
+      preferredLeg: z.enum(['left', 'right']).optional(),
+      strictPlacement: z.boolean().optional()
     })
     .superRefine((val, ctx) => {
       if ((val.parentId && !val.placementSide) || (!val.parentId && val.placementSide)) {
@@ -31,6 +32,9 @@ const registerSchema = z.object({
       }
       if (!val.sponsorId && !val.sponsorCode && !val.referralCode && !val.referralUsername && val.preferredLeg) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'preferredLeg requires referral details' });
+      }
+      if (val.strictPlacement && !val.preferredLeg) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'strictPlacement requires preferredLeg' });
       }
       if (val.parentId && (val.sponsorId || val.sponsorCode || val.referralCode || val.referralUsername)) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Use either direct parent placement or sponsor leg placement, not both' });
@@ -361,7 +365,9 @@ module.exports = {
   auctionListQuerySchema,
   auctionIdParamSchema,
   auctionBidSchema,
-  auctionHistoryQuerySchema
+  auctionHistoryQuerySchema,
+  supportThreadsQuerySchema,
+  supportThreadCreateSchema,
+  supportThreadIdParamSchema,
+  supportMessageCreateSchema
 };
-
-

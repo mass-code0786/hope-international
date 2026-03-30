@@ -11,31 +11,25 @@ import { createOrder } from '@/lib/services/ordersService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { clearCart, getCartItems } from '@/lib/utils/cart';
 import { currency } from '@/lib/utils/format';
-
-function getOfferPercent(product) {
-  const base = String(product?.id || product?.name || 'hope')
-    .split('')
-    .reduce((sum, char) => sum + char.charCodeAt(0), 0);
-
-  return 10 + (base % 26);
-}
+import { getProductPricing } from '@/lib/utils/pricing';
 
 function readSnapshot(products = []) {
   const source = getCartItems();
   return source.map((item) => {
     const product = products.find((p) => String(p?.id) === String(item.productId));
-    const price = Number(product?.price ?? item.price ?? 0);
     const quantity = Math.max(1, Number(item.quantity || 1));
-    const offerPercent = getOfferPercent(product || item);
-    const oldPrice = price > 0 ? price * (1 + offerPercent / 100) : 0;
+    const liveProduct = product || item;
+    const pricing = getProductPricing(liveProduct, quantity);
 
     return {
       ...item,
       name: product?.name || item.name || 'Product',
-      price,
       quantity,
-      oldPrice,
-      subtotal: price * quantity,
+      price: pricing.finalPrice,
+      compareAtPrice: pricing.compareAtPrice,
+      offerPercent: pricing.offerPercent,
+      subtotal: pricing.lineFinalTotal,
+      lineDiscount: pricing.lineDiscountTotal,
       product
     };
   });
@@ -60,10 +54,9 @@ export default function CheckoutPage() {
 
   const summary = useMemo(() => {
     const subtotal = items.reduce((sum, item) => sum + Number(item.subtotal || 0), 0);
-    const reference = items.reduce((sum, item) => sum + Number(item.oldPrice || 0) * Number(item.quantity || 0), 0);
-    const discount = Math.max(0, reference - subtotal);
+    const discount = items.reduce((sum, item) => sum + Number(item.lineDiscount || 0), 0);
     const deliveryFee = subtotal > 0 ? 0 : 0;
-    const total = subtotal - discount + deliveryFee;
+    const total = subtotal + deliveryFee;
     return { subtotal, discount, deliveryFee, total };
   }, [items]);
 
@@ -192,7 +185,7 @@ export default function CheckoutPage() {
           <div className="flex items-center justify-between text-slate-600"><span>Subtotal</span><span>{currency(summary.subtotal)}</span></div>
           <div className="flex items-center justify-between text-emerald-700"><span>Discount</span><span>-{currency(summary.discount)}</span></div>
           <div className="flex items-center justify-between text-slate-600"><span>Delivery</span><span>{summary.deliveryFee ? currency(summary.deliveryFee) : 'Free'}</span></div>
-          <div className="mt-1 border-t border-slate-200 pt-1.5 flex items-center justify-between text-[13px] font-semibold text-slate-900"><span>Total</span><span>{currency(summary.total)}</span></div>
+          <div className="mt-1 flex items-center justify-between border-t border-slate-200 pt-1.5 text-[13px] font-semibold text-slate-900"><span>Total</span><span>{currency(summary.total)}</span></div>
         </div>
         <div className="mt-2 space-y-1 text-[10px] text-slate-500">
           <p className="inline-flex items-center gap-1"><Truck size={11} /> Fast shipping support available</p>

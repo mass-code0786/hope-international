@@ -9,6 +9,7 @@ import { DashboardQuickActions } from '@/components/dashboard/DashboardQuickActi
 import { BinarySummary } from '@/components/dashboard/BinarySummary';
 import { IncomeHighlights } from '@/components/dashboard/IncomeHighlights';
 import { DashboardActivity } from '@/components/dashboard/DashboardActivity';
+import { BinaryReferralLinks } from '@/components/referral/BinaryReferralLinks';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { DashboardSkeleton } from '@/components/ui/PageSkeletons';
 import { StatCard } from '@/components/ui/StatCard';
@@ -124,6 +125,8 @@ export default function DashboardPage() {
         teamSize={number(teamSummary?.total_descendants || 0)}
         activeTeam={number(teamSummary?.active_count || 0)}
       />
+
+      <BinaryReferralLinks username={me?.username} />
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
         <StatCard compact title="Wallet Balance" value={currency(walletBalance)} right={<Wallet size={18} className="text-accent" />} emphasis="primary" />

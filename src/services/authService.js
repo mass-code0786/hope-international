@@ -33,9 +33,18 @@ function normalizeReferralCode(raw) {
   return normalizeUsername(text);
 }
 
-async function resolveSponsorId(client, payload) {
+function normalizePlacementSide(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  return normalized === 'left' || normalized === 'right' ? normalized : null;
+}
+
+async function resolveSponsor(client, payload) {
   if (payload.sponsorId) {
-    return payload.sponsorId;
+    const sponsorById = await userRepository.findById(client, payload.sponsorId);
+    if (!sponsorById) {
+      throw new ApiError(404, 'Sponsor user not found');
+    }
+    return sponsorById;
   }
 
   const referralValue = payload.referralUsername || payload.referralCode || payload.sponsorCode;
@@ -49,16 +58,33 @@ async function resolveSponsorId(client, payload) {
     throw new ApiError(404, 'Referral username not found');
   }
 
-  return sponsor.id;
+  return sponsor;
 }
 
-async function resolvePlacementBySponsor(client, sponsorId, preferredLeg) {
+async function resolveSponsorId(client, payload) {
+  const sponsor = await resolveSponsor(client, payload);
+  return sponsor?.id || null;
+}
+
+async function resolvePlacementBySponsor(client, sponsorId, preferredLeg, strictPlacement = false) {
   const sponsor = await userRepository.getBinaryNode(client, sponsorId);
   if (!sponsor) {
     throw new ApiError(404, 'Sponsor user not found');
   }
 
   const legs = preferredLeg ? [preferredLeg] : ['left', 'right'];
+
+  if (strictPlacement && preferredLeg) {
+    const occupiedChildId = preferredLeg === 'left' ? sponsor.left_child_id : sponsor.right_child_id;
+    if (occupiedChildId) {
+      throw new ApiError(409, `Sponsor ${preferredLeg} side is already occupied`);
+    }
+
+    return {
+      parentId: sponsor.id,
+      placementSide: preferredLeg
+    };
+  }
 
   for (const leg of legs) {
     const slot = await userRepository.findFirstAvailableParentByLeg(client, sponsorId, leg);
@@ -77,6 +103,31 @@ async function resolvePlacementBySponsor(client, sponsorId, preferredLeg) {
   throw new ApiError(409, 'No available slot in sponsor subtree');
 }
 
+async function previewReferral(referralCode, side) {
+  const sponsorUsername = normalizeReferralCode(referralCode);
+  const normalizedSide = normalizePlacementSide(side);
+  if (!sponsorUsername) {
+    throw new ApiError(400, 'Referral username is required');
+  }
+
+  const sponsor = await userRepository.findByUsername(null, sponsorUsername);
+  if (!sponsor) {
+    throw new ApiError(404, 'Referral username not found');
+  }
+
+  const sponsorProfile = await userRepository.findById(null, sponsor.id);
+  const binaryNode = await userRepository.getBinaryNode(null, sponsor.id);
+  const occupied = normalizedSide
+    ? Boolean(normalizedSide === 'left' ? binaryNode?.left_child_id : binaryNode?.right_child_id)
+    : null;
+
+  return {
+    sponsor: sponsorProfile,
+    requestedSide: normalizedSide,
+    sideAvailable: normalizedSide ? !occupied : null
+  };
+}
+
 async function register(payload) {
   return withTransaction(async (client) => {
     const username = normalizeUsername(payload.username);
@@ -85,6 +136,8 @@ async function register(payload) {
     const email = String(payload.email || '').trim().toLowerCase();
     const countryCode = String(payload.countryCode || '').trim();
     const mobileNumber = String(payload.mobileNumber || '').trim();
+    const preferredLeg = normalizePlacementSide(payload.preferredLeg);
+    const strictPlacement = Boolean(payload.strictPlacement && preferredLeg);
 
     const existingEmail = await userRepository.findByEmail(client, email);
     if (existingEmail) {
@@ -120,7 +173,7 @@ async function register(payload) {
         placementSide: payload.placementSide
       };
     } else if (sponsorId) {
-      placement = await resolvePlacementBySponsor(client, sponsorId, payload.preferredLeg);
+      placement = await resolvePlacementBySponsor(client, sponsorId, preferredLeg, strictPlacement);
     }
 
     const passwordHash = await bcrypt.hash(payload.password, 12);
@@ -141,7 +194,7 @@ async function register(payload) {
     if (placement.parentId) {
       const attached = await userRepository.setChild(client, placement.parentId, placement.placementSide, user.id);
       if (!attached) {
-        throw new ApiError(409, 'Placement slot was occupied during registration. Retry.');
+        throw new ApiError(409, strictPlacement ? `Sponsor ${placement.placementSide} side is already occupied` : 'Placement slot was occupied during registration. Retry.');
       }
     }
 
@@ -171,5 +224,6 @@ async function login(payload) {
 
 module.exports = {
   register,
-  login
+  login,
+  previewReferral
 };

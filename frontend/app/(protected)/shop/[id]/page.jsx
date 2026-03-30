@@ -25,11 +25,7 @@ import { currency, number } from '@/lib/utils/format';
 import { createOrder } from '@/lib/services/ordersService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { addToCart } from '@/lib/utils/cart';
-
-function getOfferPercent(product) {
-  const base = String(product?.id || product?.name || 'hope').split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  return 10 + (base % 26);
-}
+import { getOfferPercent, getProductPricing } from '@/lib/utils/pricing';
 
 function getRating(product) {
   const base = String(product?.id || product?.name || 'hope').split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
@@ -101,9 +97,8 @@ export default function ProductDetailPage() {
   if (isError) return <ErrorState message="Product could not be loaded." onRetry={refetch} />;
   if (!product) return <EmptyState title="Product not found" description="This product may have been removed from the catalog." />;
 
+  const pricing = getProductPricing(product, 1);
   const offerPercent = getOfferPercent(product);
-  const currentPrice = Number(product?.price || 0);
-  const oldPrice = currentPrice > 0 ? currentPrice * (1 + offerPercent / 100) : 0;
   const category = getCategory(product);
   const rating = getRating(product);
   const imageTheme = buildImageTheme(product.id || product.name);
@@ -138,8 +133,8 @@ export default function ProductDetailPage() {
         <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">{category}</p>
         <h1 className="mt-1 text-[16px] font-semibold leading-5 text-slate-900">{product.name || 'Unnamed Product'}</h1>
         <div className="mt-2 flex items-center gap-2">
-          <p className="text-[20px] font-bold text-slate-900">{currency(currentPrice)}</p>
-          {oldPrice > 0 ? <p className="text-[12px] text-slate-400 line-through">{currency(oldPrice)}</p> : null}
+          <p className="text-[20px] font-bold text-slate-900">{currency(pricing.finalPrice)}</p>
+          {pricing.compareAtPrice > 0 ? <p className="text-[12px] text-slate-400 line-through">{currency(pricing.compareAtPrice)}</p> : null}
           <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">Save {offerPercent}%</span>
         </div>
         <ul className="mt-3 space-y-1 text-[11px] text-slate-700">
@@ -163,7 +158,7 @@ export default function ProductDetailPage() {
       </section>
 
       <section className="grid grid-cols-2 gap-2">
-        <article className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-[0_4px_12px_rgba(0,0,0,0.05)]"><p className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500"><BadgePercent size={11} /> Offer Info</p><p className="mt-1 text-[11px] text-slate-700">Current offer: {offerPercent}% off</p><p className="mt-0.5 text-[11px] text-slate-700">MRP: {oldPrice > 0 ? currency(oldPrice) : currency(currentPrice)}</p></article>
+        <article className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-[0_4px_12px_rgba(0,0,0,0.05)]"><p className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500"><BadgePercent size={11} /> Offer Info</p><p className="mt-1 text-[11px] text-slate-700">Current offer: {offerPercent}% off</p><p className="mt-0.5 text-[11px] text-slate-700">MRP: {pricing.compareAtPrice > 0 ? currency(pricing.compareAtPrice) : currency(pricing.finalPrice)}</p></article>
         <article className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-[0_4px_12px_rgba(0,0,0,0.05)]"><p className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500"><Truck size={11} /> Delivery</p><p className="mt-1 text-[11px] text-slate-700">Fast shipping support</p><p className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-slate-700"><Headset size={11} /> Assisted support</p></article>
       </section>
 
@@ -173,7 +168,7 @@ export default function ProductDetailPage() {
         <p className="mt-2 inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-[10px] font-medium text-emerald-700"><ShieldCheck size={11} /> Verified supply and catalog quality control</p>
       </section>
 
-      {relatedProducts.length ? <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_4px_12px_rgba(0,0,0,0.05)]"><h2 className="text-[13px] font-semibold text-slate-900">Related Products</h2><div className="mt-2 grid grid-cols-2 gap-2">{relatedProducts.map((item) => { const itemOffer = getOfferPercent(item); const itemCover = item.image_url || item.gallery?.[0] || ''; return <Link key={item.id} href={`/shop/${encodeURIComponent(String(item.id))}`} className="overflow-hidden rounded-xl border border-slate-200 bg-white">{itemCover ? <img src={itemCover} alt={item.name || 'Product'} className="h-20 w-full object-cover" /> : <div className={`flex h-20 items-center justify-center bg-gradient-to-br ${buildImageTheme(item.id || item.name)} text-slate-500`}><ImageOff size={16} /></div>}<div className="space-y-1 p-2"><p className="line-clamp-2 text-[10px] font-medium text-slate-800">{item.name || 'Product'}</p><div className="flex items-center gap-1"><p className="text-[11px] font-bold text-slate-900">{currency(item.price)}</p><p className="text-[9px] text-emerald-700">-{itemOffer}%</p></div></div></Link>; })}</div></section> : null}
+      {relatedProducts.length ? <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_4px_12px_rgba(0,0,0,0.05)]"><h2 className="text-[13px] font-semibold text-slate-900">Related Products</h2><div className="mt-2 grid grid-cols-2 gap-2">{relatedProducts.map((item) => { const itemOffer = getOfferPercent(item); const itemPricing = getProductPricing(item, 1); const itemCover = item.image_url || item.gallery?.[0] || ''; return <Link key={item.id} href={`/shop/${encodeURIComponent(String(item.id))}`} className="overflow-hidden rounded-xl border border-slate-200 bg-white">{itemCover ? <img src={itemCover} alt={item.name || 'Product'} className="h-20 w-full object-cover" /> : <div className={`flex h-20 items-center justify-center bg-gradient-to-br ${buildImageTheme(item.id || item.name)} text-slate-500`}><ImageOff size={16} /></div>}<div className="space-y-1 p-2"><p className="line-clamp-2 text-[10px] font-medium text-slate-800">{item.name || 'Product'}</p><div className="flex items-center gap-1"><p className="text-[11px] font-bold text-slate-900">{currency(itemPricing.finalPrice)}</p><p className="text-[9px] text-emerald-700">-{itemOffer}%</p></div></div></Link>; })}</div></section> : null}
 
       <section className="fixed bottom-12 left-0 right-0 z-30 border-t border-slate-200 bg-white p-2 md:hidden">
         <div className="mx-auto grid max-w-3xl grid-cols-2 gap-2">

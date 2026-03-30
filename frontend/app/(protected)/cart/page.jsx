@@ -6,34 +6,27 @@ import { Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react';
 import { useProducts } from '@/hooks/useProducts';
 import { currency } from '@/lib/utils/format';
 import { getCartItems, removeFromCart, updateCartItemQuantity } from '@/lib/utils/cart';
-
-function getOfferPercent(product) {
-  const base = String(product?.id || product?.name || 'hope')
-    .split('')
-    .reduce((sum, char) => sum + char.charCodeAt(0), 0);
-
-  return 10 + (base % 26);
-}
+import { getProductPricing } from '@/lib/utils/pricing';
 
 function readSnapshot(products = []) {
   const source = getCartItems();
   return source.map((item) => {
     const product = products.find((p) => String(p?.id) === String(item.productId));
-    const price = Number(product?.price ?? item.price ?? 0);
-    const name = product?.name || item.name || 'Product';
     const quantity = Math.max(1, Number(item.quantity || 1));
-    const offerPercent = getOfferPercent(product || item);
-    const oldPrice = price > 0 ? price * (1 + offerPercent / 100) : 0;
+    const liveProduct = product || item;
+    const pricing = getProductPricing(liveProduct, quantity);
+    const name = product?.name || item.name || 'Product';
 
     return {
       ...item,
       product,
       name,
-      price,
       quantity,
-      offerPercent,
-      oldPrice,
-      subtotal: price * quantity
+      offerPercent: pricing.offerPercent,
+      price: pricing.finalPrice,
+      oldPrice: pricing.compareAtPrice,
+      subtotal: pricing.lineFinalTotal,
+      lineDiscount: pricing.lineDiscountTotal
     };
   });
 }
@@ -78,10 +71,9 @@ export default function CartPage() {
 
   const summary = useMemo(() => {
     const subtotal = items.reduce((sum, item) => sum + Number(item.subtotal || 0), 0);
-    const reference = items.reduce((sum, item) => sum + Number(item.oldPrice || 0) * Number(item.quantity || 0), 0);
-    const discount = Math.max(0, reference - subtotal);
+    const discount = items.reduce((sum, item) => sum + Number(item.lineDiscount || 0), 0);
     const deliveryFee = subtotal > 0 ? 0 : 0;
-    const total = subtotal - discount + deliveryFee;
+    const total = subtotal + deliveryFee;
 
     return { subtotal, discount, deliveryFee, total };
   }, [items]);
@@ -151,7 +143,7 @@ export default function CartPage() {
             <div className="flex items-center justify-between text-slate-600"><span>Subtotal</span><span>{currency(summary.subtotal)}</span></div>
             <div className="flex items-center justify-between text-emerald-700"><span>Discount</span><span>-{currency(summary.discount)}</span></div>
             <div className="flex items-center justify-between text-slate-600"><span>Delivery</span><span>{summary.deliveryFee ? currency(summary.deliveryFee) : 'Free'}</span></div>
-            <div className="mt-1 border-t border-slate-200 pt-1.5 flex items-center justify-between text-[13px] font-semibold text-slate-900"><span>Total</span><span>{currency(summary.total)}</span></div>
+            <div className="mt-1 flex items-center justify-between border-t border-slate-200 pt-1.5 text-[13px] font-semibold text-slate-900"><span>Total</span><span>{currency(summary.total)}</span></div>
           </div>
           <Link href="/checkout" className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-[#0ea5e9] px-3 py-2 text-[12px] font-semibold text-white">
             Proceed to Checkout

@@ -5,14 +5,7 @@ import toast from 'react-hot-toast';
 import { ArrowRight, ImageOff, Plus, ShieldCheck, Star } from 'lucide-react';
 import { currency } from '@/lib/utils/format';
 import { addToCart } from '@/lib/utils/cart';
-
-function getOfferPercent(product) {
-  const base = String(product?.id || product?.name || 'hope')
-    .split('')
-    .reduce((sum, char) => sum + char.charCodeAt(0), 0);
-
-  return 10 + (base % 26);
-}
+import { getOfferPercent, getProductPricing } from '@/lib/utils/pricing';
 
 function getRating(product) {
   const base = String(product?.id || product?.name || 'hope')
@@ -53,9 +46,8 @@ function getProductCover(product) {
 export function ProductCard({ product, onBuy, isBuying = false, disableBuying = false }) {
   const safeProduct = product || {};
   const href = safeProduct?.id ? `/shop/${encodeURIComponent(String(safeProduct.id))}` : '/shop';
+  const pricing = getProductPricing(safeProduct, 1);
   const offerPercent = getOfferPercent(safeProduct);
-  const currentPrice = Number(safeProduct.price || 0);
-  const oldPrice = currentPrice > 0 ? currentPrice * (1 + offerPercent / 100) : 0;
   const rating = getRating(safeProduct);
   const category = getCategory(safeProduct);
   const imageTheme = buildImageTheme(safeProduct.id || safeProduct.name);
@@ -94,8 +86,8 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
         </div>
 
         <div className="flex items-center gap-1">
-          <p className="text-[11px] font-bold text-slate-900">{currency(currentPrice)}</p>
-          {oldPrice > 0 ? <p className="text-[8px] text-slate-400 line-through">{currency(oldPrice)}</p> : null}
+          <p className="text-[11px] font-bold text-slate-900">{currency(pricing.finalPrice)}</p>
+          {pricing.compareAtPrice > 0 ? <p className="text-[8px] text-slate-400 line-through">{currency(pricing.compareAtPrice)}</p> : null}
         </div>
 
         <div className="grid grid-cols-[1fr_auto] gap-1">

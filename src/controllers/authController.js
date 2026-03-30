@@ -11,6 +11,15 @@ const register = asyncHandler(async (req, res) => {
   res.status(201).json({ user, token: data.token });
 });
 
+const previewReferral = asyncHandler(async (req, res) => {
+  const data = await authService.previewReferral(req.query.ref || req.query.sponsor, req.query.side);
+  res.status(200).json({
+    sponsor: sanitizeUser(data.sponsor),
+    requestedSide: data.requestedSide,
+    sideAvailable: data.sideAvailable
+  });
+});
+
 const login = asyncHandler(async (req, res) => {
   const data = await authService.login(req.body);
   const user = sanitizeUser(data.user);
@@ -22,5 +31,6 @@ const login = asyncHandler(async (req, res) => {
 
 module.exports = {
   register,
+  previewReferral,
   login
 };

@@ -4,11 +4,12 @@ import { useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowRight, Copy, LogOut, Sparkles } from 'lucide-react';
+import { ArrowRight, LogOut, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { StatCard } from '@/components/ui/StatCard';
 import { ProfileActions } from '@/components/profile/ProfileActions';
+import { BinaryReferralLinks } from '@/components/referral/BinaryReferralLinks';
 import { ProfileSkeleton } from '@/components/ui/PageSkeletons';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { getMe } from '@/lib/services/authService';
@@ -43,22 +44,13 @@ export default function ProfilePage() {
     router.push('/login');
   }
 
-  async function copyReferralLink() {
-    try {
-      await navigator.clipboard.writeText(referralLink);
-      toast.success('Referral link copied');
-    } catch (_error) {
-      toast.error('Unable to copy referral link');
-    }
-  }
-
   if (!hydrated || (token && meQuery.isLoading && !user)) return <ProfileSkeleton />;
   if (token && meQuery.isError && !user) return <ErrorState message="Profile data could not be loaded." onRetry={meQuery.refetch} />;
   if (!user) return <ProfileSkeleton />;
 
   return (
     <div className="space-y-4">
-      <SectionHeader title="Profile" subtitle="Account details, referral sharing, and quick access to your Hope member tools." />
+      <SectionHeader title="Profile" subtitle="Account details and referral sharing." />
 
       <div className="card-surface p-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -78,16 +70,7 @@ export default function ProfilePage() {
         <StatCard compact title="Status" value={user.is_active === false ? 'Inactive' : 'Active'} />
       </div>
 
-      <div className="card-surface p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-text">Referral Link</p>
-            <p className="mt-1 text-sm text-muted">Share this link directly with new members.</p>
-          </div>
-          <button onClick={copyReferralLink} className="hope-button-secondary !px-3 !py-2"><Copy size={15} /> Copy link</button>
-        </div>
-        <p className="mt-4 rounded-2xl border border-[var(--hope-border)] bg-cardSoft px-3 py-3 text-xs text-muted break-all">{referralLink}</p>
-      </div>
+      <BinaryReferralLinks username={user?.username} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="card-surface p-4">
