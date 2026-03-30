@@ -39,7 +39,7 @@ export default function AdminSupportPage() {
 
   const supportQuery = useQuery({
     queryKey: [...queryKeys.adminSupport, search, status, category, page],
-    queryFn: () => getAdminSupportThreads({ search, status, category, page, limit: 12 })
+    queryFn: () => getAdminSupportThreads({ search, status, category, page, limit: 100 })
   });
 
   if (supportQuery.isLoading) return <AdminShellSkeleton />;
@@ -85,7 +85,7 @@ export default function AdminSupportPage() {
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate text-base font-semibold text-text">{thread.subject}</p>
-                <p className="mt-1 text-sm text-muted">{thread.first_name ? `${thread.first_name} ${thread.last_name || ''}`.trim() : thread.username} • {thread.category_label}</p>
+                <p className="mt-1 text-sm text-muted">{thread.first_name ? `${thread.first_name} ${thread.last_name || ''}`.trim() : thread.username} - {thread.category_label}</p>
               </div>
               <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${statusTone[thread.status] || statusTone.open}`}>{thread.status}</span>
             </div>

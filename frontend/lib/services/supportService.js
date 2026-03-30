@@ -39,7 +39,7 @@ function normalizeFilters(params = {}) {
   const page = Number(params.page);
   next.page = Number.isInteger(page) && page > 0 ? page : 1;
   const limit = Number(params.limit);
-  next.limit = Number.isInteger(limit) && limit > 0 ? limit : 20;
+  next.limit = Number.isInteger(limit) && limit > 0 ? Math.min(limit, 100) : 100;
   return next;
 }
 

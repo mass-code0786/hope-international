@@ -2,6 +2,26 @@ function q(client) {
   return client || require('../db/pool').pool;
 }
 
+async function getTableColumns(client, tableName) {
+  const { rows } = await q(client).query(
+    `SELECT column_name
+     FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = $1`,
+    [tableName]
+  );
+  return new Set(rows.map((row) => row.column_name));
+}
+
+function buildUserSelect(alias, columns, outputPrefix = '') {
+  const prefix = outputPrefix ? `${outputPrefix}_` : '';
+  return [
+    `${alias}.username AS ${prefix}username`,
+    `${alias}.email AS ${prefix}email`,
+    columns.has('first_name') ? `${alias}.first_name AS ${prefix}first_name` : `NULL::text AS ${prefix}first_name`,
+    columns.has('last_name') ? `${alias}.last_name AS ${prefix}last_name` : `NULL::text AS ${prefix}last_name`
+  ];
+}
+
 function buildFilters(filters = {}, values = [], options = {}) {
   const where = [];
 
@@ -50,6 +70,8 @@ function buildFilters(filters = {}, values = [], options = {}) {
 }
 
 async function listThreads(client, filters = {}, pagination = {}, options = {}) {
+  const userColumns = await getTableColumns(client, 'users');
+  const userSelect = buildUserSelect('u', userColumns).join(',\n      ');
   const values = [];
   const where = buildFilters(filters, values, options);
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
@@ -58,10 +80,7 @@ async function listThreads(client, filters = {}, pagination = {}, options = {}) 
   const listSql = `
     SELECT
       st.*,
-      u.username,
-      u.email,
-      u.first_name,
-      u.last_name,
+      ${userSelect},
       last_message.message AS last_message,
       last_message.sender_type AS last_sender_type,
       last_message.created_at AS last_message_at,
@@ -112,13 +131,12 @@ async function listThreads(client, filters = {}, pagination = {}, options = {}) 
 }
 
 async function getThreadById(client, threadId) {
+  const userColumns = await getTableColumns(client, 'users');
+  const userSelect = buildUserSelect('u', userColumns).join(',\n      ');
   const { rows } = await q(client).query(
     `SELECT
       st.*,
-      u.username,
-      u.email,
-      u.first_name,
-      u.last_name,
+      ${userSelect},
       closer.username AS closed_by_username
      FROM support_threads st
      JOIN users u ON u.id = st.user_id
@@ -130,13 +148,12 @@ async function getThreadById(client, threadId) {
 }
 
 async function getThreadByIdForUser(client, threadId, userId) {
+  const userColumns = await getTableColumns(client, 'users');
+  const userSelect = buildUserSelect('u', userColumns).join(',\n      ');
   const { rows } = await q(client).query(
     `SELECT
       st.*,
-      u.username,
-      u.email,
-      u.first_name,
-      u.last_name,
+      ${userSelect},
       closer.username AS closed_by_username
      FROM support_threads st
      JOIN users u ON u.id = st.user_id
@@ -214,13 +231,12 @@ async function createMessage(client, payload) {
 }
 
 async function listMessagesByThreadId(client, threadId) {
+  const userColumns = await getTableColumns(client, 'users');
+  const senderSelect = buildUserSelect('sender', userColumns, 'sender').join(',\n      ');
   const { rows } = await q(client).query(
     `SELECT
       sm.*,
-      sender.username AS sender_username,
-      sender.first_name AS sender_first_name,
-      sender.last_name AS sender_last_name,
-      sender.email AS sender_email
+      ${senderSelect}
      FROM support_messages sm
      LEFT JOIN users sender ON sender.id = sm.sender_user_id
      WHERE sm.thread_id = $1

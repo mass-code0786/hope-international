@@ -1,9 +1,17 @@
 const asyncHandler = require('../utils/asyncHandler');
 const { success } = require('../utils/response');
+const { ApiError } = require('../utils/ApiError');
 const supportService = require('../services/supportService');
 
+function getAuthenticatedUserId(req) {
+  if (!req.user?.sub) {
+    throw new ApiError(401, 'Authenticated user context is required');
+  }
+  return req.user.sub;
+}
+
 const listThreads = asyncHandler(async (req, res) => {
-  const result = await supportService.listUserThreads(req.user.sub, req.query, req.query);
+  const result = await supportService.listUserThreads(getAuthenticatedUserId(req), req.query, req.query);
   return success(res, {
     data: result.data,
     pagination: result.pagination,
@@ -13,7 +21,7 @@ const listThreads = asyncHandler(async (req, res) => {
 });
 
 const createThread = asyncHandler(async (req, res) => {
-  const data = await supportService.createUserThread(req.user.sub, req.body);
+  const data = await supportService.createUserThread(getAuthenticatedUserId(req), req.body);
   return success(res, {
     data,
     statusCode: 201,
@@ -22,7 +30,7 @@ const createThread = asyncHandler(async (req, res) => {
 });
 
 const getThread = asyncHandler(async (req, res) => {
-  const data = await supportService.getUserThread(req.user.sub, req.params.id);
+  const data = await supportService.getUserThread(getAuthenticatedUserId(req), req.params.id);
   return success(res, {
     data,
     message: 'Support conversation fetched successfully'
@@ -30,7 +38,7 @@ const getThread = asyncHandler(async (req, res) => {
 });
 
 const sendMessage = asyncHandler(async (req, res) => {
-  const data = await supportService.sendUserMessage(req.user.sub, req.params.id, req.body);
+  const data = await supportService.sendUserMessage(getAuthenticatedUserId(req), req.params.id, req.body);
   return success(res, {
     data,
     statusCode: 201,

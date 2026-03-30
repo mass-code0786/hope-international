@@ -51,7 +51,7 @@ export default function AdminProductsPage() {
 
   const productsQuery = useQuery({
     queryKey: [...queryKeys.adminProducts, search, page, isActiveFilter],
-    queryFn: () => getAdminProducts({ search, page, limit: 10, isActive: isActiveFilter })
+    queryFn: () => getAdminProducts({ search, page, limit: 100, isActive: isActiveFilter })
   });
 
   const gallery = useMemo(() => parseGallery(form.galleryText), [form.galleryText]);

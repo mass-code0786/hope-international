@@ -11,7 +11,7 @@ function normalizeListQuery(query = {}) {
   const safeStatus = ['live', 'upcoming', 'ended', 'cancelled'].includes(normalizedStatus) ? normalizedStatus : undefined;
   const safeSearch = typeof query.search === 'string' && query.search.trim() ? query.search.trim().slice(0, 120) : undefined;
   const safePage = Number.isInteger(Number(query.page)) && Number(query.page) > 0 ? String(Number(query.page)) : '1';
-  const safeLimit = Number.isInteger(Number(query.limit)) && Number(query.limit) > 0 ? String(Number(query.limit)) : '24';
+  const safeLimit = String(Math.min(Number(query.limit) || 100, 100));
 
   return {
     filters: {

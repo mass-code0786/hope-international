@@ -1,6 +1,6 @@
-function normalizePagination({ page = 1, limit = 20, maxLimit = 100 }) {
+function normalizePagination({ page = 1, limit = 100, maxLimit = 100 }) {
   const safePage = Math.max(1, Number(page) || 1);
-  const safeLimit = Math.max(1, Math.min(maxLimit, Number(limit) || 20));
+  const safeLimit = Math.max(1, Math.min(maxLimit, Number(limit) || 100));
   const offset = (safePage - 1) * safeLimit;
   return {
     page: safePage,

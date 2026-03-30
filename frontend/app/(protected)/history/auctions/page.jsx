@@ -30,7 +30,7 @@ function AuctionHistoryContent() {
 
   const historyQuery = useQuery({
     queryKey: queryKeys.auctionHistory(kind),
-    queryFn: () => getMyAuctionHistory({ kind, page: 1, limit: 24 })
+    queryFn: () => getMyAuctionHistory({ kind, page: 1, limit: 100 })
   });
 
   if (historyQuery.isError) {

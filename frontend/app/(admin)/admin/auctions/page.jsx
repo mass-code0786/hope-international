@@ -15,7 +15,7 @@ export default function AdminAuctionsPage() {
   const [search, setSearch] = useState('');
   const auctionsQuery = useQuery({
     queryKey: [...queryKeys.adminAuctions, status, search],
-    queryFn: () => getAdminAuctions({ status, search, page: 1, limit: 50 })
+    queryFn: () => getAdminAuctions({ status, search, page: 1, limit: 100 })
   });
 
   if (auctionsQuery.isError) {

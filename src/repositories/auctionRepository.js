@@ -105,7 +105,7 @@ function buildCompatStatusCase(columns, nowPlaceholder) {
 }
 
 function normalizeListPagination(pagination = {}) {
-  const limit = Number(pagination.limit) || 50;
+  const limit = Math.max(1, Math.min(Number(pagination.limit) || 100, 100));
   const page = Number(pagination.page) || 1;
   const offset = (page - 1) * limit;
   return { limit, page, offset };

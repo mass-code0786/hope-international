@@ -53,7 +53,7 @@ export default function AuctionsPage() {
 
   const auctionsQuery = useQuery({
     queryKey: [...queryKeys.auctions, status, search],
-    queryFn: () => getAuctions({ status, search, page: 1, limit: 24 })
+    queryFn: () => getAuctions({ status, search, page: 1, limit: 100 })
   });
 
   const envelope = auctionsQuery.data || {};

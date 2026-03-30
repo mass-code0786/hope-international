@@ -22,7 +22,7 @@ function normalizeAuctionParams(params = {}) {
   const page = Number(params.page);
   next.page = Number.isInteger(page) && page > 0 ? page : 1;
   const limit = Number(params.limit);
-  next.limit = Number.isInteger(limit) && limit > 0 ? limit : 24;
+  next.limit = Number.isInteger(limit) && limit > 0 ? Math.min(limit, 100) : 100;
   return next;
 }
 
@@ -117,5 +117,5 @@ export async function placeAuctionBid(id, entryCount) {
 }
 
 export async function getMyAuctionHistory(params = {}) {
-  return normalizeAuctionEnvelope(toEnvelope(await apiFetch(`/auctions/me/history${withQuery(params)}`)));
+  return normalizeAuctionEnvelope(toEnvelope(await apiFetch(`/auctions/me/history${withQuery(normalizeAuctionParams(params))}`)));
 }
