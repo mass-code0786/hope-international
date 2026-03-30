@@ -33,6 +33,7 @@ import { Header } from '@/components/layout/Header';
 import { useProducts } from '@/hooks/useProducts';
 import { useWallet } from '@/hooks/useWallet';
 import { createOrder } from '@/lib/services/ordersService';
+import { currency } from '@/lib/utils/format';
 import { getHomepageBanners } from '@/lib/services/bannersService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { useAuthStore } from '@/lib/store/authStore';

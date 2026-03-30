@@ -6,6 +6,11 @@ const walletService = require('./walletService');
 
 const MIN_AUCTION_PRICE = 0.5;
 const MAX_AUCTION_PRICE = 100;
+const AUCTION_SCHEMA_ERROR_CODES = ['42P01', '42703', '42883', '42804'];
+
+function isAuctionSchemaError(error) {
+  return AUCTION_SCHEMA_ERROR_CODES.includes(error?.code);
+}
 
 function roundMoney(value) {
   return Number(Number(value).toFixed(2));
@@ -292,28 +297,53 @@ async function buildAuctionDetails(client, auctionId, currentUserId = null, opti
 
 async function listAuctions(_userId, filters = {}, paginationInput = {}, options = {}) {
   const pagination = normalizePagination(paginationInput);
-  const result = await withTransaction(async (client) => {
-    const initial = await auctionRepository.listAuctions(client, {
-      ...filters,
-      onlyActive: filters.onlyActive ?? false
-    }, pagination);
 
-    for (const auction of initial.items) {
-      if (auction.computed_status === 'ended' && auction.status !== 'cancelled') {
-        await ensureAuctionResolved(client, auction.id);
+  try {
+    const result = await withTransaction(async (client) => {
+      const initial = await auctionRepository.listAuctions(client, {
+        ...filters,
+        onlyActive: filters.onlyActive ?? false
+      }, pagination);
+
+      for (const auction of initial.items) {
+        if (auction.computed_status === 'ended' && auction.status !== 'cancelled') {
+          await ensureAuctionResolved(client, auction.id);
+        }
       }
+
+      return auctionRepository.listAuctions(client, {
+        ...filters,
+        onlyActive: filters.onlyActive ?? false
+      }, pagination);
+    });
+
+    return {
+      data: result.items.map((auction) => shapeAuction(auction, options)),
+      pagination: buildPagination({ page: pagination.page, limit: pagination.limit, total: result.total })
+    };
+  } catch (error) {
+    console.error('[auctions.list] failed', {
+      code: error?.code || null,
+      message: error?.message || 'Unknown auctions list failure',
+      filters,
+      pagination,
+      stack: error?.stack || null
+    });
+
+    if (isAuctionSchemaError(error)) {
+      const fallback = await withTransaction((client) => auctionRepository.listAuctionsCompat(client, {
+        ...filters,
+        onlyActive: filters.onlyActive ?? false
+      }, pagination));
+
+      return {
+        data: fallback.items.map((auction) => shapeAuction(auction, options)),
+        pagination: buildPagination({ page: pagination.page, limit: pagination.limit, total: fallback.total })
+      };
     }
 
-    return auctionRepository.listAuctions(client, {
-      ...filters,
-      onlyActive: filters.onlyActive ?? false
-    }, pagination);
-  });
-
-  return {
-    data: result.items.map((auction) => shapeAuction(auction, options)),
-    pagination: buildPagination({ page: pagination.page, limit: pagination.limit, total: result.total })
-  };
+    throw error;
+  }
 }
 
 async function getAuctionDetailsWithClient(client, auctionId, currentUserId = null, options = {}) {
