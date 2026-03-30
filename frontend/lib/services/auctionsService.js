@@ -1,6 +1,6 @@
 import { apiFetch } from '@/lib/api/client';
 
-const allowedAuctionStatuses = new Set(['live', 'upcoming', 'ended', 'cancelled']);
+const allowedAuctionStatuses = new Set(['all', 'live', 'upcoming', 'ended', 'cancelled']);
 const auctionStatusAliases = {
   active: 'live',
   current: 'live',
@@ -29,7 +29,7 @@ function normalizeAuctionParams(params = {}) {
 function withQuery(params = {}) {
   const query = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
-    if (value === undefined || value === null || value === '' || value === 'all') return;
+    if (value === undefined || value === null || value === '') return;
     query.set(key, String(value));
   });
   const encoded = query.toString();
@@ -83,7 +83,7 @@ export function normalizeAuctionStatus(...statuses) {
     if (typeof value !== 'string') continue;
     const normalized = value.trim().toLowerCase();
     const mapped = auctionStatusAliases[normalized] || normalized;
-    if (allowedAuctionStatuses.has(mapped)) return mapped;
+    if (mapped !== 'all' && allowedAuctionStatuses.has(mapped)) return mapped;
   }
   return 'upcoming';
 }

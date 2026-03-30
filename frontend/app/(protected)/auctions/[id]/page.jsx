@@ -281,11 +281,8 @@ export default function AuctionDetailPage() {
     onError: (error) => toast.error(error.message || 'Could not reveal the result')
   });
 
-  if (detailQuery.isLoading) return <div className="rounded-[30px] border border-white/80 bg-white p-6 text-sm text-slate-500 shadow-[0_14px_30px_rgba(15,23,42,0.06)]">Loading auction...</div>;
-  if (detailQuery.isError) return <ErrorState message="Auction details could not be loaded." onRetry={detailQuery.refetch} />;
-
-  const auction = detailQuery.data?.data;
-  const status = auction?.computed_status || auction?.status;
+  const auction = detailQuery.data?.data || null;
+  const status = auction?.computed_status || auction?.status || 'upcoming';
   const entryPrice = Number(auction?.entry_price || auction?.display_current_bid || auction?.starting_price || 0.5);
   const images = getAuctionImages(auction);
   const winners = Array.isArray(auction?.winners) ? auction.winners : [];
@@ -299,6 +296,9 @@ export default function AuctionDetailPage() {
     auction?.category ? { label: 'Category', value: auction.category } : null,
     auction?.item_condition ? { label: 'Condition', value: auction.item_condition } : null
   ].filter(Boolean)), [auction?.short_description, auction?.category, auction?.item_condition]);
+
+  if (detailQuery.isLoading) return <div className="rounded-[30px] border border-white/80 bg-white p-6 text-sm text-slate-500 shadow-[0_14px_30px_rgba(15,23,42,0.06)]">Loading auction...</div>;
+  if (detailQuery.isError || !auction) return <ErrorState message="Auction details could not be loaded." onRetry={detailQuery.refetch} />;
 
   const handleBid = (count) => {
     const total = entryPrice * count;

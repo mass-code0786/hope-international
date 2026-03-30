@@ -8,14 +8,14 @@ function normalizeListQuery(query = {}) {
   };
   const status = typeof query.status === 'string' ? query.status.trim().toLowerCase() : undefined;
   const normalizedStatus = statusAliases[status] || status;
-  const safeStatus = ['live', 'upcoming', 'ended', 'cancelled'].includes(normalizedStatus) ? normalizedStatus : undefined;
+  const safeStatus = ['all', 'live', 'upcoming', 'ended', 'cancelled'].includes(normalizedStatus) ? normalizedStatus : undefined;
   const safeSearch = typeof query.search === 'string' && query.search.trim() ? query.search.trim().slice(0, 120) : undefined;
   const safePage = Number.isInteger(Number(query.page)) && Number(query.page) > 0 ? String(Number(query.page)) : '1';
   const safeLimit = String(Math.min(Number(query.limit) || 100, 100));
 
   return {
     filters: {
-      status: safeStatus,
+      status: safeStatus || 'all',
       search: safeSearch
     },
     pagination: {
