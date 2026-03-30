@@ -147,8 +147,9 @@ async function register(payload) {
 
     await walletRepository.createWallet(client, user.id);
 
-    const token = createAuthToken(user);
-    return { user, token };
+    const registeredUser = await userRepository.findById(client, user.id);
+    const token = createAuthToken(registeredUser || user);
+    return { user: registeredUser || user, token };
   });
 }
 

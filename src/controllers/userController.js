@@ -13,6 +13,11 @@ const myChildren = asyncHandler(async (req, res) => {
   res.status(200).json(children.map(sanitizeUser));
 });
 
+const myTeamSummary = asyncHandler(async (req, res) => {
+  const summary = await userService.getTeamSummary(req.user.sub);
+  res.status(200).json(summary || {});
+});
+
 const weeklyCompensation = asyncHandler(async (req, res) => {
   const data = await compensationService.getWeeklyStatus(req.user.sub, req.query.cycleStart, req.query.cycleEnd);
   res.status(200).json(data);
@@ -26,6 +31,7 @@ const monthlyCompensation = asyncHandler(async (req, res) => {
 module.exports = {
   me,
   myChildren,
+  myTeamSummary,
   weeklyCompensation,
   monthlyCompensation
 };

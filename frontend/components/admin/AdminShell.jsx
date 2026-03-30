@@ -32,9 +32,6 @@ export function AdminShell({ children }) {
     initialData: user || undefined,
     staleTime: 30_000,
     onError: () => {
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn('[frontend.admin.shell] denied route reason', { reason: 'getMe failed', hasToken: Boolean(token) });
-      }
       clearStoredToken();
       clearSession();
       router.replace('/login');
@@ -50,19 +47,9 @@ export function AdminShell({ children }) {
   useEffect(() => {
     if (!hydrated) return;
     if (!token) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn('[frontend.admin.shell] denied route reason', { reason: 'missing token' });
-      }
       router.replace('/login');
     }
   }, [hydrated, token, router]);
-
-  useEffect(() => {
-    if (!hydrated || !resolvedUser) return;
-    if (process.env.NODE_ENV !== 'production') {
-      console.info('[frontend.admin.shell] currentUser role', { username: resolvedUser?.username, role: resolvedUser?.role });
-    }
-  }, [hydrated, resolvedUser]);
 
   useEffect(() => {
     if (!mobileMenuOpen) return undefined;
@@ -90,9 +77,6 @@ export function AdminShell({ children }) {
   if (token && meQuery.isError && !resolvedUser) return <ErrorState message="Unable to verify admin access." onRetry={meQuery.refetch} />;
 
   if (!canAccessAdminArea(resolvedUser)) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('[frontend.admin.shell] denied route reason', { reason: 'role not allowed', role: resolvedUser?.role });
-    }
     return (
       <div className="mx-auto mt-10 max-w-2xl">
         <ErrorState message="You are not authorized to access admin operations." />
@@ -103,8 +87,9 @@ export function AdminShell({ children }) {
   return (
     <div className="min-h-screen bg-bg text-text lg:flex">
       <AdminSidebar mobileOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
-      <main className="w-full min-w-0">
-        <div className="mx-auto w-full max-w-[1600px] p-4 pb-10 md:p-6">
+      <main className="relative w-full min-w-0">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(94,234,212,0.1),transparent_24%)]" />
+        <div className="relative mx-auto w-full max-w-[1600px] p-4 pb-10 md:p-6">
           <AdminTopbar user={resolvedUser} onLogout={onLogout} onOpenMenu={() => setMobileMenuOpen(true)} />
           {children}
         </div>

@@ -51,7 +51,10 @@ async function findByLogin(client, identifier) {
 
 async function findById(client, id) {
   const { rows } = await q(client).query(
-    `SELECT u.*, r.name AS rank_name, r.min_bv AS rank_min_bv, r.cap_multiplier AS rank_cap_multiplier, sponsor.username AS sponsor_username
+    `SELECT u.*, r.name AS rank_name, r.min_bv AS rank_min_bv, r.cap_multiplier AS rank_cap_multiplier,
+            sponsor.username AS sponsor_username,
+            sponsor.first_name AS sponsor_first_name,
+            sponsor.last_name AS sponsor_last_name
      FROM users u
      JOIN ranks r ON r.id = u.rank_id
      LEFT JOIN users sponsor ON sponsor.id = u.sponsor_id

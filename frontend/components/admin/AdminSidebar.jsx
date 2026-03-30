@@ -40,10 +40,12 @@ function AdminNavLinks({ onNavigate }) {
             key={item.href}
             href={item.href}
             onClick={onNavigate}
-            className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm ${active ? 'bg-accent/20 text-accentSoft' : 'text-muted hover:bg-white/5 hover:text-text'}`}
+            className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition ${active ? 'bg-white text-slate-900 shadow-[0_18px_36px_rgba(255,255,255,0.12)]' : 'text-white/68 hover:bg-white/8 hover:text-white'}`}
           >
-            <Icon size={16} />
-            {item.label}
+            <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl ${active ? 'bg-slate-900 text-white' : 'bg-white/8 text-white/80'}`}>
+              <Icon size={16} />
+            </span>
+            <span className="font-medium">{item.label}</span>
           </Link>
         );
       })}
@@ -53,25 +55,25 @@ function AdminNavLinks({ onNavigate }) {
 
 function SidebarContent({ onNavigate, mobile = false, onClose }) {
   return (
-    <div className="h-full overflow-y-auto p-6">
-      <div className="mb-8 flex flex-col items-center">
-        <div className="flex w-full items-center justify-between lg:justify-center">
-          <div className="rounded-lg bg-neutral-900 p-2">
-            <Logo size={mobile ? 46 : 56} />
+    <div className="h-full overflow-y-auto p-6 text-white">
+      <div className="mb-8 rounded-[30px] border border-white/10 bg-white/5 p-5 shadow-[0_24px_64px_rgba(2,8,23,0.28)] backdrop-blur">
+        <div className="flex w-full items-center justify-between lg:justify-start lg:gap-3">
+          <div className="rounded-[22px] bg-white/95 p-2.5 shadow-sm">
+            <Logo size={mobile ? 46 : 54} />
           </div>
           {mobile ? (
             <button
               onClick={onClose}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-text lg:hidden"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-text lg:hidden"
               aria-label="Close admin menu"
             >
               <X size={18} />
             </button>
           ) : null}
         </div>
-        <p className="mt-3 text-xs uppercase tracking-[0.25em] text-muted">Admin Console</p>
-        <h1 className="text-center text-lg font-semibold text-accent">{THEME.appName}</h1>
-        <p className="text-sm text-muted">Operational Control Center</p>
+        <p className="mt-4 text-xs uppercase tracking-[0.25em] text-white/55">Admin Console</p>
+        <h1 className="mt-2 text-xl font-semibold tracking-[-0.05em] text-white">{THEME.appName}</h1>
+        <p className="mt-2 text-sm text-white/65">Operational control center for finance, support, users, and growth systems.</p>
       </div>
       <AdminNavLinks onNavigate={onNavigate} />
     </div>
@@ -81,7 +83,7 @@ function SidebarContent({ onNavigate, mobile = false, onClose }) {
 export function AdminSidebar({ mobileOpen = false, onClose = () => {} }) {
   return (
     <>
-      <aside className="hidden w-80 border-r border-white/10 bg-card lg:block">
+      <aside className="hidden w-80 border-r border-white/10 bg-[linear-gradient(180deg,rgba(6,16,27,0.98),rgba(11,23,36,0.96))] lg:block">
         <SidebarContent />
       </aside>
 
@@ -92,7 +94,7 @@ export function AdminSidebar({ mobileOpen = false, onClose = () => {} }) {
             className="absolute inset-0 bg-black/60"
             onClick={onClose}
           />
-          <aside className="absolute left-0 top-0 h-full w-[86vw] max-w-[320px] border-r border-white/10 bg-card shadow-2xl">
+          <aside className="absolute left-0 top-0 h-full w-[86vw] max-w-[320px] border-r border-white/10 bg-[linear-gradient(180deg,rgba(6,16,27,0.99),rgba(11,23,36,0.98))] shadow-2xl">
             <SidebarContent mobile onNavigate={onClose} onClose={onClose} />
           </aside>
         </div>

@@ -8,3 +8,17 @@ export async function getTeamChildren() {
     return [];
   }
 }
+
+export async function getTeamSummary() {
+  try {
+    return await apiFetch('/users/me/team/summary');
+  } catch (_error) {
+    return {
+      total_descendants: 0,
+      left_count: 0,
+      right_count: 0,
+      active_count: 0,
+      inactive_count: 0
+    };
+  }
+}

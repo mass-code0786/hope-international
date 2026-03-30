@@ -2,14 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Gavel, ShoppingBag, Network, Wallet, User, ClipboardList, Store } from 'lucide-react';
+import { Home, Gavel, ShoppingBag, Network, Wallet, User, ClipboardList, Store, Sparkles } from 'lucide-react';
 import { THEME } from '@/lib/constants/theme';
 import { isSeller } from '@/lib/constants/access';
 import Logo from '@/components/common/Logo';
 
 function getItems(user, sellerActive) {
   const nav = [
-    { href: '/', label: 'Dashboard', icon: Home },
+    { href: '/dashboard', label: 'Dashboard', icon: Home },
     { href: '/auctions', label: 'Auctions', icon: Gavel },
     { href: '/shop', label: 'Shop', icon: ShoppingBag },
     { href: '/team', label: 'Team', icon: Network },
@@ -32,12 +32,25 @@ export function Sidebar({ user, sellerActive = false }) {
   const items = getItems(user, sellerActive);
 
   return (
-    <aside className="hidden w-72 border-r border-white/10 bg-[#111111] p-6 md:block">
-      <div className="mb-8 flex flex-col items-center">
-        <div className="rounded-lg bg-neutral-900 p-2">
-          <Logo size={52} />
+    <aside className="hidden w-80 border-r border-white/10 bg-[linear-gradient(180deg,rgba(6,16,27,0.98),rgba(11,23,36,0.96))] p-6 text-white md:block">
+      <div className="mb-8 rounded-[30px] border border-white/10 bg-white/5 p-5 shadow-[0_24px_64px_rgba(2,8,23,0.28)] backdrop-blur">
+        <div className="flex items-center gap-3">
+          <div className="rounded-[22px] bg-white/95 p-2.5 shadow-sm">
+            <Logo size={52} />
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-[0.24em] text-white/55">Hope International</p>
+            <h2 className="mt-1 text-lg font-semibold tracking-[-0.04em]">Member Console</h2>
+          </div>
         </div>
-        <p className="mt-2 text-center text-xs text-muted">{THEME.tagline}</p>
+        <div className="mt-5 rounded-[24px] border border-white/10 bg-white/5 p-4">
+          <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-teal-200">
+            <Sparkles size={12} />
+            Premium access
+          </div>
+          <p className="mt-3 text-sm font-semibold text-white">{user?.first_name || user?.username || 'Hope Member'}</p>
+          <p className="mt-1 text-xs text-white/60">{THEME.tagline}</p>
+        </div>
       </div>
       <nav className="space-y-2">
         {items.map((item) => {
@@ -47,9 +60,12 @@ export function Sidebar({ user, sellerActive = false }) {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm ${active ? 'bg-accent/20 text-accentSoft' : 'text-muted hover:bg-white/5 hover:text-text'}`}
+              className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition ${active ? 'bg-white text-slate-900 shadow-[0_18px_36px_rgba(255,255,255,0.12)]' : 'text-white/68 hover:bg-white/8 hover:text-white'}`}
             >
-              <Icon size={16} /> {item.label}
+              <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl ${active ? 'bg-slate-900 text-white' : 'bg-white/8 text-white/80'}`}>
+                <Icon size={16} />
+              </span>
+              <span className="font-medium">{item.label}</span>
             </Link>
           );
         })}

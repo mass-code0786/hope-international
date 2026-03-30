@@ -58,17 +58,18 @@ export function AppShell({ children }) {
 
   if (isAuthBootstrapping) {
     return (
-      <div className="min-h-screen bg-[#f5f6f8] p-3.5 md:p-5">
+      <div className="min-h-screen bg-bg p-3.5 md:p-5">
         <ProfileSkeleton />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f6f8] text-text md:flex">
+    <div className="min-h-screen bg-bg text-text md:flex">
       <Sidebar user={resolvedUser} sellerActive={Boolean(sellerQuery.data?.canAccessDashboard)} />
-      <main className="w-full md:overflow-x-hidden">
-        <div className={`mx-auto w-full max-w-7xl pb-24 md:p-5 md:pb-6 ${isShopRoute ? 'p-3 md:p-5' : 'p-3.5 md:p-5'}`}>
+      <main className="relative w-full min-w-0 md:overflow-x-hidden">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(15,118,110,0.08),transparent_30%)] dark:bg-[radial-gradient(circle_at_top,rgba(94,234,212,0.08),transparent_26%)]" />
+        <div className={`relative mx-auto w-full max-w-7xl pb-24 md:p-5 md:pb-6 ${isShopRoute ? 'p-3 md:p-5' : 'p-3.5 md:p-5'}`}>
           {isShopRoute ? null : <Topbar user={resolvedUser} />}
           {children}
         </div>

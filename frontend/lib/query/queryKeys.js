@@ -54,6 +54,7 @@ export const queryKeys = {
   weeklyCompensation: (cycleStart, cycleEnd) => ['weekly-compensation', cycleStart, cycleEnd],
   monthlyCompensation: (monthStart, monthEnd) => ['monthly-compensation', monthStart, monthEnd],
   teamChildren: ['team-children'],
+  teamSummary: ['team-summary'],
   landingPage: ['landing-page'],
   adminLanding: ['admin', 'landing'],
   adminSupport: ['admin', 'support'],

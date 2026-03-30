@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ShoppingCart } from 'lucide-react';
+import { BellDot, ShoppingCart, Sparkles } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import Logo from '@/components/common/Logo';
 import { subscribeCart } from '@/lib/utils/cart';
@@ -30,28 +30,35 @@ export function Topbar({ user }) {
   const isLight = theme === 'light';
 
   return (
-    <header className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-2.5 shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
-      <div className="flex min-w-0 items-center gap-2">
-        <Link href="/shop" aria-label="Go to shop home" className="shrink-0">
-          <div className={isLight ? 'rounded-lg bg-white p-2' : 'rounded-lg bg-neutral-900 p-2'}>
-            <Logo size={40} />
+    <header className="hope-panel mb-4 flex flex-col gap-3 rounded-[28px] p-3.5 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+      <div className="flex min-w-0 items-center gap-3">
+        <Link href="/dashboard" aria-label="Go to dashboard home" className="shrink-0">
+          <div className={isLight ? 'rounded-[20px] bg-white p-2.5 shadow-sm' : 'rounded-[20px] bg-slate-950 p-2.5 shadow-sm'}>
+            <Logo size={42} />
           </div>
         </Link>
         <div className="min-w-0">
-          <p className="truncate text-[11px] font-semibold text-slate-800">{user?.first_name || user?.username || 'Partner'}</p>
-          <p className="truncate text-[10px] text-slate-500">@{user?.username || 'member'}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="hope-kicker !px-2.5 !py-1"><Sparkles size={12} /> Member space</span>
+            <span className="text-[11px] font-medium text-muted">Premium marketplace and referral workspace</span>
+          </div>
+          <p className="mt-2 truncate text-base font-semibold tracking-[-0.03em] text-text">{user?.first_name || user?.username || 'Hope Partner'}</p>
+          <p className="truncate text-xs text-muted">@{user?.username || 'member'}</p>
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5">
-        <Link href="/cart" className="relative inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700">
-          <ShoppingCart size={14} />
-          <span className="absolute -right-1 -top-1 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-rose-500 px-0.5 text-[8px] font-semibold text-white">
+      <div className="flex items-center gap-2 self-end sm:self-auto">
+        <button className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--hope-border)] bg-cardSoft text-muted transition hover:text-text">
+          <BellDot size={16} />
+        </button>
+        <Link href="/cart" className="relative inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--hope-border)] bg-cardSoft text-text">
+          <ShoppingCart size={16} />
+          <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-semibold text-white">
             {cartCount > 99 ? '99+' : cartCount}
           </span>
         </Link>
-        <ThemeToggle className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-600" />
-        <Link href="/profile" className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-700">
+        <ThemeToggle className="!rounded-2xl !border-[var(--hope-border)] !bg-cardSoft !p-2.5 !text-muted" />
+        <Link href="/profile" className="inline-flex h-10 min-w-[2.5rem] items-center justify-center rounded-2xl border border-[var(--hope-border)] bg-[var(--hope-accent-soft)] px-3 text-xs font-semibold text-accent">
           {user?.username?.[0]?.toUpperCase() || 'H'}
         </Link>
       </div>

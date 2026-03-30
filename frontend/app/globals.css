@@ -4,6 +4,25 @@
 
 :root {
   color-scheme: light;
+  --hope-bg: #f3f4f8;
+  --hope-bg-muted: #e8edf3;
+  --hope-surface: rgba(255, 255, 255, 0.82);
+  --hope-surface-strong: rgba(255, 255, 255, 0.94);
+  --hope-surface-soft: rgba(245, 247, 251, 0.9);
+  --hope-border: rgba(15, 23, 42, 0.08);
+  --hope-border-strong: rgba(15, 23, 42, 0.14);
+  --hope-text: #111827;
+  --hope-muted: #667085;
+  --hope-accent: #0f766e;
+  --hope-accent-strong: #0b5f59;
+  --hope-accent-soft: rgba(15, 118, 110, 0.12);
+  --hope-amber: #d97706;
+  --hope-success: #15803d;
+  --hope-danger: #dc2626;
+  --hope-shadow: 0 24px 80px rgba(15, 23, 42, 0.08);
+  --hope-shadow-soft: 0 12px 28px rgba(15, 23, 42, 0.06);
+  --hope-card-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(243, 247, 250, 0.88));
+  --hope-hero-gradient: radial-gradient(circle at top left, rgba(15, 118, 110, 0.18), transparent 36%), radial-gradient(circle at top right, rgba(234, 179, 8, 0.14), transparent 30%), linear-gradient(180deg, #f8fafc 0%, #eef4f8 100%);
 }
 
 html[data-theme='light'],
@@ -11,33 +30,202 @@ html[data-theme='dark'] {
   color-scheme: light;
 }
 
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --hope-bg: #09111b;
+  --hope-bg-muted: #111b27;
+  --hope-surface: rgba(10, 18, 30, 0.78);
+  --hope-surface-strong: rgba(12, 22, 35, 0.9);
+  --hope-surface-soft: rgba(18, 28, 42, 0.78);
+  --hope-border: rgba(148, 163, 184, 0.14);
+  --hope-border-strong: rgba(148, 163, 184, 0.24);
+  --hope-text: #f8fafc;
+  --hope-muted: #94a3b8;
+  --hope-accent: #5eead4;
+  --hope-accent-strong: #2dd4bf;
+  --hope-accent-soft: rgba(94, 234, 212, 0.14);
+  --hope-amber: #f59e0b;
+  --hope-success: #4ade80;
+  --hope-danger: #fb7185;
+  --hope-shadow: 0 28px 90px rgba(2, 8, 23, 0.45);
+  --hope-shadow-soft: 0 16px 36px rgba(2, 8, 23, 0.35);
+  --hope-card-gradient: linear-gradient(145deg, rgba(10, 18, 30, 0.94), rgba(17, 27, 39, 0.88));
+  --hope-hero-gradient: radial-gradient(circle at top left, rgba(94, 234, 212, 0.16), transparent 34%), radial-gradient(circle at top right, rgba(245, 158, 11, 0.12), transparent 26%), linear-gradient(180deg, #071019 0%, #0d1723 100%);
+}
+
+html {
+  min-height: 100%;
+  background: var(--hope-bg);
+}
+
 body {
   @apply bg-bg text-text antialiased;
-  font-family: 'Inter', 'Segoe UI', sans-serif;
-  background: linear-gradient(to bottom, #f8fafc, #eef2f7);
+  font-family: 'Satoshi', 'Manrope', 'Segoe UI', sans-serif;
+  min-height: 100vh;
+  background: var(--hope-hero-gradient);
+  background-attachment: fixed;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: linear-gradient(180deg, rgba(255, 255, 255, 0.75), transparent 80%);
+  opacity: 0.45;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.32);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 .card-surface {
-  @apply rounded-2xl shadow-soft border border-slate-200;
-  background: linear-gradient(135deg, #e0f2fe, #d1fae5);
+  @apply rounded-[28px];
+  border: 1px solid var(--hope-border);
+  background: var(--hope-card-gradient);
+  box-shadow: var(--hope-shadow-soft);
+  backdrop-filter: blur(18px);
+}
+
+.hope-panel {
+  border: 1px solid var(--hope-border);
+  background: var(--hope-card-gradient);
+  box-shadow: var(--hope-shadow-soft);
+  backdrop-filter: blur(18px);
+}
+
+.hope-button {
+  @apply inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition;
+  background: linear-gradient(135deg, var(--hope-accent), #0f9b8e);
+  color: white;
+  box-shadow: 0 18px 34px rgba(15, 118, 110, 0.22);
+}
+
+.hope-button:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, var(--hope-accent-strong), #0c8d82);
+}
+
+.hope-button-secondary {
+  @apply inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition;
+  border: 1px solid var(--hope-border);
+  background: var(--hope-surface-strong);
+  color: var(--hope-text);
+}
+
+.hope-input,
+.hope-select,
+.hope-textarea {
+  width: 100%;
+  border-radius: 1rem;
+  border: 1px solid var(--hope-border);
+  background: var(--hope-surface-soft);
+  color: var(--hope-text);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.hope-input,
+.hope-select {
+  padding: 0.9rem 1rem;
+}
+
+.hope-textarea {
+  padding: 0.95rem 1rem;
+  resize: vertical;
+}
+
+.hope-input::placeholder,
+.hope-textarea::placeholder {
+  color: color-mix(in srgb, var(--hope-muted) 82%, transparent);
+}
+
+.hope-input:focus,
+.hope-select:focus,
+.hope-textarea:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--hope-accent) 52%, white);
+  background: var(--hope-surface-strong);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--hope-accent-soft) 85%, transparent);
+}
+
+.hope-kicker {
+  @apply inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em];
+  border: 1px solid var(--hope-border);
+  background: var(--hope-surface-strong);
+  color: var(--hope-muted);
+}
+
+.hope-grid-card {
+  border: 1px solid var(--hope-border);
+  background: var(--hope-surface-strong);
+  box-shadow: var(--hope-shadow-soft);
+  backdrop-filter: blur(14px);
 }
 
 .bg-bg {
-  background-color: #f8fafc !important;
+  background-color: var(--hope-bg) !important;
 }
 
 .bg-card {
-  background-color: #ffffff !important;
+  background-color: var(--hope-surface-strong) !important;
 }
 
 .bg-cardSoft {
-  background-color: #f1f5f9 !important;
+  background-color: var(--hope-surface-soft) !important;
 }
 
 .text-text {
-  color: #0f172a !important;
+  color: var(--hope-text) !important;
 }
 
 .text-muted {
-  color: #64748b !important;
+  color: var(--hope-muted) !important;
+}
+
+.text-accent {
+  color: var(--hope-accent) !important;
+}
+
+.bg-accent {
+  background-color: var(--hope-accent) !important;
+}
+
+.text-danger {
+  color: var(--hope-danger) !important;
+}
+
+.shadow-soft {
+  box-shadow: var(--hope-shadow-soft) !important;
+}
+
+@media print {
+  body {
+    background: white !important;
+  }
+
+  body::before {
+    display: none;
+  }
 }
