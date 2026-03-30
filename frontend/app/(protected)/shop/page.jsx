@@ -20,7 +20,8 @@ import {
   Users,
   Store,
   LogOut,
-  Settings
+  Settings,
+  ShoppingCart
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ProductFilters } from '@/components/shop/ProductFilters';
@@ -34,6 +35,7 @@ import { createOrder } from '@/lib/services/ordersService';
 import { getHomepageBanners } from '@/lib/services/bannersService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { useAuthStore } from '@/lib/store/authStore';
+import { subscribeCart } from '@/lib/utils/cart';
 import { clearStoredToken } from '@/lib/utils/tokenStorage';
 
 const fallbackSlides = [
@@ -176,6 +178,28 @@ function BannerCard({ banner }) {
   return <Link href={target} className="block h-full">{content}</Link>;
 }
 
+function ShopCartButton() {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => subscribeCart(setCount), []);
+
+  return (
+    <Link
+      href="/cart"
+      aria-label={`Open cart${count ? ` with ${count} item${count === 1 ? '' : 's'}` : ''}`}
+      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-gradient-to-b from-white to-slate-50 px-2.5 text-slate-700 shadow-[0_4px_12px_rgba(15,23,42,0.08)]"
+    >
+      <span className="relative inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-white">
+        <ShoppingCart size={11} />
+      </span>
+      <span className="text-[11px] font-semibold text-slate-900">Cart</span>
+      <span className="inline-flex min-w-[20px] items-center justify-center rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
+        {count}
+      </span>
+    </Link>
+  );
+}
+
 export default function ShopPage() {
   const { data, isLoading, isError, refetch } = useProducts();
   const bannersQuery = useQuery({ queryKey: queryKeys.homepageBanners, queryFn: getHomepageBanners });
@@ -283,6 +307,7 @@ export default function ShopPage() {
       <Header
         rightSlot={(
           <>
+            <ShopCartButton />
             <Link href="/profile" className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700" aria-label="Open profile">
               <User size={14} />
             </Link>

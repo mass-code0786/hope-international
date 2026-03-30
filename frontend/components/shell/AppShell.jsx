@@ -53,7 +53,8 @@ export function AppShell({ children }) {
     if (!token) router.replace('/login');
   }, [hydrated, token, router]);
 
-  const isShopRoute = pathname === '/shop' || pathname.startsWith('/shop/');
+  const hideTopbar = pathname === '/shop' || pathname.startsWith('/shop/') || pathname === '/auctions' || pathname.startsWith('/auctions/');
+  const isCompactRoute = hideTopbar;
   const isAuthBootstrapping = !hydrated || (Boolean(token) && meQuery.isLoading && !resolvedUser);
 
   if (isAuthBootstrapping) {
@@ -69,8 +70,8 @@ export function AppShell({ children }) {
       <Sidebar user={resolvedUser} sellerActive={Boolean(sellerQuery.data?.canAccessDashboard)} />
       <main className="relative w-full min-w-0 md:overflow-x-hidden">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(15,118,110,0.08),transparent_30%)] dark:bg-[radial-gradient(circle_at_top,rgba(94,234,212,0.08),transparent_26%)]" />
-        <div className={`relative mx-auto w-full max-w-7xl pb-24 md:p-5 md:pb-6 ${isShopRoute ? 'p-3 md:p-5' : 'p-3.5 md:p-5'}`}>
-          {isShopRoute ? null : <Topbar user={resolvedUser} />}
+        <div className={`relative mx-auto w-full max-w-7xl pb-24 md:p-5 md:pb-6 ${isCompactRoute ? 'p-3 md:p-5' : 'p-3.5 md:p-5'}`}>
+          {hideTopbar ? null : <Topbar user={resolvedUser} />}
           {children}
         </div>
       </main>
