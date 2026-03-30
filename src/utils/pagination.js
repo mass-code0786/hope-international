@@ -1,7 +1,16 @@
-function normalizePagination({ page = 1, limit = 100, maxLimit = 100 }) {
-  const safePage = Math.max(1, Number(page) || 1);
-  const safeLimit = Math.max(1, Math.min(maxLimit, Number(limit) || 100));
-  const offset = (safePage - 1) * safeLimit;
+function toPositiveInteger(value, fallback) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  const normalized = Math.floor(parsed);
+  return normalized > 0 ? normalized : fallback;
+}
+
+function normalizePagination({ page = 1, limit = 10, maxLimit = 100 } = {}) {
+  const safeMaxLimit = Math.max(1, toPositiveInteger(maxLimit, 100));
+  const safePage = toPositiveInteger(page, 1);
+  const requestedLimit = toPositiveInteger(limit, 10);
+  const safeLimit = Math.max(1, Math.min(safeMaxLimit, requestedLimit));
+  const offset = Math.max(0, (safePage - 1) * safeLimit);
   return {
     page: safePage,
     limit: safeLimit,

@@ -113,13 +113,16 @@ function buildCompatStatusCase(columns, nowPlaceholder) {
 }
 
 function normalizeListPagination(pagination = {}) {
-  const limit = Math.max(1, Math.min(Number(pagination.limit) || 100, 100));
-  const page = Number(pagination.page) || 1;
-  const offset = (page - 1) * limit;
+  const requestedLimit = Math.floor(Number(pagination.limit));
+  const requestedPage = Math.floor(Number(pagination.page));
+  const limit = Number.isFinite(requestedLimit) && requestedLimit > 0 ? Math.min(requestedLimit, 100) : 10;
+  const page = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const offset = Math.max(0, (page - 1) * limit);
   return { limit, page, offset };
 }
 
 async function listAuctionsCompat(client, filters, pagination) {
+  try {
   const columns = await getTableColumns(client, 'auctions');
   const { limit, offset } = normalizeListPagination(pagination);
   const values = [filters.now || new Date().toISOString()];
@@ -205,9 +208,22 @@ async function listAuctionsCompat(client, filters, pagination) {
     items: rows.map(normalizeAuctionRow),
     total: Number(countResult.rows[0]?.count || 0)
   };
+  } catch (error) {
+    console.error('[auctionRepository.listAuctionsCompat] failed', {
+      message: error?.message || 'Unknown auctions compat list failure',
+      code: error?.code || null,
+      filters,
+      pagination
+    });
+    if (!filters?.status || filters.status === 'all') {
+      return { items: [], total: 0 };
+    }
+    throw error;
+  }
 }
 
 async function listAuctions(client, filters, pagination) {
+  try {
   const { limit, offset } = normalizeListPagination(pagination);
   const values = [filters.now || new Date().toISOString()];
   const statusCase = buildAuctionStatusCase('$1');
@@ -268,6 +284,18 @@ async function listAuctions(client, filters, pagination) {
     items: await attachWinnerRows(client, rows.map(normalizeAuctionRow)),
     total: Number(countResult.rows[0]?.count || 0)
   };
+  } catch (error) {
+    console.error('[auctionRepository.listAuctions] failed', {
+      message: error?.message || 'Unknown auctions list failure',
+      code: error?.code || null,
+      filters,
+      pagination
+    });
+    if (!filters?.status || filters.status === 'all') {
+      return { items: [], total: 0 };
+    }
+    throw error;
+  }
 }
 
 async function getAuctionById(client, auctionId, options = {}) {

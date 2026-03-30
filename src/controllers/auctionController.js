@@ -10,8 +10,10 @@ function normalizeListQuery(query = {}) {
   const normalizedStatus = statusAliases[status] || status;
   const safeStatus = ['all', 'live', 'upcoming', 'ended', 'cancelled'].includes(normalizedStatus) ? normalizedStatus : undefined;
   const safeSearch = typeof query.search === 'string' && query.search.trim() ? query.search.trim().slice(0, 120) : undefined;
-  const safePage = Number.isInteger(Number(query.page)) && Number(query.page) > 0 ? String(Number(query.page)) : '1';
-  const safeLimit = String(Math.min(Number(query.limit) || 100, 100));
+  const requestedPage = Math.floor(Number(query.page));
+  const safePage = Number.isFinite(requestedPage) && requestedPage > 0 ? String(requestedPage) : '1';
+  const requestedLimit = Math.floor(Number(query.limit));
+  const safeLimit = String(Number.isFinite(requestedLimit) && requestedLimit > 0 ? Math.min(requestedLimit, 100) : 10);
 
   return {
     filters: {
