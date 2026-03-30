@@ -8,7 +8,7 @@ export function IncomeSummaryStrip({ direct = 0, matching = 0, reward = 0, overf
     { label: 'Direct Income', value: currency(direct), icon: CircleDollarSign },
     { label: 'Matching Income', value: currency(matching), icon: GitCompareArrows },
     { label: 'Reward Income', value: currency(reward), icon: Gift },
-    { label: 'Overflow / Capped', value: overflow ? number(overflow) : 'None', icon: ShieldAlert }
+    { label: 'Overflow', value: overflow ? number(overflow) : 'None', icon: ShieldAlert }
   ];
 
   return (

@@ -1,8 +1,7 @@
 import { ArrowLeftRight, Network, UsersRound } from 'lucide-react';
-import { Badge } from '@/components/ui/Badge';
 import { number } from '@/lib/utils/format';
 
-export function TeamSummaryPanel({ me, teamSummary = {}, children = [], hasNestedTreeData = false }) {
+export function TeamSummaryPanel({ me, teamSummary = {}, children = [] }) {
   const leftPv = Number(me?.carry_left_pv || 0);
   const rightPv = Number(me?.carry_right_pv || 0);
   const matchedPotential = Math.min(leftPv, rightPv);
@@ -29,23 +28,16 @@ export function TeamSummaryPanel({ me, teamSummary = {}, children = [], hasNeste
 
       <div className="card-surface p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant={hasNestedTreeData ? 'success' : 'warning'}>{hasNestedTreeData ? 'Nested tree detected' : 'Showing direct team only'}</Badge>
-              <Badge variant="accent">Binary view</Badge>
-            </div>
-            <h3 className="mt-4 text-xl font-semibold tracking-[-0.04em] text-text">Left/right binary balance</h3>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">A simplified visual block for current carry volume and matched potential using the real profile values from the backend.</p>
-          </div>
+          <h3 className="text-xl font-semibold tracking-[-0.04em] text-text">Binary balance</h3>
           <div className="rounded-[24px] border border-[var(--hope-border)] bg-cardSoft px-4 py-3 text-right">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Matched potential preview</p>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Matched Potential</p>
             <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-text">{number(matchedPotential)}</p>
           </div>
         </div>
         <div className="mt-5 rounded-[28px] border border-[var(--hope-border)] bg-cardSoft p-4">
           <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.16em] text-muted">
-            <span>Left volume</span>
-            <span>Right volume</span>
+            <span>Left</span>
+            <span>Right</span>
           </div>
           <div className="mt-4 h-4 overflow-hidden rounded-full bg-white/60 dark:bg-white/5">
             <div className="flex h-full">

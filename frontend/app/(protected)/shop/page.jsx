@@ -6,7 +6,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Menu,
   Search,
-  ShoppingCart,
   Truck,
   ShieldCheck,
   BadgePercent,
@@ -29,12 +28,11 @@ import { ProductCard } from '@/components/shop/ProductCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { ShopSkeleton } from '@/components/ui/PageSkeletons';
-import Logo from '@/components/common/Logo';
+import { Header } from '@/components/layout/Header';
 import { useProducts } from '@/hooks/useProducts';
 import { createOrder } from '@/lib/services/ordersService';
 import { getHomepageBanners } from '@/lib/services/bannersService';
 import { queryKeys } from '@/lib/query/queryKeys';
-import { subscribeCart } from '@/lib/utils/cart';
 import { useAuthStore } from '@/lib/store/authStore';
 import { clearStoredToken } from '@/lib/utils/tokenStorage';
 
@@ -186,13 +184,10 @@ export default function ShopPage() {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [buyingProductId, setBuyingProductId] = useState('');
-  const [cartCount, setCartCount] = useState(0);
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const bannerTrackRef = useRef(null);
   const queryClient = useQueryClient();
-
-  useEffect(() => subscribeCart(setCartCount), []);
 
   useEffect(() => {
     if (!menuOpen) return undefined;
@@ -285,41 +280,33 @@ export default function ShopPage() {
 
   return (
     <div className="-mx-4 space-y-3 bg-[#f8fafc] px-3 pb-2 pt-0 sm:mx-0 sm:rounded-2xl sm:border sm:border-slate-200 sm:px-4 sm:py-3">
-      <section className="sticky top-0 z-20 rounded-xl border border-slate-200 bg-white p-2 shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
-        <div className="flex items-center gap-1.5">
-          <Link href="/shop" aria-label="Go to shop home" className="shrink-0">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-900">
-              <Logo size={32} />
-            </div>
-          </Link>
+      <Header
+        rightSlot={(
+          <>
+            <Link href="/profile" className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700" aria-label="Open profile">
+              <User size={14} />
+            </Link>
+            <button
+              onClick={() => setMenuOpen(true)}
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700"
+              aria-label="Open menu"
+            >
+              <Menu size={14} />
+            </button>
+          </>
+        )}
+      />
 
-          <label className="relative min-w-0 flex-1">
-            <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search products"
-              className="w-full rounded-lg border border-slate-200 bg-[#f8fafc] py-2 pl-8 pr-2 text-[11px] text-slate-700 outline-none placeholder:text-slate-400 focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
-            />
-          </label>
-
-          <Link href="/cart" className="relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700">
-            <ShoppingCart size={14} />
-            <span className="absolute -right-1 -top-1 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-rose-500 px-0.5 text-[8px] font-semibold text-white">
-              {cartCount > 99 ? '99+' : cartCount}
-            </span>
-          </Link>
-          <Link href="/profile" className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700">
-            <User size={14} />
-          </Link>
-          <button
-            onClick={() => setMenuOpen(true)}
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700"
-            aria-label="Open menu"
-          >
-            <Menu size={14} />
-          </button>
-        </div>
+      <section className="rounded-xl border border-slate-200 bg-white p-2 shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
+        <label className="relative block">
+          <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search products"
+            className="w-full rounded-lg border border-slate-200 bg-[#f8fafc] py-2 pl-8 pr-2 text-[11px] text-slate-700 outline-none placeholder:text-slate-400 focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+          />
+        </label>
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white p-2.5">
@@ -532,5 +519,3 @@ export default function ShopPage() {
     </div>
   );
 }
-
-
