@@ -34,6 +34,18 @@ async function adjustBalance(client, userId, amountDelta) {
   return rows[0] || null;
 }
 
+async function debitBalanceIfSufficient(client, userId, amount) {
+  const { rows } = await q(client).query(
+    `UPDATE wallets
+     SET balance = balance - $2
+     WHERE user_id = $1
+       AND balance >= $2
+     RETURNING *`,
+    [userId, amount]
+  );
+  return rows[0] || null;
+}
+
 async function createTransaction(client, payload) {
   const { rows } = await q(client).query(
     `INSERT INTO wallet_transactions (user_id, tx_type, source, amount, reference_id, metadata, created_by_admin_id)
@@ -511,6 +523,7 @@ module.exports = {
   createWallet,
   getWallet,
   adjustBalance,
+  debitBalanceIfSufficient,
   createTransaction,
   listTransactions,
   listTransactionsBySource,

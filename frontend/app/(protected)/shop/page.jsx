@@ -31,12 +31,15 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { ShopSkeleton } from '@/components/ui/PageSkeletons';
 import { Header } from '@/components/layout/Header';
 import { useProducts } from '@/hooks/useProducts';
+import { useWallet } from '@/hooks/useWallet';
 import { createOrder } from '@/lib/services/ordersService';
 import { getHomepageBanners } from '@/lib/services/bannersService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { useAuthStore } from '@/lib/store/authStore';
 import { subscribeCart } from '@/lib/utils/cart';
 import { clearStoredToken } from '@/lib/utils/tokenStorage';
+import { getAvailableWalletBalance, hasSufficientWalletBalance } from '@/lib/utils/wallet';
+import { getProductPricing } from '@/lib/utils/pricing';
 
 const fallbackSlides = [
   {
@@ -204,6 +207,7 @@ export default function ShopPage() {
   const { data, isLoading, isError, refetch } = useProducts();
   const bannersQuery = useQuery({ queryKey: queryKeys.homepageBanners, queryFn: getHomepageBanners });
   const meQuery = useQuery({ queryKey: queryKeys.me });
+  const walletQuery = useWallet();
   const clearSession = useAuthStore((state) => state.clearSession);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
@@ -224,7 +228,13 @@ export default function ShopPage() {
   }, [menuOpen]);
 
   const buyMutation = useMutation({
-    mutationFn: (product) => createOrder({ items: [{ productId: product.id, quantity: 1 }] }),
+    mutationFn: (product) => {
+      const total = getProductPricing(product, 1).lineFinalTotal;
+      if (!hasSufficientWalletBalance(walletQuery.data, total)) {
+        throw new Error('Insufficient wallet balance');
+      }
+      return createOrder({ chargeWallet: true, items: [{ productId: product.id, quantity: 1 }] });
+    },
     onMutate: (product) => {
       setBuyingProductId(product?.id || '');
     },
@@ -301,6 +311,8 @@ export default function ShopPage() {
 
   const hasProducts = !isLoading && !isError && filtered.length > 0;
   const user = meQuery.data || {};
+  const walletBalance = getAvailableWalletBalance(walletQuery.data);
+  const walletReady = !walletQuery.isLoading && !walletQuery.isError;
 
   return (
     <div className="-mx-4 space-y-3 bg-[#f8fafc] px-3 pb-2 pt-0 sm:mx-0 sm:rounded-2xl sm:border sm:border-slate-200 sm:px-4 sm:py-3">
@@ -336,6 +348,10 @@ export default function ShopPage() {
 
       <section className="rounded-xl border border-slate-200 bg-white p-2.5">
         <ProductFilters activeCategory={activeCategory} setActiveCategory={setActiveCategory} />
+        <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 text-[10px] text-slate-600">
+          <Wallet size={11} />
+          Wallet: {currency(walletBalance)}
+        </div>
       </section>
 
       <section className="space-y-2">
@@ -417,14 +433,15 @@ export default function ShopPage() {
         <section className="space-y-4 pb-14">
           <div>
             <SectionTitle title="Deals of the Day" count={deals.length || 0} />
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
               {(deals.length ? deals : recommended).map((product) => (
                 <ProductCard
                   key={`deal-${product.id}`}
                   product={product}
                   onBuy={(p) => buyMutation.mutate(p)}
                   isBuying={buyMutation.isPending && buyingProductId === product.id}
-                  disableBuying={false}
+                  disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
+                  buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy'}
                 />
               ))}
             </div>
@@ -432,14 +449,15 @@ export default function ShopPage() {
 
           <div>
             <SectionTitle title="Recommended" count={recommended.length} />
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
               {recommended.map((product) => (
                 <ProductCard
                   key={`recommended-${product.id}`}
                   product={product}
                   onBuy={(p) => buyMutation.mutate(p)}
                   isBuying={buyMutation.isPending && buyingProductId === product.id}
-                  disableBuying={false}
+                  disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
+                  buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy'}
                 />
               ))}
             </div>
@@ -447,14 +465,15 @@ export default function ShopPage() {
 
           <div>
             <SectionTitle title="New Arrivals" count={newArrivals.length} />
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
               {newArrivals.map((product) => (
                 <ProductCard
                   key={`new-${product.id}`}
                   product={product}
                   onBuy={(p) => buyMutation.mutate(p)}
                   isBuying={buyMutation.isPending && buyingProductId === product.id}
-                  disableBuying={false}
+                  disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
+                  buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy'}
                 />
               ))}
             </div>
@@ -462,14 +481,15 @@ export default function ShopPage() {
 
           <div>
             <SectionTitle title="Trending" count={trending.length} />
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
               {trending.map((product) => (
                 <ProductCard
                   key={`trending-${product.id}`}
                   product={product}
                   onBuy={(p) => buyMutation.mutate(p)}
                   isBuying={buyMutation.isPending && buyingProductId === product.id}
-                  disableBuying={false}
+                  disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
+                  buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy'}
                 />
               ))}
             </div>

@@ -5,13 +5,15 @@ import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { CheckCircle2, CreditCard, MapPin, ShieldCheck, TicketPercent, Truck } from 'lucide-react';
+import { AlertCircle, CheckCircle2, CreditCard, MapPin, ShieldCheck, TicketPercent, Truck, Wallet } from 'lucide-react';
 import { useProducts } from '@/hooks/useProducts';
+import { useWallet } from '@/hooks/useWallet';
 import { createOrder } from '@/lib/services/ordersService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { clearCart, getCartItems } from '@/lib/utils/cart';
 import { currency } from '@/lib/utils/format';
 import { getProductPricing } from '@/lib/utils/pricing';
+import { getAvailableWalletBalance, hasSufficientWalletBalance } from '@/lib/utils/wallet';
 
 function readSnapshot(products = []) {
   const source = getCartItems();
@@ -39,6 +41,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data } = useProducts();
+  const walletQuery = useWallet();
   const products = Array.isArray(data) ? data : [];
 
   const [items, setItems] = useState([]);
@@ -60,9 +63,21 @@ export default function CheckoutPage() {
     return { subtotal, discount, deliveryFee, total };
   }, [items]);
 
+  const walletBalance = getAvailableWalletBalance(walletQuery.data);
+  const hasFunds = hasSufficientWalletBalance(walletQuery.data, summary.total);
+  const walletReady = !walletQuery.isLoading && !walletQuery.isError;
+
   const orderMutation = useMutation({
     mutationFn: async () => {
+      if (paymentMethod !== 'wallet') {
+        throw new Error('Wallet payment is required');
+      }
+      if (!hasFunds) {
+        throw new Error('Insufficient wallet balance');
+      }
+
       const payload = {
+        chargeWallet: true,
         items: items.map((item) => ({ productId: item.productId, quantity: item.quantity }))
       };
       return createOrder(payload);
@@ -94,8 +109,10 @@ export default function CheckoutPage() {
     );
   }
 
+  const cannotPlaceOrder = orderMutation.isPending || paymentMethod !== 'wallet' || (walletReady && !hasFunds);
+
   return (
-    <div className="space-y-3 bg-[#f8fafc] pb-20">
+    <div className="space-y-3 bg-[#f8fafc] pb-24">
       <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
         <h1 className="text-[15px] font-semibold text-slate-900">Checkout</h1>
         <p className="mt-0.5 text-[11px] text-slate-500">Secure and fast order placement</p>
@@ -153,11 +170,16 @@ export default function CheckoutPage() {
             Wallet
           </button>
           <button
-            onClick={() => setPaymentMethod('cod')}
-            className={`rounded-lg border px-2 py-2 text-[11px] font-medium ${paymentMethod === 'cod' ? 'border-sky-500 bg-sky-50 text-sky-700' : 'border-slate-200 bg-white text-slate-600'}`}
+            disabled
+            className="rounded-lg border border-slate-200 bg-slate-100 px-2 py-2 text-[11px] font-medium text-slate-400"
           >
             Cash on Delivery
           </button>
+        </div>
+
+        <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[11px] text-slate-600">
+          <p className="inline-flex items-center gap-1 font-semibold text-slate-800"><Wallet size={12} /> Wallet Balance: {currency(walletBalance)}</p>
+          {!walletQuery.isLoading && !hasFunds ? <p className="mt-1 text-rose-600">Insufficient wallet balance</p> : null}
         </div>
 
         <div className="mt-2 flex items-center gap-2">
@@ -192,6 +214,12 @@ export default function CheckoutPage() {
           <p className="inline-flex items-center gap-1"><ShieldCheck size={11} /> Secure checkout protection</p>
           <p className="inline-flex items-center gap-1"><CheckCircle2 size={11} /> Trusted marketplace order flow</p>
         </div>
+        {!walletQuery.isLoading && !hasFunds ? (
+          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] text-rose-700">
+            <p className="inline-flex items-center gap-1 font-semibold"><AlertCircle size={12} /> Insufficient wallet balance</p>
+            <p className="mt-1">Add funds before placing this order.</p>
+          </div>
+        ) : null}
       </section>
 
       <section className="fixed bottom-12 left-0 right-0 z-30 border-t border-slate-200 bg-white p-2 md:hidden">
@@ -202,10 +230,10 @@ export default function CheckoutPage() {
           </div>
           <button
             onClick={() => orderMutation.mutate()}
-            disabled={orderMutation.isPending}
-            className="rounded-lg bg-[#0ea5e9] px-4 py-2 text-[12px] font-semibold text-white disabled:opacity-60"
+            disabled={cannotPlaceOrder}
+            className="rounded-lg bg-[#0ea5e9] px-4 py-2 text-[12px] font-semibold text-white disabled:bg-slate-300 disabled:opacity-100"
           >
-            {orderMutation.isPending ? 'Placing...' : 'Place Order'}
+            {orderMutation.isPending ? 'Placing...' : walletReady && !hasFunds ? 'Insufficient Balance' : 'Place Order'}
           </button>
         </div>
       </section>

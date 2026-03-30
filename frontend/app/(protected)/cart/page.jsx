@@ -2,11 +2,13 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react';
+import { Minus, Plus, ShoppingCart, Trash2, Wallet } from 'lucide-react';
 import { useProducts } from '@/hooks/useProducts';
+import { useWallet } from '@/hooks/useWallet';
 import { currency } from '@/lib/utils/format';
 import { getCartItems, removeFromCart, updateCartItemQuantity } from '@/lib/utils/cart';
 import { getProductPricing } from '@/lib/utils/pricing';
+import { getAvailableWalletBalance, hasSufficientWalletBalance } from '@/lib/utils/wallet';
 
 function readSnapshot(products = []) {
   const source = getCartItems();
@@ -48,6 +50,7 @@ function EmptyCart() {
 
 export default function CartPage() {
   const { data } = useProducts();
+  const walletQuery = useWallet();
   const products = Array.isArray(data) ? data : [];
   const [items, setItems] = useState([]);
 
@@ -77,6 +80,10 @@ export default function CartPage() {
 
     return { subtotal, discount, deliveryFee, total };
   }, [items]);
+
+  const walletBalance = getAvailableWalletBalance(walletQuery.data);
+  const hasFunds = hasSufficientWalletBalance(walletQuery.data, summary.total);
+  const walletReady = !walletQuery.isLoading && !walletQuery.isError;
 
   return (
     <div className="space-y-3 bg-[#f8fafc] pb-20">
@@ -145,9 +152,19 @@ export default function CartPage() {
             <div className="flex items-center justify-between text-slate-600"><span>Delivery</span><span>{summary.deliveryFee ? currency(summary.deliveryFee) : 'Free'}</span></div>
             <div className="mt-1 flex items-center justify-between border-t border-slate-200 pt-1.5 text-[13px] font-semibold text-slate-900"><span>Total</span><span>{currency(summary.total)}</span></div>
           </div>
-          <Link href="/checkout" className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-[#0ea5e9] px-3 py-2 text-[12px] font-semibold text-white">
-            Proceed to Checkout
-          </Link>
+          <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[11px] text-slate-600">
+            <p className="inline-flex items-center gap-1 font-semibold text-slate-800"><Wallet size={12} /> Wallet Balance: {currency(walletBalance)}</p>
+            {walletReady && !hasFunds ? <p className="mt-1 text-rose-600">Insufficient wallet balance</p> : null}
+          </div>
+          {walletReady && !hasFunds ? (
+            <button disabled className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-slate-300 px-3 py-2 text-[12px] font-semibold text-white">
+              Insufficient Balance
+            </button>
+          ) : (
+            <Link href="/checkout" className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-[#0ea5e9] px-3 py-2 text-[12px] font-semibold text-white">
+              Proceed to Checkout
+            </Link>
+          )}
         </section>
       ) : null}
     </div>

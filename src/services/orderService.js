@@ -59,11 +59,14 @@ async function createOrder(userId, payload) {
     const totalAmount = toMoney(enrichedItems.reduce((sum, i) => sum + i.lineTotal, 0));
     const totalPv = toMoney(enrichedItems.reduce((sum, i) => sum + i.linePv, 0));
     const totalBv = toMoney(enrichedItems.reduce((sum, i) => sum + i.lineBv, 0));
-    if (payload.chargeWallet) {
-      await walletService.debit(client, userId, totalAmount, 'order_purchase', null, {
-        reason: 'Order purchase'
-      });
+    if (payload.chargeWallet === false) {
+      throw new ApiError(400, 'Wallet payment is required for this order');
     }
+
+    await walletService.debit(client, userId, totalAmount, 'order_purchase', null, {
+      reason: 'Order purchase',
+      totalAmount
+    });
 
     const order = await orderRepository.createOrder(client, {
       userId,

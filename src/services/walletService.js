@@ -32,13 +32,11 @@ async function debit(client, userId, amount, source, referenceId = null, metadat
   }
 
   await walletRepository.createWallet(client, userId);
-  const wallet = await walletRepository.getWallet(client, userId);
+  const updatedWallet = await walletRepository.debitBalanceIfSufficient(client, userId, Number(amount));
 
-  if (!wallet || Number(wallet.balance) < Number(amount)) {
+  if (!updatedWallet) {
     throw new ApiError(400, 'Insufficient wallet balance');
   }
-
-  const updatedWallet = await walletRepository.adjustBalance(client, userId, -Number(amount));
   await walletRepository.createTransaction(client, {
     userId,
     txType: 'debit',

@@ -72,7 +72,7 @@ const productCreateSchema = z.object({
 
 const orderCreateSchema = z.object({
   body: z.object({
-    chargeWallet: z.boolean().optional().default(false),
+    chargeWallet: z.boolean().optional().default(true),
     items: z.array(z.object({ productId: uuid, quantity: z.number().int().positive() })).min(1)
   }),
   params: z.object({}),

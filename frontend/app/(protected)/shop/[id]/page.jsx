@@ -15,17 +15,20 @@ import {
   Share2,
   ShieldCheck,
   Star,
-  Truck
+  Truck,
+  Wallet
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { useProducts } from '@/hooks/useProducts';
+import { useWallet } from '@/hooks/useWallet';
 import { currency, number } from '@/lib/utils/format';
 import { createOrder } from '@/lib/services/ordersService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { addToCart } from '@/lib/utils/cart';
 import { getOfferPercent, getProductPricing } from '@/lib/utils/pricing';
+import { getAvailableWalletBalance, hasSufficientWalletBalance } from '@/lib/utils/wallet';
 
 function getRating(product) {
   const base = String(product?.id || product?.name || 'hope').split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
@@ -58,6 +61,7 @@ export default function ProductDetailPage() {
   const params = useParams();
   const id = String(params?.id || '');
   const { data, isLoading, isError, refetch } = useProducts();
+  const walletQuery = useWallet();
   const [isBuying, setIsBuying] = useState(false);
   const queryClient = useQueryClient();
 
@@ -73,8 +77,19 @@ export default function ProductDetailPage() {
       .slice(0, 8);
   }, [products, product, id]);
 
+  const pricing = getProductPricing(product, 1);
+  const walletBalance = getAvailableWalletBalance(walletQuery.data);
+  const canAfford = hasSufficientWalletBalance(walletQuery.data, pricing.lineFinalTotal);
+  const walletReady = !walletQuery.isLoading && !walletQuery.isError;
+
   const buyMutation = useMutation({
-    mutationFn: (selected) => createOrder({ items: [{ productId: selected.id, quantity: 1 }] }),
+    mutationFn: (selected) => {
+      const total = getProductPricing(selected, 1).lineFinalTotal;
+      if (!hasSufficientWalletBalance(walletQuery.data, total)) {
+        throw new Error('Insufficient wallet balance');
+      }
+      return createOrder({ chargeWallet: true, items: [{ productId: selected.id, quantity: 1 }] });
+    },
     onMutate: () => setIsBuying(true),
     onSuccess: async () => {
       toast.success('Order placed successfully. Dashboard is updating.');
@@ -97,7 +112,6 @@ export default function ProductDetailPage() {
   if (isError) return <ErrorState message="Product could not be loaded." onRetry={refetch} />;
   if (!product) return <EmptyState title="Product not found" description="This product may have been removed from the catalog." />;
 
-  const pricing = getProductPricing(product, 1);
   const offerPercent = getOfferPercent(product);
   const category = getCategory(product);
   const rating = getRating(product);
@@ -137,6 +151,10 @@ export default function ProductDetailPage() {
           {pricing.compareAtPrice > 0 ? <p className="text-[12px] text-slate-400 line-through">{currency(pricing.compareAtPrice)}</p> : null}
           <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">Save {offerPercent}%</span>
         </div>
+        <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[11px] text-slate-600">
+          <p className="inline-flex items-center gap-1 font-semibold text-slate-800"><Wallet size={12} /> Wallet Balance: {currency(walletBalance)}</p>
+          {walletReady && !canAfford ? <p className="mt-1 text-rose-600">Insufficient wallet balance</p> : null}
+        </div>
         <ul className="mt-3 space-y-1 text-[11px] text-slate-700">
           {highlights.map((item) => <li key={item} className="inline-flex items-center gap-1"><CheckCircle2 size={12} className="text-emerald-600" />{item}</li>)}
         </ul>
@@ -173,7 +191,7 @@ export default function ProductDetailPage() {
       <section className="fixed bottom-12 left-0 right-0 z-30 border-t border-slate-200 bg-white p-2 md:hidden">
         <div className="mx-auto grid max-w-3xl grid-cols-2 gap-2">
           <button onClick={() => { const nextCount = addToCart(product, 1); if (!nextCount) { toast.error('Unable to add this product to cart'); return; } toast.success(`Added to cart (${nextCount})`); }} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[12px] font-semibold text-slate-700">Add to Cart</button>
-          <button onClick={() => buyMutation.mutate(product)} disabled={isBuying} className="rounded-lg bg-[#0ea5e9] px-3 py-2 text-[12px] font-semibold text-white disabled:opacity-60">{isBuying ? 'Processing...' : 'Buy Now'}</button>
+          <button onClick={() => buyMutation.mutate(product)} disabled={isBuying || (walletReady && !canAfford)} className="rounded-lg bg-[#0ea5e9] px-3 py-2 text-[12px] font-semibold text-white disabled:bg-slate-300 disabled:opacity-100">{isBuying ? 'Processing...' : walletReady && !canAfford ? 'Low Balance' : 'Buy Now'}</button>
         </div>
       </section>
     </div>

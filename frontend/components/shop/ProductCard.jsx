@@ -43,7 +43,7 @@ function getProductCover(product) {
   return product?.image_url || product?.gallery?.[0] || '';
 }
 
-export function ProductCard({ product, onBuy, isBuying = false, disableBuying = false }) {
+export function ProductCard({ product, onBuy, isBuying = false, disableBuying = false, buyLabel = 'Buy' }) {
   const safeProduct = product || {};
   const href = safeProduct?.id ? `/shop/${encodeURIComponent(String(safeProduct.id))}` : '/shop';
   const pricing = getProductPricing(safeProduct, 1);
@@ -52,10 +52,11 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
   const category = getCategory(safeProduct);
   const imageTheme = buildImageTheme(safeProduct.id || safeProduct.name);
   const cover = getProductCover(safeProduct);
+  const buttonLabel = disableBuying ? buyLabel : isBuying ? '...' : buyLabel;
 
   return (
     <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
-      <Link href={href} className={`relative block h-24 bg-gradient-to-br ${imageTheme}`}>
+      <Link href={href} className={`relative block h-28 bg-gradient-to-br ${imageTheme} sm:h-24`}>
         <span className="absolute left-1.5 top-1.5 rounded bg-emerald-500 px-1 py-0.5 text-[8px] font-semibold text-white">
           -{offerPercent}%
         </span>
@@ -72,9 +73,9 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
         )}
       </Link>
 
-      <div className="space-y-1.5 p-2">
+      <div className="space-y-2 p-2.5">
         <Link href={href} className="block">
-          <h3 className="line-clamp-2 min-h-[2rem] text-[10px] font-semibold leading-4 text-slate-900">{safeProduct.name || 'Unnamed Product'}</h3>
+          <h3 className="line-clamp-2 min-h-[2.25rem] text-[11px] font-semibold leading-4 text-slate-900">{safeProduct.name || 'Unnamed Product'}</h3>
         </Link>
 
         <div className="flex items-center justify-between gap-1">
@@ -86,18 +87,18 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
         </div>
 
         <div className="flex items-center gap-1">
-          <p className="text-[11px] font-bold text-slate-900">{currency(pricing.finalPrice)}</p>
+          <p className="text-[12px] font-bold text-slate-900">{currency(pricing.finalPrice)}</p>
           {pricing.compareAtPrice > 0 ? <p className="text-[8px] text-slate-400 line-through">{currency(pricing.compareAtPrice)}</p> : null}
         </div>
 
-        <div className="grid grid-cols-[1fr_auto] gap-1">
+        <div className="grid grid-cols-[1fr_auto] gap-1.5">
           <button
             disabled={isBuying || disableBuying}
             onClick={() => onBuy?.(safeProduct)}
-            className="inline-flex items-center justify-center gap-0.5 rounded-[10px] bg-[#0ea5e9] px-1 py-1.5 text-[9px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-[34px] items-center justify-center gap-0.5 rounded-[10px] bg-[#0ea5e9] px-1.5 py-1.5 text-[10px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {disableBuying ? 'Disabled' : isBuying ? '...' : 'Buy'}
-            {isBuying ? null : <ArrowRight size={10} />}
+            {buttonLabel}
+            {isBuying || disableBuying ? null : <ArrowRight size={10} />}
           </button>
           <button
             onClick={() => {
@@ -108,10 +109,10 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
               }
               toast.success(`Added to cart (${nextCount})`);
             }}
-            className="inline-flex items-center justify-center rounded-[10px] border border-slate-200 bg-[#e2e8f0] px-1.5 text-slate-700"
+            className="inline-flex items-center justify-center rounded-[10px] border border-slate-200 bg-[#e2e8f0] px-2 text-slate-700"
             aria-label="Add to cart"
           >
-            <Plus size={11} />
+            <Plus size={12} />
           </button>
         </div>
       </div>

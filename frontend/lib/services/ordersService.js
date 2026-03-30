@@ -3,7 +3,10 @@ import { apiFetch } from '@/lib/api/client';
 export async function createOrder(payload) {
   return apiFetch('/orders', {
     method: 'POST',
-    body: JSON.stringify(payload)
+    body: JSON.stringify({
+      ...payload,
+      chargeWallet: payload?.chargeWallet ?? true
+    })
   });
 }
 
