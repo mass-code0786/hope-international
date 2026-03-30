@@ -307,7 +307,19 @@ async function listAuctions(_userId, filters = {}, paginationInput = {}, options
 
       for (const auction of initial.items) {
         if (auction.computed_status === 'ended' && auction.status !== 'cancelled') {
-          await ensureAuctionResolved(client, auction.id);
+          try {
+            await ensureAuctionResolved(client, auction.id);
+          } catch (error) {
+            if (isAuctionSchemaError(error)) {
+              console.error('[auctions.list] skipped auto-resolve for legacy schema', {
+                code: error?.code || null,
+                message: error?.message || 'Unknown auction resolve failure',
+                auctionId: auction.id
+              });
+              continue;
+            }
+            throw error;
+          }
         }
       }
 
