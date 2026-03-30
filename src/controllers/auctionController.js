@@ -53,6 +53,14 @@ const placeBid = asyncHandler(async (req, res) => {
   });
 });
 
+const revealResult = asyncHandler(async (req, res) => {
+  const data = await auctionService.revealAuctionResult(req.params.id, req.user.sub);
+  return success(res, {
+    data,
+    message: 'Auction result revealed successfully'
+  });
+});
+
 const myHistory = asyncHandler(async (req, res) => {
   const result = await auctionService.listMyAuctionHistory(req.user.sub, {
     kind: req.query.kind
@@ -73,6 +81,7 @@ module.exports = {
   list,
   getById,
   placeBid,
+  revealResult,
   myHistory
 };
 

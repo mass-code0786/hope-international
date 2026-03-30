@@ -14,6 +14,7 @@ const router = express.Router();
 router.get('/', auth(false), validate(auctionListQuerySchema), auctionController.list);
 router.get('/me/history', auth(), validate(auctionHistoryQuerySchema), auctionController.myHistory);
 router.get('/:id', auth(), validate(auctionIdParamSchema), auctionController.getById);
+router.post('/:id/reveal', auth(), validate(auctionIdParamSchema), auctionController.revealResult);
 router.post('/:id/bids', auth(), validate(auctionBidSchema), auctionController.placeBid);
 
 module.exports = router;

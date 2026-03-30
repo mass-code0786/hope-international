@@ -651,6 +651,29 @@ async function listAuctionRewardDistributions(client, auctionId) {
   return rows.map(normalizeAuctionRewardDistributionRow);
 }
 
+async function getAuctionResultReveal(client, auctionId, userId) {
+  const { rows } = await q(client).query(
+    `SELECT *
+     FROM auction_result_reveals
+     WHERE auction_id = $1 AND user_id = $2
+     LIMIT 1`,
+    [auctionId, userId]
+  );
+  return rows[0] || null;
+}
+
+async function upsertAuctionResultReveal(client, auctionId, userId) {
+  const { rows } = await q(client).query(
+    `INSERT INTO auction_result_reveals (auction_id, user_id)
+     VALUES ($1, $2)
+     ON CONFLICT (auction_id, user_id)
+     DO UPDATE SET revealed_at = auction_result_reveals.revealed_at
+     RETURNING *`,
+    [auctionId, userId]
+  );
+  return rows[0] || null;
+}
+
 async function getUserBidStats(client, userId) {
   const { rows } = await q(client).query(
     `SELECT
@@ -751,6 +774,8 @@ module.exports = {
   getAuctionRewardDistribution,
   upsertAuctionRewardDistribution,
   listAuctionRewardDistributions,
+  getAuctionResultReveal,
+  upsertAuctionResultReveal,
   getUserBidStats,
   listUserAuctionHistory
 };

@@ -71,6 +71,13 @@ function normalizeRewardDistribution(entry) {
   };
 }
 
+function normalizeResultReveal(entry) {
+  if (!entry || typeof entry !== 'object') return entry;
+  return {
+    ...entry
+  };
+}
+
 export function normalizeAuctionStatus(...statuses) {
   for (const value of statuses) {
     if (typeof value !== 'string') continue;
@@ -124,6 +131,9 @@ function normalizeAuction(auction) {
     myPosition: toNumber(auction.myPosition),
     myTotalBids: toNumber(auction.myTotalBids),
     btctPrice: toNumber(auction.btctPrice, 0.1),
+    participated: Boolean(auction.participated),
+    resultFinalized: Boolean(auction.resultFinalized),
+    revealEligible: Boolean(auction.revealEligible),
     latestBidder: auction.latestBidder
       ? {
           ...auction.latestBidder,
@@ -143,7 +153,9 @@ function normalizeAuction(auction) {
     leaderboard: normalizeLeaderboard(auction.leaderboard),
     winners,
     rewardDistribution: normalizeRewardDistribution(auction.rewardDistribution),
-    rewardDistributions: Array.isArray(auction.rewardDistributions) ? auction.rewardDistributions.map(normalizeRewardDistribution) : []
+    rewardDistributions: Array.isArray(auction.rewardDistributions) ? auction.rewardDistributions.map(normalizeRewardDistribution) : [],
+    resultReveal: normalizeResultReveal(auction.resultReveal),
+    winnerUsernames: Array.isArray(auction.winnerUsernames) ? auction.winnerUsernames : []
   };
 }
 
@@ -174,6 +186,16 @@ export async function placeAuctionBid(id, entryCount) {
       await apiFetch(`/auctions/${id}/bids`, {
         method: 'POST',
         body: JSON.stringify({ entryCount })
+      })
+    )
+  );
+}
+
+export async function revealAuctionResult(id) {
+  return normalizeAuctionEnvelope(
+    toEnvelope(
+      await apiFetch(`/auctions/${id}/reveal`, {
+        method: 'POST'
       })
     )
   );

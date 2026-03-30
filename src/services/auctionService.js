@@ -181,6 +181,14 @@ function sanitizeRewardDistribution(distribution) {
   };
 }
 
+function sanitizeRevealState(revealState) {
+  if (!revealState) return null;
+  return {
+    revealed_at: revealState.revealed_at,
+    created_at: revealState.created_at
+  };
+}
+
 async function settleAuctionRewards(client, auction, winners) {
   const leaderboard = await auctionRepository.listAuctionLeaderboard(client, auction.id, 500);
   if (!leaderboard.length) return [];
@@ -282,12 +290,14 @@ function stripPrivateFields(auction) {
     : [];
 
   const rewardDistribution = sanitizeRewardDistribution(auction.rewardDistribution);
+  const resultReveal = sanitizeRevealState(auction.resultReveal);
 
   const {
     hidden_capacity,
     participants: _participants,
     leaderboard: _leaderboard,
     rewardDistributions: _rewardDistributions,
+    resultReveal: _resultReveal,
     current_user_id: _currentUserId,
     bidHistory: _bidHistory,
     winners: _winners,
@@ -303,7 +313,8 @@ function stripPrivateFields(auction) {
     participants,
     leaderboard,
     winners,
-    rewardDistribution
+    rewardDistribution,
+    resultReveal
   };
 }
 
@@ -377,11 +388,12 @@ async function buildAuctionDetails(client, auctionId, currentUserId = null, opti
     auction = await ensureAuctionResolved(client, auctionId);
   }
 
-  const [bids, participants, winners, rewardDistributions] = await Promise.all([
+  const [bids, participants, winners, rewardDistributions, resultReveal] = await Promise.all([
     auctionRepository.listAuctionBids(client, auctionId, 100),
     auctionRepository.listAuctionLeaderboard(client, auctionId, 200),
     auctionRepository.listAuctionWinners(client, auctionId),
-    auctionRepository.listAuctionRewardDistributions(client, auctionId)
+    auctionRepository.listAuctionRewardDistributions(client, auctionId),
+    currentUserId ? auctionRepository.getAuctionResultReveal(client, auctionId, currentUserId) : Promise.resolve(null)
   ]);
 
   const currentParticipant = currentUserId
@@ -398,6 +410,8 @@ async function buildAuctionDetails(client, auctionId, currentUserId = null, opti
     : null;
   const latestBid = bids[0] || null;
   const topParticipant = participants[0] || null;
+  const resultFinalized = auction.computed_status === 'ended' && winners.length > 0 && rewardDistributions.length >= participants.length;
+  const revealEligible = Boolean(currentParticipant && resultFinalized);
 
   return shapeAuction({
     ...auction,
@@ -432,7 +446,12 @@ async function buildAuctionDetails(client, auctionId, currentUserId = null, opti
     myTotalBids: Number(currentParticipant?.total_bids || 0),
     isWinner: winners.some((winner) => winner.user_id === currentUserId),
     current_user_id: currentUserId,
-    btctPrice: BTCT_USD_PRICE
+    btctPrice: BTCT_USD_PRICE,
+    participated: Boolean(currentParticipant),
+    resultFinalized,
+    revealEligible,
+    resultReveal,
+    winnerUsernames: winners.map((winner) => winner.username).filter(Boolean)
   }, options);
 }
 
@@ -586,6 +605,29 @@ async function placeBid(auctionId, userId, payload) {
   });
 }
 
+async function revealAuctionResult(auctionId, userId) {
+  return withTransaction(async (client) => {
+    const auction = await buildAuctionDetails(client, auctionId, userId, { includeAdminFields: true });
+
+    if (!auction.participated) {
+      throw new ApiError(403, 'Only participants can reveal this auction result');
+    }
+
+    if (!auction.revealEligible) {
+      throw new ApiError(403, 'Result reveal is not available yet');
+    }
+
+    const reveal = await auctionRepository.upsertAuctionResultReveal(client, auctionId, userId);
+    const refreshed = await buildAuctionDetails(client, auctionId, userId);
+
+    return {
+      ...refreshed,
+      resultReveal: reveal,
+      revealEligible: true
+    };
+  });
+}
+
 async function listMyAuctionHistory(userId, filters, paginationInput) {
   const pagination = normalizePagination(paginationInput);
   const result = await withTransaction(async (client) => {
@@ -616,6 +658,7 @@ module.exports = {
   listAuctions,
   getAuctionDetails,
   getAuctionDetailsWithClient,
+  revealAuctionResult,
   placeBid,
   listMyAuctionHistory,
   ensureAuctionResolved,

@@ -1,14 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ChevronLeft, ChevronRight, Clock3, Gavel, Medal, Rocket, Share2, ShieldCheck, Sparkles, Trophy, Users, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { AuctionCountdown, AuctionStatusBadge, formatAuctionMoney } from '@/components/auctions/AuctionUi';
-import { getAuctionDetails, placeAuctionBid } from '@/lib/services/auctionsService';
+import { getAuctionDetails, placeAuctionBid, revealAuctionResult } from '@/lib/services/auctionsService';
 import { getWallet } from '@/lib/services/walletService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { number } from '@/lib/utils/format';
@@ -137,6 +137,68 @@ function FactCard({ title, children }) {
   );
 }
 
+function ResultRevealSection({ auction, winners, onReveal, revealMutation }) {
+  const alreadyRevealed = Boolean(auction?.resultReveal?.revealed_at);
+  const eligible = Boolean(auction?.revealEligible);
+  const [spinning, setSpinning] = useState(false);
+  const [revealed, setRevealed] = useState(alreadyRevealed);
+
+  useEffect(() => {
+    if (alreadyRevealed) setRevealed(true);
+  }, [alreadyRevealed]);
+
+  const handleReveal = async () => {
+    if (!eligible || spinning || revealMutation.isPending) return;
+    setSpinning(true);
+    window.setTimeout(async () => {
+      try {
+        await onReveal();
+        setRevealed(true);
+      } finally {
+        setSpinning(false);
+      }
+    }, 1800);
+  };
+
+  if (!eligible && !alreadyRevealed) return null;
+
+  return (
+    <FactCard title="Result Reveal">
+      <div className="space-y-4">
+        <div className="rounded-[28px] bg-[radial-gradient(circle_at_top,_rgba(250,204,21,0.28),_transparent_30%),linear-gradient(135deg,#0f172a,#1e293b)] px-4 py-5 text-white shadow-[0_18px_36px_rgba(15,23,42,0.16)]">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Prize Distributed</p>
+              <h3 className="mt-1 text-lg font-semibold">{revealed ? 'Winner Revealed' : 'Spin to Reveal Winner'}</h3>
+              <p className="mt-2 text-sm text-white/72">This wheel reveals the already finalized auction result. It does not affect winner selection.</p>
+            </div>
+            <button
+              onClick={handleReveal}
+              disabled={!eligible || spinning || revealMutation.isPending || revealed}
+              className={`relative inline-flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-4 border-white/20 bg-[conic-gradient(from_90deg,_#f97316,_#facc15,_#38bdf8,_#a855f7,_#f97316)] shadow-[0_16px_32px_rgba(15,23,42,0.24)] ${spinning ? 'animate-[spin_1.8s_linear]' : ''} disabled:opacity-75`}
+              aria-label="Spin to reveal winner"
+            >
+              <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-slate-950 text-white text-xs font-semibold">{revealed ? 'Done' : 'Spin'}</span>
+            </button>
+          </div>
+        </div>
+
+        {revealed ? (
+          <div className={`rounded-[24px] border px-4 py-4 text-sm shadow-[0_12px_28px_rgba(15,23,42,0.08)] ${auction?.isWinner ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-slate-200 bg-slate-50 text-slate-700'}`}>
+            <p className="font-semibold">{auction?.isWinner ? 'You Won' : winners.length > 1 ? 'Winners Revealed' : 'Winner Revealed'}</p>
+            <p className="mt-1">{winners.length > 1 ? `Winners: ${winners.map((winner) => winner.username).join(', ')}` : `Winner: ${winners[0]?.username || 'Unavailable'}`}</p>
+            <p className="mt-2 text-xs opacity-70">Auction closed and prize distribution finalized.</p>
+          </div>
+        ) : (
+          <div className="rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            Tap the wheel once to reveal the finalized winner{winners.length > 1 ? 's' : ''} for this auction.
+          </div>
+        )}
+      </div>
+    </FactCard>
+  );
+}
+
 function StickyBidBar({ status, entryPrice, walletBalance, bidMutation, onBid, winners }) {
   const quickCounts = [1, 5, 10];
   const isLive = status === 'live';
@@ -208,6 +270,15 @@ export default function AuctionDetailPage() {
       ]);
     },
     onError: (error) => toast.error(error.message || 'Entry purchase failed')
+  });
+
+  const revealMutation = useMutation({
+    mutationFn: () => revealAuctionResult(auctionId),
+    onSuccess: async (result) => {
+      toast.success(result.message || 'Winner revealed');
+      await queryClient.invalidateQueries({ queryKey: queryKeys.auctionDetail(auctionId) });
+    },
+    onError: (error) => toast.error(error.message || 'Could not reveal the result')
   });
 
   if (detailQuery.isLoading) return <div className="rounded-[30px] border border-white/80 bg-white p-6 text-sm text-slate-500 shadow-[0_14px_30px_rgba(15,23,42,0.06)]">Loading auction...</div>;
@@ -352,29 +423,27 @@ export default function AuctionDetailPage() {
           <LeaderboardCard leaderboard={leaderboard} myPosition={auction?.myPosition || 0} myEntryCount={auction?.myEntryCount || 0} />
 
           {status === 'ended' ? (
-            <FactCard title="Auction Result">
-              <div className="space-y-3">
-                {winners.length ? (
-                  <div className="rounded-[24px] border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-800 shadow-[0_12px_28px_rgba(16,185,129,0.08)]">
-                    Winner{winners.length > 1 ? 's' : ''}: {winners.map((winner) => winner.username).join(', ')}
-                  </div>
-                ) : null}
-                {rewardDistribution ? (
-                  rewardDistribution.result_type === 'winner' ? (
-                    <div className="rounded-[24px] border border-sky-200 bg-sky-50 px-4 py-4 text-sm text-sky-800">
-                      You won this auction item. No BTCT compensation is issued on a winning result.
-                    </div>
+            <>
+              <ResultRevealSection auction={auction} winners={winners} revealMutation={revealMutation} onReveal={() => revealMutation.mutateAsync()} />
+              <FactCard title="Auction Result">
+                <div className="space-y-3">
+                  {rewardDistribution ? (
+                    rewardDistribution.result_type === 'winner' ? (
+                      <div className="rounded-[24px] border border-sky-200 bg-sky-50 px-4 py-4 text-sm text-sky-800">
+                        You won this auction item. No BTCT compensation is issued on a winning result.
+                      </div>
+                    ) : (
+                      <div className="rounded-[24px] border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
+                        <p className="font-semibold">BTCT compensation awarded</p>
+                        <p className="mt-1">You spent {formatAuctionMoney(rewardDistribution.amount_spent)} and received {number(rewardDistribution.btct_awarded)} BTCT.</p>
+                      </div>
+                    )
                   ) : (
-                    <div className="rounded-[24px] border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
-                      <p className="font-semibold">BTCT compensation awarded</p>
-                      <p className="mt-1">You spent {formatAuctionMoney(rewardDistribution.amount_spent)} and received {number(rewardDistribution.btct_awarded)} BTCT.</p>
-                    </div>
-                  )
-                ) : (
-                  <div className="rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">Final outcome will appear here once settlement records are available.</div>
-                )}
-              </div>
-            </FactCard>
+                    <div className="rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">Final outcome will appear here once settlement records are available.</div>
+                  )}
+                </div>
+              </FactCard>
+            </>
           ) : null}
 
           <section className="grid grid-cols-3 gap-2 rounded-[30px] border border-white/80 bg-white p-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
