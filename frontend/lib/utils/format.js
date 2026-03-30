@@ -49,7 +49,8 @@ const incomeSourceMap = {
   order_purchase: 'Order Purchase',
   deposit_request: 'Deposit Request',
   withdrawal_request: 'Withdrawal Request',
-  p2p_transfer: 'P2P Transfer'
+  p2p_transfer: 'P2P Transfer',
+  auction_loss_compensation: 'Auction BTCT Reward'
 };
 
 const txTypeMap = {

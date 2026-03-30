@@ -4,6 +4,11 @@ const { ApiError } = require('../utils/ApiError');
 
 const MIN_WITHDRAWAL_AMOUNT = 10;
 const MIN_DEPOSIT_AMOUNT = 1;
+const BTCT_USD_PRICE = 0.10;
+
+function roundBtct(value) {
+  return Number(Number(value || 0).toFixed(4));
+}
 
 async function credit(client, userId, amount, source, referenceId = null, metadata = {}, createdByAdminId = null) {
   if (Number(amount) <= 0) {
@@ -50,16 +55,45 @@ async function debit(client, userId, amount, source, referenceId = null, metadat
   return updatedWallet;
 }
 
+async function creditBtct(client, userId, amount, source, referenceId = null, metadata = {}, createdByAdminId = null) {
+  const safeAmount = roundBtct(amount);
+  if (safeAmount <= 0) {
+    throw new ApiError(400, 'BTCT credit amount must be positive');
+  }
+
+  await walletRepository.createWallet(client, userId);
+  const wallet = await walletRepository.adjustBtctBalance(client, userId, safeAmount);
+
+  const transaction = await walletRepository.createBtctTransaction(client, {
+    userId,
+    txType: 'credit',
+    source,
+    amount: safeAmount,
+    referenceId,
+    metadata,
+    createdByAdminId
+  });
+
+  return {
+    wallet,
+    transaction,
+    btctPrice: BTCT_USD_PRICE
+  };
+}
+
 async function getWalletSummary(client, userId) {
   await walletRepository.createWallet(client, userId);
   const wallet = await walletRepository.getWallet(client, userId);
   const transactions = await walletRepository.listTransactions(client, userId, 100);
+  const btctTransactions = await walletRepository.listBtctTransactions(client, userId, 100);
   const walletBinding = await walletRepository.getWalletBinding(client, userId);
 
   return {
     wallet,
     walletBinding,
-    transactions
+    transactions,
+    btctTransactions,
+    btctPrice: BTCT_USD_PRICE
   };
 }
 
@@ -182,18 +216,21 @@ async function createP2pTransfer(client, senderUserId, payload) {
 }
 
 async function getHubHistory(client, userId) {
-  const [deposits, withdrawals, p2pTransfers, orders] = await Promise.all([
+  const [deposits, withdrawals, p2pTransfers, orders, btctTransactions] = await Promise.all([
     walletRepository.listDepositRequests(client, userId, 200),
     walletRepository.listWithdrawalRequests(client, userId, 200),
     walletRepository.listP2pTransfers(client, userId, 200),
-    walletRepository.listTransactions(client, userId, 200)
+    walletRepository.listTransactions(client, userId, 200),
+    walletRepository.listBtctTransactions(client, userId, 200)
   ]);
 
   return {
     deposits,
     withdrawals,
     p2pTransfers,
-    transactions: orders
+    transactions: orders,
+    btctTransactions,
+    btctPrice: BTCT_USD_PRICE
   };
 }
 
@@ -202,6 +239,7 @@ module.exports = {
   MIN_WITHDRAWAL_AMOUNT,
   credit,
   debit,
+  creditBtct,
   getWalletSummary,
   bindWalletAddress,
   createDepositRequest,

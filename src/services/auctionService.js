@@ -6,6 +6,7 @@ const walletService = require('./walletService');
 
 const MIN_AUCTION_PRICE = 0.5;
 const MAX_AUCTION_PRICE = 100;
+const BTCT_USD_PRICE = 0.10;
 const AUCTION_SCHEMA_ERROR_CODES = ['42P01', '42703', '42883', '42804'];
 
 function isAuctionSchemaError(error) {
@@ -14,6 +15,10 @@ function isAuctionSchemaError(error) {
 
 function roundMoney(value) {
   return Number(Number(value).toFixed(2));
+}
+
+function roundBtct(value) {
+  return Number(Number(value || 0).toFixed(4));
 }
 
 function normalizeSpecs(specifications) {
@@ -148,8 +153,92 @@ function buildWinnerAllocations(auction, topParticipants) {
   }));
 }
 
+function sanitizePublicLeaderboardEntry(participant, currentUserId = null) {
+  return {
+    user_id: participant.user_id,
+    username: participant.username,
+    rank: Number(participant.rank || 0),
+    total_bids: Number(participant.total_bids || 0),
+    total_entries: Number(participant.total_entries || 0),
+    last_bid_at: participant.last_bid_at,
+    joined_at: participant.joined_at,
+    is_current_user: Boolean(currentUserId && String(participant.user_id) === String(currentUserId))
+  };
+}
+
+function sanitizeRewardDistribution(distribution) {
+  if (!distribution) return null;
+  return {
+    user_id: distribution.user_id,
+    username: distribution.username,
+    result_type: distribution.result_type,
+    amount_spent: roundMoney(distribution.amount_spent || 0),
+    total_entries: Number(distribution.total_entries || 0),
+    total_bids: Number(distribution.total_bids || 0),
+    btct_awarded: roundBtct(distribution.btct_awarded || 0),
+    distributed_at: distribution.distributed_at,
+    metadata: distribution.metadata || {}
+  };
+}
+
+async function settleAuctionRewards(client, auction, winners) {
+  const leaderboard = await auctionRepository.listAuctionLeaderboard(client, auction.id, 500);
+  if (!leaderboard.length) return [];
+
+  const winnerIds = new Set(winners.map((winner) => String(winner.userId)));
+  const distributions = [];
+
+  for (const participant of leaderboard) {
+    const amountSpent = roundMoney(participant.total_spent || 0);
+    const isWinner = winnerIds.has(String(participant.user_id));
+    const btctAwarded = isWinner ? 0 : roundBtct(amountSpent / BTCT_USD_PRICE);
+    const existing = await auctionRepository.getAuctionRewardDistribution(client, auction.id, participant.user_id);
+
+    let btctTransactionId = existing?.btct_transaction_id || null;
+    let distributedAt = existing?.distributed_at || new Date().toISOString();
+
+    if (!isWinner && btctAwarded > 0 && !btctTransactionId) {
+      const reward = await walletService.creditBtct(client, participant.user_id, btctAwarded, 'auction_loss_compensation', auction.id, {
+        auctionId: auction.id,
+        auctionTitle: auction.title,
+        amountSpent,
+        btctAwarded,
+        btctPrice: BTCT_USD_PRICE,
+        totalEntries: Number(participant.total_entries || 0),
+        totalBids: Number(participant.total_bids || 0)
+      });
+      btctTransactionId = reward.transaction.id;
+      distributedAt = reward.transaction.created_at || distributedAt;
+    }
+
+    const distribution = await auctionRepository.upsertAuctionRewardDistribution(client, {
+      auctionId: auction.id,
+      userId: participant.user_id,
+      resultType: isWinner ? 'winner' : 'btct_compensation',
+      amountSpent,
+      totalEntries: Number(participant.total_entries || 0),
+      totalBids: Number(participant.total_bids || 0),
+      btctAwarded,
+      btctTransactionId,
+      distributedAt,
+      metadata: {
+        btctPrice: BTCT_USD_PRICE,
+        auctionTitle: auction.title,
+        isWinner,
+        winnerCount: winners.length
+      }
+    });
+
+    distributions.push(distribution);
+  }
+
+  return distributions;
+}
+
 function stripPrivateFields(auction) {
   if (!auction) return auction;
+
+  const currentUserId = auction.current_user_id || null;
 
   const winners = Array.isArray(auction.winners)
     ? auction.winners.map((winner) => ({
@@ -171,8 +260,13 @@ function stripPrivateFields(auction) {
         last_bid_at: participant.last_bid_at,
         total_bids: participant.total_bids,
         total_entries: participant.total_entries,
-        highest_bid: participant.highest_bid
+        highest_bid: participant.highest_bid,
+        rank: Number(participant.rank || 0)
       }))
+    : [];
+
+  const leaderboard = Array.isArray(auction.leaderboard)
+    ? auction.leaderboard.map((participant) => sanitizePublicLeaderboardEntry(participant, currentUserId))
     : [];
 
   const bidHistory = Array.isArray(auction.bidHistory)
@@ -187,9 +281,14 @@ function stripPrivateFields(auction) {
       }))
     : [];
 
+  const rewardDistribution = sanitizeRewardDistribution(auction.rewardDistribution);
+
   const {
     hidden_capacity,
     participants: _participants,
+    leaderboard: _leaderboard,
+    rewardDistributions: _rewardDistributions,
+    current_user_id: _currentUserId,
     bidHistory: _bidHistory,
     winners: _winners,
     created_by_username,
@@ -202,7 +301,9 @@ function stripPrivateFields(auction) {
     ...rest,
     bidHistory,
     participants,
-    winners
+    leaderboard,
+    winners,
+    rewardDistribution
   };
 }
 
@@ -260,6 +361,11 @@ async function ensureAuctionResolved(client, auctionId) {
     updatedBy: auction.updated_by
   });
 
+  const settledAuction = await auctionRepository.getAuctionById(client, auctionId);
+  if (settledAuction) {
+    await settleAuctionRewards(client, settledAuction, winners);
+  }
+
   return auctionRepository.getAuctionById(client, auctionId);
 }
 
@@ -271,27 +377,62 @@ async function buildAuctionDetails(client, auctionId, currentUserId = null, opti
     auction = await ensureAuctionResolved(client, auctionId);
   }
 
-  const [bids, participants, winners] = await Promise.all([
+  const [bids, participants, winners, rewardDistributions] = await Promise.all([
     auctionRepository.listAuctionBids(client, auctionId, 100),
-    auctionRepository.listAuctionParticipants(client, auctionId),
-    auctionRepository.listAuctionWinners(client, auctionId)
+    auctionRepository.listAuctionLeaderboard(client, auctionId, 200),
+    auctionRepository.listAuctionWinners(client, auctionId),
+    auctionRepository.listAuctionRewardDistributions(client, auctionId)
   ]);
 
-  const myEntryCount = currentUserId
-    ? bids.filter((bid) => bid.user_id === currentUserId).reduce((sum, bid) => sum + Number(bid.entry_count || 0), 0)
-    : 0;
-  const myTotalSpend = currentUserId
-    ? bids.filter((bid) => bid.user_id === currentUserId).reduce((sum, bid) => sum + Number(bid.total_amount || 0), 0)
-    : 0;
+  const currentParticipant = currentUserId
+    ? participants.find((participant) => String(participant.user_id) === String(currentUserId)) || null
+    : null;
+  const myEntryCount = currentParticipant
+    ? Number(currentParticipant.total_entries || 0)
+    : bids.filter((bid) => bid.user_id === currentUserId).reduce((sum, bid) => sum + Number(bid.entry_count || 0), 0);
+  const myTotalSpend = currentParticipant
+    ? roundMoney(currentParticipant.total_spent || 0)
+    : roundMoney(bids.filter((bid) => bid.user_id === currentUserId).reduce((sum, bid) => sum + Number(bid.total_amount || 0), 0));
+  const rewardDistribution = currentUserId
+    ? rewardDistributions.find((entry) => String(entry.user_id) === String(currentUserId)) || null
+    : null;
+  const latestBid = bids[0] || null;
+  const topParticipant = participants[0] || null;
 
   return shapeAuction({
     ...auction,
     bidHistory: bids,
     participants,
+    leaderboard: participants.slice(0, 10),
+    rewardDistributions,
+    rewardDistribution,
+    participantCount: participants.length,
+    latestBidder: latestBid
+      ? {
+          user_id: latestBid.user_id,
+          username: latestBid.username,
+          entry_count: Number(latestBid.entry_count || 0),
+          total_amount: roundMoney(latestBid.total_amount || 0),
+          created_at: latestBid.created_at
+        }
+      : null,
+    topParticipant: topParticipant
+      ? {
+          user_id: topParticipant.user_id,
+          username: topParticipant.username,
+          total_entries: Number(topParticipant.total_entries || 0),
+          total_bids: Number(topParticipant.total_bids || 0),
+          rank: Number(topParticipant.rank || 1)
+        }
+      : null,
     winners,
     myEntryCount,
-    myTotalSpend: roundMoney(myTotalSpend),
-    isWinner: winners.some((winner) => winner.user_id === currentUserId)
+    myTotalSpend,
+    myPosition: Number(currentParticipant?.rank || 0),
+    myTotalBids: Number(currentParticipant?.total_bids || 0),
+    isWinner: winners.some((winner) => winner.user_id === currentUserId),
+    current_user_id: currentUserId,
+    btctPrice: BTCT_USD_PRICE
   }, options);
 }
 
@@ -471,6 +612,7 @@ async function listMyAuctionHistory(userId, filters, paginationInput) {
 module.exports = {
   MIN_AUCTION_PRICE,
   MAX_AUCTION_PRICE,
+  BTCT_USD_PRICE,
   listAuctions,
   getAuctionDetails,
   getAuctionDetailsWithClient,

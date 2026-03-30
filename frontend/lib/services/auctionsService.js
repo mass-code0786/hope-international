@@ -43,6 +43,34 @@ function toEnvelope(payload) {
   return { data: payload ?? null, pagination: null, summary: null, message: '' };
 }
 
+function toNumber(value, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function normalizeLeaderboard(entries = []) {
+  return Array.isArray(entries)
+    ? entries.map((entry) => ({
+        ...entry,
+        rank: toNumber(entry?.rank),
+        total_entries: toNumber(entry?.total_entries),
+        total_bids: toNumber(entry?.total_bids),
+        total_spent: toNumber(entry?.total_spent)
+      }))
+    : [];
+}
+
+function normalizeRewardDistribution(entry) {
+  if (!entry || typeof entry !== 'object') return entry;
+  return {
+    ...entry,
+    amount_spent: toNumber(entry.amount_spent),
+    btct_awarded: toNumber(entry.btct_awarded),
+    total_entries: toNumber(entry.total_entries),
+    total_bids: toNumber(entry.total_bids)
+  };
+}
+
 export function normalizeAuctionStatus(...statuses) {
   for (const value of statuses) {
     if (typeof value !== 'string') continue;
@@ -64,6 +92,15 @@ function normalizeAuction(auction) {
     ...(Array.isArray(auction.product_gallery) ? auction.product_gallery : [])
   ].filter(Boolean);
 
+  const winners = Array.isArray(auction.winners)
+    ? auction.winners.map((winner) => ({
+        ...winner,
+        winning_entry_count: toNumber(winner.winning_entry_count),
+        allocation_ratio: toNumber(winner.allocation_ratio),
+        allocation_quantity: toNumber(winner.allocation_quantity)
+      }))
+    : [];
+
   return {
     ...auction,
     status,
@@ -72,15 +109,41 @@ function normalizeAuction(auction) {
     title: auction.title || auction.product_name || 'Untitled auction',
     image_url: auction.image_url || images[0] || '',
     gallery: Array.from(new Set(images)),
-    display_price: Number(
+    display_price: toNumber(
       auction.entry_price
       ?? auction.display_current_bid
       ?? auction.current_bid
       ?? auction.starting_price
       ?? 0
     ),
-    total_entries: Number(auction.total_entries || 0),
-    total_bids: Number(auction.total_bids || 0)
+    total_entries: toNumber(auction.total_entries),
+    total_bids: toNumber(auction.total_bids),
+    participantCount: toNumber(auction.participantCount),
+    myEntryCount: toNumber(auction.myEntryCount),
+    myTotalSpend: toNumber(auction.myTotalSpend),
+    myPosition: toNumber(auction.myPosition),
+    myTotalBids: toNumber(auction.myTotalBids),
+    btctPrice: toNumber(auction.btctPrice, 0.1),
+    latestBidder: auction.latestBidder
+      ? {
+          ...auction.latestBidder,
+          entry_count: toNumber(auction.latestBidder.entry_count),
+          total_amount: toNumber(auction.latestBidder.total_amount)
+        }
+      : null,
+    topParticipant: auction.topParticipant
+      ? {
+          ...auction.topParticipant,
+          rank: toNumber(auction.topParticipant.rank),
+          total_entries: toNumber(auction.topParticipant.total_entries),
+          total_bids: toNumber(auction.topParticipant.total_bids)
+        }
+      : null,
+    participants: normalizeLeaderboard(auction.participants),
+    leaderboard: normalizeLeaderboard(auction.leaderboard),
+    winners,
+    rewardDistribution: normalizeRewardDistribution(auction.rewardDistribution),
+    rewardDistributions: Array.isArray(auction.rewardDistributions) ? auction.rewardDistributions.map(normalizeRewardDistribution) : []
   };
 }
 

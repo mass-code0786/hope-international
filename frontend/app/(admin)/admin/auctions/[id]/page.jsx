@@ -10,6 +10,7 @@ import { AuctionAdminForm, toAuctionFormValues } from '@/components/auctions/Auc
 import { formatAuctionMoney } from '@/components/auctions/AuctionUi';
 import { getAdminAuctionDetails, getAdminProducts, runAdminAuctionAction, updateAdminAuction } from '@/lib/services/admin';
 import { queryKeys } from '@/lib/query/queryKeys';
+import { number } from '@/lib/utils/format';
 
 export default function AdminAuctionDetailPage() {
   const params = useParams();
@@ -60,10 +61,11 @@ export default function AdminAuctionDetailPage() {
   const products = Array.isArray(productsQuery.data?.data) ? productsQuery.data.data : [];
   const initialValues = toAuctionFormValues(auction);
   const sourceMode = auction.product_id ? 'Existing catalog product' : 'Standalone auction item';
+  const rewardDistributions = Array.isArray(auction.rewardDistributions) ? auction.rewardDistributions : [];
 
   return (
     <div className="space-y-5">
-      <AdminSectionHeader title={auction.title} subtitle="Review entry purchases, participants, winners, hidden capacity, and tie allocation." action={<button onClick={() => router.push('/admin/auctions')} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-muted">Back</button>} />
+      <AdminSectionHeader title={auction.title} subtitle="Review entry purchases, participants, winners, hidden capacity, BTCT compensation, and tie allocation." action={<button onClick={() => router.push('/admin/auctions')} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-muted">Back</button>} />
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         <AuctionAdminForm products={products} initialValues={initialValues} onSubmit={(payload) => updateMutation.mutate(payload)} isSaving={updateMutation.isPending} submitLabel="Update Auction" />
@@ -78,11 +80,13 @@ export default function AdminAuctionDetailPage() {
             <div className="mt-2 flex items-center justify-between"><span>Product</span><strong className="text-right text-text">{auction.product_name || 'Auction-only item'}</strong></div>
             <div className="mt-2 flex items-center justify-between"><span>Entry price</span><strong className="text-text">{formatAuctionMoney(auction.entry_price || auction.display_current_bid)}</strong></div>
             <div className="mt-2 flex items-center justify-between"><span>Total entries</span><strong className="text-text">{Number(auction.total_entries || 0)}</strong></div>
+            <div className="mt-2 flex items-center justify-between"><span>Participants</span><strong className="text-text">{Number(auction.participantCount || auction.participants?.length || 0)}</strong></div>
             <div className="mt-2 flex items-center justify-between"><span>Hidden capacity</span><strong className="text-text">{Number(auction.hidden_capacity || 0)}</strong></div>
             <div className="mt-2 flex items-center justify-between"><span>Category</span><strong className="text-text">{auction.category || 'Not set'}</strong></div>
             <div className="mt-2 flex items-center justify-between"><span>Condition</span><strong className="text-text">{auction.item_condition || 'Not set'}</strong></div>
             <div className="mt-2 flex items-center justify-between"><span>Tie state</span><strong className="text-text">{auction.has_tie ? `Yes (${auction.winner_count || 0} winners)` : 'No'}</strong></div>
             <div className="mt-2 flex items-center justify-between"><span>Reward mode</span><strong className="text-text">{auction.reward_mode === 'split' ? `Split ${formatAuctionMoney(auction.reward_value || 0)}` : `${auction.stock_quantity || 1} stock`}</strong></div>
+            <div className="mt-2 flex items-center justify-between"><span>BTCT price</span><strong className="text-text">{formatAuctionMoney(auction.btctPrice || 0.1)} / BTCT</strong></div>
             <div className="mt-2 flex items-center justify-between"><span>Window</span><strong className="text-right text-text">{new Date(auction.start_at).toLocaleString()} to {new Date(auction.end_at).toLocaleString()}</strong></div>
             {auction.shipping_details ? <p className="mt-3 text-xs leading-5 text-muted">Shipping: {auction.shipping_details}</p> : null}
           </div>
@@ -116,12 +120,34 @@ export default function AdminAuctionDetailPage() {
               {(auction.participants || []).slice(0, 12).map((participant) => (
                 <div key={participant.user_id} className="flex items-center justify-between rounded-2xl border border-white/10 bg-cardSoft px-3 py-2 text-xs text-muted">
                   <div>
-                    <p className="font-semibold text-text">{participant.username}</p>
+                    <p className="font-semibold text-text">#{participant.rank || '-'} {participant.username}</p>
                     <p>{participant.total_bids} purchase events</p>
                   </div>
-                  <strong className="text-sm text-text">{participant.total_entries} entries</strong>
+                  <div className="text-right">
+                    <strong className="text-sm text-text">{participant.total_entries} entries</strong>
+                    <p>{formatAuctionMoney(participant.total_spent || 0)} spent</p>
+                  </div>
                 </div>
               ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold text-text">Distribution Logs</p>
+            <div className="mt-3 space-y-2">
+              {rewardDistributions.map((entry) => (
+                <div key={entry.user_id} className="rounded-2xl border border-white/10 bg-cardSoft px-3 py-2 text-xs text-muted">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-semibold text-text">{entry.username}</p>
+                    <strong className="text-sm text-text">{entry.result_type === 'winner' ? 'Winner' : `${number(entry.btct_awarded || 0)} BTCT`}</strong>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <span>Spent {formatAuctionMoney(entry.amount_spent || 0)}</span>
+                    <span>{entry.total_entries || 0} entries</span>
+                  </div>
+                </div>
+              ))}
+              {!rewardDistributions.length ? <p className="text-xs text-muted">No distribution records yet.</p> : null}
             </div>
           </div>
 

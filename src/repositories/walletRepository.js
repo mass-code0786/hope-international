@@ -46,6 +46,47 @@ async function debitBalanceIfSufficient(client, userId, amount) {
   return rows[0] || null;
 }
 
+async function adjustBtctBalance(client, userId, amountDelta) {
+  const { rows } = await q(client).query(
+    `UPDATE wallets
+     SET btct_balance = COALESCE(btct_balance, 0) + $2
+     WHERE user_id = $1
+     RETURNING *`,
+    [userId, amountDelta]
+  );
+  return rows[0] || null;
+}
+
+async function createBtctTransaction(client, payload) {
+  const { rows } = await q(client).query(
+    `INSERT INTO btct_transactions (user_id, tx_type, source, amount, reference_id, metadata, created_by_admin_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING *`,
+    [
+      payload.userId,
+      payload.txType,
+      payload.source,
+      payload.amount,
+      payload.referenceId || null,
+      payload.metadata || {},
+      payload.createdByAdminId || null
+    ]
+  );
+  return rows[0];
+}
+
+async function listBtctTransactions(client, userId, limit = 50) {
+  const { rows } = await q(client).query(
+    `SELECT *
+     FROM btct_transactions
+     WHERE user_id = $1
+     ORDER BY created_at DESC
+     LIMIT $2`,
+    [userId, limit]
+  );
+  return rows;
+}
+
 async function createTransaction(client, payload) {
   const { rows } = await q(client).query(
     `INSERT INTO wallet_transactions (user_id, tx_type, source, amount, reference_id, metadata, created_by_admin_id)
@@ -524,6 +565,9 @@ module.exports = {
   getWallet,
   adjustBalance,
   debitBalanceIfSufficient,
+  adjustBtctBalance,
+  createBtctTransaction,
+  listBtctTransactions,
   createTransaction,
   listTransactions,
   listTransactionsBySource,

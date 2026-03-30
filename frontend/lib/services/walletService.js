@@ -1,12 +1,35 @@
 import { apiFetch } from '@/lib/api/client';
 
+function toNumber(value, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function normalizeBtctTransactions(items = []) {
+  return Array.isArray(items)
+    ? items.map((item) => ({
+        ...item,
+        amount: toNumber(item.amount)
+      }))
+    : [];
+}
+
 export async function getWallet() {
   const data = await apiFetch('/wallet');
-  if (data.wallet) return data;
-  if (Array.isArray(data.transactions)) {
-    return { wallet: data.wallet || {}, walletBinding: data.walletBinding || null, transactions: data.transactions };
-  }
-  return { wallet: data, walletBinding: data.walletBinding || null, transactions: data.transactions || [] };
+  const normalized = data.wallet ? data : Array.isArray(data.transactions)
+    ? { wallet: data.wallet || {}, walletBinding: data.walletBinding || null, transactions: data.transactions }
+    : { wallet: data, walletBinding: data.walletBinding || null, transactions: data.transactions || [] };
+
+  return {
+    ...normalized,
+    wallet: {
+      ...(normalized.wallet || {}),
+      balance: toNumber(normalized.wallet?.balance),
+      btct_balance: toNumber(normalized.wallet?.btct_balance)
+    },
+    btctTransactions: normalizeBtctTransactions(normalized.btctTransactions || []),
+    btctPrice: toNumber(normalized.btctPrice, 0.1)
+  };
 }
 
 export async function getWalletTransactions() {

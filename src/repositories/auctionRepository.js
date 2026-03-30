@@ -26,6 +26,14 @@ function normalizeAuctionRow(row) {
   };
 }
 
+function normalizeAuctionRewardDistributionRow(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    metadata: row.metadata && typeof row.metadata === 'object' ? row.metadata : {}
+  };
+}
+
 function buildAuctionStatusCase(nowPlaceholder) {
   return `
     CASE
@@ -539,6 +547,110 @@ async function listAuctionWinners(client, auctionId) {
   return rows;
 }
 
+async function listAuctionLeaderboard(client, auctionId, limit = 100) {
+  const { rows } = await q(client).query(
+    `WITH totals AS (
+      SELECT
+        p.auction_id,
+        p.user_id,
+        p.joined_at,
+        p.last_bid_at,
+        p.total_bids,
+        p.total_entries,
+        p.highest_bid,
+        COALESCE(SUM(b.total_amount), 0)::numeric(14,2) AS total_spent,
+        ROW_NUMBER() OVER (
+          ORDER BY p.total_entries DESC, p.last_bid_at ASC NULLS LAST, p.joined_at ASC
+        ) AS rank
+      FROM auction_participants p
+      LEFT JOIN auction_bids b ON b.auction_id = p.auction_id AND b.user_id = p.user_id
+      WHERE p.auction_id = $1
+      GROUP BY p.auction_id, p.user_id, p.joined_at, p.last_bid_at, p.total_bids, p.total_entries, p.highest_bid
+    )
+     SELECT totals.*, u.username, u.email
+     FROM totals
+     JOIN users u ON u.id = totals.user_id
+     ORDER BY totals.rank ASC
+     LIMIT $2`,
+    [auctionId, limit]
+  );
+  return rows;
+}
+
+async function getAuctionRewardDistribution(client, auctionId, userId) {
+  const { rows } = await q(client).query(
+    `SELECT ard.*, u.username, bt.amount AS btct_transaction_amount
+     FROM auction_reward_distributions ard
+     JOIN users u ON u.id = ard.user_id
+     LEFT JOIN btct_transactions bt ON bt.id = ard.btct_transaction_id
+     WHERE ard.auction_id = $1 AND ard.user_id = $2
+     LIMIT 1`,
+    [auctionId, userId]
+  );
+  return normalizeAuctionRewardDistributionRow(rows[0] || null);
+}
+
+async function upsertAuctionRewardDistribution(client, payload) {
+  const { rows } = await q(client).query(
+    `INSERT INTO auction_reward_distributions (
+       auction_id,
+       user_id,
+       result_type,
+       amount_spent,
+       total_entries,
+       total_bids,
+       btct_awarded,
+       btct_transaction_id,
+       metadata,
+       distributed_at
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     ON CONFLICT (auction_id, user_id)
+     DO UPDATE SET
+       result_type = EXCLUDED.result_type,
+       amount_spent = EXCLUDED.amount_spent,
+       total_entries = EXCLUDED.total_entries,
+       total_bids = EXCLUDED.total_bids,
+       btct_awarded = EXCLUDED.btct_awarded,
+       btct_transaction_id = COALESCE(EXCLUDED.btct_transaction_id, auction_reward_distributions.btct_transaction_id),
+       metadata = COALESCE(auction_reward_distributions.metadata, '{}'::jsonb) || EXCLUDED.metadata,
+       distributed_at = COALESCE(EXCLUDED.distributed_at, auction_reward_distributions.distributed_at),
+       updated_at = NOW()
+     RETURNING *`,
+    [
+      payload.auctionId,
+      payload.userId,
+      payload.resultType,
+      payload.amountSpent || 0,
+      payload.totalEntries || 0,
+      payload.totalBids || 0,
+      payload.btctAwarded || 0,
+      payload.btctTransactionId || null,
+      payload.metadata || {},
+      payload.distributedAt || null
+    ]
+  );
+  return normalizeAuctionRewardDistributionRow(rows[0] || null);
+}
+
+async function listAuctionRewardDistributions(client, auctionId) {
+  const { rows } = await q(client).query(
+    `SELECT
+       ard.*,
+       u.username,
+       u.email,
+       bt.amount AS btct_transaction_amount,
+       bt.created_at AS btct_transaction_created_at
+     FROM auction_reward_distributions ard
+     JOIN users u ON u.id = ard.user_id
+     LEFT JOIN btct_transactions bt ON bt.id = ard.btct_transaction_id
+     WHERE ard.auction_id = $1
+     ORDER BY ard.result_type ASC, ard.btct_awarded DESC, ard.amount_spent DESC, ard.created_at ASC`,
+    [auctionId]
+  );
+  return rows.map(normalizeAuctionRewardDistributionRow);
+}
+
 async function getUserBidStats(client, userId) {
   const { rows } = await q(client).query(
     `SELECT
@@ -631,10 +743,14 @@ module.exports = {
   upsertParticipant,
   listAuctionBids,
   listAuctionParticipants,
+  listAuctionLeaderboard,
   getHighestBid,
   getTopParticipants,
   replaceAuctionWinners,
   listAuctionWinners,
+  getAuctionRewardDistribution,
+  upsertAuctionRewardDistribution,
+  listAuctionRewardDistributions,
   getUserBidStats,
   listUserAuctionHistory
 };
