@@ -275,17 +275,11 @@ export default function PublicLandingPage() {
 
       <div className="relative mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
         <header className="rounded-[28px] border border-white/70 bg-white/90 px-4 py-3 shadow-[0_12px_32px_rgba(15,23,42,0.08)] backdrop-blur sm:px-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm sm:h-12 sm:w-12">
-                <Logo size={34} />
-              </div>
-              <p className="text-sm font-semibold tracking-[-0.02em] text-slate-950 sm:text-base">Hope International</p>
+          <div className="flex items-center justify-center gap-3 py-1">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm sm:h-12 sm:w-12">
+              <Logo size={34} />
             </div>
-            <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
-              <ActionLink href="/login" compact>Login</ActionLink>
-              <ActionLink href="/register" primary compact>Register</ActionLink>
-            </div>
+            <p className="text-sm font-semibold tracking-[-0.02em] text-slate-950 sm:text-base">Hope International</p>
           </div>
         </header>
 
