@@ -128,6 +128,32 @@ function FactCard({ title, children }) {
   );
 }
 
+function CapacityProgressCard({ totalCapacity, capacityFilled, capacityRemaining, capacityPercent }) {
+  if (!totalCapacity) return null;
+
+  return (
+    <div className="mt-3 rounded-xl border border-emerald-500/20 bg-[linear-gradient(135deg,rgba(16,185,129,0.12),rgba(15,23,42,0.08))] px-3 py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">Capacity Filled</p>
+          <p className="mt-1 text-sm font-semibold text-white">{capacityFilled} / {totalCapacity} filled</p>
+        </div>
+        <div className="text-right">
+          <p className="text-lg font-bold text-emerald-300">{capacityPercent}%</p>
+          <p className="text-[11px] text-slate-300">{capacityRemaining} remaining</p>
+        </div>
+      </div>
+
+      <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-900/80 ring-1 ring-white/5">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-lime-400 transition-[width] duration-500 ease-out"
+          style={{ width: `${Math.max(0, Math.min(100, capacityPercent))}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function ResultRevealSection({ auction, winners, onReveal, revealMutation }) {
   const alreadyRevealed = Boolean(auction?.resultReveal?.revealed_at);
   const eligible = Boolean(auction?.revealEligible);
@@ -379,6 +405,13 @@ export default function AuctionDetailPage() {
                 <p className="mt-1 text-sm font-semibold text-white">{participantCount} users</p>
               </div>
             </div>
+
+            <CapacityProgressCard
+              totalCapacity={auction?.totalCapacity}
+              capacityFilled={auction?.capacityFilled}
+              capacityRemaining={auction?.capacityRemaining}
+              capacityPercent={auction?.capacityPercent}
+            />
 
             <div className="mt-3 grid grid-cols-2 gap-2">
               <StatTile icon={Clock3} label="Timer" value={<AuctionCountdown startAt={auction?.start_at} endAt={auction?.end_at} status={status} compact />} accent />

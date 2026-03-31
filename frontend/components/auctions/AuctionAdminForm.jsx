@@ -16,7 +16,7 @@ const EMPTY_FORM = {
   category: '',
   itemCondition: '',
   shippingDetails: '',
-  entryPrice: '0.50',
+  entryPrice: '0.10',
   hiddenCapacity: '100',
   stockQuantity: '1',
   rewardMode: 'stock',
@@ -71,7 +71,7 @@ export function toAuctionFormValues(auction) {
     category: auction.category || '',
     itemCondition: auction.item_condition || '',
     shippingDetails: auction.shipping_details || '',
-    entryPrice: String(Number(auction.entry_price || auction.starting_price || 0.5).toFixed(2)),
+    entryPrice: String(Number(auction.entry_price || auction.starting_price || 0.1).toFixed(2)),
     hiddenCapacity: String(Number(auction.hidden_capacity || 100)),
     stockQuantity: String(Number(auction.stock_quantity || 1)),
     rewardMode: auction.reward_mode || 'stock',
@@ -151,11 +151,11 @@ export function AuctionAdminForm({ initialValues, onSubmit, isSaving = false, su
       category: isStandalone ? form.category : undefined,
       itemCondition: isStandalone ? form.itemCondition : undefined,
       shippingDetails: isStandalone ? form.shippingDetails : undefined,
-      entryPrice: Number(form.entryPrice || 0.5),
+      entryPrice: Number(form.entryPrice || 0.1),
       hiddenCapacity: Number(form.hiddenCapacity || 1),
       stockQuantity: Number(form.stockQuantity || 1),
       rewardMode: form.rewardMode,
-      rewardValue: form.rewardMode === 'split' ? Number(form.rewardValue || 0.5) : undefined,
+      rewardValue: form.rewardMode === 'split' ? Number(form.rewardValue || 0.01) : undefined,
       startAt: new Date(form.startAt).toISOString(),
       endAt: new Date(form.endAt).toISOString(),
       isActive: Boolean(form.isActive)
@@ -259,7 +259,7 @@ export function AuctionAdminForm({ initialValues, onSubmit, isSaving = false, su
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <label className="space-y-2 text-sm text-muted">
           <span>Fixed entry price</span>
-          <input type="number" min="0.5" max="100" step="0.01" value={form.entryPrice} onChange={(e) => setForm((prev) => ({ ...prev, entryPrice: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-cardSoft px-3 py-2.5 text-sm text-text" />
+          <input type="number" min="0.10" step="0.01" value={form.entryPrice} onChange={(e) => setForm((prev) => ({ ...prev, entryPrice: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-cardSoft px-3 py-2.5 text-sm text-text" />
         </label>
         <label className="space-y-2 text-sm text-muted">
           <span>Hidden capacity</span>
@@ -281,7 +281,7 @@ export function AuctionAdminForm({ initialValues, onSubmit, isSaving = false, su
       {form.rewardMode === 'split' ? (
         <label className="space-y-2 text-sm text-muted">
           <span>Total reward value</span>
-          <input type="number" min="0.5" max="100" step="0.01" value={form.rewardValue} onChange={(e) => setForm((prev) => ({ ...prev, rewardValue: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-cardSoft px-3 py-2.5 text-sm text-text" />
+          <input type="number" min="0.01" step="0.01" value={form.rewardValue} onChange={(e) => setForm((prev) => ({ ...prev, rewardValue: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-cardSoft px-3 py-2.5 text-sm text-text" />
         </label>
       ) : null}
 
@@ -302,7 +302,8 @@ export function AuctionAdminForm({ initialValues, onSubmit, isSaving = false, su
       </label>
 
       <div className="rounded-2xl border border-white/10 bg-cardSoft p-3 text-xs text-muted">
-        <p>Entry price range: {formatAuctionMoney(form.entryPrice || 0.5)} to $100.00</p>
+        <p>Entry price must be at least $0.10</p>
+        {form.rewardMode === 'split' ? <p className="mt-1">Reward value must be greater than $0.00</p> : null}
         <p className="mt-1">Hidden capacity is admin-only and never shown to users.</p>
         <p className="mt-1">Mode: {isStandalone ? 'Standalone auction-only item' : 'Existing catalog product'}</p>
       </div>
@@ -317,4 +318,7 @@ export function AuctionAdminForm({ initialValues, onSubmit, isSaving = false, su
     </div>
   );
 }
+
+
+
 

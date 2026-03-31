@@ -4,8 +4,8 @@ const { ApiError } = require('../utils/ApiError');
 const auctionRepository = require('../repositories/auctionRepository');
 const walletService = require('./walletService');
 
-const MIN_AUCTION_PRICE = 0.5;
-const MAX_AUCTION_PRICE = 100;
+const MIN_AUCTION_PRICE = 0.10;
+const MIN_REWARD_VALUE = 0.01;
 const BTCT_USD_PRICE = 0.10;
 const AUCTION_SCHEMA_ERROR_CODES = ['42P01', '42703', '42883', '42804'];
 
@@ -40,8 +40,16 @@ function normalizeGallery(gallery, fallback) {
 
 function validateAuctionRange(value, label) {
   const amount = roundMoney(value);
-  if (Number.isNaN(amount) || amount < MIN_AUCTION_PRICE || amount > MAX_AUCTION_PRICE) {
-    throw new ApiError(400, `${label} must be between $${MIN_AUCTION_PRICE} and $${MAX_AUCTION_PRICE}`);
+  if (Number.isNaN(amount) || amount < MIN_AUCTION_PRICE) {
+    throw new ApiError(400, `${label} must be at least $${MIN_AUCTION_PRICE.toFixed(2)}`);
+  }
+  return amount;
+}
+
+function validateRewardValue(value) {
+  const amount = roundMoney(value);
+  if (Number.isNaN(amount) || amount < MIN_REWARD_VALUE) {
+    throw new ApiError(400, 'Reward value must be greater than $0.00');
   }
   return amount;
 }
@@ -81,7 +89,7 @@ function sanitizeAuctionPayload(payload, before = null) {
   const rewardValueRaw = payload.rewardValue ?? before?.reward_value;
   const rewardValue = rewardValueRaw === null || rewardValueRaw === undefined || rewardValueRaw === ''
     ? null
-    : validateAuctionRange(rewardValueRaw, 'Reward value');
+    : validateRewardValue(rewardValueRaw);
 
   const isActive = payload.isActive ?? before?.is_active ?? true;
   const cancelledAt = payload.cancelledAt ?? before?.cancelled_at ?? null;
@@ -243,6 +251,20 @@ async function settleAuctionRewards(client, auction, winners) {
   return distributions;
 }
 
+function buildCapacitySummary(auction) {
+  const totalCapacity = Math.max(0, Number(auction?.hidden_capacity || 0));
+  const filledEntries = Math.max(0, Number(auction?.total_entries || 0));
+  const remainingEntries = Math.max(totalCapacity - filledEntries, 0);
+  const percentFilled = totalCapacity > 0 ? Math.min(100, Math.round((filledEntries / totalCapacity) * 100)) : 0;
+
+  return {
+    totalCapacity,
+    filledEntries,
+    remainingEntries,
+    percentFilled
+  };
+}
+
 function stripPrivateFields(auction) {
   if (!auction) return auction;
 
@@ -291,6 +313,7 @@ function stripPrivateFields(auction) {
 
   const rewardDistribution = sanitizeRewardDistribution(auction.rewardDistribution);
   const resultReveal = sanitizeRevealState(auction.resultReveal);
+  const capacity = buildCapacitySummary(auction);
 
   const {
     hidden_capacity,
@@ -653,7 +676,6 @@ async function listMyAuctionHistory(userId, filters, paginationInput) {
 
 module.exports = {
   MIN_AUCTION_PRICE,
-  MAX_AUCTION_PRICE,
   BTCT_USD_PRICE,
   listAuctions,
   getAuctionDetails,
@@ -666,6 +688,10 @@ module.exports = {
   deriveAuctionStatus,
   validateAuctionRange
 };
+
+
+
+
 
 
 

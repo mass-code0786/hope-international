@@ -179,11 +179,11 @@ const adminAuctionBaseBody = z.object({
   category: z.string().min(2).max(120).optional(),
   itemCondition: z.string().max(120).optional(),
   shippingDetails: z.string().max(1000).optional(),
-  entryPrice: z.number().min(0.5).max(100),
+  entryPrice: z.number().min(0.1),
   hiddenCapacity: z.number().int().positive(),
   stockQuantity: z.number().int().positive().optional(),
   rewardMode: z.enum(['stock', 'split']).optional(),
-  rewardValue: z.number().min(0.5).max(100).optional(),
+  rewardValue: z.number().positive().optional(),
   startAt: z.string().datetime(),
   endAt: z.string().datetime(),
   isActive: z.boolean().optional()
@@ -423,3 +423,4 @@ module.exports = {
   adminLandingCountryUpdateSchema,
   adminLandingEntityIdParamSchema
 };
+
