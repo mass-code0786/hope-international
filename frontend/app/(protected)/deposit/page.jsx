@@ -59,23 +59,62 @@ export default function DepositPage() {
             }
           });
         }}
-        className="space-y-2 rounded-xl border border-slate-200 bg-white p-3"
+        className="space-y-3 rounded-2xl border border-slate-300 bg-white p-4 shadow-[0_10px_24px_rgba(15,23,42,0.05)]"
       >
-        <input name="amount" type="number" min="1" step="0.01" placeholder="Amount (min 1)" className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs" required />
-        <select name="method" className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs">
-          {methods.map((method) => (
-            <option key={method.value} value={method.value}>{method.label}</option>
-          ))}
-        </select>
-        <input name="payerName" placeholder="Payer name (optional)" className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs" />
-        <input name="txHash" placeholder="Transaction hash / reference (optional)" className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs" />
-        <textarea
-          name="instructions"
-          rows={2}
-          placeholder="Instructions or note for admin (optional)"
-          className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs"
-        />
-        <p className="text-[11px] text-slate-500">Deposit requests are stored immediately and credited only after admin approval.</p>
+        <div className="space-y-1.5">
+          <label htmlFor="deposit-amount" className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">Amount</label>
+          <input
+            id="deposit-amount"
+            name="amount"
+            type="number"
+            min="1"
+            step="0.01"
+            placeholder="Amount (min 1)"
+            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-900 outline-none placeholder:font-medium placeholder:text-slate-500 focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
+            required
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="deposit-method" className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">Method</label>
+          <select
+            id="deposit-method"
+            name="method"
+            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-medium text-slate-900 outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
+          >
+            {methods.map((method) => (
+              <option key={method.value} value={method.value}>{method.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="deposit-payer-name" className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">Payer Name</label>
+          <input
+            id="deposit-payer-name"
+            name="payerName"
+            placeholder="Payer name (optional)"
+            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-500 focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="deposit-tx-hash" className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">Transaction Reference</label>
+          <input
+            id="deposit-tx-hash"
+            name="txHash"
+            placeholder="Transaction hash / reference (optional)"
+            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-500 focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="deposit-instructions" className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">Instructions</label>
+          <textarea
+            id="deposit-instructions"
+            name="instructions"
+            rows={3}
+            placeholder="Instructions or note for admin (optional)"
+            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-500 focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
+          />
+        </div>
+        <p className="text-xs font-medium leading-5 text-slate-600">Deposit requests are stored immediately and credited only after admin approval.</p>
         <button disabled={depositMutation.isPending} className="rounded-lg bg-[#0ea5e9] px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-60">
           {depositMutation.isPending ? 'Submitting...' : 'Submit Deposit'}
         </button>
