@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
@@ -17,7 +17,8 @@ export default function DepositHistoryPage() {
     return <ErrorState message="Deposit history is unavailable right now." onRetry={depositsQuery.refetch} />;
   }
 
-  const deposits = Array.isArray(depositsQuery.data) ? depositsQuery.data : [];
+  const envelope = depositsQuery.data || {};
+  const deposits = Array.isArray(envelope.data) ? envelope.data : [];
 
   return (
     <div className="space-y-3">

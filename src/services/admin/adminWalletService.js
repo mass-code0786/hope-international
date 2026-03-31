@@ -30,7 +30,7 @@ async function listDeposits(filters, paginationInput) {
 
 async function reviewDeposit(adminUserId, requestId, payload) {
   return withTransaction(async (client) => {
-    const request = await walletRepository.getDepositRequestById(client, requestId);
+    const request = await walletRepository.getDepositRequestById(client, requestId, { forUpdate: true });
     if (!request) {
       throw new ApiError(404, 'Deposit request not found');
     }
@@ -47,8 +47,12 @@ async function reviewDeposit(adminUserId, requestId, payload) {
 
     const updated = await walletRepository.updateDepositRequestStatus(client, requestId, {
       status: payload.status,
-      details
+      details,
+      expectedCurrentStatus: 'pending'
     });
+    if (!updated) {
+      throw new ApiError(400, 'Deposit request is no longer pending');
+    }
 
     if (payload.status === 'approved') {
       await walletService.credit(

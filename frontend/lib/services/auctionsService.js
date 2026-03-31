@@ -16,7 +16,7 @@ function normalizeAuctionParams(params = {}) {
   if (typeof params.status === 'string') {
     const normalizedStatus = params.status.trim().toLowerCase();
     const safeStatus = auctionStatusAliases[normalizedStatus] || normalizedStatus;
-    if (allowedAuctionStatuses.has(safeStatus)) next.status = safeStatus;
+    if (allowedAuctionStatuses.has(safeStatus) && safeStatus !== 'all') next.status = safeStatus;
   }
   if (typeof params.search === 'string' && params.search.trim()) next.search = params.search.trim().slice(0, 120);
   const page = Number(params.page);

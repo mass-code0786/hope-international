@@ -5,6 +5,24 @@ function toNumber(value, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function toEnvelope(payload) {
+  if (payload && typeof payload === 'object' && Object.prototype.hasOwnProperty.call(payload, 'data')) {
+    return {
+      data: payload.data ?? null,
+      pagination: payload.pagination ?? null,
+      summary: payload.summary ?? null,
+      message: payload.message ?? ''
+    };
+  }
+
+  return {
+    data: payload ?? null,
+    pagination: null,
+    summary: null,
+    message: ''
+  };
+}
+
 function normalizeBtctTransactions(items = []) {
   return Array.isArray(items)
     ? items.map((item) => ({
@@ -15,7 +33,8 @@ function normalizeBtctTransactions(items = []) {
 }
 
 export async function getWallet() {
-  const data = await apiFetch('/wallet');
+  const envelope = toEnvelope(await apiFetch('/wallet'));
+  const data = envelope.data || {};
   const normalized = data.wallet ? data : Array.isArray(data.transactions)
     ? { wallet: data.wallet || {}, walletBinding: data.walletBinding || null, transactions: data.transactions }
     : { wallet: data, walletBinding: data.walletBinding || null, transactions: data.transactions || [] };
@@ -45,15 +64,21 @@ export async function bindWalletAddress(payload) {
 }
 
 export async function createDepositRequest(payload) {
-  return apiFetch('/wallet/deposits', {
-    method: 'POST',
-    body: JSON.stringify(payload)
-  });
+  return toEnvelope(
+    await apiFetch('/wallet/deposits', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  );
 }
 
 export async function getDepositHistory() {
-  const data = await apiFetch('/wallet/deposits');
-  return Array.isArray(data) ? data : data.items || [];
+  const envelope = toEnvelope(await apiFetch('/wallet/deposits'));
+  const items = envelope.data;
+  return {
+    ...envelope,
+    data: Array.isArray(items) ? items : Array.isArray(items?.items) ? items.items : []
+  };
 }
 
 export async function createWithdrawalRequest(payload) {

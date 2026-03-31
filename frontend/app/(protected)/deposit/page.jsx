@@ -1,6 +1,7 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
+import { useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { SectionHeader } from '@/components/ui/SectionHeader';
@@ -18,23 +19,22 @@ const methods = [
 ];
 
 export default function DepositPage() {
+  const formRef = useRef(null);
   const queryClient = useQueryClient();
   const depositsQuery = useQuery({ queryKey: queryKeys.walletDeposits, queryFn: getDepositHistory });
 
   const depositMutation = useMutation({
     mutationFn: createDepositRequest,
-    onSuccess: async () => {
-      toast.success('Deposit request submitted');
+    onSuccess: async (result) => {
+      formRef.current?.reset();
+      toast.success(result.message || 'Deposit request submitted');
       await queryClient.invalidateQueries({ queryKey: queryKeys.walletDeposits });
     },
     onError: (error) => toast.error(error.message || 'Deposit request failed')
   });
 
-  if (depositsQuery.isError) {
-    return <ErrorState message="Deposit history could not be loaded." onRetry={depositsQuery.refetch} />;
-  }
-
-  const deposits = Array.isArray(depositsQuery.data) ? depositsQuery.data : [];
+  const depositsEnvelope = depositsQuery.data || {};
+  const deposits = Array.isArray(depositsEnvelope.data) ? depositsEnvelope.data : [];
 
   return (
     <div className="space-y-3">
@@ -45,6 +45,7 @@ export default function DepositPage() {
       />
 
       <form
+        ref={formRef}
         onSubmit={(event) => {
           event.preventDefault();
           const formData = new FormData(event.currentTarget);
@@ -74,6 +75,7 @@ export default function DepositPage() {
           placeholder="Instructions or note for admin (optional)"
           className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs"
         />
+        <p className="text-[11px] text-slate-500">Deposit requests are stored immediately and credited only after admin approval.</p>
         <button disabled={depositMutation.isPending} className="rounded-lg bg-[#0ea5e9] px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-60">
           {depositMutation.isPending ? 'Submitting...' : 'Submit Deposit'}
         </button>
@@ -81,7 +83,9 @@ export default function DepositPage() {
 
       <div className="rounded-xl border border-slate-200 bg-white">
         <div className="border-b border-slate-200 px-3 py-2 text-[11px] text-slate-500">Latest Deposit Requests</div>
-        {!deposits.length ? (
+        {depositsQuery.isError ? (
+          <div className="p-3"><ErrorState message="Deposit history could not be loaded." onRetry={depositsQuery.refetch} /></div>
+        ) : !deposits.length ? (
           <div className="p-3"><EmptyState title="No deposits yet" description="Your submitted deposit requests will appear here." /></div>
         ) : (
           <div className="divide-y divide-slate-100">
@@ -100,4 +104,3 @@ export default function DepositPage() {
     </div>
   );
 }
-

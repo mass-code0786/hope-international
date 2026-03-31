@@ -215,9 +215,6 @@ async function listAuctionsCompat(client, filters, pagination) {
       filters,
       pagination
     });
-    if (!filters?.status || filters.status === 'all') {
-      return { items: [], total: 0 };
-    }
     throw error;
   }
 }
@@ -291,9 +288,6 @@ async function listAuctions(client, filters, pagination) {
       filters,
       pagination
     });
-    if (!filters?.status || filters.status === 'all') {
-      return { items: [], total: 0 };
-    }
     throw error;
   }
 }

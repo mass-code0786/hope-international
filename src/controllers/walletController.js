@@ -2,10 +2,14 @@ const asyncHandler = require('../utils/asyncHandler');
 const { withTransaction } = require('../db/pool');
 const walletService = require('../services/walletService');
 const walletRepository = require('../repositories/walletRepository');
+const { success } = require('../utils/response');
 
 const summary = asyncHandler(async (req, res) => {
   const data = await walletService.getWalletSummary(null, req.user.sub);
-  res.status(200).json(data);
+  return success(res, {
+    data,
+    message: 'Wallet summary fetched successfully'
+  });
 });
 
 const history = asyncHandler(async (req, res) => {
@@ -14,21 +18,33 @@ const history = asyncHandler(async (req, res) => {
 
   if (type === 'deposit') {
     const data = await walletRepository.listDepositRequests(null, userId, 300);
-    return res.status(200).json({ items: data });
+    return success(res, {
+      data,
+      message: 'Deposit requests fetched successfully'
+    });
   }
 
   if (type === 'withdraw') {
     const data = await walletRepository.listWithdrawalRequests(null, userId, 300);
-    return res.status(200).json({ items: data });
+    return success(res, {
+      data,
+      message: 'Withdrawal requests fetched successfully'
+    });
   }
 
   if (type === 'p2p') {
     const data = await walletRepository.listP2pTransfers(null, userId, 300);
-    return res.status(200).json({ items: data });
+    return success(res, {
+      data,
+      message: 'P2P transfers fetched successfully'
+    });
   }
 
   const data = await walletService.getHubHistory(null, userId);
-  return res.status(200).json(data);
+  return success(res, {
+    data,
+    message: 'Wallet history fetched successfully'
+  });
 });
 
 const bindWallet = asyncHandler(async (req, res) => {
@@ -36,7 +52,10 @@ const bindWallet = asyncHandler(async (req, res) => {
     return walletService.bindWalletAddress(client, req.user.sub, req.body);
   });
 
-  res.status(200).json(data);
+  return success(res, {
+    data,
+    message: 'Wallet binding updated successfully'
+  });
 });
 
 const depositCreate = asyncHandler(async (req, res) => {
@@ -44,12 +63,19 @@ const depositCreate = asyncHandler(async (req, res) => {
     return walletService.createDepositRequest(client, req.user.sub, req.body);
   });
 
-  res.status(201).json(data);
+  return success(res, {
+    data,
+    message: 'Deposit request submitted successfully',
+    statusCode: 201
+  });
 });
 
 const depositList = asyncHandler(async (req, res) => {
   const data = await walletRepository.listDepositRequests(null, req.user.sub, 300);
-  res.status(200).json(data);
+  return success(res, {
+    data,
+    message: 'Deposit requests fetched successfully'
+  });
 });
 
 const withdrawalCreate = asyncHandler(async (req, res) => {

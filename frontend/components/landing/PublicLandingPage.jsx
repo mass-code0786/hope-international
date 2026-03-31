@@ -274,12 +274,58 @@ export default function PublicLandingPage() {
       </div>
 
       <div className="relative mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
-        <header className="rounded-[28px] border border-white/70 bg-white/90 px-4 py-3 shadow-[0_12px_32px_rgba(15,23,42,0.08)] backdrop-blur sm:px-5">
-          <div className="flex items-center justify-center gap-3 py-1">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm sm:h-12 sm:w-12">
-              <Logo size={34} />
+        <header className="sticky top-3 z-30 rounded-[30px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,250,252,0.92))] px-3 py-3 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:top-5 sm:px-4">
+          <div className="flex items-center justify-between gap-3">
+            <Link href="/" className="flex min-w-0 items-center gap-3 rounded-[22px] px-1 py-1.5">
+              <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[20px] border border-slate-200/90 bg-[linear-gradient(180deg,#ffffff,#f8fafc)] shadow-[0_10px_24px_rgba(15,23,42,0.08)]">
+                <div className="absolute inset-[3px] rounded-[16px] bg-[radial-gradient(circle_at_top,_rgba(125,211,252,0.28),_transparent_52%),linear-gradient(180deg,#ffffff,#f8fafc)]" />
+                <div className="relative">
+                  <Logo size={34} />
+                </div>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-sky-700">Hope</p>
+                <p className="truncate text-sm font-semibold tracking-[-0.03em] text-slate-950 sm:text-[15px]">International</p>
+              </div>
+            </Link>
+
+            <div className="hidden min-w-0 flex-1 justify-center md:flex">
+              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200/90 bg-white/80 px-4 py-2 text-[11px] font-medium text-slate-600 shadow-[0_8px_18px_rgba(15,23,42,0.05)]">
+                <Store size={14} className="text-slate-500" />
+                <span>Trusted products</span>
+                <span className="h-1 w-1 rounded-full bg-slate-300" />
+                <span>Member-first platform</span>
+              </div>
             </div>
-            <p className="text-sm font-semibold tracking-[-0.02em] text-slate-950 sm:text-base">Hope International</p>
+
+            <div className="flex items-center gap-2">
+              <a
+                href="#featured"
+                className="hidden rounded-full border border-slate-200 bg-white/85 px-4 py-2 text-[12px] font-semibold text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.05)] sm:inline-flex"
+              >
+                Explore
+              </a>
+              <a
+                href="#details"
+                className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-3.5 py-2.5 text-[12px] font-semibold text-white shadow-[0_16px_30px_rgba(15,23,42,0.18)] transition hover:bg-slate-900 sm:px-4"
+              >
+                <span className="hidden sm:inline">Discover</span>
+                <span className="sm:hidden">View</span>
+                <ArrowRight size={14} />
+              </a>
+            </div>
+          </div>
+
+          <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:hidden">
+            <a href="#featured" className="shrink-0 rounded-full border border-slate-200 bg-white/80 px-3 py-2 text-[11px] font-semibold text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+              Featured
+            </a>
+            <a href="#details" className="shrink-0 rounded-full border border-slate-200 bg-white/80 px-3 py-2 text-[11px] font-semibold text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+              Highlights
+            </a>
+            <div className="shrink-0 rounded-full bg-slate-100 px-3 py-2 text-[11px] font-medium text-slate-500">
+              Clean marketplace experience
+            </div>
           </div>
         </header>
 

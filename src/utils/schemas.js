@@ -269,7 +269,7 @@ const pagingQuery = z.object({
   })
 });
 
-const auctionStatuses = ['upcoming', 'live', 'ended', 'cancelled'];
+const auctionStatuses = ['all', 'upcoming', 'live', 'ended', 'cancelled'];
 
 const auctionStatusSchema = z.preprocess((value) => firstQueryValue(value), z.string().optional()).transform((value) => {
   if (value === undefined || value === null || value === '') return undefined;

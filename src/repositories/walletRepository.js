@@ -174,12 +174,13 @@ async function createDepositRequest(client, payload) {
   return rows[0] || null;
 }
 
-async function getDepositRequestById(client, id) {
+async function getDepositRequestById(client, id, options = {}) {
+  const lockClause = options.forUpdate ? ' FOR UPDATE' : '';
   const { rows } = await q(client).query(
     `SELECT d.*, u.username, u.email
      FROM wallet_deposit_requests d
      JOIN users u ON u.id = d.user_id
-     WHERE d.id = $1`,
+     WHERE d.id = $1${lockClause}`,
     [id]
   );
   return rows[0] || null;
@@ -254,8 +255,9 @@ async function updateDepositRequestStatus(client, id, payload) {
          details = COALESCE(details, '{}'::jsonb) || $3::jsonb,
          updated_at = NOW()
      WHERE id = $1
+       AND ($4::wallet_request_status IS NULL OR status = $4)
      RETURNING *`,
-    [id, payload.status, payload.details || {}]
+    [id, payload.status, payload.details || {}, payload.expectedCurrentStatus || null]
   );
   return rows[0] || null;
 }

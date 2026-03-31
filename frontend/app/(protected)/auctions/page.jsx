@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { RefreshCw, Search, SlidersHorizontal, Sparkles, X } from 'lucide-react';
 import { AuctionCard } from '@/components/auctions/AuctionUi';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { getAuctions, normalizeAuctionStatus } from '@/lib/services/auctionsService';
 import { queryKeys } from '@/lib/query/queryKeys';
 
@@ -182,10 +183,11 @@ export default function AuctionsPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [draftFilters, setDraftFilters] = useState(EMPTY_FILTERS);
+  const requestStatus = status === 'all' ? undefined : status;
 
   const auctionsQuery = useQuery({
-    queryKey: [...queryKeys.auctions, status, search],
-    queryFn: () => getAuctions({ status, search, page: 1, limit: 100 })
+    queryKey: [...queryKeys.auctions, requestStatus || 'all', search],
+    queryFn: () => getAuctions({ status: requestStatus, search, page: 1, limit: 100 })
   });
 
   const envelope = auctionsQuery.data || {};
@@ -233,7 +235,7 @@ export default function AuctionsPage() {
     return count;
   }, [filters]);
 
-  const isEmpty = !auctionsQuery.isLoading && filteredAuctions.length === 0;
+  const isEmpty = !auctionsQuery.isLoading && !auctionsQuery.isError && filteredAuctions.length === 0;
 
   const applyFilters = () => {
     setFilters(draftFilters);
@@ -304,9 +306,12 @@ export default function AuctionsPage() {
         </section>
 
         {auctionsQuery.isLoading ? <AuctionGridSkeleton /> : null}
+        {!auctionsQuery.isLoading && auctionsQuery.isError ? (
+          <ErrorState message="Auction list could not be loaded." onRetry={auctionsQuery.refetch} />
+        ) : null}
         {!auctionsQuery.isLoading && isEmpty ? <EmptyAuctionState /> : null}
 
-        {!auctionsQuery.isLoading && filteredAuctions.length > 0 ? (
+        {!auctionsQuery.isLoading && !auctionsQuery.isError && filteredAuctions.length > 0 ? (
           <div className="grid grid-cols-2 gap-3">
             {filteredAuctions.map((auction) => <AuctionCard key={auction.id} auction={auction} />)}
           </div>
