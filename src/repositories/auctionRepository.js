@@ -72,6 +72,37 @@ function buildAuctionSelect(nowPlaceholder) {
   `;
 }
 
+const MODERN_AUCTION_LIST_COLUMNS = [
+  'status',
+  'cancelled_at',
+  'closed_at',
+  'end_at',
+  'start_at',
+  'is_active',
+  'entry_price',
+  'total_entries',
+  'hidden_capacity',
+  'created_by',
+  'updated_by',
+  'product_id'
+];
+
+function hasRequiredColumns(columns, requiredColumns) {
+  return requiredColumns.every((column) => columns.has(column));
+}
+
+function shouldLogAllAuctionQuery(filters = {}) {
+  return !filters.status || filters.status === 'all';
+}
+
+function logAuctionQuery(label, sql, values, filters) {
+  if (!shouldLogAllAuctionQuery(filters)) return;
+  console.log(label, {
+    sql,
+    values
+  });
+}
+
 async function attachWinnerRows(client, auctions) {
   if (!auctions.length) return auctions;
   const ids = auctions.map((auction) => auction.id);
@@ -221,6 +252,10 @@ async function listAuctionsCompat(client, filters, pagination) {
 
 async function listAuctions(client, filters, pagination) {
   try {
+  const columns = await getTableColumns(client, 'auctions');
+  if (!hasRequiredColumns(columns, MODERN_AUCTION_LIST_COLUMNS)) {
+    return listAuctionsCompat(client, filters, pagination);
+  }
   const { limit, offset } = normalizeListPagination(pagination);
   const values = [filters.now || new Date().toISOString()];
   const statusCase = buildAuctionStatusCase('$1');
