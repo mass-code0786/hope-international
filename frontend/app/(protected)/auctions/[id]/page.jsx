@@ -187,10 +187,16 @@ function ResultRevealSection({ auction, winners, onReveal, revealMutation }) {
   );
 }
 
-function StickyBidBar({ status, entryPrice, walletBalance, bidMutation, onBid, winners }) {
+function StickyBidBar({ status, entryPrice, walletBalance, walletReady, bidMutation, onBid, winners }) {
   const quickCounts = [1, 5, 10];
   const isLive = status === 'live';
   const isEnded = status === 'ended';
+  const primaryBidBlocked = walletReady && walletBalance < entryPrice;
+  const bidHelperText = !walletReady
+    ? 'Checking wallet balance...'
+    : primaryBidBlocked
+      ? 'Add funds to place a bid'
+      : 'Tap to place 1 entry instantly';
 
   return (
     <div className="fixed inset-x-0 bottom-[56px] z-30 px-3 pb-[calc(10px+env(safe-area-inset-bottom))] md:left-1/2 md:w-full md:max-w-3xl md:-translate-x-1/2 md:px-4">
@@ -200,10 +206,16 @@ function StickyBidBar({ status, entryPrice, walletBalance, bidMutation, onBid, w
             <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Entry Price</p>
             <p className="mt-1 text-lg font-bold text-emerald-400">{formatAuctionMoney(entryPrice)}</p>
             <p className="mt-0.5 text-[11px] font-medium text-slate-300">Wallet {formatAuctionMoney(walletBalance)}</p>
+            <p className={`mt-1 text-[11px] font-medium ${primaryBidBlocked ? 'text-amber-300' : 'text-slate-400'}`}>{bidHelperText}</p>
           </div>
           {isLive ? (
-            <button onClick={() => onBid(1)} disabled={bidMutation.isPending || walletBalance < entryPrice} className="inline-flex min-h-[56px] min-w-[138px] items-center justify-center rounded-xl bg-emerald-500 px-5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400">
-              {bidMutation.isPending ? 'Processing...' : 'Bid Now'}
+            <button
+              onClick={() => onBid(1)}
+              disabled={bidMutation.isPending}
+              aria-disabled={bidMutation.isPending || primaryBidBlocked}
+              className={`inline-flex min-h-[56px] min-w-[138px] items-center justify-center rounded-xl px-5 text-sm font-bold transition-colors ${primaryBidBlocked ? 'border border-amber-500/50 bg-amber-500/12 text-amber-100' : 'bg-emerald-500 text-white'} disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400`}
+            >
+              {bidMutation.isPending ? 'Processing...' : primaryBidBlocked ? 'Insufficient Balance' : 'Bid Now'}
             </button>
           ) : (
             <div className="inline-flex min-h-[56px] min-w-[138px] items-center justify-center rounded-xl bg-indigo-500 px-4 text-sm font-bold text-white">
@@ -215,11 +227,17 @@ function StickyBidBar({ status, entryPrice, walletBalance, bidMutation, onBid, w
           <div className="mt-2 grid grid-cols-3 gap-2">
             {quickCounts.map((count) => {
               const total = entryPrice * count;
-              const disabled = bidMutation.isPending || walletBalance < total;
+              const balanceBlocked = walletReady && walletBalance < total;
               return (
-                <button key={count} onClick={() => onBid(count)} disabled={disabled} className={`rounded-xl px-3 py-2 text-sm font-semibold ${disabled ? 'bg-slate-800 text-slate-500' : 'bg-[#111827] text-white border border-slate-700'}`}>
+                <button
+                  key={count}
+                  onClick={() => onBid(count)}
+                  disabled={bidMutation.isPending}
+                  aria-disabled={bidMutation.isPending || balanceBlocked}
+                  className={`rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${balanceBlocked ? 'border-amber-500/35 bg-amber-500/10 text-amber-100' : 'border-slate-700 bg-[#111827] text-white'} disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-slate-800 disabled:text-slate-500`}
+                >
                   x{count}
-                  <span className="mt-0.5 block text-[10px] text-slate-400">{formatAuctionMoney(total)}</span>
+                  <span className={`mt-0.5 block text-[10px] ${balanceBlocked ? 'text-amber-200' : 'text-slate-400'}`}>{formatAuctionMoney(total)}</span>
                 </button>
               );
             })}
@@ -277,6 +295,7 @@ export default function AuctionDetailPage() {
   const leaderboard = Array.isArray(auction?.leaderboard) ? auction.leaderboard : [];
   const rewardDistribution = auction?.rewardDistribution || null;
   const walletBalance = Number(walletQuery.data?.wallet?.balance || 0);
+  const walletReady = !walletQuery.isLoading && !walletQuery.isError;
   const participantCount = Number(auction?.participantCount || leaderboard.length || 0);
 
   const itemFacts = useMemo(() => ([
@@ -289,8 +308,16 @@ export default function AuctionDetailPage() {
   if (detailQuery.isError || !auction) return <ErrorState message="Auction details could not be loaded." onRetry={detailQuery.refetch} />;
 
   const handleBid = (count) => {
+    if (status !== 'live') {
+      toast.error(status === 'upcoming' ? 'Auction has not started yet' : status === 'ended' ? 'Auction has ended' : 'Auction is not available for entries');
+      return;
+    }
+    if (!walletReady) {
+      toast.error('Wallet balance is still loading');
+      return;
+    }
     const total = entryPrice * count;
-    if (!walletQuery.isLoading && walletBalance < total) {
+    if (walletBalance < total) {
       toast.error('Insufficient wallet balance');
       return;
     }
@@ -408,7 +435,7 @@ export default function AuctionDetailPage() {
         </div>
       </div>
 
-      <StickyBidBar status={status} entryPrice={entryPrice} walletBalance={walletBalance} bidMutation={bidMutation} onBid={handleBid} winners={winners} />
+      <StickyBidBar status={status} entryPrice={entryPrice} walletBalance={walletBalance} walletReady={walletReady} bidMutation={bidMutation} onBid={handleBid} winners={winners} />
     </>
   );
 }

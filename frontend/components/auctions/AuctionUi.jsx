@@ -93,8 +93,8 @@ export function AuctionCountdown({ startAt, endAt, status, compact = false }) {
   const prefix = safeStatus === 'upcoming' ? 'Starts' : safeStatus === 'live' ? 'Ends' : null;
 
   return (
-    <div className="inline-flex items-center gap-1.5 rounded-full border border-white/70 bg-white/88 px-2.5 py-1 text-[10px] font-semibold text-slate-800 shadow-[0_10px_22px_rgba(15,23,42,0.12)] backdrop-blur-sm">
-      <Clock3 size={11} className="text-slate-500" />
+    <div className="inline-flex min-w-0 items-center gap-1.5 rounded-full border border-slate-600 bg-[#0F1B3D] px-2.5 py-1 text-[10px] font-semibold text-white shadow-[0_10px_22px_rgba(2,6,23,0.34)]">
+      <Clock3 size={11} className="shrink-0 text-slate-200" />
       {prefix ? `${prefix} ${compact ? '' : 'in '}${content}`.trim() : content}
     </div>
   );
