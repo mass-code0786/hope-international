@@ -482,35 +482,17 @@ async function listAuctions(_userId, filters = {}, paginationInput = {}, options
   const pagination = normalizePagination(paginationInput);
 
   try {
-    const result = await withTransaction(async (client) => {
-      const initial = await auctionRepository.listAuctions(client, {
-        ...filters,
-        onlyActive: filters.onlyActive ?? false
-      }, pagination);
+    const result = await withTransaction((client) => auctionRepository.listAuctions(client, {
+      ...filters,
+      onlyActive: filters.onlyActive ?? false
+    }, pagination));
 
-      for (const auction of initial.items) {
-        if (auction.computed_status === 'ended' && auction.status !== 'cancelled') {
-          try {
-            await ensureAuctionResolved(client, auction.id);
-          } catch (error) {
-            if (isAuctionSchemaError(error)) {
-              console.error('[auctions.list] skipped auto-resolve for legacy schema', {
-                code: error?.code || null,
-                message: error?.message || 'Unknown auction resolve failure',
-                auctionId: auction.id
-              });
-              continue;
-            }
-            throw error;
-          }
-        }
-      }
-
-      return auctionRepository.listAuctions(client, {
-        ...filters,
-        onlyActive: filters.onlyActive ?? false
-      }, pagination);
-    });
+    if (!filters.status || filters.status === 'all') {
+      console.log('[auctions.list.response]', {
+        count: Array.isArray(result.items) ? result.items.length : 0,
+        total: Number(result.total || 0)
+      });
+    }
 
     return {
       data: result.items.map((auction) => shapeAuction(auction, options)),
@@ -530,6 +512,13 @@ async function listAuctions(_userId, filters = {}, paginationInput = {}, options
         ...filters,
         onlyActive: filters.onlyActive ?? false
       }, pagination));
+
+      if (!filters.status || filters.status === 'all') {
+        console.log('[auctions.list.response.compat]', {
+          count: Array.isArray(fallback.items) ? fallback.items.length : 0,
+          total: Number(fallback.total || 0)
+        });
+      }
 
       return {
         data: fallback.items.map((auction) => shapeAuction(auction, options)),

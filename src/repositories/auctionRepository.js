@@ -152,60 +152,58 @@ function normalizeListPagination(pagination = {}) {
   return { limit, page, offset };
 }
 
-async function listAuctionsCompat(client, filters, pagination) {
+async function listAuctionsCompat(client, filters = {}, pagination = {}) {
   try {
-  const columns = await getTableColumns(client, 'auctions');
-  const { limit, offset } = normalizeListPagination(pagination);
-  const values = [filters.now || new Date().toISOString()];
-  const statusCase = buildCompatStatusCase(columns, '$1');
-  const displayCurrentBid = columns.has('entry_price')
-    ? 'COALESCE(a.entry_price, a.current_bid, a.starting_price)::numeric(14,2)'
-    : columns.has('current_bid')
-      ? 'COALESCE(a.current_bid, a.starting_price)::numeric(14,2)'
-      : 'a.starting_price::numeric(14,2)';
-  const totalEntriesExpr = columns.has('total_entries')
-    ? 'COALESCE(a.total_entries, 0)'
-    : columns.has('total_bids')
-      ? 'COALESCE(a.total_bids, 0)'
-      : '0';
-  const where = [];
+    const columns = await getTableColumns(client, 'auctions');
+    const { limit, offset } = normalizeListPagination(pagination);
+    const values = [filters.now || new Date().toISOString()];
+    const statusCase = buildCompatStatusCase(columns, '$1');
+    const displayCurrentBid = columns.has('entry_price')
+      ? 'COALESCE(a.entry_price, a.current_bid, a.starting_price)::numeric(14,2)'
+      : columns.has('current_bid')
+        ? 'COALESCE(a.current_bid, a.starting_price)::numeric(14,2)'
+        : 'a.starting_price::numeric(14,2)';
+    const totalEntriesExpr = columns.has('total_entries')
+      ? 'COALESCE(a.total_entries, 0)'
+      : columns.has('total_bids')
+        ? 'COALESCE(a.total_bids, 0)'
+        : '0';
+    const where = [];
 
-  if (filters.status && filters.status !== 'all') {
-    values.push(filters.status);
-    where.push(`${statusCase} = $${values.length}`);
-  }
-
-  if (filters.search) {
-    values.push(`%${filters.search}%`);
-    const searchTerms = [`a.title ILIKE $${values.length}`];
-    if (columns.has('short_description')) {
-      searchTerms.push(`COALESCE(a.short_description, '') ILIKE $${values.length}`);
+    if (filters.status && filters.status !== 'all') {
+      values.push(filters.status);
+      where.push(`${statusCase} = $${values.length}`);
     }
-    where.push(`(${searchTerms.join(' OR ')})`);
-  }
 
-  if (filters.onlyActive === true && columns.has('is_active')) {
-    where.push('a.is_active = true');
-  }
+    if (filters.search) {
+      values.push(`%${filters.search}%`);
+      const searchTerms = [`a.title ILIKE $${values.length}`];
+      if (columns.has('short_description')) {
+        searchTerms.push(`COALESCE(a.short_description, '') ILIKE $${values.length}`);
+      }
+      where.push(`(${searchTerms.join(' OR ')})`);
+    }
 
-  if (filters.onlyActive === true && columns.has('status')) {
-    where.push(`a.status <> 'cancelled'`);
-  }
+    if (filters.onlyActive === true && columns.has('is_active')) {
+      where.push('a.is_active = true');
+    }
 
-  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  const sortParts = [
-    `CASE ${statusCase} WHEN 'live' THEN 0 WHEN 'upcoming' THEN 1 WHEN 'ended' THEN 2 ELSE 3 END`
-  ];
-  if (columns.has('start_at')) sortParts.push(`CASE WHEN ${statusCase} = 'upcoming' THEN a.start_at END ASC`);
-  if (columns.has('created_at')) sortParts.push(`CASE WHEN ${statusCase} = 'live' THEN a.created_at END DESC`);
-  if (columns.has('closed_at')) sortParts.push(`CASE WHEN ${statusCase} = 'ended' THEN a.closed_at END DESC NULLS LAST`);
-  sortParts.push(columns.has('created_at') ? 'a.created_at DESC' : '1 DESC');
-  const sortSql = `ORDER BY ${sortParts.join(', ')}`;
+    if (filters.onlyActive === true && columns.has('status')) {
+      where.push(`a.status <> 'cancelled'`);
+    }
 
-  const listValues = [...values, limit, offset];
-  console.log('[auction.list.params]', { limit, offset });
-  const { rows } = await q(client).query(
-    `SELECT
+    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    const sortParts = [
+      `CASE ${statusCase} WHEN 'live' THEN 0 WHEN 'upcoming' THEN 1 WHEN 'ended' THEN 2 ELSE 3 END`
+    ];
+    if (columns.has('start_at')) sortParts.push(`CASE WHEN ${statusCase} = 'upcoming' THEN a.start_at END ASC`);
+    if (columns.has('created_at')) sortParts.push(`CASE WHEN ${statusCase} = 'live' THEN a.created_at END DESC`);
+    if (columns.has('closed_at')) sortParts.push(`CASE WHEN ${statusCase} = 'ended' THEN a.closed_at END DESC NULLS LAST`);
+    sortParts.push(columns.has('created_at') ? 'a.created_at DESC' : '1 DESC');
+    const sortSql = `ORDER BY ${sortParts.join(', ')}`;
+
+    const listValues = [...values, limit, offset];
+    const listSql = `SELECT
       a.*,
       ${statusCase} AS computed_status,
       ${displayCurrentBid} AS display_current_bid,
@@ -224,21 +222,20 @@ async function listAuctionsCompat(client, filters, pagination) {
      FROM auctions a
      ${whereSql}
      ${sortSql}
-     LIMIT $${listValues.length - 1} OFFSET $${listValues.length}`,
-    listValues
-  );
+     LIMIT $${listValues.length - 1} OFFSET $${listValues.length}`;
+    logAuctionQuery('[auction.list.compat.sql]', listSql, listValues, filters);
+    const { rows } = await q(client).query(listSql, listValues);
 
-  const countResult = await q(client).query(
-    `SELECT COUNT(*)
+    const countSql = `SELECT COUNT(*)
      FROM auctions a
-     ${whereSql}`,
-    values
-  );
+     ${whereSql}`;
+    logAuctionQuery('[auction.list.compat.countSql]', countSql, values, filters);
+    const countResult = await q(client).query(countSql, values);
 
-  return {
-    items: rows.map(normalizeAuctionRow),
-    total: Number(countResult.rows[0]?.count || 0)
-  };
+    return {
+      items: rows.map(normalizeAuctionRow),
+      total: Number(countResult.rows[0]?.count || 0)
+    };
   } catch (error) {
     console.error('[auctionRepository.listAuctionsCompat] failed', {
       message: error?.message || 'Unknown auctions compat list failure',
@@ -250,39 +247,40 @@ async function listAuctionsCompat(client, filters, pagination) {
   }
 }
 
-async function listAuctions(client, filters, pagination) {
+async function listAuctions(client, filters = {}, pagination = {}) {
   try {
-  const columns = await getTableColumns(client, 'auctions');
-  if (!hasRequiredColumns(columns, MODERN_AUCTION_LIST_COLUMNS)) {
-    return listAuctionsCompat(client, filters, pagination);
-  }
-  const { limit, offset } = normalizeListPagination(pagination);
-  const values = [filters.now || new Date().toISOString()];
-  const statusCase = buildAuctionStatusCase('$1');
-  const where = [];
+    const columns = await getTableColumns(client, 'auctions');
+    if (!hasRequiredColumns(columns, MODERN_AUCTION_LIST_COLUMNS)) {
+      return listAuctionsCompat(client, filters, pagination);
+    }
 
-  if (filters.status && filters.status !== 'all') {
-    values.push(filters.status);
-    where.push(`${statusCase} = $${values.length}`);
-  }
+    const { limit, offset } = normalizeListPagination(pagination);
+    const values = [filters.now || new Date().toISOString()];
+    const statusCase = buildAuctionStatusCase('$1');
+    const where = [];
 
-  if (filters.search) {
-    values.push(`%${filters.search}%`);
-    where.push(`(
+    if (filters.status && filters.status !== 'all') {
+      values.push(filters.status);
+      where.push(`${statusCase} = $${values.length}`);
+    }
+
+    if (filters.search) {
+      values.push(`%${filters.search}%`);
+      where.push(`(
       a.title ILIKE $${values.length}
       OR COALESCE(a.short_description, '') ILIKE $${values.length}
       OR COALESCE(p.name, '') ILIKE $${values.length}
       OR COALESCE(p.sku, '') ILIKE $${values.length}
     )`);
-  }
+    }
 
-  if (filters.onlyActive === true) {
-    where.push(`a.is_active = true`);
-    where.push(`a.status <> 'cancelled'`);
-  }
+    if (filters.onlyActive === true) {
+      where.push(`a.is_active = true`);
+      where.push(`a.status <> 'cancelled'`);
+    }
 
-  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  const sortSql = `ORDER BY
+    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    const sortSql = `ORDER BY
     CASE ${statusCase}
       WHEN 'live' THEN 0
       WHEN 'upcoming' THEN 1
@@ -294,28 +292,25 @@ async function listAuctions(client, filters, pagination) {
     CASE WHEN ${statusCase} = 'ended' THEN a.closed_at END DESC NULLS LAST,
     a.created_at DESC`;
 
-  const listValues = [...values, limit, offset];
-  console.log('[auction.list.params]', { limit, offset });
-  const { rows } = await q(client).query(
-    `${buildAuctionSelect('$1')}
+    const listValues = [...values, limit, offset];
+    const listSql = `${buildAuctionSelect('$1')}
      ${whereSql}
      ${sortSql}
-     LIMIT $${listValues.length - 1} OFFSET $${listValues.length}`,
-    listValues
-  );
+     LIMIT $${listValues.length - 1} OFFSET $${listValues.length}`;
+    logAuctionQuery('[auction.list.sql]', listSql, listValues, filters);
+    const { rows } = await q(client).query(listSql, listValues);
 
-  const countResult = await q(client).query(
-    `SELECT COUNT(*)
+    const countSql = `SELECT COUNT(*)
      FROM auctions a
      LEFT JOIN products p ON p.id = a.product_id
-     ${whereSql}`,
-    values
-  );
+     ${whereSql}`;
+    logAuctionQuery('[auction.list.countSql]', countSql, values, filters);
+    const countResult = await q(client).query(countSql, values);
 
-  return {
-    items: await attachWinnerRows(client, rows.map(normalizeAuctionRow)),
-    total: Number(countResult.rows[0]?.count || 0)
-  };
+    return {
+      items: await attachWinnerRows(client, rows.map(normalizeAuctionRow)),
+      total: Number(countResult.rows[0]?.count || 0)
+    };
   } catch (error) {
     console.error('[auctionRepository.listAuctions] failed', {
       message: error?.message || 'Unknown auctions list failure',
