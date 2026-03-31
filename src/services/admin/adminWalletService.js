@@ -12,6 +12,25 @@ function buildPagedResult(result, pagination) {
   };
 }
 
+function normalizeDepositRecord(item) {
+  if (!item) return null;
+  const details = item.details && typeof item.details === 'object' && !Array.isArray(item.details) ? item.details : {};
+  const transactionReference = details.transactionReference || details.txHash || null;
+  const senderWalletAddress = details.senderWalletAddress || details.walletAddress || null;
+
+  return {
+    ...item,
+    method: 'crypto',
+    asset: details.asset || 'USDT',
+    network: details.network || 'BEP20',
+    transaction_reference: transactionReference,
+    tx_hash: transactionReference,
+    sender_wallet_address: senderWalletAddress,
+    note: item.instructions || details.note || null,
+    details
+  };
+}
+
 async function listTransactions(filters, paginationInput) {
   const pagination = normalizePagination(paginationInput);
   const result = await adminRepository.listWalletTransactions(null, filters, pagination);
@@ -25,7 +44,7 @@ async function getSummary() {
 async function listDeposits(filters, paginationInput) {
   const pagination = normalizePagination(paginationInput);
   const result = await walletRepository.listDepositRequestsAdmin(null, filters, pagination);
-  return buildPagedResult(result, pagination);
+  return buildPagedResult({ ...result, items: result.items.map(normalizeDepositRecord) }, pagination);
 }
 
 async function reviewDeposit(adminUserId, requestId, payload) {
@@ -83,7 +102,7 @@ async function reviewDeposit(adminUserId, requestId, payload) {
       }
     });
 
-    return updated;
+    return normalizeDepositRecord(updated);
   });
 }
 
@@ -233,7 +252,7 @@ async function getUserFinancialOverview(userId) {
     profile,
     wallet,
     walletBinding,
-    deposits,
+    deposits: deposits.map(normalizeDepositRecord),
     withdrawals,
     p2pTransfers: p2p,
     incomeHistory,

@@ -22,9 +22,9 @@ export default function DepositHistoryPage() {
 
   return (
     <div className="space-y-3">
-      <SectionHeader title="Deposit History" subtitle="Newest requests first" action={<Link href="/deposit" className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-600">New Deposit</Link>} />
+      <SectionHeader title="USDT Deposit History" subtitle="BEP20 requests, newest first" action={<Link href="/deposit" className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-600">New Deposit</Link>} />
       {!deposits.length ? (
-        <EmptyState title="No deposit requests found" description="Once you submit a deposit request, it will appear here." />
+        <EmptyState title="No deposit requests found" description="Once you submit a USDT BEP20 deposit, it will appear here." />
       ) : (
         <div className="space-y-2">
           {deposits.map((item) => (
@@ -33,8 +33,10 @@ export default function DepositHistoryPage() {
                 <p className="text-sm font-semibold text-slate-900">{currency(item.amount)}</p>
                 <Badge variant={statusVariant(item.status)}>{item.status}</Badge>
               </div>
-              <p className="mt-1 text-[11px] text-slate-500">{item.method || 'manual'} - {dateTime(item.created_at)}</p>
-              {item.instructions ? <p className="mt-1 text-[11px] text-slate-600">{item.instructions}</p> : null}
+              <p className="mt-1 text-[11px] font-medium text-slate-600">{item.asset || 'USDT'} • {item.network || 'BEP20'} • {dateTime(item.created_at)}</p>
+              {item.transaction_reference ? <p className="mt-1 text-[11px] text-slate-700">Transaction Hash: {item.transaction_reference}</p> : null}
+              {item.sender_wallet_address ? <p className="mt-1 text-[11px] text-slate-700">Sender Wallet: {item.sender_wallet_address}</p> : null}
+              {item.note ? <p className="mt-1 text-[11px] text-slate-600">{item.note}</p> : null}
             </article>
           ))}
         </div>
@@ -42,4 +44,3 @@ export default function DepositHistoryPage() {
     </div>
   );
 }
-

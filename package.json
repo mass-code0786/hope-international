@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "npm run migrate && npm run admin:bootstrap && node src/server.js",
-    "dev": "npm run admin:bootstrap && nodemon src/server.js",
+    "dev": "npm run migrate && npm run admin:bootstrap && nodemon src/server.js",
     "migrate": "node migrations/runMigrations.js",
     "seed": "node src/db/seed.js && npm run admin:bootstrap",
     "seed:dev": "node src/db/devSeed.js && npm run admin:bootstrap",
@@ -35,3 +35,4 @@
     "nodemon": "^3.1.14"
   }
 }
+

@@ -117,15 +117,49 @@ async function createDepositRequest(client, userId, payload) {
     throw new ApiError(400, `Minimum deposit is ${MIN_DEPOSIT_AMOUNT}`);
   }
 
-  const method = String(payload.method || 'manual').trim() || 'manual';
-  const instructions = String(payload.instructions || '').trim();
+  const rawDetails = payload && typeof payload.details === 'object' && !Array.isArray(payload.details) ? payload.details : {};
+  const txHash = String(
+    payload.txHash
+    || payload.transactionReference
+    || rawDetails.transactionReference
+    || rawDetails.txHash
+    || ''
+  ).trim();
+  if (txHash.length < 6) {
+    throw new ApiError(400, 'Transaction hash is required');
+  }
+
+  const senderWalletAddress = String(
+    payload.senderWalletAddress
+    || rawDetails.senderWalletAddress
+    || rawDetails.walletAddress
+    || ''
+  ).trim();
+  if (senderWalletAddress && senderWalletAddress.length < 8) {
+    throw new ApiError(400, 'Sender wallet address looks invalid');
+  }
+
+  const note = String(payload.note ?? payload.instructions ?? rawDetails.note ?? '').trim();
+  const details = {
+    asset: 'USDT',
+    network: 'BEP20',
+    transactionReference: txHash,
+    txHash
+  };
+
+  if (senderWalletAddress) {
+    details.senderWalletAddress = senderWalletAddress;
+  }
+  if (note) {
+    details.note = note;
+  }
 
   return walletRepository.createDepositRequest(client, {
     userId,
     amount,
-    method,
-    instructions: instructions || null,
-    details: payload.details || {},
+    method: 'crypto',
+    instructions: note || null,
+    details,
     status: 'pending'
   });
 }
@@ -247,3 +281,6 @@ module.exports = {
   createP2pTransfer,
   getHubHistory
 };
+
+
+

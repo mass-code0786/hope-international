@@ -12,12 +12,6 @@ import { queryKeys } from '@/lib/query/queryKeys';
 import { createDepositRequest, getDepositHistory } from '@/lib/services/walletService';
 import { currency, dateTime, statusVariant } from '@/lib/utils/format';
 
-const methods = [
-  { value: 'manual', label: 'Manual' },
-  { value: 'crypto', label: 'Crypto' },
-  { value: 'bank', label: 'Bank Transfer' }
-];
-
 export default function DepositPage() {
   const formRef = useRef(null);
   const queryClient = useQueryClient();
@@ -27,7 +21,7 @@ export default function DepositPage() {
     mutationFn: createDepositRequest,
     onSuccess: async (result) => {
       formRef.current?.reset();
-      toast.success(result.message || 'Deposit request submitted');
+      toast.success(result.message || 'USDT deposit submitted successfully');
       await queryClient.invalidateQueries({ queryKey: queryKeys.walletDeposits });
     },
     onError: (error) => toast.error(error.message || 'Deposit request failed')
@@ -37,12 +31,21 @@ export default function DepositPage() {
   const deposits = Array.isArray(depositsEnvelope.data) ? depositsEnvelope.data : [];
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <SectionHeader
-        title="Deposit"
-        subtitle="Submit a deposit request and track approval status"
-        action={<Link href="/history/deposit" className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-600">History</Link>}
+        title="USDT Deposit"
+        subtitle="Submit a BEP20 deposit request. Wallet credit happens only after admin approval."
+        action={<Link href="/history/deposit" className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700">History</Link>}
       />
+
+      <section className="rounded-2xl border border-emerald-200 bg-[linear-gradient(135deg,#f8fffb_0%,#eefbf4_100%)] p-4 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+        <div className="flex items-center gap-2">
+          <Badge variant="success">USDT</Badge>
+          <Badge variant="info">BEP20</Badge>
+        </div>
+        <h2 className="mt-3 text-base font-semibold text-slate-950">Crypto deposit only</h2>
+        <p className="mt-1 text-sm leading-6 text-slate-700">This deposit flow accepts only USDT on the BEP20 network. Submit the transfer amount and the blockchain transaction hash. Valid requests are saved immediately as pending.</p>
+      </section>
 
       <form
         ref={formRef}
@@ -51,90 +54,92 @@ export default function DepositPage() {
           const formData = new FormData(event.currentTarget);
           depositMutation.mutate({
             amount: Number(formData.get('amount') || 0),
-            method: String(formData.get('method') || 'manual'),
-            instructions: String(formData.get('instructions') || ''),
-            details: {
-              payerName: String(formData.get('payerName') || ''),
-              txHash: String(formData.get('txHash') || '')
-            }
+            senderWalletAddress: String(formData.get('senderWalletAddress') || ''),
+            txHash: String(formData.get('txHash') || ''),
+            note: String(formData.get('note') || '')
           });
         }}
-        className="space-y-3 rounded-2xl border border-slate-300 bg-white p-4 shadow-[0_10px_24px_rgba(15,23,42,0.05)]"
+        className="space-y-4 rounded-2xl border border-slate-300 bg-white p-4 shadow-[0_10px_24px_rgba(15,23,42,0.05)]"
       >
+        <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 sm:grid-cols-2">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Asset</p>
+            <p className="mt-1 font-semibold text-slate-950">USDT</p>
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Network</p>
+            <p className="mt-1 font-semibold text-slate-950">BEP20</p>
+          </div>
+        </div>
+
         <div className="space-y-1.5">
-          <label htmlFor="deposit-amount" className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">Amount</label>
+          <label htmlFor="deposit-amount" className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">Amount (USDT)</label>
           <input
             id="deposit-amount"
             name="amount"
             type="number"
             min="1"
             step="0.01"
-            placeholder="Amount (min 1)"
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-900 outline-none placeholder:font-medium placeholder:text-slate-500 focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
+            placeholder="Enter USDT amount"
+            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-950 outline-none placeholder:font-medium placeholder:text-slate-500 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
             required
           />
         </div>
+
         <div className="space-y-1.5">
-          <label htmlFor="deposit-method" className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">Method</label>
-          <select
-            id="deposit-method"
-            name="method"
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-medium text-slate-900 outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
-          >
-            {methods.map((method) => (
-              <option key={method.value} value={method.value}>{method.label}</option>
-            ))}
-          </select>
-        </div>
-        <div className="space-y-1.5">
-          <label htmlFor="deposit-payer-name" className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">Payer Name</label>
+          <label htmlFor="deposit-sender-wallet" className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">Sender Wallet Address</label>
           <input
-            id="deposit-payer-name"
-            name="payerName"
-            placeholder="Payer name (optional)"
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-500 focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
+            id="deposit-sender-wallet"
+            name="senderWalletAddress"
+            placeholder="Optional BEP20 wallet address"
+            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-500 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
           />
         </div>
+
         <div className="space-y-1.5">
-          <label htmlFor="deposit-tx-hash" className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">Transaction Reference</label>
+          <label htmlFor="deposit-tx-hash" className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">Transaction Hash</label>
           <input
             id="deposit-tx-hash"
             name="txHash"
-            placeholder="Transaction hash / reference (optional)"
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-500 focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
+            placeholder="Paste the BEP20 transaction hash"
+            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-500 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+            required
           />
         </div>
+
         <div className="space-y-1.5">
-          <label htmlFor="deposit-instructions" className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">Instructions</label>
+          <label htmlFor="deposit-note" className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">Note</label>
           <textarea
-            id="deposit-instructions"
-            name="instructions"
+            id="deposit-note"
+            name="note"
             rows={3}
-            placeholder="Instructions or note for admin (optional)"
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-500 focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
+            placeholder="Optional note for admin review"
+            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-500 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
           />
         </div>
-        <p className="text-xs font-medium leading-5 text-slate-600">Deposit requests are stored immediately and credited only after admin approval.</p>
-        <button disabled={depositMutation.isPending} className="rounded-lg bg-[#0ea5e9] px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-60">
-          {depositMutation.isPending ? 'Submitting...' : 'Submit Deposit'}
+
+        <p className="text-xs font-medium leading-5 text-slate-700">Every submission either saves as pending or returns a clear error. There is no silent failure path.</p>
+        <button disabled={depositMutation.isPending} className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">
+          {depositMutation.isPending ? 'Submitting USDT deposit...' : 'Submit USDT Deposit'}
         </button>
       </form>
 
       <div className="rounded-xl border border-slate-200 bg-white">
-        <div className="border-b border-slate-200 px-3 py-2 text-[11px] text-slate-500">Latest Deposit Requests</div>
+        <div className="border-b border-slate-200 px-3 py-2 text-[11px] font-medium text-slate-600">Latest USDT BEP20 Requests</div>
         {depositsQuery.isError ? (
           <div className="p-3"><ErrorState message="Deposit history could not be loaded." onRetry={depositsQuery.refetch} /></div>
         ) : !deposits.length ? (
-          <div className="p-3"><EmptyState title="No deposits yet" description="Your submitted deposit requests will appear here." /></div>
+          <div className="p-3"><EmptyState title="No deposits yet" description="Your submitted USDT BEP20 deposits will appear here." /></div>
         ) : (
           <div className="divide-y divide-slate-100">
             {deposits.slice(0, 10).map((item) => (
-              <div key={item.id} className="px-3 py-2.5">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-slate-800">{currency(item.amount)}</p>
+              <div key={item.id} className="space-y-1 px-3 py-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-slate-900">{currency(item.amount)}</p>
                   <Badge variant={statusVariant(item.status)}>{item.status}</Badge>
                 </div>
-                <p className="mt-0.5 text-[10px] text-slate-500">{item.method || 'manual'} - {dateTime(item.created_at)}</p>
+                <p className="text-[11px] font-medium text-slate-600">{item.asset || 'USDT'} • {item.network || 'BEP20'} • {dateTime(item.created_at)}</p>
+                {item.transaction_reference ? <p className="text-[11px] text-slate-700">TX: {item.transaction_reference}</p> : null}
               </div>
             ))}
           </div>

@@ -126,7 +126,12 @@ const walletBindSchema = z.object({
 });
 
 const walletDepositSchema = z.object({
-  body: z.object({ amount: z.number().positive(), method: z.string().max(60).optional(), instructions: z.string().max(800).optional(), details: z.record(z.any()).optional() }),
+  body: z.object({
+    amount: z.number().positive(),
+    txHash: z.string().trim().min(6).max(255),
+    senderWalletAddress: z.string().trim().min(8).max(255).optional(),
+    note: z.string().max(800).optional()
+  }),
   params: z.object({}),
   query: z.object({})
 });

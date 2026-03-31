@@ -160,14 +160,14 @@ async function removeWalletBinding(client, userId) {
 async function createDepositRequest(client, payload) {
   const { rows } = await q(client).query(
     `INSERT INTO wallet_deposit_requests (user_id, amount, method, instructions, details, status)
-     VALUES ($1, $2, $3, $4, $5, $6)
+     VALUES ($1, $2, $3, $4, $5::jsonb, $6)
      RETURNING *`,
     [
       payload.userId,
       payload.amount,
       payload.method || 'manual',
       payload.instructions || null,
-      payload.details || {},
+      JSON.stringify(payload.details || {}),
       payload.status || 'pending'
     ]
   );
@@ -257,7 +257,7 @@ async function updateDepositRequestStatus(client, id, payload) {
      WHERE id = $1
        AND ($4::wallet_request_status IS NULL OR status = $4)
      RETURNING *`,
-    [id, payload.status, payload.details || {}, payload.expectedCurrentStatus || null]
+    [id, payload.status, JSON.stringify(payload.details || {}), payload.expectedCurrentStatus || null]
   );
   return rows[0] || null;
 }
@@ -592,3 +592,6 @@ module.exports = {
   listWalletBindingsAdmin,
   listIncomeTransactionsAdmin
 };
+
+
+
