@@ -7,17 +7,19 @@ const { success } = require('../utils/response');
 function normalizeDepositRecord(item) {
   if (!item) return null;
   const details = item.details && typeof item.details === 'object' && !Array.isArray(item.details) ? item.details : {};
-  const transactionReference = details.transactionReference || details.txHash || null;
-  const senderWalletAddress = details.senderWalletAddress || details.walletAddress || null;
+  const transactionReference = item.transaction_hash || details.transactionReference || details.txHash || null;
+  const walletAddressSnapshot = item.wallet_address_snapshot || details.walletAddressSnapshot || details.walletAddress || null;
+  const proofImageUrl = item.proof_image_url || details.proofImageUrl || null;
 
   return {
     ...item,
     method: 'crypto',
-    asset: details.asset || 'USDT',
-    network: details.network || 'BEP20',
+    asset: item.asset || details.asset || 'USDT',
+    network: item.network || details.network || 'BEP20',
     transaction_reference: transactionReference,
     tx_hash: transactionReference,
-    sender_wallet_address: senderWalletAddress,
+    wallet_address_snapshot: walletAddressSnapshot,
+    proof_image_url: proofImageUrl,
     note: item.instructions || details.note || null,
     details
   };
@@ -70,21 +72,23 @@ const history = asyncHandler(async (req, res) => {
 });
 
 const bindWallet = asyncHandler(async (req, res) => {
-  const data = await withTransaction(async (client) => {
-    return walletService.bindWalletAddress(client, req.user.sub, req.body);
-  });
-
+  const data = await withTransaction(async (client) => walletService.bindWalletAddress(client, req.user.sub, req.body));
   return success(res, {
     data,
     message: 'Wallet binding updated successfully'
   });
 });
 
-const depositCreate = asyncHandler(async (req, res) => {
-  const data = await withTransaction(async (client) => {
-    return walletService.createDepositRequest(client, req.user.sub, req.body);
+const depositConfig = asyncHandler(async (_req, res) => {
+  const data = await walletService.getDepositWalletConfig(null);
+  return success(res, {
+    data,
+    message: 'Deposit wallet fetched successfully'
   });
+});
 
+const depositCreate = asyncHandler(async (req, res) => {
+  const data = await withTransaction(async (client) => walletService.createDepositRequest(client, req.user.sub, req.body));
   return success(res, {
     data: normalizeDepositRecord(data),
     message: 'USDT BEP20 deposit request submitted successfully',
@@ -101,10 +105,7 @@ const depositList = asyncHandler(async (req, res) => {
 });
 
 const withdrawalCreate = asyncHandler(async (req, res) => {
-  const data = await withTransaction(async (client) => {
-    return walletService.createWithdrawalRequest(client, req.user.sub, req.body);
-  });
-
+  const data = await withTransaction(async (client) => walletService.createWithdrawalRequest(client, req.user.sub, req.body));
   res.status(201).json(data);
 });
 
@@ -114,10 +115,7 @@ const withdrawalList = asyncHandler(async (req, res) => {
 });
 
 const p2pCreate = asyncHandler(async (req, res) => {
-  const data = await withTransaction(async (client) => {
-    return walletService.createP2pTransfer(client, req.user.sub, req.body);
-  });
-
+  const data = await withTransaction(async (client) => walletService.createP2pTransfer(client, req.user.sub, req.body));
   res.status(201).json(data);
 });
 
@@ -128,15 +126,12 @@ const p2pList = asyncHandler(async (req, res) => {
 
 const adjust = asyncHandler(async (req, res) => {
   const { userId, amount, type, note } = req.body;
-
   const wallet = await withTransaction(async (client) => {
     if (type === 'credit') {
       return walletService.credit(client, userId, amount, 'manual_adjustment', null, { note });
     }
-
     return walletService.debit(client, userId, amount, 'manual_adjustment', null, { note });
   });
-
   res.status(200).json(wallet);
 });
 
@@ -144,6 +139,7 @@ module.exports = {
   summary,
   history,
   bindWallet,
+  depositConfig,
   depositCreate,
   depositList,
   withdrawalCreate,

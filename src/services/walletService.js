@@ -1,13 +1,51 @@
 const walletRepository = require('../repositories/walletRepository');
 const userRepository = require('../repositories/userRepository');
+const adminRepository = require('../repositories/adminRepository');
 const { ApiError } = require('../utils/ApiError');
 
 const MIN_WITHDRAWAL_AMOUNT = 10;
 const MIN_DEPOSIT_AMOUNT = 1;
 const BTCT_USD_PRICE = 0.10;
+const DEPOSIT_ASSET = 'USDT';
+const DEPOSIT_NETWORK = 'BEP20';
+const DEPOSIT_WALLET_SETTING_KEY = 'deposit_wallet_config';
 
 function roundBtct(value) {
   return Number(Number(value || 0).toFixed(4));
+}
+
+function normalizeDepositWalletConfig(value = {}, meta = {}) {
+  const config = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  return {
+    asset: DEPOSIT_ASSET,
+    network: DEPOSIT_NETWORK,
+    walletAddress: String(config.walletAddress || '').trim(),
+    qrImageUrl: String(config.qrImageUrl || '').trim(),
+    isActive: Boolean(config.isActive),
+    instructions: String(config.instructions || 'Send only USDT on the BEP20 network. Deposits are credited after admin verification.').trim(),
+    updatedAt: meta.updatedAt || null,
+    updatedBy: meta.updatedBy || null
+  };
+}
+
+function isSupportedProofImage(value) {
+  const normalized = String(value || '').trim();
+  return /^data:image\/(png|jpe?g|webp);base64,/i.test(normalized) || /^https:\/\//i.test(normalized);
+}
+
+async function getDepositWalletConfig(client, options = {}) {
+  const rows = await adminRepository.getSettings(client);
+  const row = rows.find((item) => item.setting_key === DEPOSIT_WALLET_SETTING_KEY);
+  const config = normalizeDepositWalletConfig(row?.setting_value, {
+    updatedAt: row?.updated_at || null,
+    updatedBy: row?.updated_by || null
+  });
+
+  if (options.requireActive && (!config.isActive || !config.walletAddress)) {
+    throw new ApiError(503, 'Deposit wallet is currently unavailable');
+  }
+
+  return config;
 }
 
 async function credit(client, userId, amount, source, referenceId = null, metadata = {}, createdByAdminId = null) {
@@ -117,46 +155,39 @@ async function createDepositRequest(client, userId, payload) {
     throw new ApiError(400, `Minimum deposit is ${MIN_DEPOSIT_AMOUNT}`);
   }
 
-  const rawDetails = payload && typeof payload.details === 'object' && !Array.isArray(payload.details) ? payload.details : {};
-  const txHash = String(
-    payload.txHash
-    || payload.transactionReference
-    || rawDetails.transactionReference
-    || rawDetails.txHash
-    || ''
-  ).trim();
+  const txHash = String(payload.txHash || payload.transactionHash || '').trim();
   if (txHash.length < 6) {
     throw new ApiError(400, 'Transaction hash is required');
   }
 
-  const senderWalletAddress = String(
-    payload.senderWalletAddress
-    || rawDetails.senderWalletAddress
-    || rawDetails.walletAddress
-    || ''
-  ).trim();
-  if (senderWalletAddress && senderWalletAddress.length < 8) {
-    throw new ApiError(400, 'Sender wallet address looks invalid');
+  const proofImageUrl = String(payload.proofImageUrl || '').trim();
+  if (!isSupportedProofImage(proofImageUrl)) {
+    throw new ApiError(400, 'Screenshot proof must be a PNG, JPG, or WEBP image');
   }
 
-  const note = String(payload.note ?? payload.instructions ?? rawDetails.note ?? '').trim();
+  const note = String(payload.note || '').trim();
+  const depositWallet = await getDepositWalletConfig(client, { requireActive: true });
   const details = {
-    asset: 'USDT',
-    network: 'BEP20',
+    asset: DEPOSIT_ASSET,
+    network: DEPOSIT_NETWORK,
+    walletAddressSnapshot: depositWallet.walletAddress,
     transactionReference: txHash,
-    txHash
+    txHash,
+    proofImageUrl
   };
 
-  if (senderWalletAddress) {
-    details.senderWalletAddress = senderWalletAddress;
-  }
   if (note) {
     details.note = note;
   }
 
   return walletRepository.createDepositRequest(client, {
     userId,
+    asset: DEPOSIT_ASSET,
+    network: DEPOSIT_NETWORK,
+    walletAddressSnapshot: depositWallet.walletAddress,
     amount,
+    transactionHash: txHash,
+    proofImageUrl,
     method: 'crypto',
     instructions: note || null,
     details,
@@ -276,11 +307,9 @@ module.exports = {
   creditBtct,
   getWalletSummary,
   bindWalletAddress,
+  getDepositWalletConfig,
   createDepositRequest,
   createWithdrawalRequest,
   createP2pTransfer,
   getHubHistory
 };
-
-
-

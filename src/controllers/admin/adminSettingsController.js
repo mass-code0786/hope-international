@@ -18,7 +18,25 @@ const update = asyncHandler(async (req, res) => {
   });
 });
 
+const getDepositWallet = asyncHandler(async (_req, res) => {
+  const data = await adminSettingsService.getDepositWalletSettings();
+  return success(res, {
+    data,
+    message: 'Deposit wallet settings fetched successfully'
+  });
+});
+
+const updateDepositWallet = asyncHandler(async (req, res) => {
+  const data = await adminSettingsService.updateDepositWalletSettings(req.user.sub, req.user.role, req.body);
+  return success(res, {
+    data,
+    message: 'Deposit wallet settings updated successfully'
+  });
+});
+
 module.exports = {
   get,
-  update
+  update,
+  getDepositWallet,
+  updateDepositWallet
 };

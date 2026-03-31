@@ -1,4 +1,4 @@
-'use client';
+ï»¿'use client';
 
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
@@ -33,10 +33,11 @@ export default function DepositHistoryPage() {
                 <p className="text-sm font-semibold text-slate-900">{currency(item.amount)}</p>
                 <Badge variant={statusVariant(item.status)}>{item.status}</Badge>
               </div>
-              <p className="mt-1 text-[11px] font-medium text-slate-600">{item.asset || 'USDT'} • {item.network || 'BEP20'} • {dateTime(item.created_at)}</p>
+              <p className="mt-1 text-[11px] font-medium text-slate-600">{item.asset || 'USDT'} â€¢ {item.network || 'BEP20'} â€¢ {dateTime(item.created_at)}</p>
               {item.transaction_reference ? <p className="mt-1 text-[11px] text-slate-700">Transaction Hash: {item.transaction_reference}</p> : null}
-              {item.sender_wallet_address ? <p className="mt-1 text-[11px] text-slate-700">Sender Wallet: {item.sender_wallet_address}</p> : null}
+              {item.wallet_address_snapshot ? <p className="mt-1 text-[11px] text-slate-700">Wallet Used: {item.wallet_address_snapshot}</p> : null}
               {item.note ? <p className="mt-1 text-[11px] text-slate-600">{item.note}</p> : null}
+              {item.proof_image_url ? <img src={item.proof_image_url} alt="Deposit proof" className="mt-3 h-28 w-full rounded-xl border border-slate-200 object-contain bg-slate-50 p-2" /> : null}
             </article>
           ))}
         </div>
@@ -44,3 +45,4 @@ export default function DepositHistoryPage() {
     </div>
   );
 }
+

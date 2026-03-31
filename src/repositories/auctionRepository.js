@@ -228,7 +228,7 @@ async function listAuctionsCompat(client, filters = {}, pagination = {}) {
 
     const countSql = `SELECT COUNT(*)
      FROM auctions a
-     ${whereSql}`;
+     ${where.length ? `WHERE $1::timestamptz IS NOT NULL AND ${where.join(' AND ')}` : 'WHERE $1::timestamptz IS NOT NULL'}`;
     logAuctionQuery('[auction.list.compat.countSql]', countSql, values, filters);
     const countResult = await q(client).query(countSql, values);
 
@@ -303,7 +303,7 @@ async function listAuctions(client, filters = {}, pagination = {}) {
     const countSql = `SELECT COUNT(*)
      FROM auctions a
      LEFT JOIN products p ON p.id = a.product_id
-     ${whereSql}`;
+     ${where.length ? `WHERE $1::timestamptz IS NOT NULL AND ${where.join(' AND ')}` : 'WHERE $1::timestamptz IS NOT NULL'}`;
     logAuctionQuery('[auction.list.countSql]', countSql, values, filters);
     const countResult = await q(client).query(countSql, values);
 

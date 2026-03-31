@@ -45,10 +45,10 @@ export default function AdminDepositsPage() {
 
   return (
     <div className="space-y-5">
-      <AdminSectionHeader title="Deposit Management" subtitle="Review USDT BEP20 deposit requests and approve wallet credits." />
+      <AdminSectionHeader title="Deposit Management" subtitle="Verify crypto deposit requests, review proof, and approve wallet credits once." />
 
       <FilterBar>
-        <div className="w-full max-w-sm"><SearchInput value={search} onChange={setSearch} placeholder="Search by username, email, request id or tx hash" /></div>
+        <div className="w-full max-w-sm"><SearchInput value={search} onChange={setSearch} placeholder="Search by username, email, tx hash, or request id" /></div>
         <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm text-text">
           <option value="all">All Status</option>
           <option value="pending">Pending</option>
@@ -65,7 +65,8 @@ export default function AdminDepositsPage() {
           { key: 'asset', title: 'Asset', className: 'col-span-1', render: (row) => row.asset || 'USDT' },
           { key: 'network', title: 'Network', className: 'col-span-1', render: (row) => row.network || 'BEP20' },
           { key: 'transaction_reference', title: 'Tx Hash', className: 'col-span-2', render: (row) => row.transaction_reference || '-' },
-          { key: 'sender_wallet_address', title: 'Sender Wallet', className: 'col-span-2', render: (row) => row.sender_wallet_address || '-' },
+          { key: 'wallet_address_snapshot', title: 'Wallet Used', className: 'col-span-2', render: (row) => row.wallet_address_snapshot || '-' },
+          { key: 'proof', title: 'Proof', className: 'col-span-1', render: (row) => row.proof_image_url ? <a href={row.proof_image_url} target="_blank" rel="noreferrer" className="text-xs text-accent underline">View</a> : '-' },
           { key: 'status', title: 'Status', className: 'col-span-1', render: (row) => <StatusBadge status={row.status} /> },
           { key: 'created_at', title: 'Date', className: 'col-span-2', render: (row) => dateTime(row.created_at) },
           {
@@ -99,7 +100,7 @@ export default function AdminDepositsPage() {
           }
         ]}
         rows={rows}
-        empty={<EmptyState title="No deposits found" description="No USDT BEP20 deposit requests match your current filters." />}
+        empty={<EmptyState title="No deposits found" description="No deposit requests match your current filters." />}
       />
 
       <div className="flex items-center justify-end gap-2">

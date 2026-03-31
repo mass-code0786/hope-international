@@ -15,17 +15,19 @@ function buildPagedResult(result, pagination) {
 function normalizeDepositRecord(item) {
   if (!item) return null;
   const details = item.details && typeof item.details === 'object' && !Array.isArray(item.details) ? item.details : {};
-  const transactionReference = details.transactionReference || details.txHash || null;
-  const senderWalletAddress = details.senderWalletAddress || details.walletAddress || null;
+  const transactionReference = item.transaction_hash || details.transactionReference || details.txHash || null;
+  const walletAddressSnapshot = item.wallet_address_snapshot || details.walletAddressSnapshot || details.walletAddress || null;
+  const proofImageUrl = item.proof_image_url || details.proofImageUrl || null;
 
   return {
     ...item,
     method: 'crypto',
-    asset: details.asset || 'USDT',
-    network: details.network || 'BEP20',
+    asset: item.asset || details.asset || 'USDT',
+    network: item.network || details.network || 'BEP20',
     transaction_reference: transactionReference,
     tx_hash: transactionReference,
-    sender_wallet_address: senderWalletAddress,
+    wallet_address_snapshot: walletAddressSnapshot,
+    proof_image_url: proofImageUrl,
     note: item.instructions || details.note || null,
     details
   };
@@ -67,6 +69,7 @@ async function reviewDeposit(adminUserId, requestId, payload) {
     const updated = await walletRepository.updateDepositRequestStatus(client, requestId, {
       status: payload.status,
       details,
+      reviewedBy: adminUserId,
       expectedCurrentStatus: 'pending'
     });
     if (!updated) {
@@ -83,7 +86,8 @@ async function reviewDeposit(adminUserId, requestId, payload) {
         {
           status: 'approved',
           adminNote: payload.adminNote || null,
-          depositRequestId: request.id
+          depositRequestId: request.id,
+          transactionHash: request.transaction_hash || request.details?.transactionReference || request.details?.txHash || null
         },
         adminUserId
       );

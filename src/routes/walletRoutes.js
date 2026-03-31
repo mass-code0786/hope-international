@@ -14,6 +14,7 @@ const router = express.Router();
 
 router.get('/', auth(), walletController.summary);
 router.get('/history', auth(), walletController.history);
+router.get('/deposit-config', auth(), walletController.depositConfig);
 router.get('/deposits', auth(), walletController.depositList);
 router.post('/deposits', auth(), validate(walletDepositSchema), walletController.depositCreate);
 router.get('/withdrawals', auth(), walletController.withdrawalList);

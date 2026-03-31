@@ -199,6 +199,19 @@ export async function updateAdminSettings(payload) {
   );
 }
 
+export async function getAdminDepositWalletSettings() {
+  return toEnvelope(await apiFetch('/admin/settings/deposit-wallet'));
+}
+
+export async function updateAdminDepositWalletSettings(payload) {
+  return toEnvelope(
+    await apiFetch('/admin/settings/deposit-wallet', {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
 export async function getAdminBanners(params = {}) {
   return toEnvelope(await apiFetch(`/admin/banners${withQuery(params)}`));
 }

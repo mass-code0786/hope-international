@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -53,43 +54,28 @@ export default function AdminSettingsPage() {
   if (settingsQuery.isError) return <ErrorState message="Unable to load settings." onRetry={settingsQuery.refetch} />;
 
   const settings = settingsQuery.data?.data || {};
+  const depositWallet = settings.depositWalletConfig || {};
   const rankMultipliers = Array.isArray(settings.rankMultipliers) && settings.rankMultipliers.length ? settings.rankMultipliers : RANKS.map((r) => ({ name: r.name, capMultiplier: r.capMultiplier }));
   const rewardSlabs = Array.isArray(settings.rewardSlabs) && settings.rewardSlabs.length ? settings.rewardSlabs : REWARD_SLABS;
 
   return (
     <div className="space-y-5">
-      <AdminSectionHeader title="Settings & Configuration" subtitle="Compensation and reward configuration from backend settings store" />
+      <AdminSectionHeader title="Settings & Configuration" subtitle="Compensation, rewards, and operational settings" action={<Link href="/admin/settings/deposit-wallet" className="rounded-xl border border-white/10 px-3 py-2 text-sm text-muted">Deposit Wallet</Link>} />
 
       <div className="card-surface p-4">
         <p className="text-sm font-semibold text-text">Compensation Settings</p>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <label className="text-sm text-muted">
             Matching %
-            <input
-              type="number"
-              value={form.matchPercentage}
-              onChange={(e) => setForm((p) => ({ ...p, matchPercentage: e.target.value }))}
-              className="mt-1 w-full rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm text-text"
-            />
+            <input type="number" value={form.matchPercentage} onChange={(e) => setForm((p) => ({ ...p, matchPercentage: e.target.value }))} className="mt-1 w-full rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm text-text" />
           </label>
           <label className="text-sm text-muted">
             Direct %
-            <input
-              type="number"
-              value={form.directPercentage}
-              onChange={(e) => setForm((p) => ({ ...p, directPercentage: e.target.value }))}
-              className="mt-1 w-full rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm text-text"
-            />
+            <input type="number" value={form.directPercentage} onChange={(e) => setForm((p) => ({ ...p, directPercentage: e.target.value }))} className="mt-1 w-full rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm text-text" />
           </label>
           <label className="text-sm text-muted">
             PV/BV Ratio
-            <input
-              type="number"
-              step="0.01"
-              value={form.pvBvRatio}
-              onChange={(e) => setForm((p) => ({ ...p, pvBvRatio: e.target.value }))}
-              className="mt-1 w-full rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm text-text"
-            />
+            <input type="number" step="0.01" value={form.pvBvRatio} onChange={(e) => setForm((p) => ({ ...p, pvBvRatio: e.target.value }))} className="mt-1 w-full rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm text-text" />
           </label>
           <label className="flex items-center gap-2 text-sm text-muted">
             <input type="checkbox" checked={form.carryForward} onChange={(e) => setForm((p) => ({ ...p, carryForward: e.target.checked }))} />
@@ -103,7 +89,13 @@ export default function AdminSettingsPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-3">
+        <SummaryPanel title="Deposit Wallet" items={[
+          { label: 'Asset', value: depositWallet.asset || 'USDT' },
+          { label: 'Network', value: depositWallet.network || 'BEP20' },
+          { label: 'Status', value: depositWallet.isActive ? 'Active' : 'Inactive' },
+          { label: 'Wallet', value: depositWallet.walletAddress || '-' }
+        ]} />
         <SummaryPanel title="Rank Multipliers" items={rankMultipliers.map((r) => ({ label: r.name, value: `${r.capMultiplier}x` }))} />
         <SummaryPanel title="Reward Slabs" items={rewardSlabs.map((r) => ({ label: `${r.thresholdBv} BV`, value: r.rewardLabel || r.label }))} />
       </div>

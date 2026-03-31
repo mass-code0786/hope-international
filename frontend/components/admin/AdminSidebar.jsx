@@ -24,7 +24,8 @@ export const adminNav = [
   { href: '/admin/compensation', label: 'Compensation', icon: Cpu },
   { href: '/admin/rewards', label: 'Rewards', icon: Gift },
   { href: '/admin/team', label: 'Genealogy', icon: Network },
-  { href: '/admin/settings', label: 'Settings', icon: Settings }
+  { href: '/admin/settings', label: 'Settings', icon: Settings },
+  { href: '/admin/settings/deposit-wallet', label: 'Deposit Wallet', icon: ArrowDownCircle }
 ];
 
 function AdminNavLinks({ onNavigate }) {
@@ -102,3 +103,4 @@ export function AdminSidebar({ mobileOpen = false, onClose = () => {} }) {
     </>
   );
 }
+

@@ -2,6 +2,16 @@ function q(client) {
   return client || require('../db/pool').pool;
 }
 
+async function getTableColumns(client, tableName) {
+  const { rows } = await q(client).query(
+    `SELECT column_name
+     FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = $1`,
+    [tableName]
+  );
+  return new Set(rows.map((row) => row.column_name));
+}
+
 function withPaging(limit = 20, offset = 0) {
   return {
     limit: Math.max(1, Number(limit) || 20),
@@ -158,18 +168,35 @@ async function removeWalletBinding(client, userId) {
 }
 
 async function createDepositRequest(client, payload) {
+  const columns = await getTableColumns(client, 'wallet_deposit_requests');
+  const fieldNames = [];
+  const placeholders = [];
+  const values = [];
+
+  function addField(column, value, options = {}) {
+    if (!columns.has(column)) return;
+    values.push(value);
+    fieldNames.push(column);
+    placeholders.push(options.castJsonb ? `$${values.length}::jsonb` : `$${values.length}`);
+  }
+
+  addField('user_id', payload.userId);
+  addField('asset', payload.asset || 'USDT');
+  addField('network', payload.network || 'BEP20');
+  addField('wallet_address_snapshot', payload.walletAddressSnapshot || null);
+  addField('amount', payload.amount);
+  addField('transaction_hash', payload.transactionHash || null);
+  addField('proof_image_url', payload.proofImageUrl || null);
+  addField('method', payload.method || 'crypto');
+  addField('instructions', payload.instructions || null);
+  addField('details', JSON.stringify(payload.details || {}), { castJsonb: true });
+  addField('status', payload.status || 'pending');
+
   const { rows } = await q(client).query(
-    `INSERT INTO wallet_deposit_requests (user_id, amount, method, instructions, details, status)
-     VALUES ($1, $2, $3, $4, $5::jsonb, $6)
+    `INSERT INTO wallet_deposit_requests (${fieldNames.join(', ')})
+     VALUES (${placeholders.join(', ')})
      RETURNING *`,
-    [
-      payload.userId,
-      payload.amount,
-      payload.method || 'manual',
-      payload.instructions || null,
-      JSON.stringify(payload.details || {}),
-      payload.status || 'pending'
-    ]
+    values
   );
   return rows[0] || null;
 }
@@ -199,6 +226,7 @@ async function listDepositRequests(client, userId, limit = 200) {
 }
 
 async function listDepositRequestsAdmin(client, filters, pagination) {
+  const columns = await getTableColumns(client, 'wallet_deposit_requests');
   const { limit, offset } = withPaging(pagination?.limit, pagination?.offset);
   const values = [];
   const where = [];
@@ -221,7 +249,27 @@ async function listDepositRequestsAdmin(client, filters, pagination) {
   }
   if (filters?.search) {
     values.push(`%${filters.search}%`);
-    where.push(`(u.username ILIKE $${values.length} OR u.email ILIKE $${values.length} OR CAST(d.id AS TEXT) ILIKE $${values.length})`);
+    const searchTerms = [
+      `u.username ILIKE $${values.length}` ,
+      `u.email ILIKE $${values.length}` ,
+      `CAST(d.id AS TEXT) ILIKE $${values.length}`
+    ];
+
+    if (columns.has('transaction_hash')) {
+      searchTerms.push(`COALESCE(d.transaction_hash, '') ILIKE $${values.length}`);
+    } else {
+      searchTerms.push(`COALESCE(d.details->>'transactionReference', '') ILIKE $${values.length}`);
+      searchTerms.push(`COALESCE(d.details->>'txHash', '') ILIKE $${values.length}`);
+    }
+
+    if (columns.has('wallet_address_snapshot')) {
+      searchTerms.push(`COALESCE(d.wallet_address_snapshot, '') ILIKE $${values.length}`);
+    } else {
+      searchTerms.push(`COALESCE(d.details->>'walletAddressSnapshot', '') ILIKE $${values.length}`);
+      searchTerms.push(`COALESCE(d.details->>'walletAddress', '') ILIKE $${values.length}`);
+    }
+
+    where.push(`(${searchTerms.join(' OR ')})`);
   }
 
   const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
@@ -249,15 +297,31 @@ async function listDepositRequestsAdmin(client, filters, pagination) {
 }
 
 async function updateDepositRequestStatus(client, id, payload) {
+  const columns = await getTableColumns(client, 'wallet_deposit_requests');
+  const values = [id, payload.status, JSON.stringify(payload.details || {})];
+  const setClauses = [
+    `status = $2`,
+    `details = COALESCE(details, '{}'::jsonb) || $3::jsonb`,
+    `updated_at = NOW()`
+  ];
+
+  if (columns.has('reviewed_by')) {
+    values.push(payload.reviewedBy || null);
+    setClauses.push(`reviewed_by = COALESCE($${values.length}::uuid, reviewed_by)`);
+    if (columns.has('reviewed_at')) {
+      setClauses.push(`reviewed_at = CASE WHEN $${values.length}::uuid IS NULL THEN reviewed_at ELSE NOW() END`);
+    }
+  }
+
+  values.push(payload.expectedCurrentStatus || null);
+
   const { rows } = await q(client).query(
     `UPDATE wallet_deposit_requests
-     SET status = $2,
-         details = COALESCE(details, '{}'::jsonb) || $3::jsonb,
-         updated_at = NOW()
+     SET ${setClauses.join(',\n         ')}
      WHERE id = $1
-       AND ($4::wallet_request_status IS NULL OR status = $4)
+       AND ($${values.length}::wallet_request_status IS NULL OR status = $${values.length})
      RETURNING *`,
-    [id, payload.status, JSON.stringify(payload.details || {}), payload.expectedCurrentStatus || null]
+    values
   );
   return rows[0] || null;
 }

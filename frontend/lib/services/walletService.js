@@ -63,6 +63,14 @@ export async function bindWalletAddress(payload) {
   });
 }
 
+export async function getDepositWalletConfig() {
+  const envelope = toEnvelope(await apiFetch('/wallet/deposit-config'));
+  return {
+    ...envelope,
+    data: envelope.data || null
+  };
+}
+
 export async function createDepositRequest(payload) {
   return toEnvelope(
     await apiFetch('/wallet/deposits', {

@@ -48,6 +48,17 @@ function requireAdmin(req, _res, next) {
   return next();
 }
 
+function requireSuperAdmin(req, _res, next) {
+  const role = normalizeRole(req.user?.role);
+  if (!req.user || role !== 'super_admin') {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[auth] super admin access denied', { path: req.originalUrl, username: req.user?.username, role });
+    }
+    return next(new ApiError(403, 'Super admin access required'));
+  }
+  return next();
+}
+
 async function requireSeller(req, _res, next) {
   const role = normalizeRole(req.user?.role);
   if (!req.user) {
@@ -76,6 +87,7 @@ async function requireSeller(req, _res, next) {
 module.exports = {
   auth,
   requireAdmin,
+  requireSuperAdmin,
   requireSeller,
   normalizeRole
 };

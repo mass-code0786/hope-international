@@ -129,7 +129,7 @@ const walletDepositSchema = z.object({
   body: z.object({
     amount: z.number().positive(),
     txHash: z.string().trim().min(6).max(255),
-    senderWalletAddress: z.string().trim().min(8).max(255).optional(),
+    proofImageUrl: z.string().min(16).max(1000000),
     note: z.string().max(800).optional()
   }),
   params: z.object({}),

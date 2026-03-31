@@ -4,6 +4,7 @@ export const queryKeys = {
   sellerProducts: ['seller', 'products'],
   wallet: ['wallet'],
   walletTransactions: ['wallet', 'transactions'],
+  walletDepositConfig: ['wallet', 'deposit-config'],
   walletDeposits: ['wallet', 'deposits'],
   walletWithdrawals: ['wallet', 'withdrawals'],
   walletP2p: ['wallet', 'p2p'],
@@ -49,6 +50,7 @@ export const queryKeys = {
   adminTeamSummary: (id) => ['admin', 'team', 'summary', id],
   adminTeamTree: (id, depth) => ['admin', 'team', 'tree', id, depth],
   adminSettings: ['admin', 'settings'],
+  adminDepositWalletSettings: ['admin', 'settings', 'deposit-wallet'],
   weeklyCompensationRoot: ['weekly-compensation'],
   monthlyCompensationRoot: ['monthly-compensation'],
   weeklyCompensation: (cycleStart, cycleEnd) => ['weekly-compensation', cycleStart, cycleEnd],
@@ -60,3 +62,4 @@ export const queryKeys = {
   adminSupport: ['admin', 'support'],
   adminSupportDetail: (id) => ['admin', 'support', id]
 };
+
