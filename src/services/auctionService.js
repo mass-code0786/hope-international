@@ -647,11 +647,30 @@ async function revealAuctionResult(auctionId, userId) {
 async function listMyAuctionHistory(userId, filters, paginationInput) {
   const pagination = normalizePagination(paginationInput);
   const result = await withTransaction(async (client) => {
+    console.log('[auction.history.request]', {
+      userId,
+      kind: filters?.kind || 'bids',
+      page: pagination.page,
+      limit: pagination.limit
+    });
     const history = await auctionRepository.listUserAuctionHistory(client, userId, filters, pagination);
 
     for (const auction of history.items) {
       if (auction.computed_status === 'ended' && auction.status !== 'cancelled') {
-        await ensureAuctionResolved(client, auction.id);
+        try {
+          await ensureAuctionResolved(client, auction.id);
+        } catch (error) {
+          if (isAuctionSchemaError(error)) {
+            console.warn('[auction.history.ensure.resolve.skipped]', {
+              auctionId: auction.id,
+              userId,
+              code: error?.code || null,
+              message: error?.message || 'Unknown auction history resolve failure'
+            });
+            continue;
+          }
+          throw error;
+        }
       }
     }
 
@@ -681,6 +700,7 @@ module.exports = {
   deriveAuctionStatus,
   validateAuctionRange
 };
+
 
 
 

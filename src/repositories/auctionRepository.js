@@ -725,16 +725,21 @@ async function upsertAuctionResultReveal(client, auctionId, userId) {
   );
   return rows[0] || null;
 }
-
 async function getUserBidStats(client, userId) {
-  const { rows } = await q(client).query(
-    `SELECT
+  const participantColumns = await getTableColumns(client, 'auction_participants');
+  const winnerColumns = await getTableColumns(client, 'auction_winners');
+  const summarySql = `SELECT
       COALESCE((SELECT COUNT(*) FROM auction_bids WHERE user_id = $1), 0)::int AS my_bids,
-      COALESCE((SELECT COUNT(*) FROM auction_participants WHERE user_id = $1), 0)::int AS auctions_joined,
-      COALESCE((SELECT COUNT(*) FROM auction_winners WHERE user_id = $1), 0)::int AS won_auctions,
-      COALESCE((SELECT COUNT(*) FROM auctions a WHERE EXISTS (SELECT 1 FROM auction_bids b WHERE b.auction_id = a.id AND b.user_id = $1) AND a.status IN ('ended', 'cancelled')), 0)::int AS auction_history`,
-    [userId]
-  );
+      ${participantColumns.size > 0 ? `COALESCE((SELECT COUNT(*) FROM auction_participants WHERE user_id = $1), 0)::int` : '0::int'} AS auctions_joined,
+      ${winnerColumns.size > 0 ? `COALESCE((SELECT COUNT(*) FROM auction_winners WHERE user_id = $1), 0)::int` : '0::int'} AS won_auctions,
+      COALESCE((SELECT COUNT(*) FROM auctions a WHERE EXISTS (SELECT 1 FROM auction_bids b WHERE b.auction_id = a.id AND b.user_id = $1) AND a.status IN ('ended', 'cancelled')), 0)::int AS auction_history`;
+  const summaryValues = [userId];
+  console.log('[auction.history.summary.sql]', {
+    sql: summarySql,
+    values: summaryValues,
+    userId
+  });
+  const { rows } = await q(client).query(summarySql, summaryValues);
   return rows[0] || null;
 }
 
@@ -768,7 +773,7 @@ async function listUserAuctionHistoryCompat(client, userId, filters = {}, pagina
       where.push('EXISTS (SELECT 1 FROM auction_participants ap WHERE ap.auction_id = a.id AND ap.user_id = $1)');
     }
   } else if (filters.kind === 'history') {
-    where.push("${statusCase} IN ('ended', 'cancelled')".replace('${statusCase}', statusCase));
+    where.push(`${statusCase} IN ('ended', 'cancelled')`);
   }
 
   const whereSql = `WHERE ${where.join(' AND ')}`;
@@ -779,9 +784,7 @@ async function listUserAuctionHistoryCompat(client, userId, filters = {}, pagina
     ? 'EXISTS (SELECT 1 FROM auction_winners aw WHERE aw.auction_id = a.id AND aw.user_id = $1)'
     : 'FALSE';
   const listValues = [...values, limit, offset];
-
-  const { rows } = await q(client).query(
-    `SELECT
+  const listSql = `SELECT
       a.*,
       ${statusCase} AS computed_status,
       ${displayCurrentBid} AS display_current_bid,
@@ -813,16 +816,22 @@ async function listUserAuctionHistoryCompat(client, userId, filters = {}, pagina
      FROM auctions a
      ${whereSql}
      ORDER BY ${sortClosedAt} ${sortEndAt} ${sortCreatedAt}
-     LIMIT $${listValues.length - 1} OFFSET $${listValues.length}`,
-    listValues
-  );
-
-  const countResult = await q(client).query(
-    `SELECT COUNT(*)
+     LIMIT $${listValues.length - 1} OFFSET $${listValues.length}`;
+  const countSql = `SELECT COUNT(*)
      FROM auctions a
-     ${whereSql}`,
-    values
-  );
+     ${whereSql}`;
+  console.log('[auction.history.compat.sql]', {
+    sql: listSql,
+    values: listValues,
+    countSql,
+    countValues: values,
+    userId,
+    filters,
+    pagination: { limit, offset }
+  });
+
+  const { rows } = await q(client).query(listSql, listValues);
+  const countResult = await q(client).query(countSql, values);
 
   return {
     items: rows.map(normalizeAuctionRow),
@@ -850,9 +859,7 @@ async function listUserAuctionHistory(client, userId, filters = {}, pagination =
 
   const whereSql = `WHERE ${where.join(' AND ')}`;
   const listValues = [...values, pagination.limit, pagination.offset];
-
-  const { rows } = await q(client).query(
-    `SELECT
+  const listSql = `SELECT
       a.*,
       ${statusCase} AS computed_status,
       a.entry_price::numeric(14,2) AS display_current_bid,
@@ -887,22 +894,29 @@ async function listUserAuctionHistory(client, userId, filters = {}, pagination =
      LEFT JOIN products p ON p.id = a.product_id
      ${whereSql}
      ORDER BY a.closed_at DESC NULLS LAST, a.end_at DESC, a.created_at DESC
-     LIMIT $${listValues.length - 1} OFFSET $${listValues.length}`,
-    listValues
-  );
-
-  const countResult = await q(client).query(
-    `SELECT COUNT(*)
+     LIMIT $${listValues.length - 1} OFFSET $${listValues.length}`;
+  const countSql = `SELECT COUNT(*)
      FROM auctions a
-     ${whereSql}`,
-    values
-  );
+     ${whereSql}`;
+  console.log('[auction.history.sql]', {
+    sql: listSql,
+    values: listValues,
+    countSql,
+    countValues: values,
+    userId,
+    filters,
+    pagination
+  });
+
+  const { rows } = await q(client).query(listSql, listValues);
+  const countResult = await q(client).query(countSql, values);
 
   return {
     items: await attachWinnerRows(client, rows.map(normalizeAuctionRow)),
     total: Number(countResult.rows[0]?.count || 0)
   };
 }
+
 module.exports = {
   listAuctions,
   listAuctionsCompat,
@@ -927,11 +941,3 @@ module.exports = {
   getUserBidStats,
   listUserAuctionHistory
 };
-
-
-
-
-
-
-
-
