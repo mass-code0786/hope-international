@@ -184,15 +184,11 @@ export function AuctionCard({ auction }) {
 
       {capacity.hasCapacity ? (
         <div className="px-1 pt-2.5">
-          <div className="overflow-hidden rounded-full bg-slate-200/90">
+          <div className="overflow-hidden rounded-full border border-slate-200 bg-white">
             <div
-              className="h-1.5 rounded-full bg-emerald-500 transition-[width] duration-300 ease-out"
+              className="h-1.5 rounded-full bg-sky-500 transition-[width] duration-300 ease-out"
               style={{ width: `${capacity.capacityPercent}%` }}
             />
-          </div>
-          <div className="mt-1 flex items-center justify-between gap-2 text-[10px] font-medium text-slate-600">
-            <span>{capacity.capacityFilled} / {capacity.totalCapacity} filled</span>
-            <span>{capacity.capacityRemaining} left</span>
           </div>
         </div>
       ) : null}
