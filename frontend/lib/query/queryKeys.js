@@ -57,9 +57,13 @@ export const queryKeys = {
   monthlyCompensation: (monthStart, monthEnd) => ['monthly-compensation', monthStart, monthEnd],
   teamChildren: ['team-children'],
   teamSummary: ['team-summary'],
+  teamTreeRoot: ['team-tree', 'root'],
+  teamTreeNode: (id) => ['team-tree', id],
   landingPage: ['landing-page'],
   adminLanding: ['admin', 'landing'],
   adminSupport: ['admin', 'support'],
   adminSupportDetail: (id) => ['admin', 'support', id]
 };
+
+
 

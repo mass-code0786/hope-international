@@ -1,97 +1,63 @@
 'use client';
 
-import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { GitBranchPlus, MoveHorizontal } from 'lucide-react';
 import { SectionHeader } from '@/components/ui/SectionHeader';
-import { TreeNode } from '@/components/team/TreeNode';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { TeamSkeleton } from '@/components/ui/PageSkeletons';
-import { getTeamChildren, getTeamSummary } from '@/lib/services/teamService';
+import { getTeamSummary, getTeamTreeRoot } from '@/lib/services/teamService';
 import { getMe } from '@/lib/services/authService';
 import { queryKeys } from '@/lib/query/queryKeys';
-import { shortDate } from '@/lib/utils/format';
 import { TeamSummaryPanel } from '@/components/team/TeamSummaryPanel';
-import { Badge } from '@/components/ui/Badge';
+import { BinaryTreeExplorer } from '@/components/team/BinaryTreeExplorer';
 
 export default function TeamPage() {
-  const [view, setView] = useState('list');
   const meQuery = useQuery({ queryKey: queryKeys.me, queryFn: getMe });
-  const teamQuery = useQuery({ queryKey: queryKeys.teamChildren, queryFn: getTeamChildren });
   const teamSummaryQuery = useQuery({ queryKey: queryKeys.teamSummary, queryFn: getTeamSummary });
+  const treeRootQuery = useQuery({ queryKey: queryKeys.teamTreeRoot, queryFn: getTeamTreeRoot });
 
   const me = meQuery.data || {};
-  const children = Array.isArray(teamQuery.data) ? teamQuery.data : [];
   const teamSummary = teamSummaryQuery.data || {};
-  const hasNestedTreeData = children.some((c) => Array.isArray(c.children) && c.children.length > 0);
+  const root = treeRootQuery.data || null;
+  const directChildren = useMemo(() => [root?.children?.left, root?.children?.right].filter(Boolean), [root]);
 
-  const root = useMemo(() => ({
-    id: me.id || 'root',
-    name: me.username || 'You',
-    side: 'Root',
-    status: me?.is_active === false ? 'inactive' : 'active',
-    children: children.map((c) => ({
-      id: c.id,
-      name: c.username || 'Member',
-      side: c.placement_side || 'N/A',
-      status: c.is_active === false ? 'inactive' : 'active',
-      children: Array.isArray(c.children) ? c.children : []
-    }))
-  }), [me, children]);
-
-  if (meQuery.isLoading || teamQuery.isLoading || teamSummaryQuery.isLoading) return <TeamSkeleton />;
-  if (meQuery.isError || teamQuery.isError || teamSummaryQuery.isError) {
-    return <ErrorState message="Team details are temporarily unavailable." onRetry={() => { meQuery.refetch(); teamQuery.refetch(); teamSummaryQuery.refetch(); }} />;
+  if (meQuery.isLoading || teamSummaryQuery.isLoading || treeRootQuery.isLoading) return <TeamSkeleton />;
+  if (meQuery.isError || teamSummaryQuery.isError || treeRootQuery.isError) {
+    return <ErrorState message="Team tree is temporarily unavailable." onRetry={() => { meQuery.refetch(); teamSummaryQuery.refetch(); treeRootQuery.refetch(); }} />;
   }
 
   return (
     <div className="space-y-4">
       <SectionHeader title="Team" />
 
-      <TeamSummaryPanel me={me} teamSummary={teamSummary} children={children} hasNestedTreeData={hasNestedTreeData} />
+      <TeamSummaryPanel me={me} teamSummary={teamSummary} children={directChildren} />
 
-      <div className="card-surface p-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <h3 className="text-xl font-semibold tracking-[-0.04em] text-text">Direct team</h3>
-          <div className="flex gap-2">
-            <button onClick={() => setView('list')} className={`rounded-2xl px-4 py-2 text-sm font-semibold ${view === 'list' ? 'bg-slate-950 text-white dark:bg-white dark:text-slate-900' : 'border border-[var(--hope-border)] bg-card text-muted'}`}>List</button>
-            <button onClick={() => setView('tree')} className={`rounded-2xl px-4 py-2 text-sm font-semibold ${view === 'tree' ? 'bg-slate-950 text-white dark:bg-white dark:text-slate-900' : 'border border-[var(--hope-border)] bg-card text-muted'}`}>Tree</button>
+      <section className="card-surface overflow-hidden p-5">
+        <div className="flex flex-col gap-4 border-b border-[var(--hope-border)] pb-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <span className="hope-kicker"><GitBranchPlus size={12} /> Binary Tree</span>
+            <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-text">Expandable genealogy view</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">Tap any member card to open that member&apos;s left and right structure. The tree loads each branch only when you expand it, so larger networks stay responsive.</p>
+          </div>
+          <div className="rounded-[24px] border border-[var(--hope-border)] bg-cardSoft px-4 py-3 text-sm text-muted">
+            <div className="inline-flex items-center gap-2 font-semibold text-text"><MoveHorizontal size={16} className="text-accent" /> Drag or scroll horizontally on mobile</div>
+            <p className="mt-1 text-xs text-muted">Each node opens its own subtree without leaving this page.</p>
           </div>
         </div>
-      </div>
 
-      {view === 'tree' ? (
-        <div className="card-surface p-4">
-          <TreeNode node={root} />
-        </div>
-      ) : children.length ? (
-        <div className="grid gap-3">
-          {children.map((member, idx) => {
-            const active = member?.is_active !== false;
-            return (
-              <div key={member?.id || idx} className="card-surface p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="text-base font-semibold text-text">{member?.first_name || member?.last_name ? `${member?.first_name || ''} ${member?.last_name || ''}`.trim() : member?.username || 'Member'}</p>
-                    <p className="mt-1 text-sm text-muted">@{member?.username || 'member'}</p>
-                    <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] text-muted">
-                      <span>{shortDate(member?.created_at)}</span>
-                      <span>{String(member?.placement_side || 'N/A').toUpperCase()}</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant={active ? 'success' : 'warning'}>{active ? 'Active' : 'Inactive'}</Badge>
-                    <Badge variant="accent">{String(member?.placement_side || 'N/A').toUpperCase()}</Badge>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <EmptyState title="No team yet" description="Start referring users." action={<Link href="/profile" className="hope-button">Start referring users</Link>} />
-      )}
+        {root ? (
+          <div className="mt-5 rounded-[28px] border border-[var(--hope-border)] bg-[radial-gradient(circle_at_top,rgba(15,118,110,0.1),transparent_35%),linear-gradient(180deg,rgba(255,255,255,0.72),rgba(241,245,249,0.68))] p-4 dark:bg-[radial-gradient(circle_at_top,rgba(94,234,212,0.1),transparent_35%),linear-gradient(180deg,rgba(8,15,24,0.82),rgba(11,18,29,0.76))] sm:p-6">
+            <BinaryTreeExplorer root={root} />
+          </div>
+        ) : (
+          <div className="mt-5">
+            <EmptyState title="No team yet" description="Start referring users to build your binary tree." action={<Link href="/profile" className="hope-button">Start referring users</Link>} />
+          </div>
+        )}
+      </section>
     </div>
   );
 }

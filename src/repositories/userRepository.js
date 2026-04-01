@@ -147,6 +147,83 @@ async function getBinaryNode(client, id) {
   return rows[0] || null;
 }
 
+async function getTeamTreeNode(client, id) {
+  const { rows } = await q(client).query(
+    `SELECT
+       u.id,
+       u.username,
+       u.email,
+       u.first_name,
+       u.last_name,
+       u.parent_id,
+       u.placement_side,
+       u.left_child_id,
+       u.right_child_id,
+       u.is_active,
+       u.created_at,
+       (
+         SELECT COUNT(*)::int
+         FROM users child
+         WHERE child.parent_id = u.id
+       ) AS direct_count
+     FROM users u
+     WHERE u.id = $1`,
+    [id]
+  );
+  return rows[0] || null;
+}
+
+async function getTeamTreeNodesByIds(client, ids = []) {
+  if (!Array.isArray(ids) || !ids.length) return [];
+
+  const { rows } = await q(client).query(
+    `SELECT
+       u.id,
+       u.username,
+       u.email,
+       u.first_name,
+       u.last_name,
+       u.parent_id,
+       u.placement_side,
+       u.left_child_id,
+       u.right_child_id,
+       u.is_active,
+       u.created_at,
+       (
+         SELECT COUNT(*)::int
+         FROM users child
+         WHERE child.parent_id = u.id
+       ) AS direct_count
+     FROM users u
+     WHERE u.id = ANY($1::uuid[])`,
+    [ids]
+  );
+  return rows;
+}
+
+async function isNodeInSubtree(client, rootUserId, nodeId) {
+  const { rows } = await q(client).query(
+    `WITH RECURSIVE lineage AS (
+       SELECT id, parent_id
+       FROM users
+       WHERE id = $2
+
+       UNION ALL
+
+       SELECT parent.id, parent.parent_id
+       FROM users parent
+       JOIN lineage ON lineage.parent_id = parent.id
+     )
+     SELECT 1
+     FROM lineage
+     WHERE id = $1
+     LIMIT 1`,
+    [rootUserId, nodeId]
+  );
+
+  return rows.length > 0;
+}
+
 async function addSelfVolume(client, userId, pv, bv) {
   await q(client).query(
     `UPDATE users
@@ -278,6 +355,9 @@ module.exports = {
   setChild,
   findFirstAvailableParentByLeg,
   getBinaryNode,
+  getTeamTreeNode,
+  getTeamTreeNodesByIds,
+  isNodeInSubtree,
   addSelfVolume,
   addTeamVolume,
   updateRank,
@@ -286,3 +366,5 @@ module.exports = {
   getDirectChildren,
   listAllUsers
 };
+
+

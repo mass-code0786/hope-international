@@ -18,6 +18,16 @@ const myTeamSummary = asyncHandler(async (req, res) => {
   res.status(200).json(summary || {});
 });
 
+const myTeamTreeRoot = asyncHandler(async (req, res) => {
+  const tree = await userService.getTeamTreeRoot(req.user.sub);
+  res.status(200).json(tree);
+});
+
+const myTeamTreeNode = asyncHandler(async (req, res) => {
+  const tree = await userService.getTeamTreeNode(req.user.sub, req.params.memberId);
+  res.status(200).json(tree);
+});
+
 const weeklyCompensation = asyncHandler(async (req, res) => {
   const data = await compensationService.getWeeklyStatus(req.user.sub, req.query.cycleStart, req.query.cycleEnd);
   res.status(200).json(data);
@@ -32,6 +42,8 @@ module.exports = {
   me,
   myChildren,
   myTeamSummary,
+  myTeamTreeRoot,
+  myTeamTreeNode,
   weeklyCompensation,
   monthlyCompensation
 };

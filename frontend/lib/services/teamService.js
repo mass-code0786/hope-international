@@ -22,3 +22,11 @@ export async function getTeamSummary() {
     };
   }
 }
+
+export async function getTeamTreeRoot() {
+  return apiFetch('/users/me/team/tree');
+}
+
+export async function getTeamTreeNode(memberId) {
+  return apiFetch(`/users/me/team/tree/${memberId}`);
+}
