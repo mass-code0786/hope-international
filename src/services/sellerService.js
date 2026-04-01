@@ -3,9 +3,11 @@ const path = require('path');
 const { withTransaction } = require('../db/pool');
 const { ApiError } = require('../utils/ApiError');
 const { normalizePagination, buildPagination } = require('../utils/pagination');
-const { PV_TO_BV_RATIO } = require('../config/constants');
+const { PV_TO_BV_RATIO, SELLER_APPLICATION_FEE_USD } = require('../config/constants');
 const sellerRepository = require('../repositories/sellerRepository');
 const userRepository = require('../repositories/userRepository');
+const walletRepository = require('../repositories/walletRepository');
+const walletService = require('./walletService');
 
 const ALLOWED_DOC_MIME = new Set([
   'application/pdf',
@@ -13,9 +15,38 @@ const ALLOWED_DOC_MIME = new Set([
   'image/png',
   'image/webp'
 ]);
+const SELLER_APPLICATION_FEE_SOURCE = 'seller_application_fee';
 
 function toMoney(value) {
   return Number(Number(value).toFixed(2));
+}
+
+function normalizeSellerApplicationFee(value) {
+  return Number(Number(value || 0).toFixed(2));
+}
+
+function assertSellerApplicationFee(value) {
+  if (normalizeSellerApplicationFee(value) !== SELLER_APPLICATION_FEE_USD) {
+    throw new ApiError(400, `Seller application fee must be exactly ${SELLER_APPLICATION_FEE_USD} USD`);
+  }
+}
+
+async function ensureSellerApplicationFeeCharged(client, userId, sellerProfileId, submittedFee) {
+  assertSellerApplicationFee(submittedFee);
+
+  const existingTransactions = await walletRepository.listTransactionsBySource(client, userId, SELLER_APPLICATION_FEE_SOURCE, 10);
+  const existingDebit = existingTransactions.find((item) => item.tx_type === 'debit');
+  if (existingDebit) {
+    return { chargedNow: false, transaction: existingDebit };
+  }
+
+  const wallet = await walletService.debit(client, userId, SELLER_APPLICATION_FEE_USD, SELLER_APPLICATION_FEE_SOURCE, sellerProfileId, {
+    sellerProfileId,
+    sellerApplicationFee: SELLER_APPLICATION_FEE_USD,
+    currency: 'USD'
+  });
+
+  return { chargedNow: true, wallet };
 }
 
 function derivePrivateDocumentUrl(sellerProfileId, fileName) {
@@ -51,6 +82,7 @@ async function apply(userId, payload) {
     }
 
     const profile = await sellerRepository.upsertSellerProfile(client, userId, payload);
+    const feeResult = await ensureSellerApplicationFeeCharged(client, userId, profile.id, payload.applicationFee);
     const documents = await sellerRepository.replaceSellerDocuments(client, profile.id, payload.documents || [], userId);
 
     await sellerRepository.logSellerActivity(client, {
@@ -60,13 +92,17 @@ async function apply(userId, payload) {
       targetEntity: 'seller_profile',
       targetId: profile.id,
       metadata: {
-        documentsCount: documents.length
+        documentsCount: documents.length,
+        applicationFee: SELLER_APPLICATION_FEE_USD,
+        applicationFeeChargedNow: feeResult.chargedNow
       }
     });
 
     return {
       profile,
-      documents
+      documents,
+      applicationFee: SELLER_APPLICATION_FEE_USD,
+      applicationFeeChargedNow: feeResult.chargedNow
     };
   });
 }
@@ -80,7 +116,8 @@ async function getMe(userId) {
       products: [],
       recentModeration: [],
       summary: null,
-      canAccessDashboard: false
+      canAccessDashboard: false,
+      applicationFee: SELLER_APPLICATION_FEE_USD
     };
   }
 
@@ -101,7 +138,8 @@ async function getMe(userId) {
       ...productSummary,
       ...orderSummary
     },
-    canAccessDashboard: profile.application_status === 'approved'
+    canAccessDashboard: profile.application_status === 'approved',
+    applicationFee: SELLER_APPLICATION_FEE_USD
   };
 }
 
@@ -312,4 +350,3 @@ module.exports = {
   listDocuments,
   deleteDocument
 };
-

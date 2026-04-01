@@ -1,4 +1,5 @@
 const { z } = require('zod');
+const { SELLER_APPLICATION_FEE_USD } = require('../config/constants');
 
 const uuid = z.string().uuid();
 const usernameSchema = z.string().min(3).max(32).regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscore');
@@ -167,6 +168,9 @@ const sellerApplySchema = z.object({
     state: z.string().max(120).optional(),
     country: z.string().max(120).optional(),
     postalCode: z.string().max(30).optional(),
+    applicationFee: z.number().refine((value) => Number(value) === SELLER_APPLICATION_FEE_USD, {
+      message: `Seller application fee must be exactly ${SELLER_APPLICATION_FEE_USD} USD`
+    }),
     kycDetails: z.record(z.any()).optional(),
     documents: z.array(z.object({
       documentType: z.string().min(2).max(80),
@@ -376,3 +380,7 @@ module.exports = {
   supportThreadIdParamSchema,
   supportMessageCreateSchema
 };
+
+
+
+

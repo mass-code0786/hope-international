@@ -1,4 +1,5 @@
 import { apiFetch } from '@/lib/api/client';
+import { SELLER_APPLICATION_FEE_USD } from '@/lib/constants/seller';
 
 function unwrap(payload) {
   if (!payload) return payload;
@@ -9,7 +10,10 @@ function unwrap(payload) {
 export async function applyForSeller(payload) {
   const data = await apiFetch('/seller/apply', {
     method: 'POST',
-    body: JSON.stringify(payload)
+    body: JSON.stringify({
+      ...payload,
+      applicationFee: SELLER_APPLICATION_FEE_USD
+    })
   });
   return unwrap(data);
 }
@@ -23,7 +27,8 @@ export async function getSellerMe() {
     documents: Array.isArray(unwrapped.documents) ? unwrapped.documents : [],
     products: Array.isArray(unwrapped.products) ? unwrapped.products : [],
     summary: unwrapped.summary || null,
-    canAccessDashboard: Boolean(unwrapped.canAccessDashboard)
+    canAccessDashboard: Boolean(unwrapped.canAccessDashboard),
+    applicationFee: Number(unwrapped.applicationFee || SELLER_APPLICATION_FEE_USD)
   };
 }
 

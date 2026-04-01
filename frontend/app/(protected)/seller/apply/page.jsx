@@ -9,15 +9,18 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { SellerApplySkeleton } from '@/components/ui/PageSkeletons';
 import { SellerStatusBadge } from '@/components/seller/SellerStatusBadge';
 import { useSellerMe } from '@/hooks/useSellerMe';
+import { useWallet } from '@/hooks/useWallet';
 import { applyForSeller } from '@/lib/services/sellerService';
 import { queryKeys } from '@/lib/query/queryKeys';
-import { shortDate } from '@/lib/utils/format';
+import { SELLER_APPLICATION_FEE_USD } from '@/lib/constants/seller';
+import { currency, shortDate } from '@/lib/utils/format';
 
 const EMPTY_DOC = { documentType: '', documentNumber: '', documentUrl: '', notes: '' };
 
 export default function SellerApplyPage() {
   const queryClient = useQueryClient();
   const sellerQuery = useSellerMe();
+  const walletQuery = useWallet();
   const [form, setForm] = useState({
     legalName: '',
     businessName: '',
@@ -39,11 +42,17 @@ export default function SellerApplyPage() {
     documents: [{ ...EMPTY_DOC }]
   });
 
+  const walletBalance = Number(walletQuery.data?.wallet?.balance || 0);
+  const hasFeeBalance = walletBalance >= SELLER_APPLICATION_FEE_USD;
+
   const applyMutation = useMutation({
     mutationFn: applyForSeller,
     onSuccess: async () => {
       toast.success('Seller application submitted successfully');
-      await queryClient.invalidateQueries({ queryKey: queryKeys.sellerMe });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.sellerMe }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.wallet })
+      ]);
     },
     onError: (error) => toast.error(error.message || 'Unable to submit seller application')
   });
@@ -110,6 +119,11 @@ export default function SellerApplyPage() {
 
   async function onSubmit(e) {
     e.preventDefault();
+    if (!hasFeeBalance) {
+      toast.error(`A wallet balance of at least $${SELLER_APPLICATION_FEE_USD} is required`);
+      return;
+    }
+
     const cleanedDocs = (form.documents || []).filter((doc) => doc.documentType && doc.documentUrl);
     if (!cleanedDocs.length) {
       toast.error('At least one valid document is required');
@@ -127,8 +141,12 @@ export default function SellerApplyPage() {
 
       <div className="rounded-xl border border-slate-200 bg-white p-3">
         <p className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Policy</p>
-        <p className="mt-1 text-sm font-semibold text-slate-800">Activation Fee: 300 USDT</p>
-        <p className="mt-0.5 text-[11px] text-slate-500">One-time fee is required before seller approval is finalized.</p>
+        <p className="mt-1 text-sm font-semibold text-slate-800">Activation Fee: ${SELLER_APPLICATION_FEE_USD}</p>
+        <p className="mt-0.5 text-[11px] text-slate-500">Exactly ${SELLER_APPLICATION_FEE_USD} is deducted from your wallet on the first seller application submission.</p>
+        <p className="mt-1 text-[11px] text-slate-500">Wallet Balance: {walletQuery.isLoading ? 'Checking...' : currency(walletBalance)}</p>
+        {!walletQuery.isLoading && !hasFeeBalance ? (
+          <p className="mt-1 text-[11px] font-medium text-rose-600">Insufficient wallet balance for the $70 seller application fee.</p>
+        ) : null}
       </div>
 
       <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3">
@@ -231,7 +249,11 @@ export default function SellerApplyPage() {
         </div>
 
         <div className="flex justify-end">
-          <button type="submit" disabled={applyMutation.isPending} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60">
+          <button
+            type="submit"
+            disabled={applyMutation.isPending || walletQuery.isLoading || !hasFeeBalance}
+            className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+          >
             {applyMutation.isPending ? 'Submitting...' : hasSubmitted ? 'Resubmit' : 'Submit'}
           </button>
         </div>
@@ -239,4 +261,3 @@ export default function SellerApplyPage() {
     </div>
   );
 }
-

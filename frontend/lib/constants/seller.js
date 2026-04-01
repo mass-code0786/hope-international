@@ -1,0 +1,1 @@
+export const SELLER_APPLICATION_FEE_USD = 70;

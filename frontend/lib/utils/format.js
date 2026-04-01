@@ -49,6 +49,7 @@ const incomeSourceMap = {
   order_purchase: 'Order Purchase',
   deposit_request: 'Deposit Request',
   withdrawal_request: 'Withdrawal Request',
+  seller_application_fee: 'Seller Application Fee',
   p2p_transfer: 'P2P Transfer',
   auction_loss_compensation: 'Auction BTCT Reward'
 };
@@ -136,4 +137,5 @@ export function statusVariant(status) {
   if (status === 'pending' || status === 'processing') return 'warning';
   return 'default';
 }
+
 
