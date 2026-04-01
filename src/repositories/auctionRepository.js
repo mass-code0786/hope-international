@@ -738,15 +738,112 @@ async function getUserBidStats(client, userId) {
   return rows[0] || null;
 }
 
-async function listUserAuctionHistory(client, userId, filters, pagination) {
+async function listUserAuctionHistoryCompat(client, userId, filters = {}, pagination = {}) {
+  const auctionColumns = await getTableColumns(client, 'auctions');
+  const winnerColumns = await getTableColumns(client, 'auction_winners');
+  const participantColumns = await getTableColumns(client, 'auction_participants');
+  const { limit, offset } = normalizeListPagination(pagination);
   const values = [userId, filters.now || new Date().toISOString()];
-  const statusCase = buildAuctionStatusCase('$2');
-  const where = [`EXISTS (SELECT 1 FROM auction_bids ub WHERE ub.auction_id = a.id AND ub.user_id = $1)`];
+  const statusCase = buildCompatStatusCase(auctionColumns, '$2');
+  const displayCurrentBid = auctionColumns.has('entry_price')
+    ? 'COALESCE(a.entry_price, a.current_bid, a.starting_price)::numeric(14,2)'
+    : auctionColumns.has('current_bid')
+      ? 'COALESCE(a.current_bid, a.starting_price)::numeric(14,2)'
+      : 'a.starting_price::numeric(14,2)';
+  const totalEntriesExpr = auctionColumns.has('total_entries')
+    ? 'COALESCE(a.total_entries, 0)'
+    : auctionColumns.has('total_bids')
+      ? 'COALESCE(a.total_bids, 0)'
+      : '0';
+  const where = ['EXISTS (SELECT 1 FROM auction_bids ub WHERE ub.auction_id = a.id AND ub.user_id = $1)'];
 
   if (filters.kind === 'wins') {
-    where.push(`EXISTS (SELECT 1 FROM auction_winners aw WHERE aw.auction_id = a.id AND aw.user_id = $1)`);
+    if (winnerColumns.size > 0) {
+      where.push('EXISTS (SELECT 1 FROM auction_winners aw WHERE aw.auction_id = a.id AND aw.user_id = $1)');
+    } else {
+      where.push('FALSE');
+    }
   } else if (filters.kind === 'joined') {
-    where.push(`EXISTS (SELECT 1 FROM auction_participants ap WHERE ap.auction_id = a.id AND ap.user_id = $1)`);
+    if (participantColumns.size > 0) {
+      where.push('EXISTS (SELECT 1 FROM auction_participants ap WHERE ap.auction_id = a.id AND ap.user_id = $1)');
+    }
+  } else if (filters.kind === 'history') {
+    where.push("${statusCase} IN ('ended', 'cancelled')".replace('${statusCase}', statusCase));
+  }
+
+  const whereSql = `WHERE ${where.join(' AND ')}`;
+  const sortClosedAt = auctionColumns.has('closed_at') ? 'a.closed_at DESC NULLS LAST,' : '';
+  const sortEndAt = auctionColumns.has('end_at') ? 'a.end_at DESC,' : '';
+  const sortCreatedAt = auctionColumns.has('created_at') ? 'a.created_at DESC' : '1 DESC';
+  const isWinnerExpr = winnerColumns.size > 0
+    ? 'EXISTS (SELECT 1 FROM auction_winners aw WHERE aw.auction_id = a.id AND aw.user_id = $1)'
+    : 'FALSE';
+  const listValues = [...values, limit, offset];
+
+  const { rows } = await q(client).query(
+    `SELECT
+      a.*,
+      ${statusCase} AS computed_status,
+      ${displayCurrentBid} AS display_current_bid,
+      ${totalEntriesExpr}::int AS total_entries,
+      NULL::text AS winner_username,
+      NULL::text AS winner_email,
+      NULL::text AS created_by_username,
+      NULL::text AS updated_by_username,
+      NULL::text AS product_name,
+      NULL::text AS product_sku,
+      NULL::numeric AS product_price,
+      NULL::text AS product_description,
+      NULL::text AS product_image_url,
+      '[]'::jsonb AS product_gallery,
+      NULL::boolean AS product_is_active,
+      ${isWinnerExpr} AS is_winner,
+      (
+        SELECT COALESCE(SUM(entry_count), 0)
+        FROM auction_bids ub
+        WHERE ub.auction_id = a.id
+          AND ub.user_id = $1
+      ) AS my_entry_count,
+      (
+        SELECT COALESCE(SUM(total_amount), 0)
+        FROM auction_bids ub
+        WHERE ub.auction_id = a.id
+          AND ub.user_id = $1
+      ) AS my_total_spend
+     FROM auctions a
+     ${whereSql}
+     ORDER BY ${sortClosedAt} ${sortEndAt} ${sortCreatedAt}
+     LIMIT $${listValues.length - 1} OFFSET $${listValues.length}`,
+    listValues
+  );
+
+  const countResult = await q(client).query(
+    `SELECT COUNT(*)
+     FROM auctions a
+     ${whereSql}`,
+    values
+  );
+
+  return {
+    items: rows.map(normalizeAuctionRow),
+    total: Number(countResult.rows[0]?.count || 0)
+  };
+}
+
+async function listUserAuctionHistory(client, userId, filters = {}, pagination = {}) {
+  const columns = await getTableColumns(client, 'auctions');
+  if (!hasRequiredColumns(columns, MODERN_AUCTION_LIST_COLUMNS)) {
+    return listUserAuctionHistoryCompat(client, userId, filters, pagination);
+  }
+
+  const values = [userId, filters.now || new Date().toISOString()];
+  const statusCase = buildAuctionStatusCase('$2');
+  const where = ['EXISTS (SELECT 1 FROM auction_bids ub WHERE ub.auction_id = a.id AND ub.user_id = $1)'];
+
+  if (filters.kind === 'wins') {
+    where.push('EXISTS (SELECT 1 FROM auction_winners aw WHERE aw.auction_id = a.id AND aw.user_id = $1)');
+  } else if (filters.kind === 'joined') {
+    where.push('EXISTS (SELECT 1 FROM auction_participants ap WHERE ap.auction_id = a.id AND ap.user_id = $1)');
   } else if (filters.kind === 'history') {
     where.push(`${statusCase} IN ('ended', 'cancelled')`);
   }
@@ -806,7 +903,6 @@ async function listUserAuctionHistory(client, userId, filters, pagination) {
     total: Number(countResult.rows[0]?.count || 0)
   };
 }
-
 module.exports = {
   listAuctions,
   listAuctionsCompat,
