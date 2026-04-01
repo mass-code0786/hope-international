@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { GitBranchPlus, MoveHorizontal } from 'lucide-react';
+import { GitBranchPlus } from 'lucide-react';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
@@ -36,16 +36,11 @@ export default function TeamPage() {
       <TeamSummaryPanel me={me} teamSummary={teamSummary} children={directChildren} />
 
       <section className="card-surface overflow-hidden p-5">
-        <div className="flex flex-col gap-4 border-b border-[var(--hope-border)] pb-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <span className="hope-kicker"><GitBranchPlus size={12} /> Binary Tree</span>
-            <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-text">Expandable genealogy view</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">Tap any member card to open that member&apos;s left and right structure. The tree loads each branch only when you expand it, so larger networks stay responsive.</p>
-          </div>
-          <div className="rounded-[24px] border border-[var(--hope-border)] bg-cardSoft px-4 py-3 text-sm text-muted">
-            <div className="inline-flex items-center gap-2 font-semibold text-text"><MoveHorizontal size={16} className="text-accent" /> Drag or scroll horizontally on mobile</div>
-            <p className="mt-1 text-xs text-muted">Each node opens its own subtree without leaving this page.</p>
-          </div>
+        <div className="flex items-center gap-2 border-b border-[var(--hope-border)] pb-4">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-[var(--hope-accent-soft)] text-accent">
+            <GitBranchPlus size={16} />
+          </span>
+          <h2 className="text-lg font-semibold tracking-[-0.03em] text-text">Binary Team</h2>
         </div>
 
         {root ? (
