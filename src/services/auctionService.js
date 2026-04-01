@@ -332,6 +332,10 @@ function stripPrivateFields(auction) {
 
   return {
     ...rest,
+    totalCapacity: capacity.totalCapacity,
+    capacityFilled: capacity.filledEntries,
+    capacityRemaining: capacity.remainingEntries,
+    capacityPercent: capacity.percentFilled,
     bidHistory,
     participants,
     leaderboard,

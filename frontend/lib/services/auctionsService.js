@@ -123,6 +123,10 @@ function normalizeAuction(auction) {
       ?? auction.starting_price
       ?? 0
     ),
+    totalCapacity: toNumber(auction.totalCapacity),
+    capacityFilled: toNumber(auction.capacityFilled),
+    capacityRemaining: toNumber(auction.capacityRemaining),
+    capacityPercent: toNumber(auction.capacityPercent),
     total_entries: toNumber(auction.total_entries),
     total_bids: toNumber(auction.total_bids),
     participantCount: toNumber(auction.participantCount),

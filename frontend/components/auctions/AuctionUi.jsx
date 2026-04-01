@@ -112,6 +112,26 @@ function getAuctionPrice(auction) {
   return auction?.display_price ?? auction?.entry_price ?? auction?.display_current_bid ?? auction?.starting_price ?? 0;
 }
 
+function getAuctionCapacity(auction) {
+  const totalCapacity = Number(auction?.totalCapacity ?? 0);
+  const capacityFilled = Math.max(0, Number(auction?.capacityFilled ?? auction?.total_entries ?? 0));
+  const safeTotalCapacity = Math.max(0, totalCapacity);
+  const capacityRemaining = safeTotalCapacity > 0
+    ? Math.max(0, Number(auction?.capacityRemaining ?? (safeTotalCapacity - capacityFilled)))
+    : 0;
+  const capacityPercent = safeTotalCapacity > 0
+    ? Math.max(0, Math.min(100, Number(auction?.capacityPercent ?? Math.round((capacityFilled / safeTotalCapacity) * 100))))
+    : 0;
+
+  return {
+    totalCapacity: safeTotalCapacity,
+    capacityFilled,
+    capacityRemaining,
+    capacityPercent,
+    hasCapacity: safeTotalCapacity > 0
+  };
+}
+
 function getAuctionCta(status, won = false) {
   if (won) return 'Win Now';
   if (status === 'live') return 'Bid Now';
@@ -150,15 +170,11 @@ export function AuctionCard({ auction }) {
   const won = Boolean(auction?.is_winner || auction?.isWinner);
   const theme = getCardTheme(status);
   const price = formatAuctionMoney(getAuctionPrice(auction));
+  const capacity = getAuctionCapacity(auction);
 
   return (
     <article className={`overflow-hidden rounded-[28px] border border-white/80 bg-gradient-to-b ${theme.frame} p-2.5 shadow-[0_18px_40px_rgba(15,23,42,0.10)]`}>
-      <div className={`relative overflow-hidden rounded-[22px] bg-gradient-to-br ${theme.image} px-3 pb-3 pt-12`}>
-        <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2.5">
-          <AuctionCountdown startAt={auction?.start_at} endAt={auction?.end_at} status={status} compact />
-          <AuctionStatusBadge status={status} won={won} />
-        </div>
-
+      <div className={`overflow-hidden rounded-[22px] bg-gradient-to-br ${theme.image} px-3 py-3`}>
         <Link href={`/auctions/${auction?.id}`} className="block">
           <div className="mx-auto flex aspect-square max-w-[152px] items-center justify-center rounded-full bg-white/75 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_16px_30px_rgba(15,23,42,0.10)] backdrop-blur-sm">
             <img src={cover} alt={auction?.title || 'Auction'} className="h-full w-full object-contain" />
@@ -166,10 +182,30 @@ export function AuctionCard({ auction }) {
         </Link>
       </div>
 
+      {capacity.hasCapacity ? (
+        <div className="px-1 pt-2.5">
+          <div className="overflow-hidden rounded-full bg-slate-200/90">
+            <div
+              className="h-1.5 rounded-full bg-emerald-500 transition-[width] duration-300 ease-out"
+              style={{ width: `${capacity.capacityPercent}%` }}
+            />
+          </div>
+          <div className="mt-1 flex items-center justify-between gap-2 text-[10px] font-medium text-slate-600">
+            <span>{capacity.capacityFilled} / {capacity.totalCapacity} filled</span>
+            <span>{capacity.capacityRemaining} left</span>
+          </div>
+        </div>
+      ) : null}
+
       <div className="px-1 pb-1 pt-3">
         <Link href={`/auctions/${auction?.id}`}>
           <h3 className="line-clamp-2 min-h-[2.7rem] text-[12px] font-semibold leading-5 text-slate-900">{auction?.title || 'Untitled auction'}</h3>
         </Link>
+
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <AuctionCountdown startAt={auction?.start_at} endAt={auction?.end_at} status={status} compact />
+          <AuctionStatusBadge status={status} won={won} />
+        </div>
 
         <Link href={`/auctions/${auction?.id}`} className={`mt-3 inline-flex w-full items-center justify-between gap-2 rounded-[18px] bg-gradient-to-r ${theme.cta} px-3 py-3 text-white shadow-[0_16px_30px_rgba(15,23,42,0.18)]`}>
           <span className="min-w-0">
