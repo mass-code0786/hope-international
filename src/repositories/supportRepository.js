@@ -195,10 +195,10 @@ async function touchThread(client, threadId, status) {
   const values = [threadId, status];
   const { rows } = await q(client).query(
     `UPDATE support_threads
-     SET status = $2,
+     SET status = $2::varchar,
          updated_at = NOW(),
-         closed_at = CASE WHEN $2 = 'closed' THEN COALESCE(closed_at, NOW()) ELSE NULL END,
-         closed_by = CASE WHEN $2 = 'closed' THEN closed_by ELSE NULL END
+         closed_at = CASE WHEN $2::varchar = 'closed' THEN COALESCE(closed_at, NOW()) ELSE NULL END,
+         closed_by = CASE WHEN $2::varchar = 'closed' THEN closed_by ELSE NULL END
      WHERE id = $1
      RETURNING *`,
     values
