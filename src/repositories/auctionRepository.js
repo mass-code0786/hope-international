@@ -726,14 +726,16 @@ async function upsertAuctionResultReveal(client, auctionId, userId) {
   return rows[0] || null;
 }
 async function getUserBidStats(client, userId) {
+  const auctionColumns = await getTableColumns(client, 'auctions');
   const participantColumns = await getTableColumns(client, 'auction_participants');
   const winnerColumns = await getTableColumns(client, 'auction_winners');
+  const summaryValues = [userId, new Date().toISOString()];
+  const statusCase = buildCompatStatusCase(auctionColumns, '$2');
   const summarySql = `SELECT
       COALESCE((SELECT COUNT(*) FROM auction_bids WHERE user_id = $1), 0)::int AS my_bids,
       ${participantColumns.size > 0 ? `COALESCE((SELECT COUNT(*) FROM auction_participants WHERE user_id = $1), 0)::int` : '0::int'} AS auctions_joined,
       ${winnerColumns.size > 0 ? `COALESCE((SELECT COUNT(*) FROM auction_winners WHERE user_id = $1), 0)::int` : '0::int'} AS won_auctions,
-      COALESCE((SELECT COUNT(*) FROM auctions a WHERE EXISTS (SELECT 1 FROM auction_bids b WHERE b.auction_id = a.id AND b.user_id = $1) AND a.status IN ('ended', 'cancelled')), 0)::int AS auction_history`;
-  const summaryValues = [userId];
+      COALESCE((SELECT COUNT(*) FROM auctions a WHERE EXISTS (SELECT 1 FROM auction_bids b WHERE b.auction_id = a.id AND b.user_id = $1) AND ${statusCase} IN ('ended', 'cancelled')), 0)::int AS auction_history`;
   console.log('[auction.history.summary.sql]', {
     sql: summarySql,
     values: summaryValues,
