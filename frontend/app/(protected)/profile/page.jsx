@@ -12,6 +12,7 @@ import { ProfileActions } from '@/components/profile/ProfileActions';
 import { BinaryReferralLinks } from '@/components/referral/BinaryReferralLinks';
 import { ProfileSkeleton } from '@/components/ui/PageSkeletons';
 import { ErrorState } from '@/components/ui/ErrorState';
+import BtctCoinLogo from '@/components/common/BtctCoinLogo';
 import { getMe } from '@/lib/services/authService';
 import { getWallet } from '@/lib/services/walletService';
 import { queryKeys } from '@/lib/query/queryKeys';
@@ -20,15 +21,21 @@ import { clearStoredToken } from '@/lib/utils/tokenStorage';
 import { currency, number, rankLabel } from '@/lib/utils/format';
 import { isSeller } from '@/lib/constants/access';
 
-function WalletCard({ title, description, value, accent, icon: Icon, href, actionLabel }) {
+function WalletCard({ title, description, value, accent, icon: Icon, href, actionLabel, titleIcon = null, valueIcon = null }) {
   return (
     <article className="overflow-hidden rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
       <div className="flex items-start justify-between gap-3">
         <span className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl ${accent}`}><Icon size={18} /></span>
         {href ? <Link href={href} className="text-[11px] font-semibold text-slate-500">{actionLabel}</Link> : null}
       </div>
-      <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">{title}</p>
-      <p className="mt-2 text-2xl font-semibold tracking-[-0.05em] text-slate-950">{value}</p>
+      <div className="mt-4 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+        {titleIcon}
+        <p>{title}</p>
+      </div>
+      <div className="mt-2 flex items-center gap-2 text-2xl font-semibold tracking-[-0.05em] text-slate-950">
+        {valueIcon}
+        <p>{value}</p>
+      </div>
       <p className="mt-2 text-xs leading-5 text-slate-500">{description}</p>
     </article>
   );
@@ -91,6 +98,8 @@ function WalletSection({ walletQuery }) {
           value={`${number(btctBalance)} BTCT`}
           accent="bg-amber-50 text-amber-700"
           icon={Coins}
+          titleIcon={<BtctCoinLogo size={14} className="shrink-0" />}
+          valueIcon={<BtctCoinLogo size={18} className="shrink-0" />}
           href="/wallet"
           actionLabel="Wallet details"
         />

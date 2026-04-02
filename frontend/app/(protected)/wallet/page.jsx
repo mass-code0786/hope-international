@@ -3,12 +3,13 @@
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Coins, HandCoins, LockKeyhole, Wallet as WalletIcon } from 'lucide-react';
+import { HandCoins, LockKeyhole, Wallet as WalletIcon } from 'lucide-react';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { StatCard } from '@/components/ui/StatCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Badge } from '@/components/ui/Badge';
+import BtctCoinLogo from '@/components/common/BtctCoinLogo';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { bindWalletAddress, getBtctStakingSummary, getWallet, startBtctStaking } from '@/lib/services/walletService';
 import { currency, dateTime, incomeSourceLabel, number, statusVariant } from '@/lib/utils/format';
@@ -63,14 +64,17 @@ export default function WalletPage() {
       <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
         <StatCard compact title="Available Balance" value={currency(wallet.balance || 0)} emphasis="primary" right={<WalletIcon size={18} className="text-accent" />} />
         <StatCard compact title="Withdrawal Wallet" value={currency(withdrawalBalance)} subtitle="Receives BTCT staking payouts" right={<HandCoins size={18} className="text-accent" />} />
-        <StatCard compact title="BTCT Available" value={`${number(btctAvailable)} BTCT`} subtitle={`Locked ${number(btctLocked)} BTCT`} right={<Coins size={18} className="text-accent" />} />
+        <StatCard compact title="BTCT Available" value={`${number(btctAvailable)} BTCT`} subtitle={`Locked ${number(btctLocked)} BTCT`} right={<BtctCoinLogo size={18} className="shrink-0" />} />
         <StatCard compact title="Recent Transactions" value={transactions.length} subtitle="Latest cash entries" />
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-slate-900">BTCT Staking</p>
+            <div className="flex items-center gap-2">
+              <BtctCoinLogo size={18} className="shrink-0" />
+              <p className="text-sm font-semibold text-slate-900">BTCT Staking</p>
+            </div>
             <p className="mt-1 text-[11px] text-slate-500">Stake 15,000 BTCT internally and receive $15 in your Withdrawal Wallet every 10 days.</p>
           </div>
           <Badge variant={stakingPlan ? 'success' : eligibility.isEligible ? 'warning' : 'default'}>{stakingPlan ? 'Active' : eligibility.isEligible ? 'Eligible' : 'Not Eligible'}</Badge>
@@ -78,11 +82,17 @@ export default function WalletPage() {
 
         <div className="mt-4 grid gap-3 md:grid-cols-4">
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <p className="text-[11px] text-slate-500">BTCT Available</p>
+            <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+              <BtctCoinLogo size={14} className="shrink-0" />
+              <p>BTCT Available</p>
+            </div>
             <p className="mt-1 text-sm font-semibold text-slate-900">{number(btctAvailable)} BTCT</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <p className="text-[11px] text-slate-500">Locked BTCT</p>
+            <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+              <BtctCoinLogo size={14} className="shrink-0" />
+              <p>Locked BTCT</p>
+            </div>
             <p className="mt-1 text-sm font-semibold text-slate-900">{number(btctLocked)} BTCT</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -182,7 +192,10 @@ export default function WalletPage() {
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white">
-        <div className="border-b border-slate-200 px-3 py-2 text-[11px] text-slate-500">BTCT Reward Ledger</div>
+        <div className="flex items-center gap-2 border-b border-slate-200 px-3 py-2 text-[11px] text-slate-500">
+          <BtctCoinLogo size={14} className="shrink-0" />
+          <span>BTCT Reward Ledger</span>
+        </div>
         {!btctTransactions.length ? (
           <div className="p-3"><EmptyState title="No BTCT rewards yet" description="Auction loss compensation and BTCT staking records will appear here." /></div>
         ) : (
@@ -191,10 +204,13 @@ export default function WalletPage() {
               <div key={tx.id} className="px-3 py-2.5">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs font-semibold text-slate-800">{incomeSourceLabel(tx.source || 'btct_transaction')}</p>
-                  <Badge variant="success">BTCT</Badge>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
+                    <BtctCoinLogo size={12} className="shrink-0" />
+                    <span>BTCT</span>
+                  </span>
                 </div>
                 <p className="mt-0.5 text-[10px] text-slate-500">{dateTime(tx.created_at)}</p>
-                <p className="mt-1 text-xs font-semibold text-slate-900">+ {number(tx.amount)} BTCT</p>
+                <p className="mt-1 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-900"><BtctCoinLogo size={14} className="shrink-0" />+ {number(tx.amount)} BTCT</p>
               </div>
             ))}
           </div>

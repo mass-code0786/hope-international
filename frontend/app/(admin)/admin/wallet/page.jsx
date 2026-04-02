@@ -10,6 +10,7 @@ import { StatusBadge } from '@/components/admin/StatusBadge';
 import { ConfirmationModal } from '@/components/admin/ConfirmationModal';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
+import BtctCoinLogo from '@/components/common/BtctCoinLogo';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { createManualWalletAdjustment, getAdminBtctStaking, getAdminWalletSummary, getAdminWalletTransactions, runAdminBtctStakingPayouts } from '@/lib/services/admin';
 import { currency, incomeSourceLabel, number, shortDate } from '@/lib/utils/format';
@@ -74,7 +75,10 @@ export default function AdminWalletPage() {
         action={
           <div className="flex gap-2">
             <button onClick={() => runPayoutsMutation.mutate()} disabled={runPayoutsMutation.isPending} className="rounded-xl border border-white/10 px-3 py-2 text-sm font-semibold text-text disabled:opacity-60">
-              {runPayoutsMutation.isPending ? 'Running payouts...' : 'Run BTCT Payouts'}
+              <span className="inline-flex items-center gap-2">
+                <BtctCoinLogo size={16} className="shrink-0" />
+                {runPayoutsMutation.isPending ? 'Running payouts...' : 'Run BTCT Payouts'}
+              </span>
             </button>
             <button onClick={() => setAdjustOpen(true)} className="rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-black">
               Manual Adjustment
@@ -86,16 +90,16 @@ export default function AdminWalletPage() {
       <div className="grid gap-4 md:grid-cols-4">
         <div className="card-surface p-4 text-sm">Total credits: <span className="font-semibold text-text">{currency(summary.total_credits)}</span></div>
         <div className="card-surface p-4 text-sm">Total debits: <span className="font-semibold text-text">{currency(summary.total_debits)}</span></div>
-        <div className="card-surface p-4 text-sm">Active staking plans: <span className="font-semibold text-text">{stakingPlans.filter((item) => item.status === 'active').length}</span></div>
-        <div className="card-surface p-4 text-sm">Staking payouts logged: <span className="font-semibold text-text">{stakingPayouts.length}</span></div>
+        <div className="card-surface p-4 text-sm"><span className="inline-flex items-center gap-2"><BtctCoinLogo size={15} className="shrink-0" />Active staking plans:</span> <span className="font-semibold text-text">{stakingPlans.filter((item) => item.status === 'active').length}</span></div>
+        <div className="card-surface p-4 text-sm"><span className="inline-flex items-center gap-2"><BtctCoinLogo size={15} className="shrink-0" />Staking payouts logged:</span> <span className="font-semibold text-text">{stakingPayouts.length}</span></div>
       </div>
 
       <div className="card-surface p-4">
-        <h4 className="text-sm font-semibold text-text">BTCT Staking Plans</h4>
+        <h4 className="inline-flex items-center gap-2 text-sm font-semibold text-text"><BtctCoinLogo size={17} className="shrink-0" />BTCT Staking Plans</h4>
         <DataTable
           columns={[
             { key: 'user', title: 'User', className: 'col-span-2', render: (row) => row.username || row.user_id },
-            { key: 'staking_amount_btct', title: 'Locked BTCT', className: 'col-span-2', render: (row) => number(row.staking_amount_btct) },
+            { key: 'staking_amount_btct', title: 'Locked BTCT', className: 'col-span-2', render: (row) => <span className="inline-flex items-center gap-1.5"><BtctCoinLogo size={14} className="shrink-0" />{number(row.staking_amount_btct)}</span> },
             { key: 'reward_amount_usd', title: 'Reward', className: 'col-span-2', render: (row) => currency(row.reward_amount_usd) },
             { key: 'next_payout_at', title: 'Next Payout', className: 'col-span-2', render: (row) => shortDate(row.next_payout_at) },
             { key: 'total_payouts', title: 'Payouts', className: 'col-span-2', render: (row) => row.total_payouts || 0 },
@@ -106,7 +110,7 @@ export default function AdminWalletPage() {
       </div>
 
       <div className="card-surface p-4">
-        <h4 className="text-sm font-semibold text-text">BTCT Staking Payout History</h4>
+        <h4 className="inline-flex items-center gap-2 text-sm font-semibold text-text"><BtctCoinLogo size={17} className="shrink-0" />BTCT Staking Payout History</h4>
         <DataTable
           columns={[
             { key: 'user', title: 'User', className: 'col-span-2', render: (row) => row.username || row.user_id },
