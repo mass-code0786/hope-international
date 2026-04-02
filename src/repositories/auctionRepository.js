@@ -792,6 +792,25 @@ async function listUserAuctionHistoryCompat(client, userId, filters = {}, pagina
   }
 
   const whereSql = `WHERE ${where.join(' AND ')}`;
+  const countWhere = ['EXISTS (SELECT 1 FROM auction_bids ub WHERE ub.auction_id = a.id AND ub.user_id = $1)'];
+  const countValues = [userId];
+
+  if (filters.kind === 'wins') {
+    if (winnerColumns.size > 0) {
+      countWhere.push('EXISTS (SELECT 1 FROM auction_winners aw WHERE aw.auction_id = a.id AND aw.user_id = $1)');
+    } else {
+      countWhere.push('FALSE');
+    }
+  } else if (filters.kind === 'joined') {
+    if (participantColumns.size > 0) {
+      countWhere.push('EXISTS (SELECT 1 FROM auction_participants ap WHERE ap.auction_id = a.id AND ap.user_id = $1)');
+    }
+  } else if (filters.kind === 'history') {
+    countWhere.push(`${statusCase} IN ('ended', 'cancelled')`);
+    countValues.push(values[1]);
+  }
+
+  const countWhereSql = `WHERE ${countWhere.join(' AND ')}`;
   const sortClosedAt = auctionColumns.has('closed_at') ? 'a.closed_at DESC NULLS LAST,' : '';
   const sortEndAt = auctionColumns.has('end_at') ? 'a.end_at DESC,' : '';
   const sortCreatedAt = auctionColumns.has('created_at') ? 'a.created_at DESC' : '1 DESC';
@@ -851,19 +870,19 @@ async function listUserAuctionHistoryCompat(client, userId, filters = {}, pagina
      LIMIT $${listValues.length - 1} OFFSET $${listValues.length}`;
   const countSql = `SELECT COUNT(*)
      FROM auctions a
-     ${whereSql}`;
+     ${countWhereSql}`;
   console.log('[auction.history.compat.sql]', {
-    sql: listSql,
-    values: listValues,
     countSql,
-    countValues: values,
+    countValues,
+    listSql,
+    listValues,
     userId,
     filters,
     pagination: { limit, offset }
   });
 
   const { rows } = await q(client).query(listSql, listValues);
-  const countResult = await q(client).query(countSql, values);
+  const countResult = await q(client).query(countSql, countValues);
 
   return {
     items: rows.map(normalizeAuctionRow),
@@ -903,6 +922,19 @@ async function listUserAuctionHistory(client, userId, filters = {}, pagination =
   }
 
   const whereSql = `WHERE ${where.join(' AND ')}`;
+  const countWhere = ['EXISTS (SELECT 1 FROM auction_bids ub WHERE ub.auction_id = a.id AND ub.user_id = $1)'];
+  const countValues = [userId];
+
+  if (filters.kind === 'wins') {
+    countWhere.push('EXISTS (SELECT 1 FROM auction_winners aw WHERE aw.auction_id = a.id AND aw.user_id = $1)');
+  } else if (filters.kind === 'joined') {
+    countWhere.push('EXISTS (SELECT 1 FROM auction_participants ap WHERE ap.auction_id = a.id AND ap.user_id = $1)');
+  } else if (filters.kind === 'history') {
+    countWhere.push(`${statusCase} IN ('ended', 'cancelled')`);
+    countValues.push(values[1]);
+  }
+
+  const countWhereSql = `WHERE ${countWhere.join(' AND ')}`;
   const listValues = [...values, pagination.limit, pagination.offset];
   const listSql = `SELECT
       a.*,
@@ -942,19 +974,19 @@ async function listUserAuctionHistory(client, userId, filters = {}, pagination =
      LIMIT $${listValues.length - 1} OFFSET $${listValues.length}`;
   const countSql = `SELECT COUNT(*)
      FROM auctions a
-     ${whereSql}`;
+     ${countWhereSql}`;
   console.log('[auction.history.sql]', {
-    sql: listSql,
-    values: listValues,
     countSql,
-    countValues: values,
+    countValues,
+    listSql,
+    listValues,
     userId,
     filters,
     pagination
   });
 
   const { rows } = await q(client).query(listSql, listValues);
-  const countResult = await q(client).query(countSql, values);
+  const countResult = await q(client).query(countSql, countValues);
 
   return {
     items: await attachWinnerRows(client, rows.map(normalizeAuctionRow)),
