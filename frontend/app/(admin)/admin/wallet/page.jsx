@@ -100,7 +100,8 @@ export default function AdminWalletPage() {
           columns={[
             { key: 'user', title: 'User', className: 'col-span-2', render: (row) => row.username || row.user_id },
             { key: 'staking_amount_btct', title: 'Locked BTCT', className: 'col-span-2', render: (row) => <span className="inline-flex items-center gap-1.5"><BtctCoinLogo size={14} className="shrink-0" />{number(row.staking_amount_btct)}</span> },
-            { key: 'reward_amount_usd', title: 'Reward', className: 'col-span-2', render: (row) => currency(row.reward_amount_usd) },
+            { key: 'staked_blocks', title: 'Blocks', className: 'col-span-2', render: (row) => number(row.staked_blocks || 0) },
+            { key: 'payout_per_cycle_usd', title: 'Per Cycle', className: 'col-span-2', render: (row) => currency(row.payout_per_cycle_usd || row.reward_amount_usd) },
             { key: 'next_payout_at', title: 'Next Payout', className: 'col-span-2', render: (row) => shortDate(row.next_payout_at) },
             { key: 'total_payouts', title: 'Payouts', className: 'col-span-2', render: (row) => row.total_payouts || 0 },
             { key: 'status', title: 'Status', className: 'col-span-2', render: (row) => <StatusBadge status={row.status} /> }
@@ -115,6 +116,7 @@ export default function AdminWalletPage() {
           columns={[
             { key: 'user', title: 'User', className: 'col-span-2', render: (row) => row.username || row.user_id },
             { key: 'cycle_number', title: 'Cycle', className: 'col-span-2', render: (row) => `#${row.cycle_number}` },
+            { key: 'cycle_key', title: 'Cycle Date', className: 'col-span-2', render: (row) => row.cycle_key || shortDate(row.payout_date) },
             { key: 'payout_amount_usd', title: 'Amount', className: 'col-span-2', render: (row) => currency(row.payout_amount_usd) },
             { key: 'credited_to', title: 'Credited To', className: 'col-span-3', render: (row) => row.credited_to || 'withdrawal_wallet' },
             { key: 'payout_date', title: 'Payout Date', className: 'col-span-3', render: (row) => shortDate(row.payout_date) }
@@ -124,7 +126,7 @@ export default function AdminWalletPage() {
       </div>
 
       <FilterBar>
-        {['all', 'direct_income', 'matching_income', 'reward_qualification', 'cap_overflow', 'manual_adjustment', 'btct_staking_payout'].map((source) => (
+        {['all', 'direct_income', 'direct_deposit_income', 'level_deposit_income', 'matching_income', 'reward_qualification', 'cap_overflow', 'manual_adjustment', 'btct_staking_payout'].map((source) => (
           <button key={source} onClick={() => setFilter(source)} className={`rounded-full px-3 py-2 text-xs ${filter === source ? 'bg-accent text-black' : 'bg-white/5 text-muted'}`}>
             {source === 'all' ? 'All' : incomeSourceLabel(source)}
           </button>

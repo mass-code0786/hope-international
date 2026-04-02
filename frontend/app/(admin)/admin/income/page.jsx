@@ -33,13 +33,15 @@ export default function AdminIncomePage() {
 
   return (
     <div className="space-y-5">
-      <AdminSectionHeader title="Income Monitoring" subtitle="View direct, matching, and reward income across users" />
+      <AdminSectionHeader title="Income Monitoring" subtitle="View deposit, direct, matching, and reward income across users" />
 
       <FilterBar>
         <div className="w-full max-w-sm"><SearchInput value={search} onChange={setSearch} placeholder="Search by username, user id, or tx id" /></div>
         <select value={source} onChange={(e) => setSource(e.target.value)} className="rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm text-text">
           <option value="all">All Income</option>
           <option value="direct_income">Direct Income</option>
+          <option value="direct_deposit_income">Direct Deposit Income</option>
+          <option value="level_deposit_income">Level Deposit Income</option>
           <option value="matching_income">Matching Income</option>
           <option value="reward_qualification">Reward Income</option>
         </select>

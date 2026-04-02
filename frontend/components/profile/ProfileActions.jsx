@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Copy, Share2, LogOut } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -33,11 +34,11 @@ export function ProfileActions({ referralLink, onLogout }) {
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2.5">
-      <button onClick={copyReferral} className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white p-2.5 text-[11px] text-slate-700"><Copy size={14} /> Copy</button>
-      <button onClick={shareReferral} className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white p-2.5 text-[11px] text-slate-700"><Share2 size={14} /> Share</button>
-      <button className="rounded-xl border border-slate-200 bg-white p-2.5 text-[11px] text-slate-500">KYC Soon</button>
-      <button onClick={onLogout} className="flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-[11px] text-rose-600"><LogOut size={14} /> Logout</button>
+    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+      <button onClick={copyReferral} className="flex items-center justify-center gap-1.5 rounded-2xl border border-[var(--hope-border)] bg-card p-3 text-[11px] font-semibold text-text"><Copy size={14} /> Copy link</button>
+      <button onClick={shareReferral} className="flex items-center justify-center gap-1.5 rounded-2xl border border-[var(--hope-border)] bg-card p-3 text-[11px] font-semibold text-text"><Share2 size={14} /> Share</button>
+      <Link href="/support" className="flex items-center justify-center rounded-2xl border border-[var(--hope-border)] bg-card p-3 text-[11px] font-semibold text-text">Support</Link>
+      <button onClick={onLogout} className="flex items-center justify-center gap-1.5 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-[11px] font-semibold text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300"><LogOut size={14} /> Logout</button>
     </div>
   );
 }

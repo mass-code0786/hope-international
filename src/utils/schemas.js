@@ -155,7 +155,9 @@ const walletP2pSchema = z.object({
 });
 
 const walletBtctStakingStartSchema = z.object({
-  body: z.object({}).optional().default({}),
+  body: z.object({
+    stakingAmountBtct: z.number().positive().optional()
+  }).optional().default({}),
   params: z.object({}),
   query: z.object({})
 });

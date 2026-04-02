@@ -20,19 +20,25 @@ async function createStakingPlan(client, payload) {
     `INSERT INTO btct_staking_plans (
        user_id,
        staking_amount_btct,
+       staked_blocks,
        reward_amount_usd,
+       payout_per_cycle_usd,
        payout_interval_days,
+       schedule_code,
        status,
        started_at,
        next_payout_at
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      RETURNING *`,
     [
       payload.userId,
       payload.stakingAmountBtct,
+      payload.stakedBlocks,
       payload.rewardAmountUsd,
+      payload.payoutPerCycleUsd,
       payload.payoutIntervalDays,
+      payload.scheduleCode || 'fixed_month_days_10_20_30',
       payload.status || 'active',
       payload.startedAt,
       payload.nextPayoutAt
@@ -84,23 +90,37 @@ async function createStakingPayout(client, payload) {
        staking_id,
        user_id,
        cycle_number,
+       cycle_key,
        payout_amount_usd,
        credited_to,
        payout_date,
        wallet_transaction_id
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
-     ON CONFLICT (staking_id, cycle_number) DO NOTHING
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     ON CONFLICT (staking_id, cycle_key) DO NOTHING
      RETURNING *`,
     [
       payload.stakingId,
       payload.userId,
       payload.cycleNumber,
+      payload.cycleKey,
       payload.payoutAmountUsd,
       payload.creditedTo || 'withdrawal_wallet',
       payload.payoutDate,
       payload.walletTransactionId || null
     ]
+  );
+  return rows[0] || null;
+}
+
+async function getStakingPayoutByCycleKey(client, stakingId, cycleKey) {
+  const { rows } = await q(client).query(
+    `SELECT *
+     FROM btct_staking_payouts
+     WHERE staking_id = $1
+       AND cycle_key = $2
+     LIMIT 1`,
+    [stakingId, cycleKey]
   );
   return rows[0] || null;
 }
@@ -138,6 +158,19 @@ async function updateStakingPlanPayoutProgress(client, stakingId, payload) {
   return rows[0] || null;
 }
 
+async function getStakingPlanPayoutSummary(client, stakingId) {
+  const { rows } = await q(client).query(
+    `SELECT
+       COALESCE(COUNT(*), 0)::int AS total_payouts,
+       COALESCE(SUM(payout_amount_usd), 0)::numeric(14,2) AS total_payout_amount,
+       MAX(payout_date) AS last_payout_at
+     FROM btct_staking_payouts
+     WHERE staking_id = $1`,
+    [stakingId]
+  );
+  return rows[0] || null;
+}
+
 async function listStakingPlansAdmin(client, limit = 200) {
   const { rows } = await q(client).query(
     `SELECT s.*, u.username, u.email
@@ -169,8 +202,10 @@ module.exports = {
   listDueStakingPlans,
   getStakingPlanById,
   createStakingPayout,
+  getStakingPayoutByCycleKey,
   updateStakingPayoutWalletTransaction,
   updateStakingPlanPayoutProgress,
+  getStakingPlanPayoutSummary,
   listStakingPlansAdmin,
   listStakingPayoutsAdmin
 };

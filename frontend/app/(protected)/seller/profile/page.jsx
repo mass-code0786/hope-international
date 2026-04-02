@@ -32,7 +32,7 @@ function SellerProfileContent() {
 
   return (
     <div className="space-y-5">
-      <SectionHeader title="Seller Profile" subtitle="Business identity, KYC records, and application details" />
+      <SectionHeader title="Seller Profile" subtitle="Business identity, KYC records, and seller application details." eyebrow="Seller" />
 
       <div className="card-surface flex flex-wrap items-center justify-between gap-3 p-4">
         <div>

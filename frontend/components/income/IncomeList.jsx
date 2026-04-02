@@ -2,7 +2,7 @@ import { Badge } from '@/components/ui/Badge';
 import { currency, dateTime, incomeSourceLabel, txTypeLabel } from '@/lib/utils/format';
 
 function sourceVariant(source) {
-  if (source === 'direct_income' || source === 'matching_income' || source === 'reward_qualification') return 'success';
+  if (source === 'direct_income' || source === 'direct_deposit_income' || source === 'level_deposit_income' || source === 'matching_income' || source === 'reward_qualification') return 'success';
   if (source === 'cap_overflow') return 'warning';
   return 'default';
 }

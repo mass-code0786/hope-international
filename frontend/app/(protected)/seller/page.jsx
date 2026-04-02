@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo } from 'react';
-import { ArrowRight, Boxes, FileCheck2, Store } from 'lucide-react';
+import { Boxes, FileCheck2, Headset, History, Store } from 'lucide-react';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { StatCard } from '@/components/ui/StatCard';
 import { ErrorState } from '@/components/ui/ErrorState';
@@ -27,7 +27,7 @@ function SellerDashboardContent() {
 
   return (
     <div className="space-y-5">
-      <SectionHeader title="Seller Dashboard" subtitle="Manage your business profile, moderation queue, and the Hope storefront presentation from one premium workspace." />
+      <SectionHeader title="Seller Console" subtitle="Business profile, seller documents, moderation queue, and product management from one connected workspace." eyebrow="Seller" />
 
       <div className="card-surface p-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -77,8 +77,13 @@ function SellerDashboardContent() {
         <div className="card-surface p-4">
           <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--hope-accent-soft)] text-accent"><Store size={18} /></div>
           <p className="mt-4 text-lg font-semibold tracking-[-0.04em] text-text">Seller operations</p>
-          <p className="mt-2 text-sm leading-6 text-muted">Order and payout surfaces are still limited in the current frontend, so this view focuses on application status and catalog management.</p>
-          <Link href="/seller/products" className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-accent">Open product hub <ArrowRight size={15} /></Link>
+          <p className="mt-2 text-sm leading-6 text-muted">Jump straight into the seller profile, product queue, support inbox, and order history from here.</p>
+          <div className="mt-5 grid gap-2">
+            <Link href="/seller/profile" className="hope-button-secondary !justify-start !px-3 !py-2"><Store size={14} /> Seller profile</Link>
+            <Link href="/seller/products" className="hope-button-secondary !justify-start !px-3 !py-2"><Boxes size={14} /> Product hub</Link>
+            <Link href="/history/orders" className="hope-button-secondary !justify-start !px-3 !py-2"><History size={14} /> Order history</Link>
+            <Link href="/support" className="hope-button-secondary !justify-start !px-3 !py-2"><Headset size={14} /> Support</Link>
+          </div>
         </div>
       </div>
     </div>

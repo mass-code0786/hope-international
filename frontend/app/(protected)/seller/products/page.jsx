@@ -28,7 +28,7 @@ function SellerProductsContent() {
 
   return (
     <div className="space-y-5">
-      <SectionHeader title="Seller Products" subtitle="Create, monitor, and revise products based on moderation feedback" />
+      <SectionHeader title="Seller Products" subtitle="Create, monitor, and revise products based on moderation feedback." eyebrow="Seller" />
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <input

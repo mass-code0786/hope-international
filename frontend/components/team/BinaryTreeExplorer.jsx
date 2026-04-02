@@ -54,26 +54,26 @@ function BinaryTreeNode({ node, side = 'root', defaultExpanded = false }) {
       <button
         type="button"
         onClick={() => setExpanded((current) => !current)}
-        className="group w-[118px] rounded-[20px] border border-[var(--hope-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,245,249,0.92))] p-2.5 text-left shadow-[0_12px_24px_rgba(15,23,42,0.10)] transition hover:-translate-y-0.5 hover:border-[var(--hope-border-strong)] dark:bg-[linear-gradient(180deg,rgba(13,23,35,0.96),rgba(9,17,27,0.92))] sm:w-[132px]"
+        className="group w-[108px] rounded-[18px] border border-[var(--hope-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,245,249,0.92))] p-2 text-left shadow-[0_12px_24px_rgba(15,23,42,0.10)] transition hover:-translate-y-0.5 hover:border-[var(--hope-border-strong)] dark:bg-[linear-gradient(180deg,rgba(13,23,35,0.96),rgba(9,17,27,0.92))] sm:w-[122px]"
       >
         <div className="flex items-start justify-between gap-1.5">
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-[var(--hope-accent-soft)] text-accent">
-            <UserRound size={13} />
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-xl bg-[var(--hope-accent-soft)] text-accent">
+            <UserRound size={12} />
           </span>
           <Badge variant={statusVariant}>{resolvedNode?.isActive ? 'Active' : 'Inactive'}</Badge>
         </div>
 
-        <div className="mt-2">
+        <div className="mt-1.5">
           <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted">{slotLabel(side)}</p>
-          <p className="mt-1 line-clamp-2 text-[12px] font-semibold leading-4 text-text">{resolvedNode?.username || resolvedNode?.displayName || 'Member'}</p>
+          <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-4 text-text">{resolvedNode?.username || resolvedNode?.displayName || 'Member'}</p>
         </div>
 
-        <div className="mt-2 flex items-center justify-between text-[9px] text-muted">
+        <div className="mt-1.5 flex items-center justify-between text-[9px] text-muted">
           <span className="truncate">{String(resolvedNode?.memberId || resolvedNode?.id || '').slice(0, 6)}</span>
           <span>{Number(resolvedNode?.directCount || 0)}</span>
         </div>
 
-        <div className="mt-2 flex items-center justify-between rounded-xl border border-[var(--hope-border)] bg-white/70 px-2.5 py-1.5 text-[10px] font-semibold text-text dark:bg-white/5">
+        <div className="mt-1.5 flex items-center justify-between rounded-xl border border-[var(--hope-border)] bg-white/70 px-2 py-1.5 text-[10px] font-semibold text-text dark:bg-white/5">
           <span className="inline-flex items-center gap-1.5">
             <GitBranchPlus size={11} className="text-accent" />
             {expanded ? 'Hide' : 'Open'}
@@ -110,13 +110,13 @@ function BinaryTreeSlot({ side, node, loading = false }) {
       </span>
 
       {loading ? (
-        <div className="flex w-[118px] items-center justify-center rounded-[20px] border border-[var(--hope-border)] bg-cardSoft px-4 py-7 text-muted shadow-soft sm:w-[132px]">
+        <div className="flex w-[108px] items-center justify-center rounded-[18px] border border-[var(--hope-border)] bg-cardSoft px-4 py-6 text-muted shadow-soft sm:w-[122px]">
           <Loader2 size={14} className="animate-spin" />
         </div>
       ) : node ? (
         <BinaryTreeNode node={node} side={side} />
       ) : (
-        <div className="flex w-[118px] flex-col items-center justify-center rounded-[20px] border border-dashed border-[var(--hope-border-strong)] bg-white/55 px-3 py-5 text-center text-muted dark:bg-white/5 sm:w-[132px]">
+        <div className="flex w-[108px] flex-col items-center justify-center rounded-[18px] border border-dashed border-[var(--hope-border-strong)] bg-white/55 px-3 py-4 text-center text-muted dark:bg-white/5 sm:w-[122px]">
           <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--hope-border)] bg-white/80 text-sm text-accent dark:bg-white/10">+</span>
           <p className="mt-2 text-[11px] font-semibold text-text">Empty</p>
         </div>

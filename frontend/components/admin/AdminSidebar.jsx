@@ -28,28 +28,44 @@ export const adminNav = [
   { href: '/admin/settings/deposit-wallet', label: 'Deposit Wallet', icon: ArrowDownCircle }
 ];
 
+const adminGroups = [
+  { title: 'Overview', items: ['/admin'] },
+  { title: 'Commerce', items: ['/admin/products', '/admin/orders', '/admin/auctions', '/admin/banners', '/admin/landing', '/admin/support'] },
+  { title: 'Finance', items: ['/admin/deposits', '/admin/withdrawals', '/admin/p2p', '/admin/wallets', '/admin/income', '/admin/wallet', '/admin/settings/deposit-wallet'] },
+  { title: 'Network', items: ['/admin/users', '/admin/compensation', '/admin/rewards', '/admin/team', '/admin/settings'] }
+];
+
 function AdminNavLinks({ onNavigate }) {
   const pathname = usePathname();
 
   return (
-    <nav className="space-y-2">
-      {adminNav.map((item) => {
-        const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-        const Icon = item.icon;
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={onNavigate}
-            className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition ${active ? 'bg-white text-slate-900 shadow-[0_18px_36px_rgba(255,255,255,0.12)]' : 'text-white/68 hover:bg-white/8 hover:text-white'}`}
-          >
-            <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl ${active ? 'bg-slate-900 text-white' : 'bg-white/8 text-white/80'}`}>
-              <Icon size={16} />
-            </span>
-            <span className="font-medium">{item.label}</span>
-          </Link>
-        );
-      })}
+    <nav className="space-y-5">
+      {adminGroups.map((group) => (
+        <div key={group.title}>
+          <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/40">{group.title}</p>
+          <div className="space-y-2">
+            {group.items.map((href) => {
+              const item = adminNav.find((entry) => entry.href === href);
+              if (!item) return null;
+              const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onNavigate}
+                  className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition ${active ? 'bg-white text-slate-900 shadow-[0_18px_36px_rgba(255,255,255,0.12)]' : 'text-white/68 hover:bg-white/8 hover:text-white'}`}
+                >
+                  <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl ${active ? 'bg-slate-900 text-white' : 'bg-white/8 text-white/80'}`}>
+                    <Icon size={16} />
+                  </span>
+                  <span className="font-medium">{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </nav>
   );
 }
@@ -74,7 +90,7 @@ function SidebarContent({ onNavigate, mobile = false, onClose }) {
         </div>
         <p className="mt-4 text-xs uppercase tracking-[0.25em] text-white/55">Admin Console</p>
         <h1 className="mt-2 text-xl font-semibold tracking-[-0.05em] text-white">{THEME.appName}</h1>
-        <p className="mt-2 text-sm text-white/65">Operational control center for finance, support, users, and growth systems.</p>
+        <p className="mt-2 text-sm text-white/65">Operational control center for products, finance, support, users, content, and growth systems.</p>
       </div>
       <AdminNavLinks onNavigate={onNavigate} />
     </div>

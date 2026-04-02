@@ -2,52 +2,44 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Gavel, ShoppingBag, Network, Wallet, User, Store } from 'lucide-react';
-import { isSeller } from '@/lib/constants/access';
+import { Gavel, LayoutGrid, Network, ShoppingBag, User, Wallet } from 'lucide-react';
 
 const iconMap = {
+  dashboard: LayoutGrid,
   auctions: Gavel,
   'shopping-bag': ShoppingBag,
   network: Network,
   wallet: Wallet,
-  user: User,
-  store: Store
+  user: User
 };
 
-function getNavItems(user, sellerActive) {
-  const items = [
+function getNavItems() {
+  return [
+    { href: '/dashboard', label: 'Home', icon: 'dashboard' },
+    { href: '/wallet', label: 'Wallet', icon: 'wallet' },
     { href: '/auctions', label: 'Auctions', icon: 'auctions' },
     { href: '/shop', label: 'Shop', icon: 'shopping-bag' },
     { href: '/team', label: 'Team', icon: 'network' },
-    { href: '/income', label: 'Income', icon: 'wallet' }
+    { href: '/profile', label: 'Profile', icon: 'user' }
   ];
-
-  items.push({
-    href: (isSeller(user) || sellerActive) ? '/seller' : '/seller/apply',
-    label: (isSeller(user) || sellerActive) ? 'Seller' : 'Apply',
-    icon: 'store'
-  });
-
-  items.push({ href: '/profile', label: 'Profile', icon: 'user' });
-  return items;
 }
 
-export function BottomNav({ user, sellerActive = false }) {
+export function BottomNav() {
   const pathname = usePathname();
-  const items = getNavItems(user, sellerActive);
+  const items = getNavItems();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white md:hidden">
-      <div className={`mx-auto grid max-w-2xl ${items.length === 6 ? 'grid-cols-6' : 'grid-cols-5'}`}>
-        {items.map((item, index) => {
+    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--hope-border)] bg-white/94 backdrop-blur md:hidden dark:bg-slate-950/92">
+      <div className="mx-auto grid max-w-2xl grid-cols-6">
+        {items.map((item) => {
           const Icon = iconMap[item.icon];
-          const active = index === 0
-            ? pathname === '/auctions' || pathname.startsWith('/auctions/')
-            : pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
-            <Link key={`${item.href}-${item.label}`} href={item.href} className="flex flex-col items-center justify-center gap-0.5 py-2 text-[9px]">
-              <Icon size={15} className={active ? 'text-sky-600' : 'text-slate-500'} />
-              <span className={active ? 'font-medium text-sky-600' : 'text-slate-500'}>{item.label}</span>
+            <Link key={`${item.href}-${item.label}`} href={item.href} className="flex flex-col items-center justify-center gap-1 py-2.5 text-[9px]">
+              <span className={`inline-flex h-8 w-8 items-center justify-center rounded-2xl ${active ? 'bg-slate-950 text-white dark:bg-white dark:text-slate-950' : 'text-slate-500 dark:text-slate-400'}`}>
+                <Icon size={15} />
+              </span>
+              <span className={active ? 'font-semibold text-slate-950 dark:text-white' : 'text-slate-500 dark:text-slate-400'}>{item.label}</span>
             </Link>
           );
         })}

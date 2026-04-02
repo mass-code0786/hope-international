@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { GitBranchPlus } from 'lucide-react';
-import { SectionHeader } from '@/components/ui/SectionHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { TeamSkeleton } from '@/components/ui/PageSkeletons';
@@ -31,7 +30,9 @@ export default function TeamPage() {
 
   return (
     <div className="space-y-4">
-      <SectionHeader title="Team" />
+      <div>
+        <h1 className="text-2xl font-semibold tracking-[-0.04em] text-text">Binary Team</h1>
+      </div>
 
       <TeamSummaryPanel me={me} teamSummary={teamSummary} children={directChildren} />
 

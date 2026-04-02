@@ -11,7 +11,7 @@ import { useWallet } from '@/hooks/useWallet';
 import { incomeSourceLabel } from '@/lib/utils/format';
 import { IncomeSummaryStrip } from '@/components/income/IncomeSummaryStrip';
 
-const filters = ['all', 'direct_income', 'matching_income', 'reward_qualification', 'cap_overflow'];
+const filters = ['all', 'direct_income', 'direct_deposit_income', 'level_deposit_income', 'matching_income', 'reward_qualification', 'cap_overflow'];
 
 export default function IncomePage() {
   const { data, isLoading, isError, refetch } = useWallet();

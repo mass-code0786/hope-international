@@ -6,7 +6,7 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 export function AdminTopbar({ user, onLogout, onOpenMenu }) {
   return (
-    <header className="hope-panel relative z-[60] mb-5 flex flex-col gap-3 rounded-[28px] p-4 md:flex-row md:items-center md:justify-between">
+    <header className="hope-panel relative z-[60] mb-4 flex flex-col gap-3 rounded-[28px] p-4 md:flex-row md:items-center md:justify-between">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="mb-3 flex items-center gap-3">
@@ -26,12 +26,13 @@ export function AdminTopbar({ user, onLogout, onOpenMenu }) {
           <div className="flex items-center gap-2 overflow-hidden">
             <h2 className="truncate text-xl font-semibold tracking-[-0.04em] text-text">{user?.username || 'Admin User'}</h2>
           </div>
+          <p className="mt-1 text-xs text-muted">Products, deposits, withdrawals, auctions, support, landing content, and settings.</p>
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <div className="hidden items-center gap-2 rounded-2xl border border-[var(--hope-border)] bg-cardSoft px-3 py-2 text-sm text-muted md:flex">
           <Search size={14} />
-          <span>Search records...</span>
+          <span>Operations console</span>
         </div>
         <ThemeToggle className="!rounded-2xl !border-[var(--hope-border)] !bg-cardSoft !p-2.5 !text-muted" />
         <button className="rounded-2xl border border-[var(--hope-border)] bg-cardSoft p-2.5 text-muted hover:text-text">

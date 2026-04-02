@@ -134,7 +134,9 @@ const stakingSummary = asyncHandler(async (req, res) => {
 });
 
 const stakingStart = asyncHandler(async (req, res) => {
-  const data = await btctStakingService.startStaking(req.user.sub);
+  const data = await btctStakingService.startStaking(req.user.sub, {
+    stakingAmountBtct: req.body?.stakingAmountBtct
+  });
   return success(res, {
     data,
     statusCode: 201,

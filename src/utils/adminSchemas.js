@@ -118,7 +118,7 @@ const adminFinanceListQuerySchema = z.object({
   query: pagingQuery.extend({
     search: z.string().optional(),
     status: z.enum(['pending', 'approved', 'rejected', 'completed', 'failed']).optional(),
-    source: z.enum(['all', 'direct_income', 'matching_income', 'reward_qualification']).optional(),
+    source: z.enum(['all', 'direct_income', 'matching_income', 'reward_qualification', 'direct_deposit_income', 'level_deposit_income']).optional(),
     userId: uuid.optional(),
     senderId: uuid.optional(),
     receiverId: uuid.optional(),

@@ -149,11 +149,11 @@ export async function getBtctStakingSummary() {
   };
 }
 
-export async function startBtctStaking() {
+export async function startBtctStaking(payload = {}) {
   return toEnvelope(
     await apiFetch('/wallet/staking/start', {
       method: 'POST',
-      body: JSON.stringify({})
+      body: JSON.stringify(payload)
     })
   );
 }

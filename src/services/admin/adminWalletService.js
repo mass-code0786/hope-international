@@ -6,6 +6,89 @@ const walletRepository = require('../../repositories/walletRepository');
 const walletService = require('../walletService');
 const btctStakingRepository = require('../../repositories/btctStakingRepository');
 const btctStakingService = require('../btctStakingService');
+const userRepository = require('../../repositories/userRepository');
+
+const DEPOSIT_TEAM_INCOME_RULES = [
+  { levelNumber: 1, percentage: 0.02, incomeType: 'direct_deposit_income' },
+  { levelNumber: 2, percentage: 0.012, incomeType: 'level_deposit_income' },
+  { levelNumber: 3, percentage: 0.012, incomeType: 'level_deposit_income' },
+  { levelNumber: 4, percentage: 0.012, incomeType: 'level_deposit_income' },
+  { levelNumber: 5, percentage: 0.012, incomeType: 'level_deposit_income' },
+  { levelNumber: 6, percentage: 0.012, incomeType: 'level_deposit_income' },
+  { levelNumber: 7, percentage: 0.012, incomeType: 'level_deposit_income' }
+];
+
+function toMoney(value) {
+  return Number(Number(value || 0).toFixed(2));
+}
+
+async function distributeDepositTeamIncome(client, deposit, adminUserId, adminNote = null) {
+  const uplines = await userRepository.getSponsorUpline(client, deposit.user_id, 7);
+  const uplinesByLevel = new Map(uplines.map((item) => [Number(item.level_number), item]));
+  const baseAmount = toMoney(deposit.amount);
+  const distributions = [];
+
+  for (const rule of DEPOSIT_TEAM_INCOME_RULES) {
+    const recipient = uplinesByLevel.get(rule.levelNumber);
+    if (!recipient) continue;
+
+    const creditedAmount = toMoney(baseAmount * rule.percentage);
+    if (creditedAmount <= 0) continue;
+
+    const ledger = await walletRepository.createDepositTeamIncomeLedgerEntry(client, {
+      recipientUserId: recipient.id,
+      sourceUserId: deposit.user_id,
+      sourceDepositId: deposit.id,
+      levelNumber: rule.levelNumber,
+      incomeType: rule.incomeType,
+      percentageUsed: rule.percentage * 100,
+      baseAmount,
+      creditedAmount
+    });
+
+    if (!ledger) {
+      continue;
+    }
+
+    const { transaction } = await walletService.creditWithTransaction(
+      client,
+      recipient.id,
+      creditedAmount,
+      rule.incomeType,
+      deposit.id,
+      {
+        status: 'approved',
+        sourceUserId: deposit.user_id,
+        sourceUsername: deposit.username || null,
+        sourceDepositId: deposit.id,
+        depositRequestId: deposit.id,
+        levelNumber: rule.levelNumber,
+        percentageUsed: rule.percentage * 100,
+        baseAmount,
+        creditedAmount,
+        adminNote: adminNote || null,
+        note: `${rule.levelNumber === 1 ? 'Direct' : `Level ${rule.levelNumber}`} deposit income from ${deposit.username || 'team member'}`
+      },
+      adminUserId
+    );
+
+    await walletRepository.updateDepositTeamIncomeLedgerWalletTransaction(client, ledger.id, transaction.id);
+
+    distributions.push({
+      ledgerId: ledger.id,
+      walletTransactionId: transaction.id,
+      recipientUserId: recipient.id,
+      recipientUsername: recipient.username,
+      levelNumber: rule.levelNumber,
+      incomeType: rule.incomeType,
+      percentageUsed: rule.percentage * 100,
+      baseAmount,
+      creditedAmount
+    });
+  }
+
+  return distributions;
+}
 
 function buildPagedResult(result, pagination) {
   return {
@@ -93,6 +176,12 @@ async function reviewDeposit(adminUserId, requestId, payload) {
         },
         adminUserId
       );
+
+      const teamIncomeDistributions = await distributeDepositTeamIncome(client, request, adminUserId, payload.adminNote || null);
+      updated.details = {
+        ...(updated.details || {}),
+        teamIncomeDistributionCount: teamIncomeDistributions.length
+      };
     }
 
     await adminRepository.logAdminAction(client, {
@@ -251,7 +340,7 @@ async function getUserFinancialOverview(userId) {
   ]);
 
   const incomeHistory = transactions.filter(
-    (item) => item.tx_type === 'credit' && ['direct_income', 'matching_income', 'reward_qualification'].includes(item.source)
+    (item) => item.tx_type === 'credit' && ['direct_income', 'matching_income', 'reward_qualification', 'direct_deposit_income', 'level_deposit_income'].includes(item.source)
   );
 
   return {

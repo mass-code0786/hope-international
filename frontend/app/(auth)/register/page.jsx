@@ -139,23 +139,23 @@ function RegisterPageContent() {
         <span className="hope-kicker hidden sm:inline-flex"><Sparkles size={12} /> New member</span>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-[var(--hope-border)] bg-cardSoft p-3">
-          <ShieldCheck size={18} className="text-accent" />
-          <p className="mt-3 text-sm font-semibold text-text">Secure registration</p>
-          <p className="mt-1 text-xs leading-5 text-muted">Validation and referral logic stay unchanged.</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-[var(--hope-border)] bg-cardSoft p-3">
+            <ShieldCheck size={18} className="text-accent" />
+            <p className="mt-3 text-sm font-semibold text-text">Secure registration</p>
+            <p className="mt-1 text-xs leading-5 text-muted">Validation and referral placement stay intact.</p>
+          </div>
+          <div className="rounded-2xl border border-[var(--hope-border)] bg-cardSoft p-3">
+            <UserPlus size={18} className="text-accent" />
+            <p className="mt-3 text-sm font-semibold text-text">Instant account access</p>
+            <p className="mt-1 text-xs leading-5 text-muted">New members can move straight into the live product surfaces.</p>
+          </div>
+          <div className="rounded-2xl border border-[var(--hope-border)] bg-cardSoft p-3 sm:col-span-3 lg:col-span-1">
+            <CreditCard size={18} className="text-accent" />
+            <p className="mt-3 text-sm font-semibold text-text">Referral-ready profile</p>
+            <p className="mt-1 text-xs leading-5 text-muted">Referral entry and placement context are preserved during signup.</p>
+          </div>
         </div>
-        <div className="rounded-2xl border border-[var(--hope-border)] bg-cardSoft p-3">
-          <UserPlus size={18} className="text-accent" />
-          <p className="mt-3 text-sm font-semibold text-text">Instant account access</p>
-          <p className="mt-1 text-xs leading-5 text-muted">New members can review account details immediately after signup.</p>
-        </div>
-        <div className="rounded-2xl border border-[var(--hope-border)] bg-cardSoft p-3 sm:col-span-3 lg:col-span-1">
-          <CreditCard size={18} className="text-accent" />
-          <p className="mt-3 text-sm font-semibold text-text">Referral-ready profile</p>
-          <p className="mt-1 text-xs leading-5 text-muted">Share a screenshot of the success card after registration.</p>
-        </div>
-      </div>
 
       {referralPrefill ? (
         <div className="mt-5 rounded-3xl border border-[var(--hope-border)] bg-cardSoft p-4">

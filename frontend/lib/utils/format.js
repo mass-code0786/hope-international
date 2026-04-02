@@ -42,6 +42,8 @@ export function dateTime(value) {
 
 const incomeSourceMap = {
   direct_income: 'Direct Income',
+  direct_deposit_income: 'Direct Deposit Income',
+  level_deposit_income: 'Level Deposit Income',
   matching_income: 'Matching Income',
   reward_qualification: 'Reward Qualification',
   cap_overflow: 'Cap Overflow',

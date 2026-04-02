@@ -182,6 +182,48 @@ async function createTransaction(client, payload) {
   return rows[0];
 }
 
+async function createDepositTeamIncomeLedgerEntry(client, payload) {
+  const { rows } = await q(client).query(
+    `INSERT INTO deposit_team_income_ledger (
+       recipient_user_id,
+       source_user_id,
+       source_deposit_id,
+       wallet_transaction_id,
+       level_number,
+       income_type,
+       percentage_used,
+       base_amount,
+       credited_amount
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     ON CONFLICT (source_deposit_id, recipient_user_id, income_type, level_number) DO NOTHING
+     RETURNING *`,
+    [
+      payload.recipientUserId,
+      payload.sourceUserId,
+      payload.sourceDepositId,
+      payload.walletTransactionId || null,
+      payload.levelNumber,
+      payload.incomeType,
+      payload.percentageUsed,
+      payload.baseAmount,
+      payload.creditedAmount
+    ]
+  );
+  return rows[0] || null;
+}
+
+async function updateDepositTeamIncomeLedgerWalletTransaction(client, ledgerId, walletTransactionId) {
+  const { rows } = await q(client).query(
+    `UPDATE deposit_team_income_ledger
+     SET wallet_transaction_id = $2
+     WHERE id = $1
+     RETURNING *`,
+    [ledgerId, walletTransactionId]
+  );
+  return rows[0] || null;
+}
+
 async function listTransactions(client, userId, limit = 50) {
   const { rows } = await q(client).query(
     `SELECT *
@@ -651,7 +693,7 @@ async function listIncomeTransactionsAdmin(client, filters, pagination) {
   const { limit, offset } = withPaging(pagination?.limit, pagination?.offset);
   const values = [];
   const where = [`wt.tx_type = 'credit'`];
-  const incomeSources = ['direct_income', 'matching_income', 'reward_qualification'];
+  const incomeSources = ['direct_income', 'matching_income', 'reward_qualification', 'direct_deposit_income', 'level_deposit_income'];
 
   if (filters?.source && filters.source !== 'all') {
     values.push(filters.source);
@@ -719,6 +761,8 @@ module.exports = {
   createBtctTransaction,
   listBtctTransactions,
   createTransaction,
+  createDepositTeamIncomeLedgerEntry,
+  updateDepositTeamIncomeLedgerWalletTransaction,
   listTransactions,
   listTransactionsBySource,
   getTransactionBySourceAndReference,

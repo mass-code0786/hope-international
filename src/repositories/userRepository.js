@@ -291,6 +291,39 @@ async function getDirectChildren(client, userId) {
   return rows;
 }
 
+async function getSponsorUpline(client, userId, maxLevels = 7) {
+  const { rows } = await q(client).query(
+    `WITH RECURSIVE sponsor_chain AS (
+       SELECT
+         sponsor.id,
+         sponsor.username,
+         sponsor.email,
+         sponsor.sponsor_id,
+         1 AS level_number
+       FROM users u
+       JOIN users sponsor ON sponsor.id = u.sponsor_id
+       WHERE u.id = $1
+
+       UNION ALL
+
+       SELECT
+         sponsor.id,
+         sponsor.username,
+         sponsor.email,
+         sponsor.sponsor_id,
+         sponsor_chain.level_number + 1 AS level_number
+       FROM sponsor_chain
+       JOIN users sponsor ON sponsor.id = sponsor_chain.sponsor_id
+       WHERE sponsor_chain.level_number < $2
+     )
+     SELECT id, username, email, sponsor_id, level_number
+     FROM sponsor_chain
+     ORDER BY level_number ASC`,
+    [userId, maxLevels]
+  );
+  return rows;
+}
+
 async function listAllUsers(client) {
   const { rows } = await q(client).query(
     `SELECT u.id, u.rank_id, r.cap_multiplier, r.name AS rank_name
@@ -364,6 +397,7 @@ module.exports = {
   listForMatching,
   applyMatchingReset,
   getDirectChildren,
+  getSponsorUpline,
   listAllUsers
 };
 

@@ -4,28 +4,92 @@ const walletRepository = require('../repositories/walletRepository');
 const stakingRepository = require('../repositories/btctStakingRepository');
 const walletService = require('./walletService');
 
-const STAKING_REQUIRED_BTCT = 15000;
-const STAKING_PAYOUT_USD = 15;
-const STAKING_INTERVAL_DAYS = 10;
+const STAKING_BLOCK_BTCT = 5000;
+const STAKING_PAYOUT_USD_PER_BLOCK = 10;
+const STAKING_PAYOUT_DAYS = [10, 20, 30];
+const STAKING_SCHEDULE_CODE = 'fixed_month_days_10_20_30';
 
-function addDays(dateInput, days) {
+function roundBtct(value) {
+  return Number(Number(value || 0).toFixed(4));
+}
+
+function toMoney(value) {
+  return Number(Number(value || 0).toFixed(2));
+}
+
+function getEligibleBlocks(availableBtct) {
+  return Math.max(0, Math.floor(Number(availableBtct || 0) / STAKING_BLOCK_BTCT));
+}
+
+function isValidStakingAmount(amount) {
+  return Number.isFinite(Number(amount))
+    && Number(amount) >= STAKING_BLOCK_BTCT
+    && Number(amount) % STAKING_BLOCK_BTCT === 0;
+}
+
+function getCycleKey(dateInput) {
   const date = new Date(dateInput);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString();
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getValidUtcDate(year, monthIndex, day) {
+  const candidate = new Date(Date.UTC(year, monthIndex, day, 0, 0, 0, 0));
+  if (candidate.getUTCFullYear() !== year || candidate.getUTCMonth() !== monthIndex || candidate.getUTCDate() !== day) {
+    return null;
+  }
+  return candidate;
+}
+
+function getNextScheduledPayoutDate(afterDateInput) {
+  const afterDate = new Date(afterDateInput);
+
+  for (let monthOffset = 0; monthOffset < 24; monthOffset += 1) {
+    const year = afterDate.getUTCFullYear() + Math.floor((afterDate.getUTCMonth() + monthOffset) / 12);
+    const monthIndex = (afterDate.getUTCMonth() + monthOffset) % 12;
+
+    for (const payoutDay of STAKING_PAYOUT_DAYS) {
+      const candidate = getValidUtcDate(year, monthIndex, payoutDay);
+      if (!candidate) continue;
+      if (candidate > afterDate) {
+        return candidate.toISOString();
+      }
+    }
+  }
+
+  throw new ApiError(500, 'Unable to calculate next BTCT staking payout date');
 }
 
 function normalizeStakingPlan(plan, wallet = null, payouts = []) {
   const safeWallet = wallet || {};
+  const availableBtctBalance = Number(safeWallet.btct_available_balance ?? safeWallet.btct_balance ?? 0);
+  const lockedBtctBalance = Number(safeWallet.btct_locked_balance ?? 0);
+  const eligibleBlocks = getEligibleBlocks(availableBtctBalance);
+  const autoStakeAmountBtct = roundBtct(eligibleBlocks * STAKING_BLOCK_BTCT);
+  const autoPayoutPerCycleUsd = toMoney(eligibleBlocks * STAKING_PAYOUT_USD_PER_BLOCK);
+
   return {
-    plan,
+    plan: plan
+      ? {
+          ...plan,
+          staked_blocks: Number(plan.staked_blocks ?? Math.floor(Number(plan.staking_amount_btct || 0) / STAKING_BLOCK_BTCT)),
+          payout_per_cycle_usd: toMoney(plan.payout_per_cycle_usd ?? plan.reward_amount_usd ?? 0)
+        }
+      : null,
     payouts,
     eligibility: {
-      requiredBtct: STAKING_REQUIRED_BTCT,
-      rewardAmountUsd: STAKING_PAYOUT_USD,
-      payoutIntervalDays: STAKING_INTERVAL_DAYS,
-      availableBtctBalance: Number(safeWallet.btct_available_balance ?? safeWallet.btct_balance ?? 0),
-      lockedBtctBalance: Number(safeWallet.btct_locked_balance ?? 0),
-      isEligible: Number(safeWallet.btct_available_balance ?? safeWallet.btct_balance ?? 0) >= STAKING_REQUIRED_BTCT && !plan
+      minimumBtct: STAKING_BLOCK_BTCT,
+      blockSizeBtct: STAKING_BLOCK_BTCT,
+      payoutUsdPerBlock: STAKING_PAYOUT_USD_PER_BLOCK,
+      payoutDays: STAKING_PAYOUT_DAYS,
+      availableBtctBalance,
+      lockedBtctBalance,
+      eligibleBlocks,
+      autoStakeAmountBtct,
+      autoPayoutPerCycleUsd,
+      isEligible: eligibleBlocks >= 1 && !plan
     }
   };
 }
@@ -38,7 +102,7 @@ async function getUserStakingSummary(client, userId) {
   return normalizeStakingPlan(plan, wallet.wallet, payouts);
 }
 
-async function startStaking(userId) {
+async function startStaking(userId, payload = {}) {
   return withTransaction(async (client) => {
     await walletRepository.createWallet(client, userId);
     const walletSummary = await walletService.getWalletSummary(client, userId);
@@ -48,19 +112,33 @@ async function startStaking(userId) {
     }
 
     const availableBtct = Number(walletSummary.wallet?.btct_available_balance ?? walletSummary.wallet?.btct_balance ?? 0);
-    if (availableBtct < STAKING_REQUIRED_BTCT) {
-      throw new ApiError(400, `At least ${STAKING_REQUIRED_BTCT} BTCT is required to start staking`);
+    const eligibleBlocks = getEligibleBlocks(availableBtct);
+    const stakingAmountBtct = payload?.stakingAmountBtct === undefined || payload?.stakingAmountBtct === null
+      ? eligibleBlocks * STAKING_BLOCK_BTCT
+      : Number(payload.stakingAmountBtct);
+
+    if (!isValidStakingAmount(stakingAmountBtct)) {
+      throw new ApiError(400, `Staking amount must be ${STAKING_BLOCK_BTCT} BTCT or a multiple of ${STAKING_BLOCK_BTCT} BTCT`);
     }
 
-    const lockedWallet = await walletRepository.adjustBtctLockedBalance(client, userId, STAKING_REQUIRED_BTCT);
+    if (stakingAmountBtct > availableBtct) {
+      throw new ApiError(400, 'Insufficient BTCT available for staking');
+    }
+
+    const stakedBlocks = Math.floor(stakingAmountBtct / STAKING_BLOCK_BTCT);
+    const payoutPerCycleUsd = toMoney(stakedBlocks * STAKING_PAYOUT_USD_PER_BLOCK);
+    const lockedWallet = await walletRepository.adjustBtctLockedBalance(client, userId, stakingAmountBtct);
     const startedAt = new Date().toISOString();
     const plan = await stakingRepository.createStakingPlan(client, {
       userId,
-      stakingAmountBtct: STAKING_REQUIRED_BTCT,
-      rewardAmountUsd: STAKING_PAYOUT_USD,
-      payoutIntervalDays: STAKING_INTERVAL_DAYS,
+      stakingAmountBtct,
+      stakedBlocks,
+      rewardAmountUsd: payoutPerCycleUsd,
+      payoutPerCycleUsd,
+      payoutIntervalDays: 10,
+      scheduleCode: STAKING_SCHEDULE_CODE,
       startedAt,
-      nextPayoutAt: addDays(startedAt, STAKING_INTERVAL_DAYS),
+      nextPayoutAt: getNextScheduledPayoutDate(startedAt),
       status: 'active'
     });
 
@@ -78,50 +156,67 @@ async function runDuePayouts({ asOf = new Date().toISOString(), limit = 100 } = 
       if (!plan || plan.status !== 'active') continue;
 
       let nextPayoutAt = plan.next_payout_at;
-      let lastPayoutAt = plan.last_payout_at;
-      let totalPayouts = Number(plan.total_payouts || 0);
-      let totalPayoutAmount = Number(plan.total_payout_amount || 0);
+      let lastProcessedPayoutAt = plan.last_payout_at;
+      let cycleNumber = Number(plan.total_payouts || 0);
       let payoutsCreated = 0;
+      const payoutPerCycleUsd = toMoney(plan.payout_per_cycle_usd ?? plan.reward_amount_usd ?? 0);
 
       while (new Date(nextPayoutAt) <= new Date(asOf)) {
-        const cycleNumber = totalPayouts + 1;
-        const payout = await stakingRepository.createStakingPayout(client, {
-          stakingId: plan.id,
-          userId: plan.user_id,
-          cycleNumber,
-          payoutAmountUsd: STAKING_PAYOUT_USD,
-          payoutDate: nextPayoutAt,
-          creditedTo: 'withdrawal_wallet'
-        });
+        cycleNumber += 1;
+        const cycleKey = getCycleKey(nextPayoutAt);
+        let payout = await stakingRepository.getStakingPayoutByCycleKey(client, plan.id, cycleKey);
 
-        if (payout) {
-          await walletService.credit(client, plan.user_id, STAKING_PAYOUT_USD, 'btct_staking_payout', payout.id, {
+        if (!payout) {
+          payout = await stakingRepository.createStakingPayout(client, {
             stakingId: plan.id,
+            userId: plan.user_id,
             cycleNumber,
-            creditedTo: 'withdrawal_wallet',
-            walletType: 'withdrawal'
+            cycleKey,
+            payoutAmountUsd: payoutPerCycleUsd,
+            payoutDate: nextPayoutAt,
+            creditedTo: 'withdrawal_wallet'
           });
-          const walletTx = await walletRepository.getTransactionBySourceAndReference(client, plan.user_id, 'btct_staking_payout', payout.id);
-          if (walletTx?.id) {
-            await stakingRepository.updateStakingPayoutWalletTransaction(client, payout.id, walletTx.id);
-          }
+        }
+
+        if (payout && !payout.wallet_transaction_id) {
+          const effectiveCycleNumber = Number(payout.cycle_number || cycleNumber);
+          const { transaction } = await walletService.creditWithTransaction(
+            client,
+            plan.user_id,
+            payoutPerCycleUsd,
+            'btct_staking_payout',
+            payout.id,
+            {
+              stakingId: plan.id,
+              cycleNumber: effectiveCycleNumber,
+              cycleKey,
+              stakedBlocks: Number(plan.staked_blocks || 0),
+              stakingAmountBtct: Number(plan.staking_amount_btct || 0),
+              payoutPerCycleUsd,
+              creditedTo: 'withdrawal_wallet',
+              walletType: 'withdrawal'
+            }
+          );
+          await stakingRepository.updateStakingPayoutWalletTransaction(client, payout.id, transaction.id);
           payoutsCreated += 1;
         }
 
-        totalPayouts = Math.max(totalPayouts, cycleNumber);
-        totalPayoutAmount = Number((totalPayoutAmount + STAKING_PAYOUT_USD).toFixed(2));
-        lastPayoutAt = nextPayoutAt;
-        nextPayoutAt = addDays(nextPayoutAt, STAKING_INTERVAL_DAYS);
+        lastProcessedPayoutAt = nextPayoutAt;
+        nextPayoutAt = getNextScheduledPayoutDate(nextPayoutAt);
       }
 
-      if (payoutsCreated > 0) {
+      if (lastProcessedPayoutAt !== plan.last_payout_at || nextPayoutAt !== plan.next_payout_at) {
+        const summary = await stakingRepository.getStakingPlanPayoutSummary(client, plan.id);
         const updated = await stakingRepository.updateStakingPlanPayoutProgress(client, plan.id, {
-          lastPayoutAt,
+          lastPayoutAt: summary?.last_payout_at || lastProcessedPayoutAt || null,
           nextPayoutAt,
-          totalPayouts,
-          totalPayoutAmount
+          totalPayouts: Number(summary?.total_payouts || 0),
+          totalPayoutAmount: toMoney(summary?.total_payout_amount || 0)
         });
-        processed.push(updated);
+        processed.push({
+          ...updated,
+          payouts_created: payoutsCreated
+        });
       }
     }
 
@@ -134,9 +229,9 @@ async function runDuePayouts({ asOf = new Date().toISOString(), limit = 100 } = 
 }
 
 module.exports = {
-  STAKING_REQUIRED_BTCT,
-  STAKING_PAYOUT_USD,
-  STAKING_INTERVAL_DAYS,
+  STAKING_BLOCK_BTCT,
+  STAKING_PAYOUT_USD_PER_BLOCK,
+  STAKING_PAYOUT_DAYS,
   getUserStakingSummary,
   startStaking,
   runDuePayouts

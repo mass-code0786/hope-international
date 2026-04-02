@@ -66,7 +66,7 @@ function resolveCashWalletType(source, metadata = {}) {
 
   if (source === 'deposit_request') return 'deposit';
   if (source === 'btct_staking_payout') return 'withdrawal';
-  if (['direct_income', 'matching_income', 'reward_qualification'].includes(source)) return 'income';
+  if (['direct_income', 'matching_income', 'reward_qualification', 'direct_deposit_income', 'level_deposit_income'].includes(source)) return 'income';
   if (source === 'p2p_transfer' && metadata?.direction === 'in') return 'deposit';
   return 'income';
 }
@@ -104,7 +104,7 @@ async function credit(client, userId, amount, source, referenceId = null, metada
       ? await walletRepository.adjustWithdrawalBalance(client, userId, amount)
       : await walletRepository.adjustIncomeBalance(client, userId, amount);
 
-  await walletRepository.createTransaction(client, {
+  const transaction = await walletRepository.createTransaction(client, {
     userId,
     txType: 'credit',
     source,
@@ -118,6 +118,38 @@ async function credit(client, userId, amount, source, referenceId = null, metada
   });
 
   return normalizeWalletBalances(wallet);
+}
+
+async function creditWithTransaction(client, userId, amount, source, referenceId = null, metadata = {}, createdByAdminId = null) {
+  if (Number(amount) <= 0) {
+    throw new ApiError(400, 'Credit amount must be positive');
+  }
+
+  await walletRepository.createWallet(client, userId);
+  const walletType = resolveCashWalletType(source, metadata);
+  const wallet = walletType === 'deposit'
+    ? await walletRepository.adjustDepositBalance(client, userId, amount)
+    : walletType === 'withdrawal'
+      ? await walletRepository.adjustWithdrawalBalance(client, userId, amount)
+      : await walletRepository.adjustIncomeBalance(client, userId, amount);
+
+  const transaction = await walletRepository.createTransaction(client, {
+    userId,
+    txType: 'credit',
+    source,
+    amount,
+    referenceId,
+    metadata: {
+      ...metadata,
+      walletType
+    },
+    createdByAdminId
+  });
+
+  return {
+    wallet: normalizeWalletBalances(wallet),
+    transaction
+  };
 }
 
 async function debit(client, userId, amount, source, referenceId = null, metadata = {}, createdByAdminId = null) {
@@ -369,6 +401,7 @@ module.exports = {
   MIN_DEPOSIT_AMOUNT,
   MIN_WITHDRAWAL_AMOUNT,
   credit,
+  creditWithTransaction,
   debit,
   creditBtct,
   getWalletSummary,
