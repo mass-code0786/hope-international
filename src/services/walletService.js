@@ -14,6 +14,10 @@ function roundBtct(value) {
   return Number(Number(value || 0).toFixed(4));
 }
 
+function toMoney(value) {
+  return Number(Number(value || 0).toFixed(2));
+}
+
 function normalizeDepositWalletConfig(value = {}, meta = {}) {
   const config = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
   return {
@@ -26,6 +30,35 @@ function normalizeDepositWalletConfig(value = {}, meta = {}) {
     updatedAt: meta.updatedAt || null,
     updatedBy: meta.updatedBy || null
   };
+}
+
+function normalizeWalletBalances(wallet = {}) {
+  const incomeBalance = toMoney(wallet?.income_balance ?? wallet?.income_wallet_balance ?? wallet?.balance ?? 0);
+  const depositBalance = toMoney(wallet?.deposit_balance ?? wallet?.deposit_wallet_balance ?? 0);
+  const btctBalance = roundBtct(wallet?.btct_balance ?? wallet?.btct_wallet_balance ?? 0);
+  const totalBalance = toMoney(wallet?.balance ?? incomeBalance + depositBalance);
+
+  return {
+    ...(wallet || {}),
+    balance: totalBalance,
+    income_balance: incomeBalance,
+    deposit_balance: depositBalance,
+    btct_balance: btctBalance,
+    income_wallet_balance: incomeBalance,
+    deposit_wallet_balance: depositBalance,
+    btct_wallet_balance: btctBalance
+  };
+}
+
+function resolveCashWalletType(source, metadata = {}) {
+  if (metadata?.walletType === 'deposit' || metadata?.walletType === 'income') {
+    return metadata.walletType;
+  }
+
+  if (source === 'deposit_request') return 'deposit';
+  if (['direct_income', 'matching_income', 'reward_qualification'].includes(source)) return 'income';
+  if (source === 'p2p_transfer' && metadata?.direction === 'in') return 'deposit';
+  return 'income';
 }
 
 function isSupportedProofImage(value) {
@@ -54,7 +87,10 @@ async function credit(client, userId, amount, source, referenceId = null, metada
   }
 
   await walletRepository.createWallet(client, userId);
-  const wallet = await walletRepository.adjustBalance(client, userId, amount);
+  const walletType = resolveCashWalletType(source, metadata);
+  const wallet = walletType === 'deposit'
+    ? await walletRepository.adjustDepositBalance(client, userId, amount)
+    : await walletRepository.adjustIncomeBalance(client, userId, amount);
 
   await walletRepository.createTransaction(client, {
     userId,
@@ -62,11 +98,14 @@ async function credit(client, userId, amount, source, referenceId = null, metada
     source,
     amount,
     referenceId,
-    metadata,
+    metadata: {
+      ...metadata,
+      walletType
+    },
     createdByAdminId
   });
 
-  return wallet;
+  return normalizeWalletBalances(wallet);
 }
 
 async function debit(client, userId, amount, source, referenceId = null, metadata = {}, createdByAdminId = null) {
@@ -75,22 +114,35 @@ async function debit(client, userId, amount, source, referenceId = null, metadat
   }
 
   await walletRepository.createWallet(client, userId);
-  const updatedWallet = await walletRepository.debitBalanceIfSufficient(client, userId, Number(amount));
+  const updatedWallet = await walletRepository.debitCombinedBalanceIfSufficient(client, userId, Number(amount));
 
   if (!updatedWallet) {
     throw new ApiError(400, 'Insufficient wallet balance');
   }
+
+  const debitBreakdown = {
+    income: toMoney(updatedWallet.debited_income_balance || 0),
+    deposit: toMoney(updatedWallet.debited_deposit_balance || 0)
+  };
+
   await walletRepository.createTransaction(client, {
     userId,
     txType: 'debit',
     source,
     amount,
     referenceId,
-    metadata,
+    metadata: {
+      ...metadata,
+      walletType: 'combined',
+      walletBreakdown: debitBreakdown
+    },
     createdByAdminId
   });
 
-  return updatedWallet;
+  return {
+    ...normalizeWalletBalances(updatedWallet),
+    debitBreakdown
+  };
 }
 
 async function creditBtct(client, userId, amount, source, referenceId = null, metadata = {}, createdByAdminId = null) {
@@ -113,7 +165,7 @@ async function creditBtct(client, userId, amount, source, referenceId = null, me
   });
 
   return {
-    wallet,
+    wallet: normalizeWalletBalances(wallet),
     transaction,
     btctPrice: BTCT_USD_PRICE
   };
@@ -121,7 +173,7 @@ async function creditBtct(client, userId, amount, source, referenceId = null, me
 
 async function getWalletSummary(client, userId) {
   await walletRepository.createWallet(client, userId);
-  const wallet = await walletRepository.getWallet(client, userId);
+  const wallet = normalizeWalletBalances(await walletRepository.getWallet(client, userId));
   const transactions = await walletRepository.listTransactions(client, userId, 100);
   const btctTransactions = await walletRepository.listBtctTransactions(client, userId, 100);
   const walletBinding = await walletRepository.getWalletBinding(client, userId);
@@ -202,7 +254,7 @@ async function createWithdrawalRequest(client, userId, payload) {
   }
 
   await walletRepository.createWallet(client, userId);
-  const wallet = await walletRepository.getWallet(client, userId);
+  const wallet = normalizeWalletBalances(await walletRepository.getWallet(client, userId));
   if (!wallet || Number(wallet.balance) < amount) {
     throw new ApiError(400, 'Insufficient wallet balance');
   }
@@ -271,7 +323,8 @@ async function createP2pTransfer(client, senderUserId, payload) {
 
   await credit(client, targetUser.id, amount, 'p2p_transfer', transfer.id, {
     direction: 'in',
-    counterpartyUserId: senderUserId
+    counterpartyUserId: senderUserId,
+    counterpartyUsername: targetUser.username
   });
 
   return {
@@ -313,3 +366,4 @@ module.exports = {
   createP2pTransfer,
   getHubHistory
 };
+

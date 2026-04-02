@@ -21,8 +21,8 @@ function withPaging(limit = 20, offset = 0) {
 
 async function createWallet(client, userId) {
   await q(client).query(
-    `INSERT INTO wallets (user_id, balance)
-     VALUES ($1, 0)
+    `INSERT INTO wallets (user_id, balance, income_balance, deposit_balance, btct_balance)
+     VALUES ($1, 0, 0, 0, 0)
      ON CONFLICT (user_id) DO NOTHING`,
     [userId]
   );
@@ -33,10 +33,11 @@ async function getWallet(client, userId) {
   return rows[0] || null;
 }
 
-async function adjustBalance(client, userId, amountDelta) {
+async function adjustIncomeBalance(client, userId, amountDelta) {
   const { rows } = await q(client).query(
     `UPDATE wallets
-     SET balance = balance + $2
+     SET income_balance = COALESCE(income_balance, 0) + $2,
+         balance = COALESCE(income_balance, 0) + $2 + COALESCE(deposit_balance, 0)
      WHERE user_id = $1
      RETURNING *`,
     [userId, amountDelta]
@@ -44,13 +45,48 @@ async function adjustBalance(client, userId, amountDelta) {
   return rows[0] || null;
 }
 
-async function debitBalanceIfSufficient(client, userId, amount) {
+async function adjustDepositBalance(client, userId, amountDelta) {
   const { rows } = await q(client).query(
     `UPDATE wallets
-     SET balance = balance - $2
+     SET deposit_balance = COALESCE(deposit_balance, 0) + $2,
+         balance = COALESCE(income_balance, 0) + COALESCE(deposit_balance, 0) + $2
      WHERE user_id = $1
-       AND balance >= $2
      RETURNING *`,
+    [userId, amountDelta]
+  );
+  return rows[0] || null;
+}
+
+async function debitCombinedBalanceIfSufficient(client, userId, amount) {
+  const { rows } = await q(client).query(
+    `WITH current_wallet AS (
+        SELECT user_id,
+               COALESCE(income_balance, balance, 0)::numeric(14,2) AS income_balance,
+               COALESCE(deposit_balance, 0)::numeric(14,2) AS deposit_balance
+        FROM wallets
+        WHERE user_id = $1
+        FOR UPDATE
+      ),
+      updated_wallet AS (
+        UPDATE wallets w
+        SET deposit_balance = CASE
+              WHEN current_wallet.deposit_balance >= $2 THEN current_wallet.deposit_balance - $2
+              ELSE 0
+            END,
+            income_balance = CASE
+              WHEN current_wallet.deposit_balance >= $2 THEN current_wallet.income_balance
+              ELSE current_wallet.income_balance - ($2 - current_wallet.deposit_balance)
+            END,
+            balance = current_wallet.income_balance + current_wallet.deposit_balance - $2
+        FROM current_wallet
+        WHERE w.user_id = current_wallet.user_id
+          AND current_wallet.income_balance + current_wallet.deposit_balance >= $2
+        RETURNING w.*, current_wallet.income_balance AS previous_income_balance, current_wallet.deposit_balance AS previous_deposit_balance
+      )
+      SELECT *,
+             previous_income_balance - income_balance AS debited_income_balance,
+             previous_deposit_balance - deposit_balance AS debited_deposit_balance
+      FROM updated_wallet`,
     [userId, amount]
   );
   return rows[0] || null;
@@ -629,8 +665,9 @@ async function listIncomeTransactionsAdmin(client, filters, pagination) {
 module.exports = {
   createWallet,
   getWallet,
-  adjustBalance,
-  debitBalanceIfSufficient,
+  adjustIncomeBalance,
+  adjustDepositBalance,
+  debitCombinedBalanceIfSufficient,
   adjustBtctBalance,
   createBtctTransaction,
   listBtctTransactions,

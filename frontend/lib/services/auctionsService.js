@@ -18,6 +18,10 @@ function normalizeAuctionParams(params = {}) {
     const safeStatus = auctionStatusAliases[normalizedStatus] || normalizedStatus;
     if (allowedAuctionStatuses.has(safeStatus) && safeStatus !== 'all') next.status = safeStatus;
   }
+  if (typeof params.kind === 'string') {
+    const normalizedKind = params.kind.trim().toLowerCase();
+    if (['bids', 'joined', 'wins', 'history'].includes(normalizedKind)) next.kind = normalizedKind;
+  }
   if (typeof params.search === 'string' && params.search.trim()) next.search = params.search.trim().slice(0, 120);
   const page = Number(params.page);
   next.page = Number.isInteger(page) && page > 0 ? page : 1;
@@ -206,5 +210,23 @@ export async function revealAuctionResult(id) {
 }
 
 export async function getMyAuctionHistory(params = {}) {
-  return normalizeAuctionEnvelope(toEnvelope(await apiFetch(`/auctions/me/history${withQuery(normalizeAuctionParams(params))}`)));
+  const query = withQuery(normalizeAuctionParams(params));
+  const payload = await apiFetch(`/auctions/me/history${query}`);
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.debug('[auction.history.response.raw]', { query, payload });
+  }
+
+  const normalized = normalizeAuctionEnvelope(toEnvelope(payload));
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.debug('[auction.history.response.normalized]', {
+      query,
+      summary: normalized?.summary || null,
+      itemCount: Array.isArray(normalized?.data) ? normalized.data.length : null,
+      pagination: normalized?.pagination || null
+    });
+  }
+
+  return normalized;
 }

@@ -39,12 +39,21 @@ export async function getWallet() {
     ? { wallet: data.wallet || {}, walletBinding: data.walletBinding || null, transactions: data.transactions }
     : { wallet: data, walletBinding: data.walletBinding || null, transactions: data.transactions || [] };
 
+  const incomeBalance = toNumber(normalized.wallet?.income_balance ?? normalized.wallet?.income_wallet_balance ?? normalized.wallet?.balance);
+  const depositBalance = toNumber(normalized.wallet?.deposit_balance ?? normalized.wallet?.deposit_wallet_balance);
+  const btctBalance = toNumber(normalized.wallet?.btct_balance ?? normalized.wallet?.btct_wallet_balance);
+
   return {
     ...normalized,
     wallet: {
       ...(normalized.wallet || {}),
-      balance: toNumber(normalized.wallet?.balance),
-      btct_balance: toNumber(normalized.wallet?.btct_balance)
+      balance: toNumber(normalized.wallet?.balance, incomeBalance + depositBalance),
+      income_balance: incomeBalance,
+      deposit_balance: depositBalance,
+      btct_balance: btctBalance,
+      income_wallet_balance: incomeBalance,
+      deposit_wallet_balance: depositBalance,
+      btct_wallet_balance: btctBalance
     },
     btctTransactions: normalizeBtctTransactions(normalized.btctTransactions || []),
     btctPrice: toNumber(normalized.btctPrice, 0.1)

@@ -87,6 +87,17 @@ const MODERN_AUCTION_LIST_COLUMNS = [
   'product_id'
 ];
 
+const MODERN_HISTORY_PRODUCT_COLUMNS = [
+  'image_url',
+  'gallery',
+  'is_active'
+];
+
+const MODERN_HISTORY_BID_COLUMNS = [
+  'entry_count',
+  'total_amount'
+];
+
 function hasRequiredColumns(columns, requiredColumns) {
   return requiredColumns.every((column) => columns.has(column));
 }
@@ -747,6 +758,8 @@ async function getUserBidStats(client, userId) {
 
 async function listUserAuctionHistoryCompat(client, userId, filters = {}, pagination = {}) {
   const auctionColumns = await getTableColumns(client, 'auctions');
+  const productColumns = await getTableColumns(client, 'products');
+  const bidColumns = await getTableColumns(client, 'auction_bids');
   const winnerColumns = await getTableColumns(client, 'auction_winners');
   const participantColumns = await getTableColumns(client, 'auction_participants');
   const { limit, offset } = normalizeListPagination(pagination);
@@ -785,6 +798,32 @@ async function listUserAuctionHistoryCompat(client, userId, filters = {}, pagina
   const isWinnerExpr = winnerColumns.size > 0
     ? 'EXISTS (SELECT 1 FROM auction_winners aw WHERE aw.auction_id = a.id AND aw.user_id = $1)'
     : 'FALSE';
+  const myEntryCountExpr = bidColumns.has('entry_count')
+    ? `(
+        SELECT COALESCE(SUM(entry_count), 0)
+        FROM auction_bids ub
+        WHERE ub.auction_id = a.id
+          AND ub.user_id = $1
+      )`
+    : `(
+        SELECT COUNT(*)
+        FROM auction_bids ub
+        WHERE ub.auction_id = a.id
+          AND ub.user_id = $1
+      )`;
+  const myTotalSpendExpr = bidColumns.has('total_amount')
+    ? `(
+        SELECT COALESCE(SUM(total_amount), 0)
+        FROM auction_bids ub
+        WHERE ub.auction_id = a.id
+          AND ub.user_id = $1
+      )`
+    : `(
+        SELECT COALESCE(SUM(amount), 0)
+        FROM auction_bids ub
+        WHERE ub.auction_id = a.id
+          AND ub.user_id = $1
+      )`;
   const listValues = [...values, limit, offset];
   const listSql = `SELECT
       a.*,
@@ -799,23 +838,14 @@ async function listUserAuctionHistoryCompat(client, userId, filters = {}, pagina
       NULL::text AS product_sku,
       NULL::numeric AS product_price,
       NULL::text AS product_description,
-      NULL::text AS product_image_url,
-      '[]'::jsonb AS product_gallery,
-      NULL::boolean AS product_is_active,
+      ${productColumns.has('image_url') ? 'p.image_url' : 'NULL::text'} AS product_image_url,
+      ${productColumns.has('gallery') ? "COALESCE(p.gallery, '[]'::jsonb)" : "'[]'::jsonb"} AS product_gallery,
+      ${productColumns.has('is_active') ? 'p.is_active' : 'NULL::boolean'} AS product_is_active,
       ${isWinnerExpr} AS is_winner,
-      (
-        SELECT COALESCE(SUM(entry_count), 0)
-        FROM auction_bids ub
-        WHERE ub.auction_id = a.id
-          AND ub.user_id = $1
-      ) AS my_entry_count,
-      (
-        SELECT COALESCE(SUM(total_amount), 0)
-        FROM auction_bids ub
-        WHERE ub.auction_id = a.id
-          AND ub.user_id = $1
-      ) AS my_total_spend
+      ${myEntryCountExpr} AS my_entry_count,
+      ${myTotalSpendExpr} AS my_total_spend
      FROM auctions a
+     LEFT JOIN products p ON p.id = a.product_id
      ${whereSql}
      ORDER BY ${sortClosedAt} ${sortEndAt} ${sortCreatedAt}
      LIMIT $${listValues.length - 1} OFFSET $${listValues.length}`;
@@ -843,7 +873,20 @@ async function listUserAuctionHistoryCompat(client, userId, filters = {}, pagina
 
 async function listUserAuctionHistory(client, userId, filters = {}, pagination = {}) {
   const columns = await getTableColumns(client, 'auctions');
-  if (!hasRequiredColumns(columns, MODERN_AUCTION_LIST_COLUMNS)) {
+  const productColumns = await getTableColumns(client, 'products');
+  const bidColumns = await getTableColumns(client, 'auction_bids');
+  if (
+    !hasRequiredColumns(columns, MODERN_AUCTION_LIST_COLUMNS)
+    || !hasRequiredColumns(productColumns, MODERN_HISTORY_PRODUCT_COLUMNS)
+    || !hasRequiredColumns(bidColumns, MODERN_HISTORY_BID_COLUMNS)
+  ) {
+    console.warn('[auction.history.compat.fallback]', {
+      userId,
+      filters,
+      missingAuctionColumns: MODERN_AUCTION_LIST_COLUMNS.filter((column) => !columns.has(column)),
+      missingProductColumns: MODERN_HISTORY_PRODUCT_COLUMNS.filter((column) => !productColumns.has(column)),
+      missingBidColumns: MODERN_HISTORY_BID_COLUMNS.filter((column) => !bidColumns.has(column))
+    });
     return listUserAuctionHistoryCompat(client, userId, filters, pagination);
   }
 

@@ -646,14 +646,36 @@ async function revealAuctionResult(auctionId, userId) {
 
 async function listMyAuctionHistory(userId, filters, paginationInput) {
   const pagination = normalizePagination(paginationInput);
+  const safeKind = filters?.kind || 'bids';
   const result = await withTransaction(async (client) => {
     console.log('[auction.history.request]', {
       userId,
-      kind: filters?.kind || 'bids',
+      kind: safeKind,
       page: pagination.page,
       limit: pagination.limit
     });
-    const history = await auctionRepository.listUserAuctionHistory(client, userId, filters, pagination);
+
+    let history;
+    try {
+      history = await auctionRepository.listUserAuctionHistory(client, userId, filters, pagination);
+      console.log('[auction.history.list.initial.success]', {
+        userId,
+        kind: safeKind,
+        count: Array.isArray(history?.items) ? history.items.length : 0,
+        total: Number(history?.total || 0)
+      });
+    } catch (error) {
+      console.error('[auction.history.list.initial.error]', {
+        userId,
+        kind: safeKind,
+        page: pagination.page,
+        limit: pagination.limit,
+        code: error?.code || null,
+        message: error?.message || 'Unknown auction history list failure',
+        stack: error?.stack || null
+      });
+      throw error;
+    }
 
     for (const auction of history.items) {
       if (auction.computed_status === 'ended' && auction.status !== 'cancelled') {
@@ -674,14 +696,58 @@ async function listMyAuctionHistory(userId, filters, paginationInput) {
       }
     }
 
-    const refreshed = await auctionRepository.listUserAuctionHistory(client, userId, filters, pagination);
-    const summary = await auctionRepository.getUserBidStats(client, userId);
+    let refreshed;
+    try {
+      refreshed = await auctionRepository.listUserAuctionHistory(client, userId, filters, pagination);
+      console.log('[auction.history.list.refreshed.success]', {
+        userId,
+        kind: safeKind,
+        count: Array.isArray(refreshed?.items) ? refreshed.items.length : 0,
+        total: Number(refreshed?.total || 0)
+      });
+    } catch (error) {
+      console.error('[auction.history.list.refreshed.error]', {
+        userId,
+        kind: safeKind,
+        page: pagination.page,
+        limit: pagination.limit,
+        code: error?.code || null,
+        message: error?.message || 'Unknown refreshed auction history failure',
+        stack: error?.stack || null
+      });
+      throw error;
+    }
+
+    let summary;
+    try {
+      summary = await auctionRepository.getUserBidStats(client, userId);
+      console.log('[auction.history.summary.success]', {
+        userId,
+        kind: safeKind,
+        summary
+      });
+    } catch (error) {
+      console.error('[auction.history.summary.error]', {
+        userId,
+        kind: safeKind,
+        code: error?.code || null,
+        message: error?.message || 'Unknown auction history summary failure',
+        stack: error?.stack || null
+      });
+      throw error;
+    }
+
     return { history: refreshed, summary };
   });
 
   return {
     data: result.history.items.map((auction) => shapeAuction(auction)),
-    summary: result.summary,
+    summary: result.summary || {
+      my_bids: 0,
+      auctions_joined: 0,
+      won_auctions: 0,
+      auction_history: 0
+    },
     pagination: buildPagination({ page: pagination.page, limit: pagination.limit, total: result.history.total })
   };
 }
