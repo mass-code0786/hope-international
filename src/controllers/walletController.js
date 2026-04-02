@@ -2,6 +2,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const { withTransaction } = require('../db/pool');
 const walletService = require('../services/walletService');
 const walletRepository = require('../repositories/walletRepository');
+const btctStakingService = require('../services/btctStakingService');
 const { success } = require('../utils/response');
 
 function normalizeDepositRecord(item) {
@@ -124,6 +125,23 @@ const p2pList = asyncHandler(async (req, res) => {
   res.status(200).json(data);
 });
 
+const stakingSummary = asyncHandler(async (req, res) => {
+  const data = await btctStakingService.getUserStakingSummary(null, req.user.sub);
+  return success(res, {
+    data,
+    message: 'BTCT staking summary fetched successfully'
+  });
+});
+
+const stakingStart = asyncHandler(async (req, res) => {
+  const data = await btctStakingService.startStaking(req.user.sub);
+  return success(res, {
+    data,
+    statusCode: 201,
+    message: 'BTCT staking started successfully'
+  });
+});
+
 const adjust = asyncHandler(async (req, res) => {
   const { userId, amount, type, note } = req.body;
   const wallet = await withTransaction(async (client) => {
@@ -146,5 +164,7 @@ module.exports = {
   withdrawalList,
   p2pCreate,
   p2pList,
+  stakingSummary,
+  stakingStart,
   adjust
 };

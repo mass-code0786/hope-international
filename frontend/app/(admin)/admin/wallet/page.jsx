@@ -11,8 +11,8 @@ import { ConfirmationModal } from '@/components/admin/ConfirmationModal';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
 import { queryKeys } from '@/lib/query/queryKeys';
-import { createManualWalletAdjustment, getAdminWalletSummary, getAdminWalletTransactions } from '@/lib/services/admin';
-import { currency, incomeSourceLabel, shortDate } from '@/lib/utils/format';
+import { createManualWalletAdjustment, getAdminBtctStaking, getAdminWalletSummary, getAdminWalletTransactions, runAdminBtctStakingPayouts } from '@/lib/services/admin';
+import { currency, incomeSourceLabel, number, shortDate } from '@/lib/utils/format';
 
 export default function AdminWalletPage() {
   const [filter, setFilter] = useState('all');
@@ -26,10 +26,8 @@ export default function AdminWalletPage() {
     queryKey: [...queryKeys.adminWalletTransactions, filter, page],
     queryFn: () => getAdminWalletTransactions({ source: filter, page, limit: 15 })
   });
-  const summaryQuery = useQuery({
-    queryKey: queryKeys.adminWalletSummary,
-    queryFn: getAdminWalletSummary
-  });
+  const summaryQuery = useQuery({ queryKey: queryKeys.adminWalletSummary, queryFn: getAdminWalletSummary });
+  const stakingQuery = useQuery({ queryKey: queryKeys.adminBtctStaking, queryFn: getAdminBtctStaking });
 
   const adjustMutation = useMutation({
     mutationFn: () => createManualWalletAdjustment({ ...adjustForm, amount: Number(adjustForm.amount || 0) }),
@@ -43,35 +41,86 @@ export default function AdminWalletPage() {
     onError: (err) => toast.error(err.message || 'Adjustment failed')
   });
 
-  if (txQuery.isLoading || summaryQuery.isLoading) return <AdminShellSkeleton />;
+  const runPayoutsMutation = useMutation({
+    mutationFn: () => runAdminBtctStakingPayouts({}),
+    onSuccess: async (result) => {
+      toast.success(result.message || 'BTCT staking payouts processed');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.adminWallet }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.adminBtctStaking })
+      ]);
+    },
+    onError: (err) => toast.error(err.message || 'BTCT staking payout run failed')
+  });
+
+  if (txQuery.isLoading || summaryQuery.isLoading || stakingQuery.isLoading) return <AdminShellSkeleton />;
   if (txQuery.isError) return <ErrorState message="Unable to load wallet ledger." onRetry={txQuery.refetch} />;
   if (summaryQuery.isError) return <ErrorState message="Unable to load wallet summary." onRetry={summaryQuery.refetch} />;
+  if (stakingQuery.isError) return <ErrorState message="Unable to load BTCT staking data." onRetry={stakingQuery.refetch} />;
 
   const txEnvelope = txQuery.data || {};
   const txs = Array.isArray(txEnvelope.data) ? txEnvelope.data : [];
   const pagination = txEnvelope.pagination || {};
   const summary = summaryQuery.data?.data || {};
+  const stakingData = stakingQuery.data?.data || {};
+  const stakingPlans = Array.isArray(stakingData.plans) ? stakingData.plans : [];
+  const stakingPayouts = Array.isArray(stakingData.payouts) ? stakingData.payouts : [];
 
   return (
     <div className="space-y-5">
       <AdminSectionHeader
         title="Wallet Operations"
-        subtitle="Ledger visibility and secure manual adjustments"
+        subtitle="Ledger visibility, BTCT staking oversight, and secure manual adjustments"
         action={
-          <button onClick={() => setAdjustOpen(true)} className="rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-black">
-            Manual Adjustment
-          </button>
+          <div className="flex gap-2">
+            <button onClick={() => runPayoutsMutation.mutate()} disabled={runPayoutsMutation.isPending} className="rounded-xl border border-white/10 px-3 py-2 text-sm font-semibold text-text disabled:opacity-60">
+              {runPayoutsMutation.isPending ? 'Running payouts...' : 'Run BTCT Payouts'}
+            </button>
+            <button onClick={() => setAdjustOpen(true)} className="rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-black">
+              Manual Adjustment
+            </button>
+          </div>
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <div className="card-surface p-4 text-sm">Total credits: <span className="font-semibold text-text">{currency(summary.total_credits)}</span></div>
         <div className="card-surface p-4 text-sm">Total debits: <span className="font-semibold text-text">{currency(summary.total_debits)}</span></div>
-        <div className="card-surface p-4 text-sm">Direct + Matching: <span className="font-semibold text-text">{currency(Number(summary.total_direct || 0) + Number(summary.total_matching || 0))}</span></div>
+        <div className="card-surface p-4 text-sm">Active staking plans: <span className="font-semibold text-text">{stakingPlans.filter((item) => item.status === 'active').length}</span></div>
+        <div className="card-surface p-4 text-sm">Staking payouts logged: <span className="font-semibold text-text">{stakingPayouts.length}</span></div>
+      </div>
+
+      <div className="card-surface p-4">
+        <h4 className="text-sm font-semibold text-text">BTCT Staking Plans</h4>
+        <DataTable
+          columns={[
+            { key: 'user', title: 'User', className: 'col-span-2', render: (row) => row.username || row.user_id },
+            { key: 'staking_amount_btct', title: 'Locked BTCT', className: 'col-span-2', render: (row) => number(row.staking_amount_btct) },
+            { key: 'reward_amount_usd', title: 'Reward', className: 'col-span-2', render: (row) => currency(row.reward_amount_usd) },
+            { key: 'next_payout_at', title: 'Next Payout', className: 'col-span-2', render: (row) => shortDate(row.next_payout_at) },
+            { key: 'total_payouts', title: 'Payouts', className: 'col-span-2', render: (row) => row.total_payouts || 0 },
+            { key: 'status', title: 'Status', className: 'col-span-2', render: (row) => <StatusBadge status={row.status} /> }
+          ]}
+          rows={stakingPlans}
+        />
+      </div>
+
+      <div className="card-surface p-4">
+        <h4 className="text-sm font-semibold text-text">BTCT Staking Payout History</h4>
+        <DataTable
+          columns={[
+            { key: 'user', title: 'User', className: 'col-span-2', render: (row) => row.username || row.user_id },
+            { key: 'cycle_number', title: 'Cycle', className: 'col-span-2', render: (row) => `#${row.cycle_number}` },
+            { key: 'payout_amount_usd', title: 'Amount', className: 'col-span-2', render: (row) => currency(row.payout_amount_usd) },
+            { key: 'credited_to', title: 'Credited To', className: 'col-span-3', render: (row) => row.credited_to || 'withdrawal_wallet' },
+            { key: 'payout_date', title: 'Payout Date', className: 'col-span-3', render: (row) => shortDate(row.payout_date) }
+          ]}
+          rows={stakingPayouts}
+        />
       </div>
 
       <FilterBar>
-        {['all', 'direct_income', 'matching_income', 'reward_qualification', 'cap_overflow', 'manual_adjustment'].map((source) => (
+        {['all', 'direct_income', 'matching_income', 'reward_qualification', 'cap_overflow', 'manual_adjustment', 'btct_staking_payout'].map((source) => (
           <button key={source} onClick={() => setFilter(source)} className={`rounded-full px-3 py-2 text-xs ${filter === source ? 'bg-accent text-black' : 'bg-white/5 text-muted'}`}>
             {source === 'all' ? 'All' : incomeSourceLabel(source)}
           </button>
@@ -85,7 +134,7 @@ export default function AdminWalletPage() {
           { key: 'tx_type', title: 'Type', className: 'col-span-2', render: (row) => <StatusBadge status={row.tx_type} /> },
           { key: 'amount', title: 'Amount', className: 'col-span-2', render: (row) => currency(row.amount) },
           { key: 'created_at', title: 'Date', className: 'col-span-2', render: (row) => shortDate(row.created_at) },
-          { key: 'meta', title: 'Meta', className: 'col-span-1', render: (row) => row.metadata?.note || row.metadata?.reason || '-' }
+          { key: 'meta', title: 'Meta', className: 'col-span-1', render: (row) => row.metadata?.note || row.metadata?.reason || row.metadata?.walletType || '-' }
         ]}
         rows={txs}
       />
@@ -120,20 +169,8 @@ export default function AdminWalletPage() {
       />
 
       <div className="flex items-center justify-end gap-2">
-        <button
-          onClick={() => setPage((p) => Math.max(1, p - 1))}
-          disabled={(pagination.page || 1) <= 1}
-          className="rounded-xl border border-white/10 px-3 py-2 text-sm text-muted disabled:opacity-50"
-        >
-          Previous
-        </button>
-        <button
-          onClick={() => setPage((p) => ((pagination.totalPages || 1) > p ? p + 1 : p))}
-          disabled={(pagination.page || 1) >= (pagination.totalPages || 1)}
-          className="rounded-xl border border-white/10 px-3 py-2 text-sm text-muted disabled:opacity-50"
-        >
-          Next
-        </button>
+        <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={(pagination.page || 1) <= 1} className="rounded-xl border border-white/10 px-3 py-2 text-sm text-muted disabled:opacity-50">Previous</button>
+        <button onClick={() => setPage((p) => ((pagination.totalPages || 1) > p ? p + 1 : p))} disabled={(pagination.page || 1) >= (pagination.totalPages || 1)} className="rounded-xl border border-white/10 px-3 py-2 text-sm text-muted disabled:opacity-50">Next</button>
       </div>
     </div>
   );

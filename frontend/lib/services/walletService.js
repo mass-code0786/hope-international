@@ -41,19 +41,28 @@ export async function getWallet() {
 
   const incomeBalance = toNumber(normalized.wallet?.income_balance ?? normalized.wallet?.income_wallet_balance ?? normalized.wallet?.balance);
   const depositBalance = toNumber(normalized.wallet?.deposit_balance ?? normalized.wallet?.deposit_wallet_balance);
+  const withdrawalBalance = toNumber(normalized.wallet?.withdrawal_balance ?? normalized.wallet?.withdrawal_wallet_balance);
   const btctBalance = toNumber(normalized.wallet?.btct_balance ?? normalized.wallet?.btct_wallet_balance);
+  const btctLockedBalance = toNumber(normalized.wallet?.btct_locked_balance ?? normalized.wallet?.btct_locked_wallet_balance);
+  const btctAvailableBalance = toNumber(normalized.wallet?.btct_available_balance ?? normalized.wallet?.btct_available_wallet_balance, btctBalance - btctLockedBalance);
 
   return {
     ...normalized,
     wallet: {
       ...(normalized.wallet || {}),
-      balance: toNumber(normalized.wallet?.balance, incomeBalance + depositBalance),
+      balance: toNumber(normalized.wallet?.balance, incomeBalance + depositBalance + withdrawalBalance),
       income_balance: incomeBalance,
       deposit_balance: depositBalance,
+      withdrawal_balance: withdrawalBalance,
       btct_balance: btctBalance,
+      btct_locked_balance: btctLockedBalance,
+      btct_available_balance: btctAvailableBalance,
       income_wallet_balance: incomeBalance,
       deposit_wallet_balance: depositBalance,
-      btct_wallet_balance: btctBalance
+      withdrawal_wallet_balance: withdrawalBalance,
+      btct_wallet_balance: btctBalance,
+      btct_locked_wallet_balance: btctLockedBalance,
+      btct_available_wallet_balance: btctAvailableBalance
     },
     btctTransactions: normalizeBtctTransactions(normalized.btctTransactions || []),
     btctPrice: toNumber(normalized.btctPrice, 0.1)
@@ -125,4 +134,26 @@ export async function getP2pHistory() {
 export async function getWalletHubHistory(type = 'all') {
   const suffix = type && type !== 'all' ? `?type=${encodeURIComponent(type)}` : '';
   return apiFetch(`/wallet/history${suffix}`);
+}
+
+export async function getBtctStakingSummary() {
+  const envelope = toEnvelope(await apiFetch('/wallet/staking'));
+  const data = envelope.data || {};
+  return {
+    ...envelope,
+    data: {
+      plan: data.plan || null,
+      payouts: Array.isArray(data.payouts) ? data.payouts : [],
+      eligibility: data.eligibility || {}
+    }
+  };
+}
+
+export async function startBtctStaking() {
+  return toEnvelope(
+    await apiFetch('/wallet/staking/start', {
+      method: 'POST',
+      body: JSON.stringify({})
+    })
+  );
 }

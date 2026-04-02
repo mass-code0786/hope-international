@@ -4,6 +4,8 @@ const { ApiError } = require('../../utils/ApiError');
 const adminRepository = require('../../repositories/adminRepository');
 const walletRepository = require('../../repositories/walletRepository');
 const walletService = require('../walletService');
+const btctStakingRepository = require('../../repositories/btctStakingRepository');
+const btctStakingService = require('../btctStakingService');
 
 function buildPagedResult(result, pagination) {
   return {
@@ -265,6 +267,25 @@ async function getUserFinancialOverview(userId) {
   };
 }
 
+async function listBtctStaking() {
+  const [plans, payouts] = await Promise.all([
+    btctStakingRepository.listStakingPlansAdmin(null, 200),
+    btctStakingRepository.listStakingPayoutsAdmin(null, 200)
+  ]);
+
+  return {
+    plans,
+    payouts
+  };
+}
+
+async function runBtctStakingPayouts(payload = {}) {
+  return btctStakingService.runDuePayouts({
+    asOf: payload.asOf,
+    limit: payload.limit || 100
+  });
+}
+
 async function adjustWallet(adminUserId, payload) {
   return withTransaction(async (client) => {
     if (!payload.reason) {
@@ -317,5 +338,7 @@ module.exports = {
   removeBinding,
   listIncome,
   getUserFinancialOverview,
+  listBtctStaking,
+  runBtctStakingPayouts,
   adjustWallet
 };

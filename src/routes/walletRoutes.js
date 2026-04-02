@@ -7,7 +7,8 @@ const {
   walletBindSchema,
   walletDepositSchema,
   walletWithdrawalSchema,
-  walletP2pSchema
+  walletP2pSchema,
+  walletBtctStakingStartSchema
 } = require('../utils/schemas');
 
 const router = express.Router();
@@ -20,6 +21,8 @@ router.post('/deposits', auth(), validate(walletDepositSchema), walletController
 router.get('/withdrawals', auth(), walletController.withdrawalList);
 router.post('/withdrawals', auth(), validate(walletWithdrawalSchema), walletController.withdrawalCreate);
 router.get('/p2p', auth(), walletController.p2pList);
+router.get('/staking', auth(), walletController.stakingSummary);
+router.post('/staking/start', auth(), validate(walletBtctStakingStartSchema), walletController.stakingStart);
 router.post('/p2p', auth(), validate(walletP2pSchema), walletController.p2pCreate);
 router.post('/bind', auth(), validate(walletBindSchema), walletController.bindWallet);
 router.post('/adjust', auth(), requireAdmin, validate(walletAdjustSchema), walletController.adjust);

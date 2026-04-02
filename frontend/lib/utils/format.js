@@ -51,7 +51,8 @@ const incomeSourceMap = {
   withdrawal_request: 'Withdrawal Request',
   seller_application_fee: 'Seller Application Fee',
   p2p_transfer: 'P2P Transfer',
-  auction_loss_compensation: 'Auction BTCT Reward'
+  auction_loss_compensation: 'Auction BTCT Reward',
+  btct_staking_payout: 'BTCT Staking Payout'
 };
 
 const txTypeMap = {
@@ -137,5 +138,6 @@ export function statusVariant(status) {
   if (status === 'pending' || status === 'processing') return 'warning';
   return 'default';
 }
+
 
 

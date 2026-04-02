@@ -486,3 +486,16 @@ export async function updateAdminSupportStatus(threadId, status) {
     })
   );
 }
+
+export async function getAdminBtctStaking() {
+  return toEnvelope(await apiFetch('/admin/wallet/staking'));
+}
+
+export async function runAdminBtctStakingPayouts(payload = {}) {
+  return toEnvelope(
+    await apiFetch('/admin/wallet/staking/payouts/run', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  );
+}

@@ -154,6 +154,12 @@ const walletP2pSchema = z.object({
   query: z.object({})
 });
 
+const walletBtctStakingStartSchema = z.object({
+  body: z.object({}).optional().default({}),
+  params: z.object({}),
+  query: z.object({})
+});
+
 const sellerApplySchema = z.object({
   body: z.object({
     legalName: z.string().min(2).max(255),
@@ -363,6 +369,7 @@ module.exports = {
   walletDepositSchema,
   walletWithdrawalSchema,
   walletP2pSchema,
+  walletBtctStakingStartSchema,
   sellerApplySchema,
   sellerProductCreateSchema,
   sellerProductUpdateSchema,

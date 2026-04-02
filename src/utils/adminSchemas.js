@@ -130,6 +130,14 @@ const adminFinanceListQuerySchema = z.object({
 const adminWalletReviewSchema = z.object({ body: z.object({ status: z.enum(['approved', 'rejected']), adminNote: z.string().max(1000).optional() }), params: z.object({ id: uuid }), query: z.object({}) });
 const adminWalletBindingUpsertSchema = z.object({ body: z.object({ walletAddress: z.string().min(8).max(255), network: z.string().max(60).optional() }), params: z.object({ userId: uuid }), query: z.object({}) });
 const adminWalletBindingParamSchema = z.object({ body: z.object({}), params: z.object({ userId: uuid }), query: z.object({}) });
+const adminBtctStakingPayoutRunSchema = z.object({
+  body: z.object({
+    asOf: z.string().datetime().optional(),
+    limit: z.number().int().positive().max(500).optional()
+  }).optional().default({}),
+  params: z.object({}),
+  query: z.object({})
+});
 
 const adminWeeklyRunSchema = z.object({ body: z.object({ cycleStart: z.string().date(), cycleEnd: z.string().date(), notes: z.string().max(1000).optional() }), params: z.object({}), query: z.object({}) });
 const adminMonthlyRunSchema = z.object({ body: z.object({ monthStart: z.string().date(), monthEnd: z.string().date(), notes: z.string().max(1000).optional() }), params: z.object({}), query: z.object({}) });
@@ -399,6 +407,7 @@ module.exports = {
   adminWalletReviewSchema,
   adminWalletBindingUpsertSchema,
   adminWalletBindingParamSchema,
+  adminBtctStakingPayoutRunSchema,
   adminWeeklyRunSchema,
   adminMonthlyRunSchema,
   adminSettlementRunSchema,

@@ -186,6 +186,25 @@ const userFinancialOverview = asyncHandler(async (req, res) => {
   });
 });
 
+const btctStaking = asyncHandler(async (_req, res) => {
+  const data = await adminWalletService.listBtctStaking();
+  return success(res, {
+    data,
+    message: 'Admin BTCT staking fetched successfully'
+  });
+});
+
+const runBtctStakingPayouts = asyncHandler(async (req, res) => {
+  const data = await adminWalletService.runBtctStakingPayouts({
+    asOf: req.body?.asOf,
+    limit: req.body?.limit
+  });
+  return success(res, {
+    data,
+    message: 'BTCT staking payouts processed successfully'
+  });
+});
+
 const adjust = asyncHandler(async (req, res) => {
   const data = await adminWalletService.adjustWallet(req.user.sub, {
     userId: req.body.userId,
@@ -213,5 +232,7 @@ module.exports = {
   removeBinding,
   income,
   userFinancialOverview,
+  btctStaking,
+  runBtctStakingPayouts,
   adjust
 };

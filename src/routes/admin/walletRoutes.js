@@ -8,6 +8,7 @@ const {
   adminWalletReviewSchema,
   adminWalletBindingUpsertSchema,
   adminWalletBindingParamSchema,
+  adminBtctStakingPayoutRunSchema,
   adminUserIdParamSchema
 } = require('../../utils/adminSchemas');
 
@@ -29,6 +30,8 @@ router.patch('/bindings/:userId', validate(adminWalletBindingUpsertSchema), admi
 router.delete('/bindings/:userId', validate(adminWalletBindingParamSchema), adminWalletController.removeBinding);
 
 router.get('/income', validate(adminFinanceListQuerySchema), adminWalletController.income);
+router.get('/staking', adminWalletController.btctStaking);
+router.post('/staking/payouts/run', validate(adminBtctStakingPayoutRunSchema), adminWalletController.runBtctStakingPayouts);
 router.get('/users/:id/financial-overview', validate(adminUserIdParamSchema), adminWalletController.userFinancialOverview);
 
 router.post('/adjust', validate(adminWalletAdjustSchema), adminWalletController.adjust);
