@@ -273,12 +273,19 @@ export default function PublicLandingPage() {
   }, [landingQuery.isSuccess, token, trackVisitMutation]);
 
   const data = landingQuery.data;
+  const settings = data?.settings || {};
+  const featuredItems = Array.isArray(data?.featuredItems) ? data.featuredItems : [];
+  const benefitItems = Array.isArray(data?.benefits) ? data.benefits : [];
+  const detailItems = Array.isArray(data?.details) ? data.details : [];
+  const testimonialItems = Array.isArray(data?.testimonials) ? data.testimonials : [];
+  const countryItems = Array.isArray(data?.countries) ? data.countries : [];
+  const stats = data?.stats || {};
 
   const sections = useMemo(() => {
-    const visibility = data?.settings?.sectionVisibility || {};
-    const order = Array.isArray(data?.settings?.sectionOrder) ? data.settings.sectionOrder : [];
+    const visibility = settings.sectionVisibility || {};
+    const order = Array.isArray(settings.sectionOrder) ? settings.sectionOrder : [];
     return order.filter((sectionKey) => visibility[sectionKey] !== false);
-  }, [data]);
+  }, [settings]);
 
   if (hydrated && token && currentUserQuery.isLoading) {
     return <div className="min-h-screen bg-[#1f2026] px-6 py-16 text-center text-sm text-[#c0c7d4]">Redirecting to your Hope workspace...</div>;
@@ -297,12 +304,12 @@ export default function PublicLandingPage() {
   }
 
   const statsCards = [
-    { label: 'Visitors', value: data.stats.totalVisitors },
-    { label: 'Reviews', value: data.stats.totalReviews },
-    { label: 'Members', value: data.stats.totalMembers }
+    { label: 'Visitors', value: stats.totalVisitors },
+    { label: 'Reviews', value: stats.totalReviews },
+    { label: 'Members', value: stats.totalMembers }
   ];
 
-  const repeatedCountries = [...data.countries, ...data.countries].map((item) => ({
+  const repeatedCountries = [...countryItems, ...countryItems].map((item) => ({
     ...item,
     flagEmoji: getFlagEmoji(item.countryCode, item.flagEmoji)
   }));
@@ -310,14 +317,14 @@ export default function PublicLandingPage() {
   const landingImages = useMemo(() => {
     const usedUrls = new Set();
     const heroImageUrl = resolveUniqueImage({
-      url: data.settings.heroImageUrl,
-      text: `${data.settings.heroHeadline} ${data.settings.heroSubheadline}`,
+      url: settings.heroImageUrl,
+      text: `${settings.heroHeadline || ''} ${settings.heroSubheadline || ''}`,
       section: 'hero',
       index: 0,
       usedUrls
     });
 
-    const featuredItems = data.featuredItems.map((item, index) => ({
+    const resolvedFeaturedItems = featuredItems.map((item, index) => ({
       ...item,
       resolvedImageUrl: resolveUniqueImage({
         url: item.imageUrl,
@@ -328,7 +335,7 @@ export default function PublicLandingPage() {
       })
     }));
 
-    const detailItems = data.details.map((item, index) => ({
+    const resolvedDetailItems = detailItems.map((item, index) => ({
       ...item,
       resolvedImageUrl: resolveUniqueImage({
         url: item.imageUrl,
@@ -341,10 +348,10 @@ export default function PublicLandingPage() {
 
     return {
       heroImageUrl,
-      featuredItems,
-      detailItems
+      featuredItems: resolvedFeaturedItems,
+      detailItems: resolvedDetailItems
     };
-  }, [data]);
+  }, [detailItems, featuredItems, settings.heroHeadline, settings.heroImageUrl, settings.heroSubheadline]);
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#1f2026] text-[#f5f7fb]">
@@ -423,21 +430,21 @@ export default function PublicLandingPage() {
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[rgba(32,33,39,0.88)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#d3d9e5] shadow-sm">
                   <Sparkles size={14} className="text-[#a78bfa]" />
-                  {data.settings.heroBadge}
+                  {settings.heroBadge}
                 </div>
                 <h1 className="mt-5 max-w-xl text-4xl font-semibold leading-tight tracking-[-0.06em] text-[#f5f7fb] sm:text-5xl">
-                  {data.settings.heroHeadline}
+                  {settings.heroHeadline}
                 </h1>
                 <p className="mt-4 max-w-xl text-base leading-8 text-[#c0c7d4]">
-                  {data.settings.heroSubheadline}
+                  {settings.heroSubheadline}
                 </p>
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                   <ActionLink href="/register" primary>
-                    {data.settings.heroPrimaryCtaText}
+                    {settings.heroPrimaryCtaText}
                     <ArrowRight size={16} />
                   </ActionLink>
                   <ActionLink href="/login">
-                    {data.settings.heroSecondaryCtaText}
+                    {settings.heroSecondaryCtaText}
                   </ActionLink>
                 </div>
                 <div className="mt-6 flex flex-wrap gap-3 text-xs font-medium text-[#d3d9e5]">
@@ -449,7 +456,7 @@ export default function PublicLandingPage() {
 
               <div className="space-y-4">
                 <div className="relative overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(135deg,#272830,#31294a_55%,#214133)] p-5 text-white shadow-[0_26px_60px_rgba(0,0,0,0.24)]">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/85">{data.settings.heroBackgroundNote}</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/85">{settings.heroBackgroundNote}</p>
                   <p className="mt-3 max-w-xs text-sm leading-7 text-white/90">View products, explore updates, and create an account to get started.</p>
                   <div className="mt-6 grid grid-cols-3 gap-3">
                     {statsCards.map((stat) => (
@@ -478,7 +485,7 @@ export default function PublicLandingPage() {
             <div className="mb-5 flex items-end justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#d3d9e5]">Featured products</p>
-                <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-[#f5f7fb]">{data.settings.featuredSectionTitle}</h2>
+                <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-[#f5f7fb]">{settings.featuredSectionTitle}</h2>
               </div>
               <a href="#details" className="text-sm font-semibold text-[#a78bfa]">View more</a>
             </div>
@@ -492,10 +499,10 @@ export default function PublicLandingPage() {
           <section className="pt-12">
             <div className="mb-5 max-w-2xl">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#d3d9e5]">Why choose us</p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-[#f5f7fb]">{data.settings.benefitsSectionTitle}</h2>
+              <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-[#f5f7fb]">{settings.benefitsSectionTitle}</h2>
             </div>
             <div className="grid gap-4 md:grid-cols-3">
-              {data.benefits.map((item) => <BenefitCard key={item.id} item={item} />)}
+              {benefitItems.map((item) => <BenefitCard key={item.id} item={item} />)}
             </div>
           </section>
         ) : null}
@@ -504,7 +511,7 @@ export default function PublicLandingPage() {
           <section id="details" className="pt-12">
             <div className="mb-5 max-w-2xl">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#d3d9e5]">Highlights</p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-[#f5f7fb]">{data.settings.detailsSectionTitle}</h2>
+              <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-[#f5f7fb]">{settings.detailsSectionTitle}</h2>
             </div>
             <div className="space-y-5">
               {landingImages.detailItems.map((item) => <DetailBlock key={item.id} item={item} />)}
@@ -516,10 +523,10 @@ export default function PublicLandingPage() {
           <section className="pt-12">
             <div className="mb-5 max-w-2xl">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#d3d9e5]">Testimonials</p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-[#f5f7fb]">{data.settings.testimonialsSectionTitle}</h2>
+              <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-[#f5f7fb]">{settings.testimonialsSectionTitle}</h2>
             </div>
             <div className="grid gap-4 md:grid-cols-3">
-              {data.testimonials.map((item) => (
+              {testimonialItems.map((item) => (
                 <div key={item.id} className="rounded-[28px] border border-white/10 bg-[#2b2d35] p-5 shadow-[0_18px_50px_rgba(0,0,0,0.22)]">
                   <ReviewStars rating={item.rating} />
                   <p className="mt-4 text-sm leading-7 text-[#c0c7d4]">{item.reviewText}</p>
@@ -538,7 +545,7 @@ export default function PublicLandingPage() {
             <div className="rounded-[34px] border border-white/10 bg-[linear-gradient(135deg,#2c2e37,#252730_55%,#233329)] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.24)] md:p-7">
               <div className="mb-6 max-w-2xl">
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#d3d9e5]">Public stats</p>
-                <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-[#f5f7fb]">{data.settings.statsSectionTitle}</h2>
+                <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-[#f5f7fb]">{settings.statsSectionTitle}</h2>
               </div>
               <div className="grid gap-4 md:grid-cols-3">
                 {statsCards.map((stat) => (
@@ -556,7 +563,7 @@ export default function PublicLandingPage() {
           <section className="pt-12">
             <div className="mb-5 max-w-2xl">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#d3d9e5]">Global reach</p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-[#f5f7fb]">{data.settings.countriesSectionTitle}</h2>
+              <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-[#f5f7fb]">{settings.countriesSectionTitle}</h2>
             </div>
             <div className="overflow-hidden rounded-[30px] border border-white/10 bg-[#2b2d35] py-4 shadow-[0_18px_50px_rgba(0,0,0,0.22)]">
               <div className="flex w-max gap-3 px-4" style={{ animation: 'hopeLandingMarquee 24s linear infinite' }}>
@@ -585,8 +592,8 @@ export default function PublicLandingPage() {
                     </div>
                     <p className="text-base font-semibold tracking-[-0.02em] text-[#f5f7fb]">Hope International</p>
                   </div>
-                  <p className="mt-5 max-w-xl text-sm leading-7 text-[#c0c7d4]">{data.settings.footerSupportText}</p>
-                  <p className="mt-3 text-sm font-medium text-[#f5f7fb]">{data.settings.footerContactEmail}</p>
+                  <p className="mt-5 max-w-xl text-sm leading-7 text-[#c0c7d4]">{settings.footerSupportText}</p>
+                  <p className="mt-3 text-sm font-medium text-[#f5f7fb]">{settings.footerContactEmail}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
@@ -602,7 +609,7 @@ export default function PublicLandingPage() {
                     <div className="mt-3 flex flex-col gap-2 text-[#c0c7d4]">
                       <a href="#featured">Explore products</a>
                       <a href="#details">Platform highlights</a>
-                      <a href={`mailto:${data.settings.footerContactEmail}`}>Contact support</a>
+                      <a href={`mailto:${settings.footerContactEmail}`}>Contact support</a>
                     </div>
                   </div>
                 </div>
