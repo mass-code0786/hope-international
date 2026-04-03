@@ -194,14 +194,14 @@ function CartPill() {
   return (
     <Link
       href="/cart"
-      className="inline-flex h-11 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.05)]"
+      className="inline-flex h-9 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 text-slate-700 shadow-[0_6px_14px_rgba(15,23,42,0.05)]"
       aria-label={`Open cart${count ? ` with ${count} item${count === 1 ? '' : 's'}` : ''}`}
     >
-      <span className="relative inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-white">
-        <ShoppingCart size={14} />
+      <span className="relative inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-white">
+        <ShoppingCart size={12} />
       </span>
-      <span className="text-[12px] font-semibold text-slate-900">Cart</span>
-      <span className="inline-flex min-w-[22px] items-center justify-center rounded-full bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-700">
+      <span className="text-[11px] font-semibold text-slate-900">Cart</span>
+      <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700">
         {count}
       </span>
     </Link>
@@ -325,17 +325,17 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="-mx-4 min-h-full bg-[#f5f7fb] px-4 pb-24 pt-2 sm:mx-0 sm:rounded-[32px] sm:border sm:border-slate-200 sm:px-5 sm:py-4">
-      <div className="mx-auto max-w-xl space-y-4">
-        <section className="rounded-[28px] bg-white p-4 shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
+    <div className="-mx-4 min-h-full bg-[#f5f7fb] px-4 pb-24 pt-1.5 sm:mx-0 sm:rounded-[32px] sm:border sm:border-slate-200 sm:px-5 sm:py-3">
+      <div className="mx-auto max-w-xl space-y-3">
+        <section className="rounded-[24px] bg-white p-3 shadow-[0_14px_32px_rgba(15,23,42,0.06)]">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">My Location</p>
-              <div className="mt-1 flex items-center gap-1">
-                <h1 className="truncate text-[20px] font-semibold tracking-[-0.03em] text-slate-900">{buildLocationLabel(user)}</h1>
-                <ChevronRight size={16} className="shrink-0 text-slate-400" />
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">My Location</p>
+              <div className="mt-0.5 flex items-center gap-1">
+                <h1 className="truncate text-[16px] font-semibold tracking-[-0.03em] text-slate-900">{buildLocationLabel(user)}</h1>
+                <ChevronRight size={14} className="shrink-0 text-slate-400" />
               </div>
-              <p className="mt-1 truncate text-[12px] text-slate-500">{buildLocationDetail(user)}</p>
+              <p className="mt-0.5 truncate text-[11px] text-slate-500">{buildLocationDetail(user)}</p>
             </div>
 
             <div className="flex items-center gap-2">
@@ -345,40 +345,40 @@ export default function DashboardPage() {
               <button
                 type="button"
                 aria-label="Notifications"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-[#f8fafc] text-slate-700"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-[#f8fafc] text-slate-700"
               >
-                <Bell size={18} />
+                <Bell size={16} />
               </button>
             </div>
           </div>
 
-          <div className="mt-4 flex items-center gap-3 rounded-[20px] bg-[#f8fafc] p-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.06)]">
-              <LayoutGrid size={18} />
+          <div className="mt-2.5 flex items-center gap-2 rounded-[18px] bg-[#f8fafc] px-2.5 py-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-700 shadow-[0_6px_14px_rgba(15,23,42,0.06)]">
+              <LayoutGrid size={15} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[12px] font-semibold text-slate-900">
+              <p className="text-[11px] font-semibold text-slate-900">
                 {user?.first_name || user?.username || 'Hope Member'}
               </p>
-              <p className="truncate text-[11px] text-slate-500">Wallet balance: {currency(walletBalance)}</p>
+              <p className="truncate text-[10px] text-slate-500">Wallet balance: {currency(walletBalance)}</p>
             </div>
             <CartPill />
           </div>
         </section>
 
-        <section className="rounded-[28px] bg-white p-4 shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
+        <section className="rounded-[24px] bg-white p-3 shadow-[0_14px_32px_rgba(15,23,42,0.06)]">
           <label className="relative block">
-            <Search size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               readOnly
               value=""
               placeholder="Search products, deals, groceries"
-              className="w-full rounded-full border border-slate-200 bg-[#f8fafc] py-3 pl-11 pr-4 text-[13px] text-slate-700 outline-none placeholder:text-slate-400"
+              className="w-full rounded-full border border-slate-200 bg-[#f8fafc] py-2.5 pl-10 pr-3.5 text-[12px] text-slate-700 outline-none placeholder:text-slate-400"
             />
           </label>
         </section>
 
-        <section className="space-y-3">
+        <section className="space-y-2">
           <div
             ref={bannerTrackRef}
             onScroll={(event) => {
@@ -386,7 +386,7 @@ export default function DashboardPage() {
               const index = Math.round(event.currentTarget.scrollLeft / width);
               if (index !== activeBannerIndex) setActiveBannerIndex(index);
             }}
-            className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1"
+            className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto scroll-smooth pb-1"
           >
             {slides.map((banner) => (
               <div key={banner.id} className="min-w-full snap-start">
