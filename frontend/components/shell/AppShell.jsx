@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { BottomNav } from '@/components/shell/BottomNav';
 import { Sidebar } from '@/components/shell/Sidebar';
-import { Topbar } from '@/components/shell/Topbar';
 import { useAuthStore } from '@/lib/store/authStore';
 import { useQuery } from '@tanstack/react-query';
 import { getMe } from '@/lib/services/authService';
@@ -68,7 +67,6 @@ export function AppShell({ children }) {
       <main className="relative w-full min-w-0 md:overflow-x-hidden">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(15,118,110,0.08),transparent_30%)] dark:bg-[radial-gradient(circle_at_top,rgba(94,234,212,0.08),transparent_26%)]" />
         <div className="relative mx-auto w-full max-w-7xl p-3.5 pb-24 md:p-5 md:pb-6">
-          <Topbar user={resolvedUser} sellerActive={Boolean(sellerQuery.data?.canAccessDashboard)} />
           {children}
         </div>
       </main>

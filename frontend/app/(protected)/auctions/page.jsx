@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Clock3, History, Search, SlidersHorizontal, Sparkles, X } from 'lucide-react';
+import { ArrowLeft, Clock3, Search, SlidersHorizontal, Sparkles, Trophy, X } from 'lucide-react';
 import { AuctionCard } from '@/components/auctions/AuctionUi';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { getAuctions, normalizeAuctionStatus } from '@/lib/services/auctionsService';
@@ -276,10 +276,10 @@ export default function AuctionsPage() {
 
               <Link
                 href="/history/auctions"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-[#f8fafc] text-slate-700"
-                aria-label="Auction history"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-700 shadow-[0_8px_18px_rgba(15,23,42,0.05)]"
+                aria-label="Open auction history hub"
               >
-                <History size={18} />
+                <Trophy size={18} />
               </Link>
             </div>
           </section>
