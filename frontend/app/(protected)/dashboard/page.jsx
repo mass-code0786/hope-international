@@ -414,26 +414,6 @@ export default function DashboardPage() {
           ) : null}
         </section>
 
-        <section className="rounded-[24px] border border-amber-200 bg-[linear-gradient(135deg,#fef3c7,#fff7ed)] p-3 shadow-[0_14px_28px_rgba(15,23,42,0.05)]">
-          <Link href="/auctions" className="flex items-center gap-3">
-            <span className="inline-flex h-11 w-11 items-center justify-center rounded-[16px] bg-white text-amber-700 shadow-[0_8px_18px_rgba(15,23,42,0.06)]">
-              <Gavel size={18} />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700">Win Now</p>
-              <p className="mt-0.5 text-[14px] font-semibold text-slate-900">Auctions</p>
-              <p className="mt-0.5 truncate text-[11px] text-slate-600">
-                {auctionSummary.liveCount > 0
-                  ? `${auctionSummary.liveCount} live now${auctionSummary.upcomingCount ? ` | ${auctionSummary.upcomingCount} upcoming` : ''}`
-                  : 'Browse current and upcoming auctions'}
-              </p>
-            </div>
-            <span className="inline-flex h-8 items-center rounded-full bg-slate-900 px-3 text-[11px] font-semibold text-white">
-              Open
-            </span>
-          </Link>
-        </section>
-
         <section className="rounded-[24px] bg-white p-3 shadow-[0_14px_32px_rgba(15,23,42,0.06)]">
           <div className="mb-3 flex items-center justify-between">
             <div>
