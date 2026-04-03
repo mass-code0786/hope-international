@@ -185,17 +185,17 @@ export function AuctionCard({ auction }) {
       </div>
 
       <Link href={`/auctions/${auction?.id}`} className="mt-2 block">
-        <div className={`relative rounded-[18px] bg-gradient-to-br ${theme.halo} px-2 py-3`}>
-          <div className="mx-auto flex h-[80px] w-[80px] items-center justify-center rounded-full p-[4px]" style={progressStyle}>
-            <div className="flex h-full w-full items-center justify-center rounded-full bg-white shadow-[0_10px_20px_rgba(15,23,42,0.10)]">
-              <div className="flex h-[68px] w-[68px] items-center justify-center overflow-hidden rounded-full bg-white">
-                <img src={cover} alt={auction?.title || 'Auction'} className="h-full w-full object-contain" />
+        <div className={`relative rounded-[18px] bg-gradient-to-br ${theme.halo} px-2 py-2.5`}>
+          <div className="mx-auto mt-[-10px] flex h-[132px] w-[132px] min-w-[120px] max-w-[150px] items-center justify-center rounded-full p-[4px]" style={progressStyle}>
+            <div className="flex h-full w-full items-center justify-center rounded-full bg-white/95 shadow-[0_10px_20px_rgba(15,23,42,0.10)]">
+              <div className="flex h-[116px] w-[116px] items-center justify-center overflow-hidden rounded-full bg-white p-[6px]">
+                <img src={cover} alt={auction?.title || 'Auction'} className="h-full w-full rounded-full object-cover" />
               </div>
             </div>
           </div>
 
           {capacity.hasCapacity ? (
-            <div className="mt-2 flex justify-center">
+            <div className="mt-1.5 flex justify-center">
               <span className="rounded-full bg-white px-2.5 py-1 text-[9px] font-semibold text-slate-500 shadow-[0_8px_18px_rgba(15,23,42,0.06)]">
                 {capacity.capacityPercent}% filled
               </span>
