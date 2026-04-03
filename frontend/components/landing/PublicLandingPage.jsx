@@ -287,32 +287,18 @@ export default function PublicLandingPage() {
     return order.filter((sectionKey) => visibility[sectionKey] !== false);
   }, [settings]);
 
-  if (hydrated && token && currentUserQuery.isLoading) {
-    return <div className="min-h-screen bg-[#1f2026] px-6 py-16 text-center text-sm text-[#c0c7d4]">Redirecting to your Hope workspace...</div>;
-  }
-
-  if (landingQuery.isLoading) {
-    return <div className="min-h-screen bg-[#1f2026] px-6 py-16 text-center text-sm text-[#c0c7d4]">Loading Hope International...</div>;
-  }
-
-  if (landingQuery.isError || !data) {
-    return (
-      <div className="min-h-screen bg-[#1f2026] px-4 py-10">
-        <ErrorState message="Unable to load the Hope International landing page." onRetry={landingQuery.refetch} />
-      </div>
-    );
-  }
-
-  const statsCards = [
+  const statsCards = useMemo(() => ([
     { label: 'Visitors', value: stats.totalVisitors },
     { label: 'Reviews', value: stats.totalReviews },
     { label: 'Members', value: stats.totalMembers }
-  ];
+  ]), [stats.totalMembers, stats.totalReviews, stats.totalVisitors]);
 
-  const repeatedCountries = [...countryItems, ...countryItems].map((item) => ({
-    ...item,
-    flagEmoji: getFlagEmoji(item.countryCode, item.flagEmoji)
-  }));
+  const repeatedCountries = useMemo(() => (
+    [...countryItems, ...countryItems].map((item) => ({
+      ...item,
+      flagEmoji: getFlagEmoji(item.countryCode, item.flagEmoji)
+    }))
+  ), [countryItems]);
 
   const landingImages = useMemo(() => {
     const usedUrls = new Set();
@@ -351,7 +337,29 @@ export default function PublicLandingPage() {
       featuredItems: resolvedFeaturedItems,
       detailItems: resolvedDetailItems
     };
-  }, [detailItems, featuredItems, settings.heroHeadline, settings.heroImageUrl, settings.heroSubheadline]);
+  }, [
+    detailItems,
+    featuredItems,
+    settings.heroHeadline,
+    settings.heroImageUrl,
+    settings.heroSubheadline
+  ]);
+
+  if (hydrated && token && currentUserQuery.isLoading) {
+    return <div className="min-h-screen bg-[#1f2026] px-6 py-16 text-center text-sm text-[#c0c7d4]">Redirecting to your Hope workspace...</div>;
+  }
+
+  if (landingQuery.isLoading) {
+    return <div className="min-h-screen bg-[#1f2026] px-6 py-16 text-center text-sm text-[#c0c7d4]">Loading Hope International...</div>;
+  }
+
+  if (landingQuery.isError || !data) {
+    return (
+      <div className="min-h-screen bg-[#1f2026] px-4 py-10">
+        <ErrorState message="Unable to load the Hope International landing page." onRetry={landingQuery.refetch} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#1f2026] text-[#f5f7fb]">
