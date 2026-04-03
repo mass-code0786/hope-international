@@ -103,7 +103,7 @@ function getActionHref(action) {
 function HomeBannerCard({ banner }) {
   const target = resolveBannerTarget(banner.targetLink);
   const content = (
-    <article className={`relative overflow-hidden rounded-[24px] border border-slate-200 bg-gradient-to-r ${banner.theme || 'from-[#e2e8f0] to-white'} p-4 shadow-[0_14px_32px_rgba(15,23,42,0.08)]`}>
+    <article className={`relative h-[168px] overflow-hidden rounded-[20px] border border-slate-200 bg-gradient-to-r ${banner.theme || 'from-[#e2e8f0] to-white'} p-4 shadow-[0_12px_28px_rgba(15,23,42,0.08)]`}>
       <div className="relative z-10 max-w-[72%]">
         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">Hope Marketplace</p>
         <h2 className="mt-2 text-[18px] font-semibold leading-5 text-slate-900">{banner.title}</h2>
@@ -361,7 +361,7 @@ export default function DashboardPage() {
           </label>
         </section>
 
-        <section className="space-y-2">
+        <section className="space-y-1.5">
           <div
             ref={bannerTrackRef}
             onScroll={(event) => {
@@ -369,13 +369,13 @@ export default function DashboardPage() {
               const index = Math.round(event.currentTarget.scrollLeft / width);
               if (index !== activeBannerIndex) setActiveBannerIndex(index);
             }}
-            className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto scroll-smooth pb-1"
+            className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto scroll-smooth pb-0.5"
           >
             {slides.map((banner) => (
               <div key={banner.id} className="min-w-full snap-start">
                 {banner.imageUrl ? (
-                  <Link href={resolveBannerTarget(banner.targetLink)} className="relative block overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
-                    <img src={banner.imageUrl} alt={banner.title || 'Homepage banner'} className="h-[172px] w-full object-cover" />
+                  <Link href={resolveBannerTarget(banner.targetLink)} className="relative block overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_12px_28px_rgba(15,23,42,0.08)]">
+                    <img src={banner.imageUrl} alt={banner.title || 'Homepage banner'} className="h-[168px] w-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-r from-slate-900/55 via-slate-900/20 to-transparent p-4 text-white">
                       <div className="max-w-[72%]">
                         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/75">Hope Marketplace</p>
