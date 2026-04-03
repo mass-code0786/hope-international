@@ -57,7 +57,7 @@ const semanticLandingImages = {
   'ecommerce,shopping': 'https://source.unsplash.com/600x600/?ecommerce,shopping'
 };
 
-const FINAL_IMAGE_FALLBACK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1200' height='900' viewBox='0 0 1200 900'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%23312b45'/%3E%3Cstop offset='0.55' stop-color='%23202127'/%3E%3Cstop offset='1' stop-color='%232a3c33'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='1200' height='900' fill='url(%23g)'/%3E%3Ccircle cx='930' cy='190' r='150' fill='rgba(139,61,255,0.2)'/%3E%3Ccircle cx='240' cy='710' r='170' fill='rgba(50,209,125,0.18)'/%3E%3Ctext x='90' y='760' fill='%23f5f7fb' font-family='Segoe UI, Arial, sans-serif' font-size='66' font-weight='700'%3EHope Marketplace%3C/text%3E%3Ctext x='90' y='828' fill='%23c0c7d4' font-family='Segoe UI, Arial, sans-serif' font-size='34'%3EPremium commerce visuals%3C/text%3E%3C/svg%3E";
+const FINAL_IMAGE_FALLBACK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1200' height='900' viewBox='0 0 1200 900'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%23312b45'/%3E%3Cstop offset='0.55' stop-color='%23202127'/%3E%3Cstop offset='1' stop-color='%232a3c33'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='1200' height='900' fill='url(%23g)'/%3E%3Ccircle cx='930' cy='190' r='150' fill='rgba(139,61,255,0.2)'/%3E%3Ccircle cx='240' cy='710' r='170' fill='rgba(50,209,125,0.18)'/%3E%3Ctext x='90' y='760' fill='%23f5f7fb' font-family='Segoe UI, Arial, sans-serif' font-size='66' font-weight='700'%3EHope International%3C/text%3E%3Ctext x='90' y='828' fill='%23c0c7d4' font-family='Segoe UI, Arial, sans-serif' font-size='34'%3EPremium shopping visuals%3C/text%3E%3C/svg%3E";
 
 function normalizeImageUrl(value) {
   return String(value || '').trim();
@@ -476,7 +476,7 @@ export default function PublicLandingPage() {
                 <div className="absolute right-0 top-[calc(100%+10px)] z-40 w-64 rounded-[22px] border border-[rgba(255,255,255,0.12)] bg-[rgba(31,32,38,0.88)] p-2.5 shadow-[0_24px_52px_rgba(0,0,0,0.32)] backdrop-blur-2xl animate-[hopeMenuIn_180ms_ease-out]">
                   <div className="mb-2 rounded-[16px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(135deg,rgba(139,61,255,0.16),rgba(50,209,125,0.08))] px-3 py-2.5">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#d3d9e5]">Quick Menu</p>
-                    <p className="mt-1 text-xs text-[#c0c7d4]">Clean marketplace experience</p>
+                    <p className="mt-1 text-xs text-[#c0c7d4]">Clean premium experience</p>
                   </div>
                   <HeaderMenuItem href="#featured" icon={ShoppingBag} label="Explore Featured" onSelect={() => setHeaderMenuOpen(false)} />
                   <HeaderMenuItem href="#details" icon={Sparkles} label="View Highlights" onSelect={() => setHeaderMenuOpen(false)} />
