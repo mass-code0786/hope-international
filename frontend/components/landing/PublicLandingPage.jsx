@@ -10,6 +10,7 @@ import {
   Globe2,
   Headphones,
   LockKeyhole,
+  MoreHorizontal,
   ShieldCheck,
   ShoppingBag,
   Sparkles,
@@ -48,12 +49,23 @@ const landingImageKeywordPools = {
   details: ['ecommerce,shopping', 'digital,technology', 'crypto,bitcoin', 'social,media,marketing', 'emerald,gemstone', 'ecommerce,shopping']
 };
 
+const semanticLandingImages = {
+  'emerald,gemstone': 'https://source.unsplash.com/600x600/?emerald,gemstone',
+  'digital,technology': 'https://source.unsplash.com/600x600/?digital,technology',
+  'crypto,bitcoin': 'https://source.unsplash.com/600x600/?crypto,bitcoin',
+  'social,media,marketing': 'https://source.unsplash.com/600x600/?social,media,marketing',
+  'ecommerce,shopping': 'https://source.unsplash.com/600x600/?ecommerce,shopping'
+};
+
+const FINAL_IMAGE_FALLBACK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1200' height='900' viewBox='0 0 1200 900'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%23312b45'/%3E%3Cstop offset='0.55' stop-color='%23202127'/%3E%3Cstop offset='1' stop-color='%232a3c33'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='1200' height='900' fill='url(%23g)'/%3E%3Ccircle cx='930' cy='190' r='150' fill='rgba(139,61,255,0.2)'/%3E%3Ccircle cx='240' cy='710' r='170' fill='rgba(50,209,125,0.18)'/%3E%3Ctext x='90' y='760' fill='%23f5f7fb' font-family='Segoe UI, Arial, sans-serif' font-size='66' font-weight='700'%3EHope Marketplace%3C/text%3E%3Ctext x='90' y='828' fill='%23c0c7d4' font-family='Segoe UI, Arial, sans-serif' font-size='34'%3EPremium commerce visuals%3C/text%3E%3C/svg%3E";
+
 function normalizeImageUrl(value) {
   return String(value || '').trim();
 }
 
 function buildLandingFallbackImage(keyword, seed) {
-  return `https://source.unsplash.com/600x600/?${encodeURIComponent(keyword)}&sig=${seed}`;
+  const base = semanticLandingImages[keyword] || semanticLandingImages['ecommerce,shopping'];
+  return `${base}&sig=${seed}`;
 }
 
 function inferLandingKeyword(text, section, index) {
@@ -82,7 +94,7 @@ function resolveUniqueImage({ url, text, section, index, usedUrls }) {
   return fallback;
 }
 
-function LandingImage({ src, alt, className }) {
+function LandingImage({ src, fallbackSrc = semanticLandingImages['ecommerce,shopping'], alt, className }) {
   const [imageSrc, setImageSrc] = useState(src);
 
   useEffect(() => {
@@ -96,15 +108,15 @@ function LandingImage({ src, alt, className }) {
       className={className}
       loading="lazy"
       onError={() => {
-        if (imageSrc !== FALLBACK_MARKETPLACE_IMAGE) {
-          setImageSrc(FALLBACK_MARKETPLACE_IMAGE);
+        if (imageSrc !== fallbackSrc) {
+          setImageSrc(fallbackSrc);
+          return;
         }
+        if (imageSrc !== FINAL_IMAGE_FALLBACK) setImageSrc(FINAL_IMAGE_FALLBACK);
       }}
     />
   );
 }
-
-const FALLBACK_MARKETPLACE_IMAGE = 'https://source.unsplash.com/600x600/?ecommerce,shopping';
 
 function resolveDestination(user) {
   if (canAccessAdminArea(user)) return '/admin';
@@ -244,6 +256,7 @@ export default function PublicLandingPage() {
   const router = useRouter();
   const { token, hydrated, hydrate, clearSession } = useAuthStore();
   const visitorTrackedRef = useRef(false);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!hydrated) {
@@ -415,42 +428,39 @@ export default function PublicLandingPage() {
               </div>
             </Link>
 
-            <div className="hidden min-w-0 flex-1 justify-center md:flex">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[rgba(45,47,56,0.9)] px-4 py-2 text-[11px] font-medium text-[#d3d9e5] shadow-[0_8px_18px_rgba(0,0,0,0.16)]">
-                <Store size={14} className="text-[#c0c7d4]" />
-                <span>Trusted products</span>
-                <span className="h-1 w-1 rounded-full bg-white/25" />
-                <span>Member-first platform</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <a
-                href="#featured"
-                className="hidden rounded-full border border-white/12 bg-[rgba(45,47,56,0.92)] px-4 py-2 text-[12px] font-semibold text-[#f5f7fb] shadow-[0_8px_18px_rgba(0,0,0,0.16)] sm:inline-flex"
+            <div className="relative">
+              <button
+                type="button"
+                aria-label="Open header menu"
+                onClick={() => setHeaderMenuOpen((prev) => !prev)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-[rgba(45,47,56,0.92)] text-[#f5f7fb] shadow-[0_8px_18px_rgba(0,0,0,0.16)]"
               >
-                Explore
-              </a>
-              <a
-                href="#details"
-                className="inline-flex items-center gap-2 rounded-full bg-[linear-gradient(135deg,#8b3dff,#32d17d)] px-3.5 py-2.5 text-[12px] font-semibold text-white shadow-[0_16px_30px_rgba(90,47,180,0.32)] transition hover:brightness-110 sm:px-4"
-              >
-                <span className="hidden sm:inline">Discover</span>
-                <span className="sm:hidden">View</span>
-                <ArrowRight size={14} />
-              </a>
-            </div>
-          </div>
+                <MoreHorizontal size={18} />
+              </button>
 
-          <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:hidden">
-            <a href="#featured" className="shrink-0 rounded-full border border-white/10 bg-[rgba(45,47,56,0.9)] px-3 py-2 text-[11px] font-semibold text-[#f5f7fb] shadow-[0_8px_18px_rgba(0,0,0,0.14)]">
-              Featured
-            </a>
-            <a href="#details" className="shrink-0 rounded-full border border-white/10 bg-[rgba(45,47,56,0.9)] px-3 py-2 text-[11px] font-semibold text-[#f5f7fb] shadow-[0_8px_18px_rgba(0,0,0,0.14)]">
-              Highlights
-            </a>
-            <div className="shrink-0 rounded-full border border-white/10 bg-[rgba(45,47,56,0.9)] px-3 py-2 text-[11px] font-medium text-[#c0c7d4]">
-              Clean marketplace experience
+              {headerMenuOpen ? (
+                <div className="absolute right-0 top-[calc(100%+10px)] z-40 w-56 rounded-[22px] border border-white/10 bg-[#2b2d35] p-2.5 shadow-[0_18px_42px_rgba(0,0,0,0.28)]">
+                  <a
+                    href="#featured"
+                    onClick={() => setHeaderMenuOpen(false)}
+                    className="flex items-center justify-between rounded-[16px] px-3 py-2.5 text-sm font-medium text-[#f5f7fb] transition hover:bg-white/5"
+                  >
+                    <span>Explore Featured</span>
+                    <ArrowRight size={14} />
+                  </a>
+                  <a
+                    href="#details"
+                    onClick={() => setHeaderMenuOpen(false)}
+                    className="mt-1 flex items-center justify-between rounded-[16px] px-3 py-2.5 text-sm font-medium text-[#f5f7fb] transition hover:bg-white/5"
+                  >
+                    <span>View Highlights</span>
+                    <ArrowRight size={14} />
+                  </a>
+                  <div className="mt-2 rounded-[16px] border border-white/10 bg-[rgba(32,33,39,0.88)] px-3 py-2.5 text-xs font-medium text-[#c0c7d4]">
+                    Clean marketplace experience
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         </header>
