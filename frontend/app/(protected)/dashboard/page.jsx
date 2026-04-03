@@ -133,7 +133,7 @@ function ProductTile({ product, onBuy, isBuying, lowBalance }) {
   return (
     <article className="overflow-hidden rounded-[18px] border border-slate-200 bg-white shadow-[0_8px_18px_rgba(15,23,42,0.05)]">
       <Link href={href} className="block">
-        <div className="relative h-[132px] overflow-hidden bg-[#f8fafc]">
+        <div className="relative h-[146px] overflow-hidden bg-[#f8fafc]">
           {cover ? (
             <img src={cover} alt={product?.name || 'Product'} className="h-full w-full object-cover" />
           ) : (
@@ -143,25 +143,25 @@ function ProductTile({ product, onBuy, isBuying, lowBalance }) {
           )}
         </div>
       </Link>
-      <div className="space-y-1.5 p-2.5">
-        <div className="min-h-[2.9rem]">
+      <div className="space-y-1 p-2">
+        <div className="min-h-[2.35rem]">
           <p className="truncate text-[9px] font-medium text-slate-500">{getProductMeta(product)}</p>
           <Link href={href} className="block">
-            <h3 className="mt-1 line-clamp-2 text-[11px] font-semibold leading-4 text-slate-900">{product?.name || 'Unnamed product'}</h3>
+            <h3 className="mt-0.5 line-clamp-2 text-[10.5px] font-semibold leading-4 text-slate-900">{product?.name || 'Unnamed product'}</h3>
           </Link>
         </div>
 
         <div className="flex items-center justify-between gap-2 pt-0.5">
           <div className="min-w-0">
-            <p className="text-[13px] font-bold text-slate-900">{currency(pricing.finalPrice)}</p>
-            {pricing.compareAtPrice > 0 ? <p className="text-[9px] text-slate-400 line-through">{currency(pricing.compareAtPrice)}</p> : null}
+            <p className="text-[12px] font-bold text-slate-900">{currency(pricing.finalPrice)}</p>
+            {pricing.compareAtPrice > 0 ? <p className="text-[8px] text-slate-400 line-through">{currency(pricing.compareAtPrice)}</p> : null}
           </div>
           <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => onBuy?.(product)}
               disabled={isBuying || lowBalance}
-              className="inline-flex h-7 min-w-[34px] items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-2 text-[9px] font-semibold text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-6 min-w-[30px] items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-1.5 text-[8px] font-semibold text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
               aria-label={lowBalance ? 'Low balance' : 'Quick buy'}
             >
               {actionLabel}
@@ -176,10 +176,10 @@ function ProductTile({ product, onBuy, isBuying, lowBalance }) {
                 }
                 toast.success(`Added to cart (${nextCount})`);
               }}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-white"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-white"
               aria-label="Add to cart"
             >
-              <Plus size={14} />
+              <Plus size={13} />
             </button>
           </div>
         </div>
