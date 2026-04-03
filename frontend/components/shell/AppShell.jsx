@@ -65,7 +65,7 @@ export function AppShell({ children }) {
     <div className="min-h-screen bg-bg text-text md:flex">
       <Sidebar user={resolvedUser} sellerActive={Boolean(sellerQuery.data?.canAccessDashboard)} />
       <main className="relative w-full min-w-0 md:overflow-x-hidden">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(15,118,110,0.08),transparent_30%)] dark:bg-[radial-gradient(circle_at_top,rgba(94,234,212,0.08),transparent_26%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(139,61,255,0.12),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(50,209,125,0.08),transparent_26%)]" />
         <div className="relative mx-auto w-full max-w-7xl p-3.5 pb-24 md:p-5 md:pb-6">
           {children}
         </div>

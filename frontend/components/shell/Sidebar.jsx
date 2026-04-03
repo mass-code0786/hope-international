@@ -55,9 +55,9 @@ function SidebarSection({ title, items, pathname }) {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition ${active ? 'bg-white text-slate-900 shadow-[0_18px_36px_rgba(255,255,255,0.12)]' : 'text-white/68 hover:bg-white/8 hover:text-white'}`}
+              className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition ${active ? 'bg-[linear-gradient(135deg,#8b3dff,#32d17d)] text-white shadow-[0_16px_30px_rgba(90,47,180,0.34)]' : 'text-white/68 hover:bg-white/8 hover:text-white'}`}
             >
-              <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl ${active ? 'bg-slate-900 text-white' : 'bg-white/8 text-white/80'}`}>
+              <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl ${active ? 'bg-white/16 text-white' : 'bg-white/8 text-white/80'}`}>
                 <Icon size={16} />
               </span>
               <span className="font-medium">{item.label}</span>
@@ -74,8 +74,8 @@ export function Sidebar({ user, sellerActive = false }) {
   const groups = getGroups(user, sellerActive);
 
   return (
-    <aside className="hidden w-80 border-r border-white/10 bg-[linear-gradient(180deg,rgba(6,16,27,0.98),rgba(11,23,36,0.96))] p-6 text-white md:block">
-      <div className="mb-6 rounded-[30px] border border-white/10 bg-white/5 p-5 shadow-[0_24px_64px_rgba(2,8,23,0.28)] backdrop-blur">
+    <aside className="hidden w-80 border-r border-[var(--hope-border)] bg-[linear-gradient(180deg,#1e1f25,#23242b)] p-6 text-white md:block">
+      <div className="mb-6 rounded-[30px] border border-white/10 bg-white/5 p-5 shadow-[0_24px_64px_rgba(0,0,0,0.28)] backdrop-blur">
         <div className="flex items-center gap-3">
           <div className="rounded-[22px] bg-white/95 p-2.5 shadow-sm">
             <Logo size={52} />
@@ -86,7 +86,7 @@ export function Sidebar({ user, sellerActive = false }) {
           </div>
         </div>
         <div className="mt-4 rounded-[24px] border border-white/10 bg-white/5 p-4">
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-teal-200">
+          <div className="inline-flex items-center gap-2 rounded-full bg-[linear-gradient(135deg,rgba(139,61,255,0.24),rgba(50,209,125,0.18))] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white">
             <Sparkles size={12} />
             Live business tools
           </div>

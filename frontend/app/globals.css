@@ -3,54 +3,60 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: light;
-  --hope-bg: #f3f4f8;
-  --hope-bg-muted: #e8edf3;
-  --hope-surface: rgba(255, 255, 255, 0.82);
-  --hope-surface-strong: rgba(255, 255, 255, 0.94);
-  --hope-surface-soft: rgba(245, 247, 251, 0.9);
-  --hope-border: rgba(15, 23, 42, 0.08);
-  --hope-border-strong: rgba(15, 23, 42, 0.14);
-  --hope-text: #111827;
-  --hope-muted: #667085;
-  --hope-accent: #0f766e;
-  --hope-accent-strong: #0b5f59;
-  --hope-accent-soft: rgba(15, 118, 110, 0.12);
-  --hope-amber: #d97706;
-  --hope-success: #15803d;
-  --hope-danger: #dc2626;
-  --hope-shadow: 0 24px 80px rgba(15, 23, 42, 0.08);
-  --hope-shadow-soft: 0 12px 28px rgba(15, 23, 42, 0.06);
-  --hope-card-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(243, 247, 250, 0.88));
-  --hope-hero-gradient: radial-gradient(circle at top left, rgba(15, 118, 110, 0.18), transparent 36%), radial-gradient(circle at top right, rgba(234, 179, 8, 0.14), transparent 30%), linear-gradient(180deg, #f8fafc 0%, #eef4f8 100%);
+  color-scheme: dark;
+  --hope-bg: #202127;
+  --hope-bg-muted: #23242b;
+  --hope-surface: rgba(42, 44, 52, 0.88);
+  --hope-surface-strong: rgba(45, 47, 56, 0.96);
+  --hope-surface-soft: rgba(39, 41, 49, 0.92);
+  --hope-border: rgba(203, 213, 225, 0.12);
+  --hope-border-strong: rgba(203, 213, 225, 0.2);
+  --hope-text: #f5f7fb;
+  --hope-muted: #a8b0c0;
+  --hope-accent: #8b3dff;
+  --hope-accent-strong: #32d17d;
+  --hope-accent-soft: rgba(139, 61, 255, 0.18);
+  --hope-amber: #f6b73c;
+  --hope-success: #32d17d;
+  --hope-danger: #f87171;
+  --hope-shadow: 0 28px 80px rgba(0, 0, 0, 0.38);
+  --hope-shadow-soft: 0 14px 34px rgba(0, 0, 0, 0.26);
+  --hope-card-gradient: linear-gradient(180deg, rgba(48, 50, 60, 0.98), rgba(37, 39, 47, 0.98));
+  --hope-hero-gradient: radial-gradient(circle at top left, rgba(139, 61, 255, 0.14), transparent 36%), radial-gradient(circle at top right, rgba(50, 209, 125, 0.12), transparent 28%), linear-gradient(180deg, #1c1d23 0%, #202127 42%, #23242b 100%);
+  --hope-action-gradient: linear-gradient(135deg, #8b3dff 0%, #32d17d 100%);
+  --hope-action-gradient-hover: linear-gradient(135deg, #9b59ff 0%, #3ce18a 100%);
+  --hope-action-shadow: 0 14px 28px rgba(90, 47, 180, 0.34);
 }
 
 html[data-theme='light'],
 html[data-theme='dark'] {
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 html[data-theme='dark'] {
   color-scheme: dark;
-  --hope-bg: #09111b;
-  --hope-bg-muted: #111b27;
-  --hope-surface: rgba(10, 18, 30, 0.78);
-  --hope-surface-strong: rgba(12, 22, 35, 0.9);
-  --hope-surface-soft: rgba(18, 28, 42, 0.78);
-  --hope-border: rgba(148, 163, 184, 0.14);
-  --hope-border-strong: rgba(148, 163, 184, 0.24);
-  --hope-text: #f8fafc;
-  --hope-muted: #94a3b8;
-  --hope-accent: #5eead4;
-  --hope-accent-strong: #2dd4bf;
-  --hope-accent-soft: rgba(94, 234, 212, 0.14);
-  --hope-amber: #f59e0b;
-  --hope-success: #4ade80;
-  --hope-danger: #fb7185;
-  --hope-shadow: 0 28px 90px rgba(2, 8, 23, 0.45);
-  --hope-shadow-soft: 0 16px 36px rgba(2, 8, 23, 0.35);
-  --hope-card-gradient: linear-gradient(145deg, rgba(10, 18, 30, 0.94), rgba(17, 27, 39, 0.88));
-  --hope-hero-gradient: radial-gradient(circle at top left, rgba(94, 234, 212, 0.16), transparent 34%), radial-gradient(circle at top right, rgba(245, 158, 11, 0.12), transparent 26%), linear-gradient(180deg, #071019 0%, #0d1723 100%);
+  --hope-bg: #202127;
+  --hope-bg-muted: #23242b;
+  --hope-surface: rgba(42, 44, 52, 0.88);
+  --hope-surface-strong: rgba(45, 47, 56, 0.96);
+  --hope-surface-soft: rgba(39, 41, 49, 0.92);
+  --hope-border: rgba(203, 213, 225, 0.12);
+  --hope-border-strong: rgba(203, 213, 225, 0.2);
+  --hope-text: #f5f7fb;
+  --hope-muted: #a8b0c0;
+  --hope-accent: #8b3dff;
+  --hope-accent-strong: #32d17d;
+  --hope-accent-soft: rgba(139, 61, 255, 0.18);
+  --hope-amber: #f6b73c;
+  --hope-success: #32d17d;
+  --hope-danger: #f87171;
+  --hope-shadow: 0 28px 80px rgba(0, 0, 0, 0.38);
+  --hope-shadow-soft: 0 14px 34px rgba(0, 0, 0, 0.26);
+  --hope-card-gradient: linear-gradient(180deg, rgba(48, 50, 60, 0.98), rgba(37, 39, 47, 0.98));
+  --hope-hero-gradient: radial-gradient(circle at top left, rgba(139, 61, 255, 0.14), transparent 36%), radial-gradient(circle at top right, rgba(50, 209, 125, 0.12), transparent 28%), linear-gradient(180deg, #1c1d23 0%, #202127 42%, #23242b 100%);
+  --hope-action-gradient: linear-gradient(135deg, #8b3dff 0%, #32d17d 100%);
+  --hope-action-gradient-hover: linear-gradient(135deg, #9b59ff 0%, #3ce18a 100%);
+  --hope-action-shadow: 0 14px 28px rgba(90, 47, 180, 0.34);
 }
 
 html {
@@ -72,8 +78,8 @@ body::before {
   inset: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+    linear-gradient(rgba(203, 213, 225, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(203, 213, 225, 0.04) 1px, transparent 1px);
   background-size: 36px 36px;
   mask-image: linear-gradient(180deg, rgba(255, 255, 255, 0.75), transparent 80%);
   opacity: 0.45;
@@ -117,14 +123,14 @@ body::before {
 
 .hope-button {
   @apply inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition;
-  background: linear-gradient(135deg, var(--hope-accent), #0f9b8e);
+  background: var(--hope-action-gradient);
   color: white;
-  box-shadow: 0 18px 34px rgba(15, 118, 110, 0.22);
+  box-shadow: var(--hope-action-shadow);
 }
 
 .hope-button:hover {
   transform: translateY(-1px);
-  background: linear-gradient(135deg, var(--hope-accent-strong), #0c8d82);
+  background: var(--hope-action-gradient-hover);
 }
 
 .hope-button-secondary {
@@ -218,6 +224,139 @@ body::before {
 
 .shadow-soft {
   box-shadow: var(--hope-shadow-soft) !important;
+}
+
+button[class*='bg-slate-900'],
+button[class*='bg-slate-950'],
+button[class*='bg-[#0ea5e9]'],
+button[class*='bg-sky-'],
+button[class*='bg-emerald-'],
+a[class*='bg-slate-900'],
+a[class*='bg-slate-950'],
+a[class*='bg-[#0ea5e9]'],
+a[class*='bg-sky-'],
+a[class*='bg-emerald-'],
+[role='button'][class*='bg-slate-900'],
+[role='button'][class*='bg-slate-950'],
+[role='button'][class*='bg-[#0ea5e9]'],
+[role='button'][class*='bg-sky-'],
+[role='button'][class*='bg-emerald-'] {
+  background: var(--hope-action-gradient) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: var(--hope-action-shadow) !important;
+}
+
+button[class*='bg-slate-900']:hover,
+button[class*='bg-slate-950']:hover,
+button[class*='bg-[#0ea5e9]']:hover,
+button[class*='bg-sky-']:hover,
+button[class*='bg-emerald-']:hover,
+a[class*='bg-slate-900']:hover,
+a[class*='bg-slate-950']:hover,
+a[class*='bg-[#0ea5e9]']:hover,
+a[class*='bg-sky-']:hover,
+a[class*='bg-emerald-']:hover,
+[role='button'][class*='bg-slate-900']:hover,
+[role='button'][class*='bg-slate-950']:hover,
+[role='button'][class*='bg-[#0ea5e9]']:hover,
+[role='button'][class*='bg-sky-']:hover,
+[role='button'][class*='bg-emerald-']:hover {
+  background: var(--hope-action-gradient-hover) !important;
+}
+
+button:disabled,
+a[aria-disabled='true'],
+[role='button'][aria-disabled='true'] {
+  box-shadow: none !important;
+}
+
+.bg-white,
+.bg-slate-50,
+.bg-slate-100,
+.bg-\[\#f8fafc\] {
+  background-color: var(--hope-surface-strong) !important;
+}
+
+.bg-white\/95,
+.bg-white\/90,
+.bg-white\/80,
+.bg-white\/70,
+.bg-white\/60,
+.bg-white\/45 {
+  background-color: rgba(45, 47, 56, 0.9) !important;
+}
+
+.border-slate-50,
+.border-slate-100,
+.border-slate-200,
+.border-slate-300,
+.border-zinc-200,
+.border-zinc-300 {
+  border-color: var(--hope-border) !important;
+}
+
+.text-slate-950,
+.text-slate-900,
+.text-zinc-950,
+.text-zinc-900 {
+  color: var(--hope-text) !important;
+}
+
+.text-slate-800,
+.text-slate-700,
+.text-slate-600,
+.text-slate-500,
+.text-slate-400,
+.text-zinc-800,
+.text-zinc-700,
+.text-zinc-600,
+.text-zinc-500 {
+  color: var(--hope-muted) !important;
+}
+
+.bg-slate-900,
+.bg-slate-950 {
+  background: var(--hope-action-gradient) !important;
+}
+
+.from-white,
+.to-white {
+  --tw-gradient-from: #30323c var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgb(48 50 60 / 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+.shadow-\[0_4px_12px_rgba\(0\,0\,0\,0\.05\)\],
+.shadow-\[0_8px_18px_rgba\(15\,23\,42\,0\.05\)\],
+.shadow-\[0_10px_20px_rgba\(15\,23\,42\,0\.08\)\],
+.shadow-\[0_18px_40px_rgba\(15\,23\,42\,0\.08\)\],
+.shadow-\[0_24px_50px_rgba\(15\,23\,42\,0\.08\)\] {
+  box-shadow: var(--hope-shadow-soft) !important;
+}
+
+.placeholder\:text-slate-500::placeholder,
+.placeholder\:text-slate-400::placeholder {
+  color: color-mix(in srgb, var(--hope-muted) 82%, transparent) !important;
+}
+
+input,
+select,
+textarea {
+  color-scheme: dark;
+}
+
+input:not([type='checkbox']):not([type='radio']),
+select,
+textarea {
+  background-color: var(--hope-surface-soft);
+  border-color: var(--hope-border);
+  color: var(--hope-text);
+}
+
+input:not([type='checkbox']):not([type='radio'])::placeholder,
+textarea::placeholder {
+  color: color-mix(in srgb, var(--hope-muted) 82%, transparent);
 }
 
 @media print {

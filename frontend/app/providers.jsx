@@ -3,7 +3,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Toaster } from 'react-hot-toast';
-import { initTheme } from '@/lib/utils/theme';
+import { applyTheme } from '@/lib/utils/theme';
 
 export function Providers({ children }) {
   const [queryClient] = useState(() =>
@@ -18,7 +18,7 @@ export function Providers({ children }) {
   );
 
   useEffect(() => {
-    initTheme();
+    applyTheme('dark');
   }, []);
 
   return (
