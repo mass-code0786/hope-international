@@ -29,17 +29,17 @@ export function BottomNav() {
   const items = getNavItems();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--hope-border)] bg-white/94 backdrop-blur md:hidden dark:bg-slate-950/92">
-      <div className="mx-auto grid max-w-2xl grid-cols-6">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur md:hidden">
+      <div className="mx-auto grid max-w-2xl grid-cols-6 px-1 pb-[max(env(safe-area-inset-bottom),0.2rem)] pt-1">
         {items.map((item) => {
           const Icon = iconMap[item.icon];
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
-            <Link key={`${item.href}-${item.label}`} href={item.href} className="flex flex-col items-center justify-center gap-1 py-2.5 text-[9px]">
-              <span className={`inline-flex h-8 w-8 items-center justify-center rounded-2xl ${active ? 'bg-slate-950 text-white dark:bg-white dark:text-slate-950' : 'text-slate-500 dark:text-slate-400'}`}>
+            <Link key={`${item.href}-${item.label}`} href={item.href} className="flex flex-col items-center justify-center gap-1 rounded-2xl py-2 text-[9px]">
+              <span className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition ${active ? 'bg-slate-900 text-white shadow-[0_8px_18px_rgba(15,23,42,0.16)]' : 'bg-transparent text-slate-400'}`}>
                 <Icon size={15} />
               </span>
-              <span className={active ? 'font-semibold text-slate-950 dark:text-white' : 'text-slate-500 dark:text-slate-400'}>{item.label}</span>
+              <span className={active ? 'font-semibold text-slate-900' : 'text-slate-500'}>{item.label}</span>
             </Link>
           );
         })}

@@ -93,8 +93,8 @@ export function AuctionCountdown({ startAt, endAt, status, compact = false }) {
   const prefix = safeStatus === 'upcoming' ? 'Starts' : safeStatus === 'live' ? 'Ends' : null;
 
   return (
-    <div className="inline-flex min-w-0 items-center gap-1.5 rounded-full border border-slate-600 bg-[#0F1B3D] px-2.5 py-1 text-[10px] font-semibold text-white shadow-[0_10px_22px_rgba(2,6,23,0.34)]">
-      <Clock3 size={11} className="shrink-0 text-slate-200" />
+    <div className="inline-flex min-w-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white/92 px-2.5 py-1 text-[10px] font-semibold text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.08)]">
+      <Clock3 size={11} className="shrink-0 text-slate-500" />
       {prefix ? `${prefix} ${compact ? '' : 'in '}${content}`.trim() : content}
     </div>
   );
@@ -143,23 +143,26 @@ function getAuctionCta(status, won = false) {
 function getCardTheme(status) {
   if (status === 'live') {
     return {
-      frame: 'from-[#fff1f2] via-[#ffffff] to-[#ffe4e6]',
-      image: 'from-[#fff7ed] via-[#fff1f2] to-[#fee2e2]',
-      cta: 'from-[#ef4444] to-[#f97316]'
+      frame: 'from-[#fff7f7] via-[#ffffff] to-[#fff1f2]',
+      halo: 'from-[#fee2e2] via-[#fff7ed] to-[#ffffff]',
+      ring: 'from-[#f97316] to-[#ef4444]',
+      cta: 'bg-slate-900 text-white'
     };
   }
   if (status === 'ended') {
     return {
-      frame: 'from-[#f8fafc] via-[#ffffff] to-[#e2e8f0]',
-      image: 'from-[#e2e8f0] via-[#f8fafc] to-[#eef2ff]',
-      cta: 'from-[#0f172a] to-[#334155]'
+      frame: 'from-[#f8fafc] via-[#ffffff] to-[#f1f5f9]',
+      halo: 'from-[#e2e8f0] via-[#f8fafc] to-[#ffffff]',
+      ring: 'from-[#94a3b8] to-[#cbd5e1]',
+      cta: 'bg-slate-900 text-white'
     };
   }
 
   return {
     frame: 'from-[#eff6ff] via-[#ffffff] to-[#eef2ff]',
-    image: 'from-[#e0f2fe] via-[#ecfeff] to-[#dbeafe]',
-    cta: 'from-[#0284c7] to-[#0ea5e9]'
+    halo: 'from-[#dbeafe] via-[#ecfeff] to-[#ffffff]',
+    ring: 'from-[#38bdf8] to-[#2563eb]',
+    cta: 'bg-slate-900 text-white'
   };
 }
 
@@ -171,47 +174,49 @@ export function AuctionCard({ auction }) {
   const theme = getCardTheme(status);
   const price = formatAuctionMoney(getAuctionPrice(auction));
   const capacity = getAuctionCapacity(auction);
+  const progressStyle = capacity.hasCapacity ? { background: `conic-gradient(#0f172a ${capacity.capacityPercent}%, #e2e8f0 0)` } : { background: 'linear-gradient(135deg, #cbd5e1, #e2e8f0)' };
+  const ctaLabel = getAuctionCta(status, won);
 
   return (
-    <article className={`overflow-hidden rounded-[28px] border border-white/80 bg-gradient-to-b ${theme.frame} p-2.5 shadow-[0_18px_40px_rgba(15,23,42,0.10)]`}>
-      <div className={`overflow-hidden rounded-[22px] bg-gradient-to-br ${theme.image} px-3 py-3`}>
-        <Link href={`/auctions/${auction?.id}`} className="block">
-          <div className="mx-auto flex aspect-square max-w-[152px] items-center justify-center rounded-full bg-white/75 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_16px_30px_rgba(15,23,42,0.10)] backdrop-blur-sm">
-            <img src={cover} alt={auction?.title || 'Auction'} className="h-full w-full object-contain" />
-          </div>
-        </Link>
+    <article className={`overflow-hidden rounded-[28px] border border-slate-200 bg-gradient-to-b ${theme.frame} p-3 shadow-[0_16px_34px_rgba(15,23,42,0.07)]`}>
+      <div className="flex items-center justify-between gap-2">
+        <AuctionCountdown startAt={auction?.start_at} endAt={auction?.end_at} status={status} compact />
+        <AuctionStatusBadge status={status} won={won} />
       </div>
 
-      {capacity.hasCapacity ? (
-        <div className="px-1 pt-2.5">
-          <div className="overflow-hidden rounded-full border border-slate-200 bg-white">
-            <div
-              className="h-1.5 rounded-full bg-sky-500 transition-[width] duration-300 ease-out"
-              style={{ width: `${capacity.capacityPercent}%` }}
-            />
+      <Link href={`/auctions/${auction?.id}`} className="mt-4 block">
+        <div className={`relative rounded-[26px] bg-gradient-to-br ${theme.halo} px-2 py-4`}>
+          <div className="mx-auto flex h-[128px] w-[128px] items-center justify-center rounded-full p-[7px]" style={progressStyle}>
+            <div className="flex h-full w-full items-center justify-center rounded-full bg-white shadow-[0_14px_28px_rgba(15,23,42,0.10)]">
+              <div className="flex h-[92px] w-[92px] items-center justify-center overflow-hidden rounded-full bg-white">
+                <img src={cover} alt={auction?.title || 'Auction'} className="h-full w-full object-contain" />
+              </div>
+            </div>
           </div>
-        </div>
-      ) : null}
 
-      <div className="px-1 pb-1 pt-3">
+          {capacity.hasCapacity ? (
+            <div className="mt-3 flex justify-center">
+              <span className="rounded-full bg-white px-3 py-1 text-[10px] font-semibold text-slate-500 shadow-[0_8px_18px_rgba(15,23,42,0.06)]">
+                {capacity.capacityPercent}% filled
+              </span>
+            </div>
+          ) : null}
+        </div>
+      </Link>
+
+      <div className="px-1 pb-1 pt-4">
         <Link href={`/auctions/${auction?.id}`}>
-          <h3 className="line-clamp-2 min-h-[2.7rem] text-[12px] font-semibold leading-5 text-slate-900">{auction?.title || 'Untitled auction'}</h3>
+          <h3 className="line-clamp-2 min-h-[2.7rem] text-center text-[13px] font-semibold leading-5 text-slate-900">{auction?.title || 'Untitled auction'}</h3>
         </Link>
 
-        <div className="mt-2 flex items-center justify-between gap-2">
-          <AuctionCountdown startAt={auction?.start_at} endAt={auction?.end_at} status={status} compact />
-          <AuctionStatusBadge status={status} won={won} />
+        <Link href={`/auctions/${auction?.id}`} className={`mt-4 inline-flex min-h-[42px] w-full items-center justify-center gap-2 rounded-full px-3 py-2.5 text-[12px] font-semibold shadow-[0_14px_26px_rgba(15,23,42,0.12)] ${theme.cta}`}>
+          <span>{ctaLabel}</span>
+          <ArrowRight size={14} />
+        </Link>
+
+        <div className="mt-2 text-center text-[10px] font-medium text-slate-500">
+          Entry {price}
         </div>
-
-        <Link href={`/auctions/${auction?.id}`} className={`mt-3 inline-flex w-full items-center justify-between gap-2 rounded-[18px] bg-gradient-to-r ${theme.cta} px-3 py-3 text-white shadow-[0_16px_30px_rgba(15,23,42,0.18)]`}>
-          <span className="min-w-0">
-            <span className="block text-[11px] font-semibold leading-none">{getAuctionCta(status, won)}</span>
-            <span className="mt-1 block text-[10px] text-white/80">Entry {price}</span>
-          </span>
-          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/18">
-            <ArrowRight size={14} />
-          </span>
-        </Link>
       </div>
     </article>
   );
