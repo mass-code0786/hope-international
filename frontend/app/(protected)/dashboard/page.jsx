@@ -103,17 +103,17 @@ function getActionHref(action) {
 function HomeBannerCard({ banner }) {
   const target = resolveBannerTarget(banner.targetLink);
   const content = (
-    <article className={`relative h-[136px] overflow-hidden rounded-[18px] border border-slate-200 bg-gradient-to-r ${banner.theme || 'from-[#e2e8f0] to-white'} p-3 shadow-[0_10px_22px_rgba(15,23,42,0.08)]`}>
+    <article className={`relative aspect-[16/7] max-h-[132px] overflow-hidden rounded-[16px] border border-slate-200 bg-gradient-to-r ${banner.theme || 'from-[#e2e8f0] to-white'} p-2.5 shadow-[0_10px_20px_rgba(15,23,42,0.08)]`}>
       <div className="relative z-10 max-w-[72%]">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">Hope Marketplace</p>
-        <h2 className="mt-1.5 text-[16px] font-semibold leading-4.5 text-slate-900">{banner.title}</h2>
-        <p className="mt-1.5 line-clamp-2 text-[11px] leading-4 text-slate-600">{banner.subtitle || 'Curated picks for your account.'}</p>
-        <span className="mt-3 inline-flex items-center rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-semibold text-white">
+        <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">Hope Marketplace</p>
+        <h2 className="mt-1 text-[15px] font-semibold leading-4 text-slate-900">{banner.title}</h2>
+        <p className="mt-1 line-clamp-2 text-[10px] leading-3.5 text-slate-600">{banner.subtitle || 'Curated picks for your account.'}</p>
+        <span className="mt-2 inline-flex items-center rounded-full bg-slate-900 px-2.5 py-1 text-[9px] font-semibold text-white">
           {banner.ctaText || 'Explore'}
         </span>
       </div>
-      <div className="absolute -right-6 bottom-0 h-24 w-24 rounded-full bg-white/60 blur-2xl" />
-      <div className="absolute right-3 top-3 h-14 w-14 rounded-[16px] border border-white/60 bg-white/45" />
+      <div className="absolute -right-5 bottom-0 h-20 w-20 rounded-full bg-white/60 blur-2xl" />
+      <div className="absolute right-3 top-3 h-12 w-12 rounded-[14px] border border-white/60 bg-white/45" />
     </article>
   );
 
@@ -128,58 +128,61 @@ function ProductTile({ product, onBuy, isBuying, lowBalance }) {
   const href = product?.id ? `/shop/${encodeURIComponent(String(product.id))}` : '/shop';
   const pricing = getProductPricing(product, 1);
   const cover = getProductCover(product);
+  const actionLabel = isBuying ? '...' : lowBalance ? 'Low' : '+';
 
   return (
-    <article className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_8px_20px_rgba(15,23,42,0.06)]">
+    <article className="overflow-hidden rounded-[18px] border border-slate-200 bg-white shadow-[0_8px_18px_rgba(15,23,42,0.05)]">
       <Link href={href} className="block">
-        <div className="relative aspect-[1/0.88] overflow-hidden bg-[#f8fafc]">
+        <div className="relative h-[132px] overflow-hidden bg-[#f8fafc]">
           {cover ? (
             <img src={cover} alt={product?.name || 'Product'} className="h-full w-full object-cover" />
           ) : (
             <div className="flex h-full items-center justify-center bg-gradient-to-br from-[#eff6ff] via-[#f8fafc] to-[#ecfeff] text-slate-400">
-              <Store size={24} />
+              <Store size={20} />
             </div>
           )}
         </div>
       </Link>
-      <div className="space-y-2 p-2.5 pt-3">
-        <div className="min-h-[3.6rem]">
+      <div className="space-y-1.5 p-2.5">
+        <div className="min-h-[2.9rem]">
           <p className="truncate text-[9px] font-medium text-slate-500">{getProductMeta(product)}</p>
           <Link href={href} className="block">
-            <h3 className="mt-1.5 line-clamp-2 text-[12px] font-semibold leading-4.5 text-slate-900">{product?.name || 'Unnamed product'}</h3>
+            <h3 className="mt-1 line-clamp-2 text-[11px] font-semibold leading-4 text-slate-900">{product?.name || 'Unnamed product'}</h3>
           </Link>
         </div>
 
-        <div className="flex items-end justify-between gap-2">
-          <div className="pt-0.5">
-            <p className="text-[14px] font-bold text-slate-900">{currency(pricing.finalPrice)}</p>
+        <div className="flex items-center justify-between gap-2 pt-0.5">
+          <div className="min-w-0">
+            <p className="text-[13px] font-bold text-slate-900">{currency(pricing.finalPrice)}</p>
             {pricing.compareAtPrice > 0 ? <p className="text-[9px] text-slate-400 line-through">{currency(pricing.compareAtPrice)}</p> : null}
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              const nextCount = addToCart(product, 1);
-              if (!nextCount) {
-                toast.error('Unable to add this product to cart');
-                return;
-              }
-              toast.success(`Added to cart (${nextCount})`);
-            }}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700"
-            aria-label="Add to cart"
-          >
-            <Plus size={14} />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => onBuy?.(product)}
+              disabled={isBuying || lowBalance}
+              className="inline-flex h-7 min-w-[34px] items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-2 text-[9px] font-semibold text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label={lowBalance ? 'Low balance' : 'Quick buy'}
+            >
+              {actionLabel}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const nextCount = addToCart(product, 1);
+                if (!nextCount) {
+                  toast.error('Unable to add this product to cart');
+                  return;
+                }
+                toast.success(`Added to cart (${nextCount})`);
+              }}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-white"
+              aria-label="Add to cart"
+            >
+              <Plus size={14} />
+            </button>
+          </div>
         </div>
-
-        <button
-          type="button"
-          onClick={() => onBuy?.(product)}
-          disabled={isBuying || lowBalance}
-          className="inline-flex min-h-[34px] w-full items-center justify-center rounded-full bg-slate-900 px-3 py-2 text-[11px] font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-        >
-          {isBuying ? 'Processing...' : lowBalance ? 'Low Balance' : 'Add to Cart'}
-        </button>
       </div>
     </article>
   );
@@ -361,7 +364,7 @@ export default function DashboardPage() {
           </label>
         </section>
 
-        <section className="space-y-1">
+        <section className="space-y-0.5">
           <div
             ref={bannerTrackRef}
             onScroll={(event) => {
@@ -369,19 +372,19 @@ export default function DashboardPage() {
               const index = Math.round(event.currentTarget.scrollLeft / width);
               if (index !== activeBannerIndex) setActiveBannerIndex(index);
             }}
-            className="flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-smooth pb-0"
+            className="flex snap-x snap-mandatory gap-1.5 overflow-x-auto scroll-smooth pb-0"
           >
             {slides.map((banner) => (
               <div key={banner.id} className="min-w-full snap-start">
                 {banner.imageUrl ? (
-                  <Link href={resolveBannerTarget(banner.targetLink)} className="relative block overflow-hidden rounded-[18px] border border-slate-200 bg-white shadow-[0_10px_22px_rgba(15,23,42,0.08)]">
-                    <img src={banner.imageUrl} alt={banner.title || 'Homepage banner'} className="h-[136px] w-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-r from-slate-900/55 via-slate-900/20 to-transparent p-3 text-white">
+                  <Link href={resolveBannerTarget(banner.targetLink)} className="relative block aspect-[16/7] max-h-[132px] overflow-hidden rounded-[16px] border border-slate-200 bg-white shadow-[0_10px_20px_rgba(15,23,42,0.08)]">
+                    <img src={banner.imageUrl} alt={banner.title || 'Homepage banner'} className="h-full w-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-slate-900/55 via-slate-900/20 to-transparent p-2.5 text-white">
                       <div className="max-w-[72%]">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/75">Hope Marketplace</p>
-                        <h2 className="mt-1.5 text-[16px] font-semibold leading-4.5">{banner.title}</h2>
-                        {banner.subtitle ? <p className="mt-1.5 line-clamp-2 text-[11px] leading-4 text-white/90">{banner.subtitle}</p> : null}
-                        {banner.ctaText ? <span className="mt-3 inline-flex rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-900">{banner.ctaText}</span> : null}
+                        <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/75">Hope Marketplace</p>
+                        <h2 className="mt-1 text-[15px] font-semibold leading-4">{banner.title}</h2>
+                        {banner.subtitle ? <p className="mt-1 line-clamp-2 text-[10px] leading-3.5 text-white/90">{banner.subtitle}</p> : null}
+                        {banner.ctaText ? <span className="mt-2 inline-flex rounded-full bg-white px-2.5 py-1 text-[9px] font-semibold text-slate-900">{banner.ctaText}</span> : null}
                       </div>
                     </div>
                   </Link>
@@ -393,7 +396,7 @@ export default function DashboardPage() {
           </div>
 
           {slides.length > 1 ? (
-            <div className="flex items-center justify-center gap-1">
+            <div className="flex items-center justify-center gap-0.5">
               {slides.map((banner, idx) => (
                 <button
                   key={`${banner.id}-dot`}
