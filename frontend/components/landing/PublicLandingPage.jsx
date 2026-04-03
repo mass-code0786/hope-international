@@ -103,7 +103,7 @@ function LandingImage({ src, fallbackSrc = semanticLandingImages['ecommerce,shop
 
   return (
     <img
-      src={imageSrc}
+      src={imageSrc || fallbackSrc || FINAL_IMAGE_FALLBACK}
       alt={alt}
       className={className}
       loading="lazy"
@@ -115,6 +115,24 @@ function LandingImage({ src, fallbackSrc = semanticLandingImages['ecommerce,shop
         if (imageSrc !== FINAL_IMAGE_FALLBACK) setImageSrc(FINAL_IMAGE_FALLBACK);
       }}
     />
+  );
+}
+
+function HeaderMenuItem({ href, icon: Icon, label, onSelect }) {
+  return (
+    <a
+      href={href}
+      onClick={onSelect}
+      className="group flex items-center justify-between rounded-[16px] border border-transparent px-3 py-3 text-sm font-medium text-[#f5f7fb] transition duration-200 hover:border-white/10 hover:bg-[linear-gradient(135deg,rgba(139,61,255,0.16),rgba(50,209,125,0.12))]"
+    >
+      <span className="flex items-center gap-3">
+        <span className="inline-flex h-9 w-9 items-center justify-center rounded-[14px] bg-[rgba(255,255,255,0.06)] text-[#d3d9e5] transition group-hover:bg-[rgba(255,255,255,0.1)] group-hover:text-white">
+          <Icon size={16} />
+        </span>
+        <span>{label}</span>
+      </span>
+      <ArrowRight size={14} className="text-[#c0c7d4] transition group-hover:text-white" />
+    </a>
   );
 }
 
@@ -256,6 +274,7 @@ export default function PublicLandingPage() {
   const router = useRouter();
   const { token, hydrated, hydrate, clearSession } = useAuthStore();
   const visitorTrackedRef = useRef(false);
+  const headerMenuRef = useRef(null);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -307,6 +326,17 @@ export default function PublicLandingPage() {
     visitorTrackedRef.current = true;
     trackVisitMutation.mutate(visitorToken);
   }, [landingQuery.isSuccess, token, trackVisitMutation]);
+
+  useEffect(() => {
+    if (!headerMenuOpen) return undefined;
+    const handlePointerDown = (event) => {
+      if (!headerMenuRef.current?.contains(event.target)) {
+        setHeaderMenuOpen(false);
+      }
+    };
+    window.addEventListener('pointerdown', handlePointerDown);
+    return () => window.removeEventListener('pointerdown', handlePointerDown);
+  }, [headerMenuOpen]);
 
   const data = landingQuery.data;
   const settings = data?.settings || {};
@@ -404,6 +434,10 @@ export default function PublicLandingPage() {
           0% { transform: translateX(0); }
           100% { transform: translateX(-50%); }
         }
+        @keyframes hopeMenuIn {
+          0% { opacity: 0; transform: translateY(-6px) scale(0.98); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
       `}</style>
 
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -428,37 +462,25 @@ export default function PublicLandingPage() {
               </div>
             </Link>
 
-            <div className="relative">
+            <div ref={headerMenuRef} className="relative">
               <button
                 type="button"
                 aria-label="Open header menu"
                 onClick={() => setHeaderMenuOpen((prev) => !prev)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-[rgba(45,47,56,0.92)] text-[#f5f7fb] shadow-[0_8px_18px_rgba(0,0,0,0.16)]"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[rgba(255,255,255,0.12)] bg-[linear-gradient(180deg,rgba(48,50,60,0.94),rgba(34,35,42,0.94))] text-[#f5f7fb] shadow-[0_10px_24px_rgba(0,0,0,0.2)] backdrop-blur-xl transition duration-200 hover:-translate-y-[1px] hover:border-[rgba(139,61,255,0.28)] hover:shadow-[0_14px_28px_rgba(90,47,180,0.22)]"
               >
                 <MoreHorizontal size={18} />
               </button>
 
               {headerMenuOpen ? (
-                <div className="absolute right-0 top-[calc(100%+10px)] z-40 w-56 rounded-[22px] border border-white/10 bg-[#2b2d35] p-2.5 shadow-[0_18px_42px_rgba(0,0,0,0.28)]">
-                  <a
-                    href="#featured"
-                    onClick={() => setHeaderMenuOpen(false)}
-                    className="flex items-center justify-between rounded-[16px] px-3 py-2.5 text-sm font-medium text-[#f5f7fb] transition hover:bg-white/5"
-                  >
-                    <span>Explore Featured</span>
-                    <ArrowRight size={14} />
-                  </a>
-                  <a
-                    href="#details"
-                    onClick={() => setHeaderMenuOpen(false)}
-                    className="mt-1 flex items-center justify-between rounded-[16px] px-3 py-2.5 text-sm font-medium text-[#f5f7fb] transition hover:bg-white/5"
-                  >
-                    <span>View Highlights</span>
-                    <ArrowRight size={14} />
-                  </a>
-                  <div className="mt-2 rounded-[16px] border border-white/10 bg-[rgba(32,33,39,0.88)] px-3 py-2.5 text-xs font-medium text-[#c0c7d4]">
-                    Clean marketplace experience
+                <div className="absolute right-0 top-[calc(100%+10px)] z-40 w-64 rounded-[22px] border border-[rgba(255,255,255,0.12)] bg-[rgba(31,32,38,0.88)] p-2.5 shadow-[0_24px_52px_rgba(0,0,0,0.32)] backdrop-blur-2xl animate-[hopeMenuIn_180ms_ease-out]">
+                  <div className="mb-2 rounded-[16px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(135deg,rgba(139,61,255,0.16),rgba(50,209,125,0.08))] px-3 py-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#d3d9e5]">Quick Menu</p>
+                    <p className="mt-1 text-xs text-[#c0c7d4]">Clean marketplace experience</p>
                   </div>
+                  <HeaderMenuItem href="#featured" icon={ShoppingBag} label="Explore Featured" onSelect={() => setHeaderMenuOpen(false)} />
+                  <HeaderMenuItem href="#details" icon={Sparkles} label="View Highlights" onSelect={() => setHeaderMenuOpen(false)} />
+                  <HeaderMenuItem href={`mailto:${settings.footerContactEmail || 'support@example.com'}`} icon={Headphones} label="Contact Support" onSelect={() => setHeaderMenuOpen(false)} />
                 </div>
               ) : null}
             </div>
