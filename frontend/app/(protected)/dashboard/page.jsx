@@ -103,17 +103,17 @@ function getActionHref(action) {
 function HomeBannerCard({ banner }) {
   const target = resolveBannerTarget(banner.targetLink);
   const content = (
-    <article className={`relative h-[168px] overflow-hidden rounded-[20px] border border-slate-200 bg-gradient-to-r ${banner.theme || 'from-[#e2e8f0] to-white'} p-4 shadow-[0_12px_28px_rgba(15,23,42,0.08)]`}>
+    <article className={`relative h-[136px] overflow-hidden rounded-[18px] border border-slate-200 bg-gradient-to-r ${banner.theme || 'from-[#e2e8f0] to-white'} p-3 shadow-[0_10px_22px_rgba(15,23,42,0.08)]`}>
       <div className="relative z-10 max-w-[72%]">
         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">Hope Marketplace</p>
-        <h2 className="mt-2 text-[18px] font-semibold leading-5 text-slate-900">{banner.title}</h2>
-        <p className="mt-2 line-clamp-2 text-[12px] leading-4 text-slate-600">{banner.subtitle || 'Curated picks for your account.'}</p>
-        <span className="mt-4 inline-flex items-center rounded-full bg-slate-900 px-3 py-1.5 text-[11px] font-semibold text-white">
+        <h2 className="mt-1.5 text-[16px] font-semibold leading-4.5 text-slate-900">{banner.title}</h2>
+        <p className="mt-1.5 line-clamp-2 text-[11px] leading-4 text-slate-600">{banner.subtitle || 'Curated picks for your account.'}</p>
+        <span className="mt-3 inline-flex items-center rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-semibold text-white">
           {banner.ctaText || 'Explore'}
         </span>
       </div>
-      <div className="absolute -right-7 bottom-0 h-28 w-28 rounded-full bg-white/60 blur-2xl" />
-      <div className="absolute right-4 top-4 h-16 w-16 rounded-[20px] border border-white/60 bg-white/45" />
+      <div className="absolute -right-6 bottom-0 h-24 w-24 rounded-full bg-white/60 blur-2xl" />
+      <div className="absolute right-3 top-3 h-14 w-14 rounded-[16px] border border-white/60 bg-white/45" />
     </article>
   );
 
@@ -361,7 +361,7 @@ export default function DashboardPage() {
           </label>
         </section>
 
-        <section className="space-y-1.5">
+        <section className="space-y-1">
           <div
             ref={bannerTrackRef}
             onScroll={(event) => {
@@ -369,19 +369,19 @@ export default function DashboardPage() {
               const index = Math.round(event.currentTarget.scrollLeft / width);
               if (index !== activeBannerIndex) setActiveBannerIndex(index);
             }}
-            className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto scroll-smooth pb-0.5"
+            className="flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-smooth pb-0"
           >
             {slides.map((banner) => (
               <div key={banner.id} className="min-w-full snap-start">
                 {banner.imageUrl ? (
-                  <Link href={resolveBannerTarget(banner.targetLink)} className="relative block overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_12px_28px_rgba(15,23,42,0.08)]">
-                    <img src={banner.imageUrl} alt={banner.title || 'Homepage banner'} className="h-[168px] w-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-r from-slate-900/55 via-slate-900/20 to-transparent p-4 text-white">
+                  <Link href={resolveBannerTarget(banner.targetLink)} className="relative block overflow-hidden rounded-[18px] border border-slate-200 bg-white shadow-[0_10px_22px_rgba(15,23,42,0.08)]">
+                    <img src={banner.imageUrl} alt={banner.title || 'Homepage banner'} className="h-[136px] w-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-slate-900/55 via-slate-900/20 to-transparent p-3 text-white">
                       <div className="max-w-[72%]">
                         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/75">Hope Marketplace</p>
-                        <h2 className="mt-2 text-[18px] font-semibold leading-5">{banner.title}</h2>
-                        {banner.subtitle ? <p className="mt-2 line-clamp-2 text-[12px] leading-4 text-white/90">{banner.subtitle}</p> : null}
-                        {banner.ctaText ? <span className="mt-4 inline-flex rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-900">{banner.ctaText}</span> : null}
+                        <h2 className="mt-1.5 text-[16px] font-semibold leading-4.5">{banner.title}</h2>
+                        {banner.subtitle ? <p className="mt-1.5 line-clamp-2 text-[11px] leading-4 text-white/90">{banner.subtitle}</p> : null}
+                        {banner.ctaText ? <span className="mt-3 inline-flex rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-900">{banner.ctaText}</span> : null}
                       </div>
                     </div>
                   </Link>
@@ -393,7 +393,7 @@ export default function DashboardPage() {
           </div>
 
           {slides.length > 1 ? (
-            <div className="flex items-center justify-center gap-1.5">
+            <div className="flex items-center justify-center gap-1">
               {slides.map((banner, idx) => (
                 <button
                   key={`${banner.id}-dot`}
