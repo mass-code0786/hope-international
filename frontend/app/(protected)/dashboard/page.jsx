@@ -27,7 +27,6 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { getMe } from '@/lib/services/authService';
 import { getHomepageBanners } from '@/lib/services/bannersService';
 import { createOrder } from '@/lib/services/ordersService';
-import { getAuctions } from '@/lib/services/auctionsService';
 import { getWallet } from '@/lib/services/walletService';
 import { useProducts } from '@/hooks/useProducts';
 import { queryKeys } from '@/lib/query/queryKeys';
@@ -43,7 +42,7 @@ const fallbackSlides = [
     subtitle: 'Daily offers picked for your account.',
     ctaText: 'Shop now',
     targetLink: '/shop',
-    theme: 'from-[#fef3c7] via-[#fff7ed] to-[#ffffff]'
+    theme: 'from-[#343743] via-[#2f323b] to-[#282b33]'
   },
   {
     id: 'home-fallback-2',
@@ -51,20 +50,20 @@ const fallbackSlides = [
     subtitle: 'Browse live and upcoming entries from home.',
     ctaText: 'Open auctions',
     targetLink: '/auctions',
-    theme: 'from-[#dbeafe] via-[#eff6ff] to-[#ffffff]'
+    theme: 'from-[#383145] via-[#2f323b] to-[#282b33]'
   }
 ];
 
 const homeActions = [
-  { label: 'Shop', href: '/shop', icon: Store, tint: 'bg-[#eff6ff] text-[#2563eb]' },
-  { label: 'Grocery', href: '/shop', icon: ShoppingBasket, tint: 'bg-[#ecfdf3] text-[#15803d]' },
-  { label: 'Health', href: '/shop', icon: HeartPulse, tint: 'bg-[#fff1f2] text-[#e11d48]' },
-  { label: 'Fashion', href: '/shop', icon: Shirt, tint: 'bg-[#f5f3ff] text-[#7c3aed]' },
-  { label: 'Food', href: '/shop', icon: UtensilsCrossed, tint: 'bg-[#fff7ed] text-[#ea580c]' },
-  { label: 'Kids', href: '/shop', icon: Baby, tint: 'bg-[#fdf2f8] text-[#db2777]' },
-  { label: 'Sports', href: '/shop', icon: Trophy, tint: 'bg-[#ecfeff] text-[#0891b2]' },
-  { label: 'Services', href: '/support', icon: PackagePlus, tint: 'bg-[#f8fafc] text-[#475569]' },
-  { label: 'Auctions', href: '/auctions', icon: Gavel, tint: 'bg-[#fef3c7] text-[#b45309]', featured: true }
+  { label: 'Shop', href: '/shop', icon: Store, tint: 'bg-[rgba(139,61,255,0.16)] text-[#d8b4fe]' },
+  { label: 'Grocery', href: '/shop', icon: ShoppingBasket, tint: 'bg-[rgba(50,209,125,0.14)] text-[#86efac]' },
+  { label: 'Health', href: '/shop', icon: HeartPulse, tint: 'bg-[rgba(248,113,113,0.14)] text-[#fda4af]' },
+  { label: 'Fashion', href: '/shop', icon: Shirt, tint: 'bg-[rgba(167,139,250,0.16)] text-[#ddd6fe]' },
+  { label: 'Food', href: '/shop', icon: UtensilsCrossed, tint: 'bg-[rgba(246,183,60,0.14)] text-[#fcd34d]' },
+  { label: 'Kids', href: '/shop', icon: Baby, tint: 'bg-[rgba(244,114,182,0.14)] text-[#f9a8d4]' },
+  { label: 'Sports', href: '/shop', icon: Trophy, tint: 'bg-[rgba(34,211,238,0.14)] text-[#67e8f9]' },
+  { label: 'Services', href: '/support', icon: PackagePlus, tint: 'bg-[rgba(192,199,212,0.12)] text-[#e2e8f0]' },
+  { label: 'Auctions', href: '/auctions', icon: Gavel, tint: 'bg-[rgba(139,61,255,0.22)] text-[#ede9fe]', featured: true }
 ];
 
 function resolveBannerTarget(targetLink) {
@@ -103,17 +102,17 @@ function getActionHref(action) {
 function HomeBannerCard({ banner }) {
   const target = resolveBannerTarget(banner.targetLink);
   const content = (
-    <article className={`relative h-[124px] overflow-hidden rounded-[14px] border border-slate-200 bg-gradient-to-r ${banner.theme || 'from-[#e2e8f0] to-white'} p-2.5 shadow-[0_10px_20px_rgba(15,23,42,0.08)]`}>
+    <article className={`relative h-[124px] overflow-hidden rounded-[14px] border border-slate-200 bg-gradient-to-r ${banner.theme || 'from-[#343743] to-[#282b33]'} p-2.5 shadow-[0_10px_20px_rgba(15,23,42,0.08)]`}>
       <div className="relative z-10 max-w-[72%]">
-        <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">Hope Marketplace</p>
+        <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400">Hope Marketplace</p>
         <h2 className="mt-1 text-[15px] font-semibold leading-4 text-slate-900">{banner.title}</h2>
-        <p className="mt-1 line-clamp-2 text-[10px] leading-3.5 text-slate-600">{banner.subtitle || 'Curated picks for your account.'}</p>
+        <p className="mt-1 line-clamp-2 text-[10px] leading-3.5 text-slate-500">{banner.subtitle || 'Curated picks for your account.'}</p>
         <span className="mt-2 inline-flex items-center rounded-full bg-slate-900 px-2.5 py-1 text-[9px] font-semibold text-white">
           {banner.ctaText || 'Explore'}
         </span>
       </div>
-      <div className="absolute -right-5 bottom-0 h-20 w-20 rounded-full bg-white/60 blur-2xl" />
-      <div className="absolute right-3 top-3 h-12 w-12 rounded-[14px] border border-white/60 bg-white/45" />
+      <div className="absolute -right-5 bottom-0 h-20 w-20 rounded-full bg-[rgba(139,61,255,0.18)] blur-2xl" />
+      <div className="absolute right-3 top-3 h-12 w-12 rounded-[14px] border border-white/10 bg-white/8" />
     </article>
   );
 
@@ -133,11 +132,11 @@ function ProductTile({ product, onBuy, isBuying, lowBalance }) {
   return (
     <article className="overflow-hidden rounded-[18px] border border-slate-200 bg-white shadow-[0_8px_18px_rgba(15,23,42,0.05)]">
       <Link href={href} className="block">
-        <div className="relative h-[146px] overflow-hidden bg-[#f8fafc]">
+        <div className="relative h-[146px] overflow-hidden bg-[#2b2e37]">
           {cover ? (
             <img src={cover} alt={product?.name || 'Product'} className="h-full w-full object-cover" />
           ) : (
-            <div className="flex h-full items-center justify-center bg-gradient-to-br from-[#eff6ff] via-[#f8fafc] to-[#ecfeff] text-slate-400">
+            <div className="flex h-full items-center justify-center bg-gradient-to-br from-[#343743] via-[#2f323b] to-[#282b33] text-slate-400">
               <Store size={20} />
             </div>
           )}
@@ -213,7 +212,6 @@ function CartPill() {
 export default function DashboardPage() {
   const { data: productData, isLoading: productsLoading, isError: productsError, refetch: refetchProducts } = useProducts();
   const bannersQuery = useQuery({ queryKey: queryKeys.homepageBanners, queryFn: getHomepageBanners });
-  const auctionsQuery = useQuery({ queryKey: [...queryKeys.auctions, 'home'], queryFn: () => getAuctions({ page: 1, limit: 6 }) });
   const [meQuery, walletQuery] = useQueries({
     queries: [
       { queryKey: queryKeys.me, queryFn: getMe },
@@ -250,7 +248,6 @@ export default function DashboardPage() {
   const hasFatalError = meQuery.isError || walletQuery.isError;
   const user = meQuery.data || {};
   const products = Array.isArray(productData) ? productData : [];
-  const liveAuctions = Array.isArray(auctionsQuery.data?.data) ? auctionsQuery.data.data : [];
   const homepageBanners = Array.isArray(bannersQuery.data) ? bannersQuery.data : [];
 
   const slides = useMemo(() => {
@@ -277,15 +274,6 @@ export default function DashboardPage() {
       })
       .slice(0, 6);
   }, [products]);
-
-  const auctionSummary = useMemo(() => {
-    const liveCount = liveAuctions.filter((item) => item?.status === 'live').length;
-    const upcomingCount = liveAuctions.filter((item) => item?.status === 'upcoming').length;
-    return {
-      liveCount,
-      upcomingCount
-    };
-  }, [liveAuctions]);
 
   useEffect(() => {
     setActiveBannerIndex(0);
@@ -319,14 +307,13 @@ export default function DashboardPage() {
           walletQuery.refetch();
           bannersQuery.refetch();
           refetchProducts();
-          auctionsQuery.refetch();
         }}
       />
     );
   }
 
   return (
-    <div className="-mx-4 min-h-full bg-[#f5f7fb] px-4 pb-24 pt-1.5 sm:mx-0 sm:rounded-[32px] sm:border sm:border-slate-200 sm:px-5 sm:py-3">
+    <div className="-mx-4 min-h-full bg-[#202127] px-4 pb-24 pt-1.5 sm:mx-0 sm:rounded-[32px] sm:border sm:border-slate-200 sm:px-5 sm:py-3">
       <div className="mx-auto max-w-xl space-y-3">
         <section className="px-1 pt-1">
           <div className="flex items-start justify-between gap-3">
@@ -379,12 +366,12 @@ export default function DashboardPage() {
                 {banner.imageUrl ? (
                   <Link href={resolveBannerTarget(banner.targetLink)} className="relative block h-[124px] overflow-hidden rounded-[14px] border border-slate-200 bg-white shadow-[0_10px_20px_rgba(15,23,42,0.08)]">
                     <img src={banner.imageUrl} alt={banner.title || 'Homepage banner'} className="h-full w-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-r from-slate-900/55 via-slate-900/20 to-transparent p-2.5 text-white">
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#111217]/85 via-[#111217]/40 to-transparent p-2.5 text-white">
                       <div className="max-w-[72%]">
                         <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/75">Hope Marketplace</p>
                         <h2 className="mt-1 text-[15px] font-semibold leading-4">{banner.title}</h2>
                         {banner.subtitle ? <p className="mt-1 line-clamp-2 text-[10px] leading-3.5 text-white/90">{banner.subtitle}</p> : null}
-                        {banner.ctaText ? <span className="mt-2 inline-flex rounded-full bg-white px-2.5 py-1 text-[9px] font-semibold text-slate-900">{banner.ctaText}</span> : null}
+                        {banner.ctaText ? <span className="mt-2 inline-flex rounded-full bg-slate-900 px-2.5 py-1 text-[9px] font-semibold text-white">{banner.ctaText}</span> : null}
                       </div>
                     </div>
                   </Link>
@@ -430,7 +417,7 @@ export default function DashboardPage() {
                 <Link
                   key={action.label}
                   href={getActionHref(action)}
-                  className={`rounded-[20px] border px-2 py-3 text-center shadow-[0_8px_18px_rgba(15,23,42,0.04)] ${action.featured ? 'border-amber-200 bg-amber-50/70' : 'border-slate-200 bg-[#fbfcfe]'}`}
+                  className={`rounded-[20px] border px-2 py-3 text-center shadow-[0_8px_18px_rgba(15,23,42,0.04)] ${action.featured ? 'border-[rgba(139,61,255,0.34)] bg-[rgba(61,48,88,0.72)]' : 'border-slate-200 bg-[#2a2c34]'}`}
                 >
                   <span className={`mx-auto inline-flex h-10 w-10 items-center justify-center rounded-[16px] ${action.tint}`}>
                     <Icon size={18} />
