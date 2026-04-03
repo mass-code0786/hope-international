@@ -178,25 +178,25 @@ export function AuctionCard({ auction }) {
   const ctaLabel = getAuctionCta(status, won);
 
   return (
-    <article className={`overflow-hidden rounded-[28px] border border-slate-200 bg-gradient-to-b ${theme.frame} p-3 shadow-[0_16px_34px_rgba(15,23,42,0.07)]`}>
+    <article className={`overflow-hidden rounded-[18px] border border-slate-200 bg-gradient-to-b ${theme.frame} p-2 shadow-[0_8px_18px_rgba(15,23,42,0.05)]`}>
       <div className="flex items-center justify-between gap-2">
         <AuctionCountdown startAt={auction?.start_at} endAt={auction?.end_at} status={status} compact />
         <AuctionStatusBadge status={status} won={won} />
       </div>
 
-      <Link href={`/auctions/${auction?.id}`} className="mt-4 block">
-        <div className={`relative rounded-[26px] bg-gradient-to-br ${theme.halo} px-2 py-4`}>
-          <div className="mx-auto flex h-[128px] w-[128px] items-center justify-center rounded-full p-[7px]" style={progressStyle}>
-            <div className="flex h-full w-full items-center justify-center rounded-full bg-white shadow-[0_14px_28px_rgba(15,23,42,0.10)]">
-              <div className="flex h-[92px] w-[92px] items-center justify-center overflow-hidden rounded-full bg-white">
+      <Link href={`/auctions/${auction?.id}`} className="mt-2 block">
+        <div className={`relative rounded-[18px] bg-gradient-to-br ${theme.halo} px-2 py-3`}>
+          <div className="mx-auto flex h-[80px] w-[80px] items-center justify-center rounded-full p-[4px]" style={progressStyle}>
+            <div className="flex h-full w-full items-center justify-center rounded-full bg-white shadow-[0_10px_20px_rgba(15,23,42,0.10)]">
+              <div className="flex h-[68px] w-[68px] items-center justify-center overflow-hidden rounded-full bg-white">
                 <img src={cover} alt={auction?.title || 'Auction'} className="h-full w-full object-contain" />
               </div>
             </div>
           </div>
 
           {capacity.hasCapacity ? (
-            <div className="mt-3 flex justify-center">
-              <span className="rounded-full bg-white px-3 py-1 text-[10px] font-semibold text-slate-500 shadow-[0_8px_18px_rgba(15,23,42,0.06)]">
+            <div className="mt-2 flex justify-center">
+              <span className="rounded-full bg-white px-2.5 py-1 text-[9px] font-semibold text-slate-500 shadow-[0_8px_18px_rgba(15,23,42,0.06)]">
                 {capacity.capacityPercent}% filled
               </span>
             </div>
@@ -204,17 +204,17 @@ export function AuctionCard({ auction }) {
         </div>
       </Link>
 
-      <div className="px-1 pb-1 pt-4">
+      <div className="px-1 pb-0.5 pt-2">
         <Link href={`/auctions/${auction?.id}`}>
-          <h3 className="line-clamp-2 min-h-[2.7rem] text-center text-[13px] font-semibold leading-5 text-slate-900">{auction?.title || 'Untitled auction'}</h3>
+          <h3 className="line-clamp-2 min-h-[2rem] text-center text-[10.5px] font-semibold leading-4 text-slate-900">{auction?.title || 'Untitled auction'}</h3>
         </Link>
 
-        <Link href={`/auctions/${auction?.id}`} className={`mt-4 inline-flex min-h-[42px] w-full items-center justify-center gap-2 rounded-full px-3 py-2.5 text-[12px] font-semibold shadow-[0_14px_26px_rgba(15,23,42,0.12)] ${theme.cta}`}>
+        <Link href={`/auctions/${auction?.id}`} className={`mt-2 inline-flex h-9 w-full items-center justify-center gap-2 rounded-full px-3 text-[12px] font-semibold shadow-[0_12px_22px_rgba(15,23,42,0.10)] ${theme.cta}`}>
           <span>{ctaLabel}</span>
           <ArrowRight size={14} />
         </Link>
 
-        <div className="mt-2 text-center text-[10px] font-medium text-slate-500">
+        <div className="mt-1.5 text-center text-[9px] font-medium text-slate-500">
           Entry {price}
         </div>
       </div>
