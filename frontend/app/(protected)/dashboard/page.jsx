@@ -130,9 +130,9 @@ function ProductTile({ product, onBuy, isBuying, lowBalance }) {
   const cover = getProductCover(product);
 
   return (
-    <article className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
+    <article className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_8px_20px_rgba(15,23,42,0.06)]">
       <Link href={href} className="block">
-        <div className="relative aspect-[1/1] overflow-hidden bg-[#f8fafc]">
+        <div className="relative aspect-[1/0.88] overflow-hidden bg-[#f8fafc]">
           {cover ? (
             <img src={cover} alt={product?.name || 'Product'} className="h-full w-full object-cover" />
           ) : (
@@ -142,18 +142,18 @@ function ProductTile({ product, onBuy, isBuying, lowBalance }) {
           )}
         </div>
       </Link>
-      <div className="space-y-2.5 p-3">
-        <div>
-          <p className="truncate text-[10px] font-medium text-slate-500">{getProductMeta(product)}</p>
+      <div className="space-y-2 p-2.5 pt-3">
+        <div className="min-h-[3.6rem]">
+          <p className="truncate text-[9px] font-medium text-slate-500">{getProductMeta(product)}</p>
           <Link href={href} className="block">
-            <h3 className="mt-1 line-clamp-2 min-h-[2.5rem] text-[13px] font-semibold leading-5 text-slate-900">{product?.name || 'Unnamed product'}</h3>
+            <h3 className="mt-1.5 line-clamp-2 text-[12px] font-semibold leading-4.5 text-slate-900">{product?.name || 'Unnamed product'}</h3>
           </Link>
         </div>
 
         <div className="flex items-end justify-between gap-2">
-          <div>
-            <p className="text-[15px] font-bold text-slate-900">{currency(pricing.finalPrice)}</p>
-            {pricing.compareAtPrice > 0 ? <p className="text-[10px] text-slate-400 line-through">{currency(pricing.compareAtPrice)}</p> : null}
+          <div className="pt-0.5">
+            <p className="text-[14px] font-bold text-slate-900">{currency(pricing.finalPrice)}</p>
+            {pricing.compareAtPrice > 0 ? <p className="text-[9px] text-slate-400 line-through">{currency(pricing.compareAtPrice)}</p> : null}
           </div>
           <button
             type="button"
@@ -165,10 +165,10 @@ function ProductTile({ product, onBuy, isBuying, lowBalance }) {
               }
               toast.success(`Added to cart (${nextCount})`);
             }}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700"
             aria-label="Add to cart"
           >
-            <Plus size={16} />
+            <Plus size={14} />
           </button>
         </div>
 
@@ -176,7 +176,7 @@ function ProductTile({ product, onBuy, isBuying, lowBalance }) {
           type="button"
           onClick={() => onBuy?.(product)}
           disabled={isBuying || lowBalance}
-          className="inline-flex min-h-[38px] w-full items-center justify-center rounded-full bg-slate-900 px-3 py-2 text-[12px] font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="inline-flex min-h-[34px] w-full items-center justify-center rounded-full bg-slate-900 px-3 py-2 text-[11px] font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
         >
           {isBuying ? 'Processing...' : lowBalance ? 'Low Balance' : 'Add to Cart'}
         </button>
