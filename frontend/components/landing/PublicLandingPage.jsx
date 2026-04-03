@@ -43,9 +43,9 @@ const iconMap = {
 };
 
 const landingImageKeywordPools = {
-  hero: ['seller dashboard', 'business workspace', 'ecommerce office'],
-  featured: ['ecommerce products', 'shopping lifestyle', 'auction bidding', 'crypto rewards', 'business team'],
-  details: ['seller tools', 'team growth', 'marketplace display', 'digital rewards', 'auction winner', 'customer service']
+  hero: ['ecommerce,shopping', 'digital,technology', 'crypto,bitcoin'],
+  featured: ['emerald,gemstone', 'digital,technology', 'crypto,bitcoin', 'social,media,marketing', 'ecommerce,shopping'],
+  details: ['ecommerce,shopping', 'digital,technology', 'crypto,bitcoin', 'social,media,marketing', 'emerald,gemstone', 'ecommerce,shopping']
 };
 
 function normalizeImageUrl(value) {
@@ -53,18 +53,17 @@ function normalizeImageUrl(value) {
 }
 
 function buildLandingFallbackImage(keyword, seed) {
-  return `https://source.unsplash.com/featured/1200x900/?${encodeURIComponent(keyword)}&sig=${seed}`;
+  return `https://source.unsplash.com/600x600/?${encodeURIComponent(keyword)}&sig=${seed}`;
 }
 
 function inferLandingKeyword(text, section, index) {
   const value = String(text || '').toLowerCase();
 
-  if (/(seller|merchant|dashboard|store owner|pos|inventory)/.test(value)) return 'seller dashboard';
-  if (/(team|growth|opportunity|meeting|community|network)/.test(value)) return 'business team';
-  if (/(market|shop|shopping|product|catalog|ecommerce)/.test(value)) return 'ecommerce products';
-  if (/(crypto|reward|token|coin|wallet|btct|digital)/.test(value)) return 'crypto rewards';
-  if (/(auction|bid|bidding|win|winner|competition)/.test(value)) return 'auction bidding';
-  if (/(service|support|customer|help)/.test(value)) return 'customer service';
+  if (/(emerald|gem|gemstone|jewel|stone)/.test(value)) return 'emerald,gemstone';
+  if (/(digital|technology|software|tool|seller|merchant|dashboard|pos|inventory)/.test(value)) return 'digital,technology';
+  if (/(crypto|reward|token|coin|wallet|btct|bitcoin)/.test(value)) return 'crypto,bitcoin';
+  if (/(social|youtube|facebook|instagram|marketing|growth|community|network)/.test(value)) return 'social,media,marketing';
+  if (/(market|shop|shopping|product|catalog|ecommerce|auction|bid|service|support|customer)/.test(value)) return 'ecommerce,shopping';
 
   const pool = landingImageKeywordPools[section] || landingImageKeywordPools.featured;
   return pool[index % pool.length];
@@ -82,6 +81,30 @@ function resolveUniqueImage({ url, text, section, index, usedUrls }) {
   usedUrls.add(fallback);
   return fallback;
 }
+
+function LandingImage({ src, alt, className }) {
+  const [imageSrc, setImageSrc] = useState(src);
+
+  useEffect(() => {
+    setImageSrc(src);
+  }, [src]);
+
+  return (
+    <img
+      src={imageSrc}
+      alt={alt}
+      className={className}
+      loading="lazy"
+      onError={() => {
+        if (imageSrc !== FALLBACK_MARKETPLACE_IMAGE) {
+          setImageSrc(FALLBACK_MARKETPLACE_IMAGE);
+        }
+      }}
+    />
+  );
+}
+
+const FALLBACK_MARKETPLACE_IMAGE = 'https://source.unsplash.com/600x600/?ecommerce,shopping';
 
 function resolveDestination(user) {
   if (canAccessAdminArea(user)) return '/admin';
@@ -169,8 +192,8 @@ function FeaturedCard({ item }) {
 
   return (
     <div className="overflow-hidden rounded-[30px] border border-white/10 bg-[#2b2d35] shadow-[0_24px_60px_rgba(0,0,0,0.24)]">
-      <div className="relative h-56 overflow-hidden bg-[#24262d]">
-        {item.resolvedImageUrl ? <img src={item.resolvedImageUrl} alt={item.title} className="h-full w-full object-cover" loading="lazy" /> : <div className="h-full w-full bg-[linear-gradient(135deg,#312b45,#202127_55%,#2a3c33)]" />}
+      <div className="relative h-[180px] overflow-hidden rounded-[16px] bg-[#24262d]">
+        <LandingImage src={item.resolvedImageUrl || FALLBACK_MARKETPLACE_IMAGE} alt={item.title} className="h-full w-full object-cover" />
         <div className="absolute left-4 top-4 inline-flex rounded-full border border-white/10 bg-[rgba(32,33,39,0.88)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#f5f7fb] shadow-sm">
           {item.promoText || 'Featured'}
         </div>
@@ -211,7 +234,7 @@ function DetailBlock({ item }) {
         ) : null}
       </div>
       <div className="overflow-hidden rounded-[28px] bg-[#24262d]">
-        {item.resolvedImageUrl ? <img src={item.resolvedImageUrl} alt={item.title} className="h-72 w-full object-cover" loading="lazy" /> : <div className="h-72 w-full bg-[linear-gradient(135deg,#312b45,#202127_55%,#2a3c33)]" />}
+        <LandingImage src={item.resolvedImageUrl || FALLBACK_MARKETPLACE_IMAGE} alt={item.title} className="h-[180px] w-full object-cover" />
       </div>
     </div>
   );
@@ -477,11 +500,7 @@ export default function PublicLandingPage() {
                 </div>
 
                 <div className="overflow-hidden rounded-[28px] border border-white/10 bg-[#2b2d35] shadow-[0_18px_50px_rgba(0,0,0,0.22)]">
-                  {landingImages.heroImageUrl ? (
-                    <img src={landingImages.heroImageUrl} alt="Hope International highlight" className="h-64 w-full object-cover" loading="lazy" />
-                  ) : (
-                    <div className="h-64 bg-[linear-gradient(135deg,#312b45,#202127_55%,#2a3c33)]" />
-                  )}
+                  <LandingImage src={landingImages.heroImageUrl || FALLBACK_MARKETPLACE_IMAGE} alt="Hope International highlight" className="h-[180px] w-full object-cover" />
                 </div>
               </div>
             </div>
