@@ -48,6 +48,11 @@ function resolveDestination(user) {
   return '/auctions';
 }
 
+function sanitizeSecondaryCtaHref(href, fallback = '#details') {
+  if (!href || href === '/login' || href === '/register') return fallback;
+  return href;
+}
+
 function ActionLink({ href, primary = false, children, compact = false }) {
   const className = primary
     ? `inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 ${compact ? 'px-4 py-2.5 text-sm' : 'px-5 py-3 text-sm'} font-semibold text-white shadow-[0_18px_32px_rgba(15,23,42,0.2)] transition hover:bg-slate-900`
@@ -119,6 +124,8 @@ function BenefitCard({ item }) {
 }
 
 function FeaturedCard({ item }) {
+  const targetHref = sanitizeSecondaryCtaHref(item.targetLink, '#details');
+
   return (
     <div className="overflow-hidden rounded-[30px] border border-white/70 bg-white/95 shadow-[0_24px_60px_rgba(15,23,42,0.1)]">
       <div className="relative h-56 overflow-hidden bg-slate-100">
@@ -132,7 +139,7 @@ function FeaturedCard({ item }) {
         <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-slate-950">{item.title}</h3>
         <p className="mt-3 text-sm leading-6 text-slate-600">{item.description}</p>
         <div className="mt-5 flex items-center justify-end gap-3">
-          <ActionLink href={item.targetLink || '/register'} primary>
+          <ActionLink href={targetHref} primary>
             {item.ctaText || 'Explore'}
             <ArrowRight size={16} />
           </ActionLink>
@@ -144,6 +151,7 @@ function FeaturedCard({ item }) {
 
 function DetailBlock({ item }) {
   const reversed = item.layoutStyle === 'image-left';
+  const targetHref = sanitizeSecondaryCtaHref(item.targetLink, '#featured');
 
   return (
     <div className={`grid gap-5 rounded-[32px] border border-white/70 bg-white/95 p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)] md:grid-cols-2 md:items-center ${reversed ? 'md:[&>div:first-child]:order-2' : ''}`}>
@@ -154,7 +162,7 @@ function DetailBlock({ item }) {
         <p className="mt-4 text-sm leading-7 text-slate-600">{item.bodyText}</p>
         {item.ctaText ? (
           <div className="mt-6">
-            <ActionLink href={item.targetLink || '/register'} primary>
+            <ActionLink href={targetHref} primary>
               {item.ctaText}
               <ArrowRight size={16} />
             </ActionLink>
@@ -506,15 +514,15 @@ export default function PublicLandingPage() {
                     <div className="mt-3 flex flex-col gap-2 text-white/75">
                       <a href="#featured">Featured</a>
                       <a href="#details">Highlights</a>
-                      <Link href="/login">Login</Link>
+                      <a href="#details">Benefits</a>
                     </div>
                   </div>
                   <div>
                     <p className="font-semibold text-white">Get started</p>
                     <div className="mt-3 flex flex-col gap-2 text-white/75">
-                      <Link href="/register">Register</Link>
-                      <Link href="/login">Login</Link>
-                      <Link href="/register">Create account</Link>
+                      <a href="#featured">Explore products</a>
+                      <a href="#details">Platform highlights</a>
+                      <a href={`mailto:${data.settings.footerContactEmail}`}>Contact support</a>
                     </div>
                   </div>
                 </div>
