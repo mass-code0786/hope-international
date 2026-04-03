@@ -9,7 +9,6 @@ import {
   ChevronRight,
   Gavel,
   HeartPulse,
-  LayoutGrid,
   PackagePlus,
   Plus,
   Search,
@@ -35,7 +34,7 @@ import { queryKeys } from '@/lib/query/queryKeys';
 import { addToCart, subscribeCart } from '@/lib/utils/cart';
 import { currency } from '@/lib/utils/format';
 import { getProductPricing } from '@/lib/utils/pricing';
-import { getAvailableWalletBalance, hasSufficientWalletBalance } from '@/lib/utils/wallet';
+import { hasSufficientWalletBalance } from '@/lib/utils/wallet';
 
 const fallbackSlides = [
   {
@@ -194,7 +193,7 @@ function CartPill() {
   return (
     <Link
       href="/cart"
-      className="inline-flex h-9 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 text-slate-700 shadow-[0_6px_14px_rgba(15,23,42,0.05)]"
+      className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 text-slate-700 shadow-[0_6px_14px_rgba(15,23,42,0.05)]"
       aria-label={`Open cart${count ? ` with ${count} item${count === 1 ? '' : 's'}` : ''}`}
     >
       <span className="relative inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-white">
@@ -247,7 +246,6 @@ export default function DashboardPage() {
   const isLoading = productsLoading || meQuery.isLoading || walletQuery.isLoading || bannersQuery.isLoading;
   const hasFatalError = meQuery.isError || walletQuery.isError;
   const user = meQuery.data || {};
-  const walletBalance = getAvailableWalletBalance(walletQuery.data);
   const products = Array.isArray(productData) ? productData : [];
   const liveAuctions = Array.isArray(auctionsQuery.data?.data) ? auctionsQuery.data.data : [];
   const homepageBanners = Array.isArray(bannersQuery.data) ? bannersQuery.data : [];
@@ -327,53 +325,38 @@ export default function DashboardPage() {
   return (
     <div className="-mx-4 min-h-full bg-[#f5f7fb] px-4 pb-24 pt-1.5 sm:mx-0 sm:rounded-[32px] sm:border sm:border-slate-200 sm:px-5 sm:py-3">
       <div className="mx-auto max-w-xl space-y-3">
-        <section className="rounded-[24px] bg-white p-3 shadow-[0_14px_32px_rgba(15,23,42,0.06)]">
+        <section className="px-1 pt-1">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">My Location</p>
               <div className="mt-0.5 flex items-center gap-1">
-                <h1 className="truncate text-[16px] font-semibold tracking-[-0.03em] text-slate-900">{buildLocationLabel(user)}</h1>
-                <ChevronRight size={14} className="shrink-0 text-slate-400" />
+                <h1 className="truncate text-[15px] font-semibold tracking-[-0.03em] text-slate-900">{buildLocationLabel(user)}</h1>
+                <ChevronRight size={13} className="shrink-0 text-slate-400" />
               </div>
-              <p className="mt-0.5 truncate text-[11px] text-slate-500">{buildLocationDetail(user)}</p>
+              <p className="mt-0.5 truncate text-[10px] text-slate-500">{buildLocationDetail(user)}</p>
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="hidden sm:block">
-                <CartPill />
-              </div>
+              <CartPill />
               <button
                 type="button"
                 aria-label="Notifications"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-[#f8fafc] text-slate-700"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700"
               >
-                <Bell size={16} />
+                <Bell size={15} />
               </button>
             </div>
           </div>
-
-          <div className="mt-2.5 flex items-center gap-2 rounded-[18px] bg-[#f8fafc] px-2.5 py-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-700 shadow-[0_6px_14px_rgba(15,23,42,0.06)]">
-              <LayoutGrid size={15} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-semibold text-slate-900">
-                {user?.first_name || user?.username || 'Hope Member'}
-              </p>
-              <p className="truncate text-[10px] text-slate-500">Wallet balance: {currency(walletBalance)}</p>
-            </div>
-            <CartPill />
-          </div>
         </section>
 
-        <section className="rounded-[24px] bg-white p-3 shadow-[0_14px_32px_rgba(15,23,42,0.06)]">
+        <section>
           <label className="relative block">
             <Search size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               readOnly
               value=""
               placeholder="Search products, deals, groceries"
-              className="w-full rounded-full border border-slate-200 bg-[#f8fafc] py-2.5 pl-10 pr-3.5 text-[12px] text-slate-700 outline-none placeholder:text-slate-400"
+              className="w-full rounded-[18px] border border-slate-200 bg-white py-2.5 pl-10 pr-3.5 text-[12px] text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.04)] outline-none placeholder:text-slate-400"
             />
           </label>
         </section>
@@ -428,51 +411,52 @@ export default function DashboardPage() {
           ) : null}
         </section>
 
-        <section className="rounded-[28px] bg-white p-4 shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
+        <section className="rounded-[24px] border border-amber-200 bg-[linear-gradient(135deg,#fef3c7,#fff7ed)] p-3 shadow-[0_14px_28px_rgba(15,23,42,0.05)]">
+          <Link href="/auctions" className="flex items-center gap-3">
+            <span className="inline-flex h-11 w-11 items-center justify-center rounded-[16px] bg-white text-amber-700 shadow-[0_8px_18px_rgba(15,23,42,0.06)]">
+              <Gavel size={18} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700">Win Now</p>
+              <p className="mt-0.5 text-[14px] font-semibold text-slate-900">Auctions</p>
+              <p className="mt-0.5 truncate text-[11px] text-slate-600">
+                {auctionSummary.liveCount > 0
+                  ? `${auctionSummary.liveCount} live now${auctionSummary.upcomingCount ? ` | ${auctionSummary.upcomingCount} upcoming` : ''}`
+                  : 'Browse current and upcoming auctions'}
+              </p>
+            </div>
+            <span className="inline-flex h-8 items-center rounded-full bg-slate-900 px-3 text-[11px] font-semibold text-white">
+              Open
+            </span>
+          </Link>
+        </section>
+
+        <section className="rounded-[24px] bg-white p-3 shadow-[0_14px_32px_rgba(15,23,42,0.06)]">
           <div className="mb-3 flex items-center justify-between">
             <div>
-              <h2 className="text-[16px] font-semibold text-slate-900">Browse Services</h2>
-              <p className="text-[12px] text-slate-500">Quick access to the main shopping areas</p>
+              <h2 className="text-[15px] font-semibold text-slate-900">Browse Services</h2>
+              <p className="text-[11px] text-slate-500">Quick access to the main shopping areas</p>
             </div>
-            <Link href="/shop" className="text-[12px] font-semibold text-slate-900">See all</Link>
+            <Link href="/shop" className="text-[11px] font-semibold text-slate-900">See all</Link>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2.5">
             {homeActions.map((action) => {
               const Icon = action.icon;
               return (
                 <Link
                   key={action.label}
                   href={getActionHref(action)}
-                  className={`rounded-[22px] border p-3 text-center shadow-[0_10px_22px_rgba(15,23,42,0.05)] ${action.featured ? 'border-amber-200 bg-amber-50/70' : 'border-slate-200 bg-[#fbfcfe]'}`}
+                  className={`rounded-[20px] border px-2 py-3 text-center shadow-[0_8px_18px_rgba(15,23,42,0.04)] ${action.featured ? 'border-amber-200 bg-amber-50/70' : 'border-slate-200 bg-[#fbfcfe]'}`}
                 >
-                  <span className={`mx-auto inline-flex h-12 w-12 items-center justify-center rounded-[18px] ${action.tint}`}>
-                    <Icon size={20} />
+                  <span className={`mx-auto inline-flex h-10 w-10 items-center justify-center rounded-[16px] ${action.tint}`}>
+                    <Icon size={18} />
                   </span>
-                  <p className="mt-2 text-[12px] font-semibold text-slate-900">{action.label}</p>
+                  <p className="mt-2 text-[11px] font-semibold text-slate-900">{action.label}</p>
                 </Link>
               );
             })}
           </div>
-        </section>
-
-        <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
-          <Link href="/auctions" className="flex items-center gap-3">
-            <span className="inline-flex h-12 w-12 items-center justify-center rounded-[18px] bg-amber-50 text-amber-700">
-              <Gavel size={20} />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[14px] font-semibold text-slate-900">Auctions</p>
-              <p className="text-[12px] text-slate-500">
-                {auctionSummary.liveCount > 0
-                  ? `${auctionSummary.liveCount} live now${auctionSummary.upcomingCount ? ` | ${auctionSummary.upcomingCount} upcoming` : ''}`
-                  : 'Browse current and upcoming auctions'}
-              </p>
-            </div>
-            <span className="inline-flex h-9 items-center rounded-full bg-slate-900 px-3 text-[12px] font-semibold text-white">
-              Open
-            </span>
-          </Link>
         </section>
 
         <section className="space-y-3">
