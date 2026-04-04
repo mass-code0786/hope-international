@@ -7,7 +7,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowDownToLine, ArrowRight, ArrowUpFromLine, CircleDollarSign, Coins, Headset, History, Landmark, Link2, LogOut, Network, ShieldCheck, Sparkles, Store, WalletCards } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { SectionHeader } from '@/components/ui/SectionHeader';
-import { StatCard } from '@/components/ui/StatCard';
 import { ProfileActions } from '@/components/profile/ProfileActions';
 import { BinaryReferralLinks } from '@/components/referral/BinaryReferralLinks';
 import { ProfileSkeleton } from '@/components/ui/PageSkeletons';
@@ -20,6 +19,16 @@ import { useAuthStore } from '@/lib/store/authStore';
 import { clearStoredToken } from '@/lib/utils/tokenStorage';
 import { currency, formatLabel, number, rankLabel } from '@/lib/utils/format';
 import { isSeller } from '@/lib/constants/access';
+
+function ProfileInfoCard({ label, value, subtitle = null, className = '', statusTone = '' }) {
+  return (
+    <article className={`rounded-[20px] border border-[rgba(255,255,255,0.07)] bg-[#171c26] px-4 py-3.5 shadow-[0_14px_28px_rgba(0,0,0,0.22)] ${className}`}>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">{label}</p>
+      <p className={`mt-2 break-words text-[1rem] font-semibold tracking-[-0.03em] text-white ${statusTone}`}>{value}</p>
+      {subtitle ? <p className="mt-1.5 text-[12px] leading-5 text-slate-400">{subtitle}</p> : null}
+    </article>
+  );
+}
 
 function WalletCard({ title, value, accent, icon: Icon, href, actionLabel, titleIcon = null, valueIcon = null }) {
   return (
@@ -177,21 +186,43 @@ export default function ProfilePage() {
     <div className="space-y-4">
       <SectionHeader title="Profile" />
 
-      <div className="card-surface p-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h3 className="text-2xl font-semibold tracking-[-0.05em] text-text">{[user.first_name, user.last_name].filter(Boolean).join(' ') || user.username}</h3>
-            <p className="mt-2 text-sm leading-6 text-muted">Username @{user.username || '-'} | Current rank {rankLabel(user.rank_name)} | Sponsor {user.sponsor_username || user.sponsor_id || 'N/A'}</p>
+      <div className="rounded-[22px] border border-[rgba(255,255,255,0.07)] bg-[#161b24] p-4 shadow-[0_18px_36px_rgba(0,0,0,0.24)]">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0">
+            <h3 className="text-[1.6rem] font-semibold tracking-[-0.05em] text-white">{[user.first_name, user.last_name].filter(Boolean).join(' ') || user.username}</h3>
+            <p className="mt-1.5 text-[13px] leading-5 text-slate-400">
+              @{user.username || '-'} <span className="px-1.5 text-slate-600">/</span> {rankLabel(user.rank_name)} <span className="px-1.5 text-slate-600">/</span> Sponsor {user.sponsor_username || user.sponsor_id || 'N/A'}
+            </p>
           </div>
-          <button onClick={onLogout} className="inline-flex items-center gap-2 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-300"><LogOut size={16} /> Logout</button>
+          <button
+            onClick={onLogout}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-[16px] border border-rose-500/20 bg-rose-500/10 px-4 text-[13px] font-semibold text-rose-300 transition hover:bg-rose-500/14"
+          >
+            <LogOut size={15} /> Logout
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <StatCard compact title="Username" value={user.username || '-'} subtitle={`ID: ${user.id || '-'}`} className="col-span-2" />
-        <StatCard compact title="Rank" value={rankLabel(user.rank_name)} subtitle={`Sponsor: ${user.sponsor_username || user.sponsor_id || 'N/A'}`} />
-        <StatCard compact title="Status" value={<span className={user.is_active === false ? 'text-[#ef4444]' : 'text-[#22c55e]'}>{user.is_active === false ? 'Inactive' : 'Active'}</span>} />
-        <StatCard compact title="Email" value={user.email || '-'} className="col-span-2" />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <ProfileInfoCard
+          label="Username"
+          value={user.username || '-'}
+          subtitle={`ID: ${user.id || '-'}`}
+        />
+        <ProfileInfoCard
+          label="Rank"
+          value={rankLabel(user.rank_name)}
+          subtitle={`Sponsor: ${user.sponsor_username || user.sponsor_id || 'N/A'}`}
+        />
+        <ProfileInfoCard
+          label="Status"
+          value={user.is_active === false ? 'Inactive' : 'Active'}
+          statusTone={user.is_active === false ? 'text-[#f87171]' : 'text-[#4ade80]'}
+        />
+        <ProfileInfoCard
+          label="Email"
+          value={user.email || '-'}
+        />
       </div>
 
       <div className="rounded-[32px] border border-[rgba(255,255,255,0.06)] bg-[#11141b] p-4 shadow-[0_24px_50px_rgba(0,0,0,0.32)]">
