@@ -18,7 +18,7 @@ import { getWallet } from '@/lib/services/walletService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { useAuthStore } from '@/lib/store/authStore';
 import { clearStoredToken } from '@/lib/utils/tokenStorage';
-import { currency, number, rankLabel } from '@/lib/utils/format';
+import { currency, formatLabel, number, rankLabel } from '@/lib/utils/format';
 import { isSeller } from '@/lib/constants/access';
 
 function WalletCard({ title, description, value, accent, icon: Icon, href, actionLabel, titleIcon = null, valueIcon = null }) {
@@ -28,9 +28,9 @@ function WalletCard({ title, description, value, accent, icon: Icon, href, actio
         <span className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl ${accent}`}><Icon size={18} /></span>
         {href ? <Link href={href} className="text-[11px] font-semibold text-slate-500 dark:text-muted">{actionLabel}</Link> : null}
       </div>
-      <div className="mt-4 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-muted">
+      <div className="mt-4 flex items-center gap-2 text-[11px] font-semibold tracking-[-0.01em] text-slate-500 dark:text-muted">
         {titleIcon}
-        <p>{title}</p>
+        <p>{formatLabel(title)}</p>
       </div>
       <div className="mt-2 flex items-center gap-2 text-2xl font-semibold tracking-[-0.05em] text-slate-950 dark:text-text">
         {valueIcon}
@@ -203,7 +203,7 @@ export default function ProfilePage() {
         <div className="mb-4 flex items-center gap-2 text-slate-800 dark:text-text">
           <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-900 text-white dark:bg-white dark:text-slate-950"><WalletCards size={16} /></span>
           <div>
-            <p className="text-sm font-semibold">Wallet Overview</p>
+            <p className="text-sm font-semibold">{formatLabel('Wallet Overview')}</p>
             <p className="text-xs text-slate-500 dark:text-muted">Income, deposit, withdrawal, and BTCT balances kept separate.</p>
           </div>
         </div>
@@ -211,10 +211,10 @@ export default function ProfilePage() {
       </div>
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard compact title="Income Wallet" value={currency(wallet.income_wallet_balance ?? wallet.income_balance ?? 0)} />
-        <StatCard compact title="Deposit Wallet" value={currency(wallet.deposit_wallet_balance ?? wallet.deposit_balance ?? 0)} />
-        <StatCard compact title="Withdrawal Wallet" value={currency(wallet.withdrawal_wallet_balance ?? wallet.withdrawal_balance ?? wallet.balance ?? 0)} />
-        <StatCard compact title="BTCT Wallet" value={`${number(wallet.btct_wallet_balance ?? wallet.btct_balance ?? 0)} BTCT`} />
+        <StatCard compact title={formatLabel('Income Wallet')} value={currency(wallet.income_wallet_balance ?? wallet.income_balance ?? 0)} uppercaseTitle={false} />
+        <StatCard compact title={formatLabel('Deposit Wallet')} value={currency(wallet.deposit_wallet_balance ?? wallet.deposit_balance ?? 0)} uppercaseTitle={false} />
+        <StatCard compact title={formatLabel('Withdrawal Wallet')} value={currency(wallet.withdrawal_wallet_balance ?? wallet.withdrawal_balance ?? wallet.balance ?? 0)} uppercaseTitle={false} />
+        <StatCard compact title={formatLabel('BTCT Wallet')} value={`${number(wallet.btct_wallet_balance ?? wallet.btct_balance ?? 0)} BTCT`} uppercaseTitle={false} />
       </div>
 
       <BinaryReferralLinks username={user?.username} />

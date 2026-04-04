@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { ArrowRight, ImageOff, Plus, ShieldCheck, Star } from 'lucide-react';
+import { ArrowRight, ImageOff, Plus, Star } from 'lucide-react';
 import { currency } from '@/lib/utils/format';
 import { addToCart } from '@/lib/utils/cart';
 import { getOfferPercent, getProductPricing } from '@/lib/utils/pricing';
@@ -55,8 +55,8 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
   const buttonLabel = disableBuying ? buyLabel : isBuying ? '...' : buyLabel;
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
-      <Link href={href} className={`relative block h-28 bg-gradient-to-br ${imageTheme} sm:h-24`}>
+    <article className="grid h-[17.5rem] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)] grid-rows-[4fr_1fr]">
+      <Link href={href} className={`relative block h-full min-h-0 overflow-hidden bg-gradient-to-br ${imageTheme}`}>
         <span className="absolute left-1.5 top-1.5 rounded bg-emerald-500 px-1 py-0.5 text-[8px] font-semibold text-white">
           -{offerPercent}%
         </span>
@@ -68,52 +68,49 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
           <img src={cover} alt={safeProduct.name || 'Product'} className="h-full w-full object-cover" />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-slate-500">
-            <ImageOff size={18} />
+            <ImageOff size={20} />
           </div>
         )}
       </Link>
 
-      <div className="space-y-2 p-2.5">
+      <div className="grid min-h-0 grid-rows-[auto_auto] gap-1.5 p-2">
         <Link href={href} className="block">
-          <h3 className="line-clamp-2 min-h-[2.25rem] text-[11px] font-semibold leading-4 text-slate-900">{safeProduct.name || 'Unnamed Product'}</h3>
+          <h3 className="line-clamp-2 text-[10px] font-semibold leading-[1.15] text-slate-900">{safeProduct.name || 'Unnamed Product'}</h3>
         </Link>
 
-        <div className="flex items-center justify-between gap-1">
-          <p className="truncate text-[9px] text-slate-500">{category}</p>
-          <div className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[8px] font-medium text-emerald-700">
-            <ShieldCheck size={9} />
-            {safeProduct.is_qualifying ? 'Qual' : 'Trust'}
+        <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_auto] items-end gap-1">
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold leading-none text-slate-900">{currency(pricing.finalPrice)}</p>
+            <div className="mt-0.5 flex items-center gap-1">
+              {pricing.compareAtPrice > 0 ? <p className="truncate text-[8px] leading-none text-slate-400 line-through">{currency(pricing.compareAtPrice)}</p> : null}
+              <p className="truncate text-[8px] leading-none text-slate-500">{category}</p>
+            </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-1">
-          <p className="text-[12px] font-bold text-slate-900">{currency(pricing.finalPrice)}</p>
-          {pricing.compareAtPrice > 0 ? <p className="text-[8px] text-slate-400 line-through">{currency(pricing.compareAtPrice)}</p> : null}
-        </div>
-
-        <div className="grid grid-cols-[1fr_auto] gap-1.5">
-          <button
-            disabled={isBuying || disableBuying}
-            onClick={() => onBuy?.(safeProduct)}
-            className="inline-flex min-h-[34px] items-center justify-center gap-0.5 rounded-[10px] bg-[#0ea5e9] px-1.5 py-1.5 text-[10px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {buttonLabel}
-            {isBuying || disableBuying ? null : <ArrowRight size={10} />}
-          </button>
-          <button
-            onClick={() => {
-              const nextCount = addToCart(safeProduct, 1);
-              if (!nextCount) {
-                toast.error('Unable to add this product to cart');
-                return;
-              }
-              toast.success(`Added to cart (${nextCount})`);
-            }}
-            className="inline-flex items-center justify-center rounded-[10px] border border-slate-200 bg-[#e2e8f0] px-2 text-slate-700"
-            aria-label="Add to cart"
-          >
-            <Plus size={12} />
-          </button>
+          <div className="grid grid-cols-[1fr_auto] gap-1">
+            <button
+              disabled={isBuying || disableBuying}
+              onClick={() => onBuy?.(safeProduct)}
+              className="inline-flex h-7 min-w-[3.25rem] items-center justify-center gap-0.5 rounded-[10px] bg-[#0ea5e9] px-2 text-[9px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {buttonLabel}
+              {isBuying || disableBuying ? null : <ArrowRight size={9} />}
+            </button>
+            <button
+              onClick={() => {
+                const nextCount = addToCart(safeProduct, 1);
+                if (!nextCount) {
+                  toast.error('Unable to add this product to cart');
+                  return;
+                }
+                toast.success(`Added to cart (${nextCount})`);
+              }}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-[10px] border border-slate-200 bg-[#e2e8f0] text-slate-700"
+              aria-label="Add to cart"
+            >
+              <Plus size={11} />
+            </button>
+          </div>
         </div>
       </div>
     </article>

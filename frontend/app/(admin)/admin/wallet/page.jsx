@@ -13,7 +13,7 @@ import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
 import BtctCoinLogo from '@/components/common/BtctCoinLogo';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { createManualWalletAdjustment, getAdminBtctStaking, getAdminWalletSummary, getAdminWalletTransactions, runAdminBtctStakingPayouts } from '@/lib/services/admin';
-import { currency, incomeSourceLabel, number, shortDate } from '@/lib/utils/format';
+import { currency, formatLabel, incomeSourceLabel, number, shortDate } from '@/lib/utils/format';
 
 export default function AdminWalletPage() {
   const [filter, setFilter] = useState('all');
@@ -118,7 +118,7 @@ export default function AdminWalletPage() {
             { key: 'cycle_number', title: 'Cycle', className: 'col-span-2', render: (row) => `#${row.cycle_number}` },
             { key: 'cycle_key', title: 'Cycle Date', className: 'col-span-2', render: (row) => row.cycle_key || shortDate(row.payout_date) },
             { key: 'payout_amount_usd', title: 'Amount', className: 'col-span-2', render: (row) => currency(row.payout_amount_usd) },
-            { key: 'credited_to', title: 'Credited To', className: 'col-span-3', render: (row) => row.credited_to || 'withdrawal_wallet' },
+            { key: 'credited_to', title: 'Credited To', className: 'col-span-3', render: (row) => formatLabel(row.credited_to || 'withdrawal_wallet') },
             { key: 'payout_date', title: 'Payout Date', className: 'col-span-3', render: (row) => shortDate(row.payout_date) }
           ]}
           rows={stakingPayouts}
@@ -140,7 +140,7 @@ export default function AdminWalletPage() {
           { key: 'tx_type', title: 'Type', className: 'col-span-2', render: (row) => <StatusBadge status={row.tx_type} /> },
           { key: 'amount', title: 'Amount', className: 'col-span-2', render: (row) => currency(row.amount) },
           { key: 'created_at', title: 'Date', className: 'col-span-2', render: (row) => shortDate(row.created_at) },
-          { key: 'meta', title: 'Meta', className: 'col-span-1', render: (row) => row.metadata?.note || row.metadata?.reason || row.metadata?.walletType || '-' }
+          { key: 'meta', title: 'Meta', className: 'col-span-1', render: (row) => row.metadata?.note || row.metadata?.reason || (row.metadata?.walletType ? formatLabel(row.metadata.walletType) : '-') }
         ]}
         rows={txs}
       />

@@ -12,6 +12,7 @@ import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { getAdminDepositWalletSettings, updateAdminDepositWalletSettings } from '@/lib/services/admin';
 import { compressImageFile } from '@/lib/utils/imageUpload';
+import { formatLabel } from '@/lib/utils/format';
 
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
 const MAX_FILE_SIZE_BYTES = 4 * 1024 * 1024;
@@ -80,7 +81,7 @@ export default function AdminDepositWalletPage() {
 
   return (
     <div className="space-y-5">
-      <AdminSectionHeader title="Deposit Wallet" subtitle="SuperAdmin controls the single active USDT BEP20 wallet shown to users." action={<Link href="/admin/settings" className="rounded-xl border border-white/10 px-3 py-2 text-sm text-muted">Back to Settings</Link>} />
+      <AdminSectionHeader title={formatLabel('Deposit Wallet')} subtitle="SuperAdmin controls the single active USDT BEP20 wallet shown to users." action={<Link href="/admin/settings" className="rounded-xl border border-white/10 px-3 py-2 text-sm text-muted">Back to Settings</Link>} />
 
       <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
         <section className="card-surface p-5">
@@ -96,7 +97,7 @@ export default function AdminDepositWalletPage() {
           </div>
 
           <label className="mt-4 block text-sm text-muted">
-            Wallet Address
+            {formatLabel('Wallet Address')}
             <textarea value={form.walletAddress} onChange={(e) => setForm((prev) => ({ ...prev, walletAddress: e.target.value }))} rows={3} className="mt-1 w-full rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm text-text" placeholder="Enter the active USDT BEP20 wallet address" />
           </label>
 
@@ -153,7 +154,7 @@ export default function AdminDepositWalletPage() {
 
           <label className="mt-4 flex items-center gap-3 rounded-xl border border-white/10 bg-cardSoft px-3 py-3 text-sm text-text">
             <input type="checkbox" checked={form.isActive} onChange={(e) => setForm((prev) => ({ ...prev, isActive: e.target.checked }))} />
-            Deposit wallet active for users
+            {formatLabel('Deposit wallet')} active for users
           </label>
 
           <div className="mt-5 flex justify-end">
@@ -174,7 +175,7 @@ export default function AdminDepositWalletPage() {
               {qrPreview ? <img src={qrPreview} alt="Deposit QR code preview" className="h-56 w-56 rounded-2xl border border-white/10 bg-white object-contain p-3" /> : <div className="flex h-56 w-56 items-center justify-center rounded-2xl border border-dashed border-white/10 text-sm text-muted">QR preview appears here</div>}
             </div>
             <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/40 p-3">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-white/45">Wallet Address</p>
+              <p className="text-[11px] tracking-[-0.01em] text-white/45">{formatLabel('Wallet Address')}</p>
               <p className="mt-2 break-all text-sm font-medium text-white">{form.walletAddress || 'No wallet address set'}</p>
               <button type="button" onClick={async () => {
                 if (!form.walletAddress) return;

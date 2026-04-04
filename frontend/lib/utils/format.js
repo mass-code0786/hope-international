@@ -16,6 +16,18 @@ export function percentage(value = 0) {
   return `${Number(value || 0).toFixed(1)}%`;
 }
 
+export function formatLabel(text) {
+  if (!text) return '';
+  const normalized = String(text)
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+
+  if (!normalized) return '';
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
 export function shortDate(value) {
   if (!value) return '-';
   const date = new Date(value);

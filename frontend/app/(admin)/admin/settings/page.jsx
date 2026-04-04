@@ -11,6 +11,7 @@ import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { getAdminSettings, updateAdminSettings } from '@/lib/services/admin';
 import { REWARD_SLABS, RANKS } from '@/lib/constants/theme';
+import { formatLabel } from '@/lib/utils/format';
 
 export default function AdminSettingsPage() {
   const queryClient = useQueryClient();
@@ -60,7 +61,7 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="space-y-5">
-      <AdminSectionHeader title="Settings & Configuration" subtitle="Compensation, rewards, and operational settings" action={<Link href="/admin/settings/deposit-wallet" className="rounded-xl border border-white/10 px-3 py-2 text-sm text-muted">Deposit Wallet</Link>} />
+      <AdminSectionHeader title="Settings & Configuration" subtitle="Compensation, rewards, and operational settings" action={<Link href="/admin/settings/deposit-wallet" className="rounded-xl border border-white/10 px-3 py-2 text-sm text-muted">{formatLabel('Deposit Wallet')}</Link>} />
 
       <div className="card-surface p-4">
         <p className="text-sm font-semibold text-text">Compensation Settings</p>
@@ -90,11 +91,11 @@ export default function AdminSettingsPage() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">
-        <SummaryPanel title="Deposit Wallet" items={[
+        <SummaryPanel title={formatLabel('Deposit Wallet')} items={[
           { label: 'Asset', value: depositWallet.asset || 'USDT' },
           { label: 'Network', value: depositWallet.network || 'BEP20' },
           { label: 'Status', value: depositWallet.isActive ? 'Active' : 'Inactive' },
-          { label: 'Wallet', value: depositWallet.walletAddress || '-' }
+          { label: formatLabel('Wallet'), value: depositWallet.walletAddress || '-' }
         ]} />
         <SummaryPanel title="Rank Multipliers" items={rankMultipliers.map((r) => ({ label: r.name, value: `${r.capMultiplier}x` }))} />
         <SummaryPanel title="Reward Slabs" items={rewardSlabs.map((r) => ({ label: `${r.thresholdBv} BV`, value: r.rewardLabel || r.label }))} />

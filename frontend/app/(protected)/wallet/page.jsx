@@ -13,7 +13,18 @@ import { Badge } from '@/components/ui/Badge';
 import BtctCoinLogo from '@/components/common/BtctCoinLogo';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { bindWalletAddress, getBtctStakingSummary, getWallet, startBtctStaking } from '@/lib/services/walletService';
-import { currency, dateTime, incomeSourceLabel, number, statusVariant } from '@/lib/utils/format';
+import { currency, dateTime, formatLabel, incomeSourceLabel, number, statusVariant } from '@/lib/utils/format';
+
+function getTransactionTone(tx) {
+  const type = String(tx?.tx_type || '').toLowerCase();
+  const source = String(tx?.source || '').toLowerCase();
+
+  if (type === 'debit' || source.includes('withdraw') || source.includes('purchase')) {
+    return { sign: '-', className: 'text-rose-600' };
+  }
+
+  return { sign: '+', className: 'text-emerald-600' };
+}
 
 export default function WalletPage() {
   const queryClient = useQueryClient();
@@ -66,92 +77,55 @@ export default function WalletPage() {
 
   return (
     <div className="space-y-3">
-      <SectionHeader title="Wallet Overview" subtitle="Cash balances, BTCT rewards, staking status, wallet binding, and recent finance activity" />
+      <SectionHeader title={formatLabel('Wallet Overview')} />
 
       <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
-        <StatCard compact title="Available Balance" value={currency(wallet.balance || 0)} emphasis="primary" right={<WalletIcon size={18} className="text-accent" />} />
-        <StatCard compact title="Withdrawal Wallet" value={currency(withdrawalBalance)} subtitle="Receives BTCT staking payouts" right={<HandCoins size={18} className="text-accent" />} />
-        <StatCard compact title="BTCT Available" value={`${number(btctAvailable)} BTCT`} subtitle={`Locked ${number(btctLocked)} BTCT`} right={<BtctCoinLogo size={18} className="shrink-0" />} />
-        <StatCard compact title="Recent Transactions" value={transactions.length} subtitle="Latest cash entries" />
+        <StatCard compact title={formatLabel('Available Balance')} value={currency(wallet.balance || 0)} emphasis="primary" right={<WalletIcon size={18} className="text-accent" />} uppercaseTitle={false} />
+        <StatCard compact title={formatLabel('Withdrawal Wallet')} value={currency(withdrawalBalance)} right={<HandCoins size={18} className="text-accent" />} uppercaseTitle={false} />
+        <StatCard compact title={formatLabel('BTCT Available')} value={`${number(btctAvailable)} BTCT`} right={<BtctCoinLogo size={18} className="shrink-0" />} uppercaseTitle={false} />
+        <StatCard compact title="Recent Transactions" value={transactions.length} />
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4">
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <BtctCoinLogo size={18} className="shrink-0" />
-              <p className="text-sm font-semibold text-slate-900">BTCT Staking</p>
-            </div>
-            <p className="mt-1 text-[11px] text-slate-500">Stake from 5,000 BTCT in exact 5,000-BTCT blocks. Every 5,000 BTCT pays $10 on the 10th, 20th, and 30th into your Withdrawal Wallet.</p>
+          <div className="flex items-center gap-2">
+            <BtctCoinLogo size={18} className="shrink-0" />
+            <p className="text-sm font-semibold text-slate-900">{formatLabel('BTCT Staking')}</p>
           </div>
           <Badge variant={stakingPlan ? 'success' : eligibility.isEligible ? 'warning' : 'default'}>{stakingPlan ? 'Active' : eligibility.isEligible ? 'Eligible' : 'Not Eligible'}</Badge>
         </div>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-6">
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
             <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
               <BtctCoinLogo size={14} className="shrink-0" />
-              <p>BTCT Available</p>
+              <p>{formatLabel('BTCT Available')}</p>
             </div>
             <p className="mt-1 text-sm font-semibold text-slate-900">{number(btctAvailable)} BTCT</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
             <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
               <BtctCoinLogo size={14} className="shrink-0" />
-              <p>Locked BTCT</p>
+              <p>{formatLabel('Locked BTCT')}</p>
             </div>
             <p className="mt-1 text-sm font-semibold text-slate-900">{number(btctLocked)} BTCT</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <p className="text-[11px] text-slate-500">Minimum Stake</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">{number(eligibility.minimumBtct || 5000)} BTCT</p>
+            <p className="text-[11px] text-slate-500">{formatLabel('Stake Amount')}</p>
+            <input
+              value={stakingAmount}
+              onChange={(event) => setStakingAmount(event.target.value)}
+              placeholder={String(eligibility.autoStakeAmountBtct || eligibility.minimumBtct || 5000)}
+              type="number"
+              step={blockSize}
+              min={eligibility.minimumBtct || 5000}
+              disabled={Boolean(stakingPlan)}
+              className="mt-1 w-full rounded-lg border border-slate-200 bg-white p-2 text-xs"
+            />
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <p className="text-[11px] text-slate-500">Reward Rule</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">${number(eligibility.payoutUsdPerBlock || 10)} per 5,000</p>
-          </div>
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <p className="text-[11px] text-slate-500">Payout Dates</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">10th / 20th / 30th</p>
-          </div>
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <p className="text-[11px] text-slate-500">Next Payout</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">{stakingPlan?.next_payout_at ? dateTime(stakingPlan.next_payout_at) : 'Not scheduled'}</p>
-          </div>
-        </div>
-
-        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
-          <div className="grid gap-3 md:grid-cols-5">
-            <div>
-              <p className="text-[11px] text-slate-500">Stake Amount</p>
-              <input
-                value={stakingAmount}
-                onChange={(event) => setStakingAmount(event.target.value)}
-                placeholder={String(eligibility.autoStakeAmountBtct || eligibility.minimumBtct || 5000)}
-                type="number"
-                step={blockSize}
-                min={eligibility.minimumBtct || 5000}
-                disabled={Boolean(stakingPlan)}
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-white p-2 text-xs"
-              />
-              <p className="mt-1 text-[10px] text-slate-500">Leave blank to auto-stake your full eligible blocks.</p>
-            </div>
-            <div>
-              <p className="text-[11px] text-slate-500">Eligible Blocks</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{number(eligibility.eligibleBlocks || 0)}</p>
-            </div>
-            <div>
-              <p className="text-[11px] text-slate-500">Active Staked Amount</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{number(stakingPlan?.staking_amount_btct ?? (stakingAmount ? requestedAmount : eligibility.autoStakeAmountBtct || 0))} BTCT</p>
-            </div>
-            <div>
-              <p className="text-[11px] text-slate-500">Staking Blocks</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{number(stakingPlan?.staked_blocks ?? requestedBlocks)}</p>
-            </div>
-            <div>
-              <p className="text-[11px] text-slate-500">Expected Payout Amount</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{currency(stakingPlan?.payout_per_cycle_usd ?? (stakingAmount ? requestedCyclePayout : eligibility.autoPayoutPerCycleUsd || 0))}</p>
-            </div>
+            <p className="text-[11px] text-slate-500">{formatLabel('Expected Payout')}</p>
+            <p className="mt-1 text-sm font-semibold text-slate-900">{currency(stakingPlan?.payout_per_cycle_usd ?? (stakingAmount ? requestedCyclePayout : eligibility.autoPayoutPerCycleUsd || 0))}</p>
           </div>
         </div>
 
@@ -164,17 +138,12 @@ export default function WalletPage() {
             <LockKeyhole size={15} />
             {startStakingMutation.isPending ? 'Starting...' : 'Start Staking'}
           </button>
-          {!eligibility.isEligible && !stakingPlan ? <p className="text-[11px] text-rose-600">You need at least 5,000 BTCT available, and staking must be in exact 5,000-BTCT multiples.</p> : null}
-          {stakingPlan ? <p className="text-[11px] text-emerald-700">Staking started on {dateTime(stakingPlan.started_at)} with {number(stakingPlan.staking_amount_btct)} BTCT locked across {number(stakingPlan.staked_blocks || 0)} blocks.</p> : null}
         </div>
 
         <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-slate-800">Staking Payout History</p>
-            <span className="text-[11px] text-slate-500">Credited to Withdrawal Wallet</span>
-          </div>
+          <p className="text-xs font-semibold text-slate-800">{formatLabel('Staking Payout History')}</p>
           {!stakingPayouts.length ? (
-            <div className="pt-3"><EmptyState title="No staking payouts yet" description="Your BTCT staking payouts will appear here on the 10th, 20th, and 30th after the payout engine runs." /></div>
+            <div className="pt-3"><EmptyState title="No staking payouts yet" /></div>
           ) : (
             <div className="mt-3 divide-y divide-slate-200">
               {stakingPayouts.slice(0, 6).map((item) => (
@@ -192,8 +161,7 @@ export default function WalletPage() {
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-3">
-        <p className="text-xs font-semibold text-slate-800">Bind / Manage Wallet Address</p>
-        <p className="mt-1 text-[11px] text-slate-500">Set the address used for withdrawal requests.</p>
+        <p className="text-xs font-semibold text-slate-800">{formatLabel('Wallet Address')}</p>
 
         <form
           className="mt-2 space-y-2"
@@ -222,21 +190,23 @@ export default function WalletPage() {
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white">
-        <div className="border-b border-slate-200 px-3 py-2 text-[11px] text-slate-500">Recent Wallet Activity</div>
+        <div className="border-b border-slate-200 px-3 py-2 text-[11px] text-slate-500">{formatLabel('Recent Transactions')}</div>
         {!transactions.length ? (
-          <div className="p-3"><EmptyState title="No transactions yet" description="Wallet ledger entries will appear here." /></div>
+          <div className="p-3"><EmptyState title="No transactions yet" /></div>
         ) : (
           <div className="divide-y divide-slate-100">
-            {transactions.slice(0, 10).map((tx) => (
+            {transactions.slice(0, 10).map((tx) => {
+              const tone = getTransactionTone(tx);
+              return (
               <div key={tx.id} className="px-3 py-2.5">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs font-semibold text-slate-800">{incomeSourceLabel(tx.source || 'transaction')}</p>
                   <Badge variant={statusVariant(tx.metadata?.status || (tx.tx_type === 'credit' ? 'approved' : 'pending'))}>{tx.metadata?.status || tx.tx_type}</Badge>
                 </div>
                 <p className="mt-0.5 text-[10px] text-slate-500">{dateTime(tx.created_at)}</p>
-                <p className="mt-1 text-xs font-semibold text-slate-900">{tx.tx_type === 'credit' ? '+' : '-'} {currency(tx.amount)}</p>
+                <p className={`mt-1 text-xs font-semibold ${tone.className}`}>{tone.sign}{currency(tx.amount)}</p>
               </div>
-            ))}
+            )})}
           </div>
         )}
       </div>
@@ -244,10 +214,10 @@ export default function WalletPage() {
       <div className="rounded-xl border border-slate-200 bg-white">
         <div className="flex items-center gap-2 border-b border-slate-200 px-3 py-2 text-[11px] text-slate-500">
           <BtctCoinLogo size={14} className="shrink-0" />
-          <span>BTCT Reward Ledger</span>
+          <span>{formatLabel('BTCT Reward Ledger')}</span>
         </div>
         {!btctTransactions.length ? (
-          <div className="p-3"><EmptyState title="No BTCT rewards yet" description="Auction loss compensation and BTCT reward records will appear here." /></div>
+          <div className="p-3"><EmptyState title="No BTCT rewards yet" /></div>
         ) : (
           <div className="divide-y divide-slate-100">
             {btctTransactions.slice(0, 10).map((tx) => (
