@@ -23,22 +23,22 @@ import { isSeller } from '@/lib/constants/access';
 
 function WalletCard({ title, value, accent, icon: Icon, href, actionLabel, titleIcon = null, valueIcon = null }) {
   return (
-    <article className="overflow-hidden rounded-[28px] border border-slate-200 bg-white px-3.5 py-3 shadow-[0_18px_40px_rgba(15,23,42,0.08)] dark:border-[var(--hope-border)] dark:bg-card">
+    <article className="overflow-hidden rounded-[28px] border border-[rgba(255,255,255,0.06)] bg-[#1f2430] px-3.5 py-3 shadow-[0_18px_40px_rgba(0,0,0,0.28)]">
       <div className="flex items-start justify-between gap-2.5">
         <div className="flex min-w-0 items-start gap-2.5">
           <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${accent}`}><Icon size={18} /></span>
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5 text-[11px] font-semibold tracking-[-0.01em] text-slate-500 dark:text-muted">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold tracking-[-0.01em] text-slate-400">
               {titleIcon}
               <p>{formatLabel(title)}</p>
             </div>
-            <div className="mt-1 flex items-center gap-2 text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950 dark:text-text">
+            <div className="mt-1 flex items-center gap-2 text-[1.35rem] font-semibold tracking-[-0.05em] text-white">
               {valueIcon}
               <p>{value}</p>
             </div>
           </div>
         </div>
-        {href ? <Link href={href} className="shrink-0 text-[12px] font-semibold text-slate-500 opacity-70 dark:text-muted">{actionLabel}</Link> : null}
+        {href ? <Link href={href} className="shrink-0 text-[12px] font-semibold text-slate-400 opacity-70">{actionLabel}</Link> : null}
       </div>
     </article>
   );
@@ -70,10 +70,7 @@ function WalletSection({ walletQuery }) {
   return (
     <div className="space-y-3">
       <div className="flex items-end justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold text-slate-950 dark:text-text">Wallets</p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-muted">Income, deposit, withdrawal, and BTCT balances from live wallet data.</p>
-        </div>
+        <p className="text-sm font-semibold text-slate-950 dark:text-text">Wallets</p>
         <Link href="/wallet" className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-accent">Open wallet <ArrowRight size={14} /></Link>
       </div>
 
@@ -178,7 +175,7 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-4">
-      <SectionHeader title="Profile" subtitle="Identity, wallets, referral access, support, and every live account surface from one compact hub." eyebrow="Account" />
+      <SectionHeader title="Profile" eyebrow="Account" />
 
       <div className="card-surface p-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -195,35 +192,22 @@ export default function ProfilePage() {
         <StatCard compact title="Username" value={user.username || '-'} subtitle={`ID: ${user.id || '-'}`} />
         <StatCard compact title="Rank" value={rankLabel(user.rank_name)} subtitle={`Sponsor: ${user.sponsor_username || user.sponsor_id || 'N/A'}`} />
         <StatCard compact title="Email" value={user.email || '-'} />
-        <StatCard compact title="Status" value={user.is_active === false ? 'Inactive' : 'Active'} />
+        <StatCard compact title="Status" value={<span className={user.is_active === false ? 'text-[#ef4444]' : 'text-[#22c55e]'}>{user.is_active === false ? 'Inactive' : 'Active'}</span>} />
       </div>
 
-      <div className="rounded-[32px] border border-slate-200 bg-[linear-gradient(135deg,#f8fafc_0%,#ffffff_55%,#eef6ff_100%)] p-4 shadow-[0_24px_50px_rgba(15,23,42,0.08)] dark:border-[var(--hope-border)] dark:bg-[linear-gradient(180deg,rgba(8,15,24,0.92),rgba(11,18,29,0.88))]">
+      <div className="rounded-[32px] border border-[rgba(255,255,255,0.06)] bg-[#11141b] p-4 shadow-[0_24px_50px_rgba(0,0,0,0.32)]">
         <div className="mb-4 flex items-center gap-2 text-slate-800 dark:text-text">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-900 text-white dark:bg-white dark:text-slate-950"><WalletCards size={16} /></span>
-          <div>
-            <p className="text-sm font-semibold">{formatLabel('Wallet Overview')}</p>
-            <p className="text-xs text-slate-500 dark:text-muted">Income, deposit, withdrawal, and BTCT balances kept separate.</p>
-          </div>
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-[#1f2430] text-white"><WalletCards size={16} /></span>
+          <p className="text-sm font-semibold text-white">{formatLabel('Wallet Overview')}</p>
         </div>
         <WalletSection walletQuery={walletQuery} />
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard compact title={formatLabel('Income Wallet')} value={currency(wallet.income_wallet_balance ?? wallet.income_balance ?? 0)} uppercaseTitle={false} />
-        <StatCard compact title={formatLabel('Deposit Wallet')} value={currency(wallet.deposit_wallet_balance ?? wallet.deposit_balance ?? 0)} uppercaseTitle={false} />
-        <StatCard compact title={formatLabel('Withdrawal Wallet')} value={currency(wallet.withdrawal_wallet_balance ?? wallet.withdrawal_balance ?? wallet.balance ?? 0)} uppercaseTitle={false} />
-        <StatCard compact title={formatLabel('BTCT Wallet')} value={`${number(wallet.btct_wallet_balance ?? wallet.btct_balance ?? 0)} BTCT`} uppercaseTitle={false} />
       </div>
 
       <BinaryReferralLinks username={user?.username} />
 
       <div className="card-surface p-4">
         <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold text-text">Key Access</p>
-            <p className="mt-1 text-xs text-muted">Every live member feature is attached here with the correct destination.</p>
-          </div>
+          <p className="text-sm font-semibold text-text">Key Access</p>
           <span className="inline-flex items-center gap-1 rounded-full bg-[var(--hope-accent-soft)] px-3 py-1 text-[11px] font-semibold text-accent"><Link2 size={12} /> Connected surfaces</span>
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -234,21 +218,15 @@ export default function ProfilePage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="card-surface p-4">
           <div className="flex items-center justify-between gap-2">
-            <div>
-              <p className="text-sm font-semibold text-text">Referral access</p>
-              <p className="mt-1 text-xs text-muted">Use your share link and binary tree together to grow your network.</p>
-            </div>
+            <p className="text-sm font-semibold text-text">Referral access</p>
             <Link href="/team" className="inline-flex items-center gap-2 text-sm font-semibold text-accent">Open team <ArrowRight size={15} /></Link>
           </div>
         </div>
 
         <div className="card-surface p-4">
           <div className="flex items-center justify-between gap-2">
-            <div>
-              <p className="text-sm font-semibold text-text">Security and access</p>
-              <p className="mt-1 text-xs text-muted">Active account state, referral routing, support access, and seller entry point.</p>
-            </div>
-            <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"><ShieldCheck size={13} /> {user.is_active === false ? 'Inactive' : 'Verified access'}</span>
+            <p className="text-sm font-semibold text-text">Security and access</p>
+            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${user.is_active === false ? 'bg-rose-500/10 text-[#ef4444]' : 'bg-emerald-500/10 text-[#22c55e]'}`}><ShieldCheck size={13} /> {user.is_active === false ? 'Inactive' : 'Active'}</span>
           </div>
         </div>
       </div>
