@@ -6,10 +6,16 @@ import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   ArrowRight,
+  ChevronDown,
+  Compass,
+  Gem,
   Globe2,
-  Headphones,
-  MoreHorizontal,
+  HandCoins,
+  Landmark,
+  Menu,
+  Network,
   ShieldCheck,
+  ShoppingBag,
   Sparkles,
   Store,
   Trophy,
@@ -24,20 +30,27 @@ import { useAuthStore } from '@/lib/store/authStore';
 import { canAccessAdminArea, isSeller } from '@/lib/constants/access';
 import { queryKeys } from '@/lib/query/queryKeys';
 
-const fallbackImages = {
-  ecommerce: 'https://source.unsplash.com/900x700/?ecommerce,shopping',
-  seller: 'https://source.unsplash.com/900x700/?seller,store,management',
-  digital: 'https://source.unsplash.com/900x700/?digital,technology',
-  crypto: 'https://source.unsplash.com/900x700/?crypto,bitcoin',
-  auction: 'https://source.unsplash.com/900x700/?auction,business',
-  support: 'https://source.unsplash.com/900x700/?customer,support'
-};
-
-const statsFallback = [
-  { label: 'Members', value: 1200, icon: Users },
-  { label: 'Products', value: 350, icon: Store },
-  { label: 'Support', value: 24, icon: Headphones },
-  { label: 'Reach', value: 18, icon: Globe2, suffix: '+' }
+const faqItems = [
+  { question: 'What is Hope International?', answer: 'Hope International is a hybrid platform that combines network growth, ecommerce participation, auction activity, and wallet tools in one mobile-first experience.' },
+  { question: 'How do I start earning?', answer: 'Create an account, complete your setup, choose your placement, and begin building activity through products, referrals, and platform participation.' },
+  { question: 'What is the binary system?', answer: 'The binary system organizes your team into left and right legs so volume and team growth can contribute to matching and binary-based earning opportunities.' },
+  { question: 'Do I need to buy products to use the platform?', answer: 'You can explore the platform freely, but product and activity participation can unlock more of the available earning and engagement flows.' },
+  { question: 'How does direct income work?', answer: 'Direct income is paid when personally referred users complete qualifying activity, based on the current compensation rules configured in the platform.' },
+  { question: 'How does matching income work?', answer: 'Matching income rewards balanced and active network performance across your structure according to the configured matching plan.' },
+  { question: 'Is there a weekly settlement cycle?', answer: 'Yes. The platform includes weekly settlement-based flows where qualifying activity is processed according to the current compensation cycle.' },
+  { question: 'Can I use the marketplace without building a team?', answer: 'Yes. The marketplace and auction surfaces are designed to work as usable product experiences even if you are not focused on referral growth.' },
+  { question: 'What makes the auction module different?', answer: 'The auction module combines fixed-entry participation, live updates, leaderboard-style visibility, and post-result reveal experiences.' },
+  { question: 'How are wallet balances managed?', answer: 'The app separates wallet experiences into dedicated flows for deposits, withdrawals, BTCT activity, and income-related balances where applicable.' },
+  { question: 'How fast are withdrawals?', answer: 'Withdrawal timing depends on the active operational and approval flow, but the wallet UI is built to make request and history visibility simple.' },
+  { question: 'Is the platform secure?', answer: 'Security-focused account controls, structured wallet flows, and protected route access are part of the platform design.' },
+  { question: 'Can I become a seller?', answer: 'Yes. Eligible users can apply for seller access and manage product listings through the seller console.' },
+  { question: 'Is Hope International available globally?', answer: 'The platform is designed for a global audience, with mobile-friendly experiences and broad access to core product surfaces.' },
+  { question: 'Can I track my team growth?', answer: 'Yes. Team, placement, and activity visibility are part of the user experience through dedicated team and profile tools.' },
+  { question: 'What kind of products are sold?', answer: 'The marketplace is built for real products and structured listings, with room for featured catalog experiences and seller-managed inventory.' },
+  { question: 'Do I need technical knowledge?', answer: 'No. The experience is designed to be straightforward for everyday users, with guided flows across registration, wallet actions, and participation.' },
+  { question: 'Can I use the platform on mobile?', answer: 'Yes. The landing page and core user flows are designed mobile-first so the main experience stays usable on phones and tablets.' },
+  { question: 'How do rewards work after auctions?', answer: 'Auction outcomes and related reward logic depend on the configured backend rules for winners, participation, and any compensation flow tied to the auction.' },
+  { question: 'How do I register today?', answer: 'Use the Register button from the hero or CTA section to create your account and begin onboarding into the platform.' }
 ];
 
 function resolveDestination(user) {
@@ -46,91 +59,104 @@ function resolveDestination(user) {
   return '/auctions';
 }
 
-function MenuItem({ href, icon: Icon, label, onSelect }) {
+function PrimaryButton({ href, children }) {
   return (
     <Link
       href={href}
-      onClick={onSelect}
-      className="group flex items-center justify-between rounded-[16px] border border-transparent px-3 py-3 text-sm font-medium text-[#f5f7fb] transition duration-200 hover:border-white/10 hover:bg-[linear-gradient(135deg,rgba(139,61,255,0.16),rgba(50,209,125,0.12))]"
+      className="inline-flex items-center justify-center gap-2 rounded-[16px] bg-[linear-gradient(135deg,#7c3aed,#22c55e)] px-5 py-3 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(124,58,237,0.35)] transition hover:brightness-110"
     >
-      <span className="flex items-center gap-3">
-        <span className="inline-flex h-9 w-9 items-center justify-center rounded-[14px] bg-[rgba(255,255,255,0.06)] text-[#d3d9e5] transition group-hover:bg-[rgba(255,255,255,0.1)] group-hover:text-white">
-          <Icon size={16} />
-        </span>
-        <span>{label}</span>
-      </span>
-      <ArrowRight size={14} className="text-[#c0c7d4] transition group-hover:text-white" />
+      {children}
     </Link>
   );
 }
 
-function ActionLink({ href, primary = false, children }) {
-  const className = primary
-    ? 'inline-flex items-center justify-center gap-2 rounded-full bg-[linear-gradient(135deg,#8b3dff,#32d17d)] px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_32px_rgba(90,47,180,0.32)] transition hover:brightness-110'
-    : 'inline-flex items-center justify-center gap-2 rounded-full border border-white/12 bg-[rgba(45,47,56,0.92)] px-5 py-3 text-sm font-semibold text-[#f5f7fb] transition hover:border-white/20 hover:bg-[rgba(56,58,68,0.96)]';
-
-  return <Link href={href} className={className}>{children}</Link>;
-}
-
-function SafeImage({ src, fallbackSrc, alt, className }) {
-  const [imageSrc, setImageSrc] = useState(src || fallbackSrc);
-
-  useEffect(() => {
-    setImageSrc(src || fallbackSrc);
-  }, [src, fallbackSrc]);
-
+function SecondaryButton({ href, children }) {
   return (
-    <img
-      src={imageSrc}
-      alt={alt}
-      className={className}
-      loading="lazy"
-      onError={() => {
-        if (imageSrc !== fallbackSrc) setImageSrc(fallbackSrc);
-      }}
-    />
+    <Link
+      href={href}
+      className="inline-flex items-center justify-center gap-2 rounded-[16px] border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/20 hover:bg-white/10"
+    >
+      {children}
+    </Link>
   );
 }
 
-function StatCard({ item }) {
-  const Icon = item.icon;
+function StatPill({ title, value }) {
   return (
-    <article className="rounded-[22px] border border-white/10 bg-[#2b2d35] p-4 shadow-[0_16px_36px_rgba(0,0,0,0.18)]">
-      <span className="inline-flex h-10 w-10 items-center justify-center rounded-[16px] bg-[rgba(139,61,255,0.14)] text-[#d8b4fe]">
-        <Icon size={18} />
+    <div className="rounded-[18px] border border-white/10 bg-[#131a2b] px-4 py-3 shadow-[0_10px_26px_rgba(0,0,0,0.25)]">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b7280]">{title}</p>
+      <p className="mt-1 text-[16px] font-semibold text-white">{value}</p>
+    </div>
+  );
+}
+
+function FeatureCard({ icon: Icon, title, description }) {
+  return (
+    <article className="rounded-[22px] border border-white/8 bg-[#1a1f2e] p-4 shadow-[0_12px_30px_rgba(0,0,0,0.32)]">
+      <span className="inline-flex h-12 w-12 items-center justify-center rounded-[16px] bg-[linear-gradient(135deg,rgba(124,58,237,0.18),rgba(34,197,94,0.16))] text-white">
+        <Icon size={20} />
       </span>
-      <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-[#f5f7fb]">
-        {Number(item.value || 0).toLocaleString()}{item.suffix || ''}
-      </p>
-      <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-[#c0c7d4]">{item.label}</p>
+      <h3 className="mt-4 text-[18px] font-semibold text-white">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-[#9ca3af]">{description}</p>
     </article>
   );
 }
 
-function HighlightCard({ item }) {
+function StepCard({ step, icon: Icon, title, description }) {
   return (
-    <article className="overflow-hidden rounded-[28px] border border-white/10 bg-[#2b2d35] shadow-[0_18px_44px_rgba(0,0,0,0.22)]">
-      <div className="overflow-hidden rounded-[20px] p-3 pb-0">
-        <SafeImage
-          src={item.image}
-          fallbackSrc={item.fallbackImage}
-          alt={item.title}
-          className="h-[180px] w-full rounded-[18px] object-cover"
-        />
+    <article className="rounded-[22px] border border-white/8 bg-[#151b2b] p-4 shadow-[0_12px_28px_rgba(0,0,0,0.25)]">
+      <div className="flex items-center justify-between gap-3">
+        <span className="inline-flex h-11 w-11 items-center justify-center rounded-[14px] bg-[linear-gradient(135deg,rgba(124,58,237,0.22),rgba(34,197,94,0.16))] text-white">
+          <Icon size={18} />
+        </span>
+        <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-[#c4b5fd]">Step {step}</span>
       </div>
-      <div className="p-4 pt-3">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#a78bfa]">{item.kicker}</p>
-        <h3 className="mt-2 text-lg font-semibold tracking-[-0.03em] text-[#f5f7fb]">{item.title}</h3>
-        <p className="mt-2 text-sm leading-6 text-[#c0c7d4]">{item.body}</p>
-        {item.href ? (
-          <div className="mt-4">
-            <Link href={item.href} className="inline-flex items-center gap-2 text-sm font-semibold text-[#f5f7fb]">
-              <span>{item.cta || 'Explore'}</span>
-              <ArrowRight size={14} />
-            </Link>
-          </div>
-        ) : null}
+      <h3 className="mt-4 text-[17px] font-semibold text-white">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-[#9ca3af]">{description}</p>
+    </article>
+  );
+}
+
+function IncomeCard({ title, value, description, icon: Icon }) {
+  return (
+    <article className="rounded-[22px] border border-white/8 bg-[#121827] p-4 shadow-[0_12px_26px_rgba(0,0,0,0.28)]">
+      <div className="flex items-center justify-between gap-3">
+        <span className="inline-flex h-11 w-11 items-center justify-center rounded-[14px] bg-[linear-gradient(135deg,rgba(124,58,237,0.2),rgba(34,197,94,0.14))] text-white">
+          <Icon size={18} />
+        </span>
+        <span className="text-[18px] font-semibold text-[#22c55e]">{value}</span>
       </div>
+      <h3 className="mt-4 text-[17px] font-semibold text-white">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-[#9ca3af]">{description}</p>
+    </article>
+  );
+}
+
+function ReasonCard({ title, description }) {
+  return (
+    <article className="rounded-[20px] border border-white/8 bg-[#161d2e] px-4 py-4 shadow-[0_10px_24px_rgba(0,0,0,0.24)]">
+      <h3 className="text-[16px] font-semibold text-white">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-[#9ca3af]">{description}</p>
+    </article>
+  );
+}
+
+function FaqItem({ item, open, onToggle }) {
+  return (
+    <article className="rounded-[18px] border border-white/8 bg-[#141b2c] shadow-[0_10px_24px_rgba(0,0,0,0.22)]">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left"
+      >
+        <span className="text-sm font-semibold text-white">{item.question}</span>
+        <ChevronDown size={18} className={`shrink-0 text-[#9ca3af] transition ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open ? (
+        <div className="border-t border-white/6 px-4 py-3">
+          <p className="text-sm leading-6 text-[#9ca3af]">{item.answer}</p>
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -139,8 +165,8 @@ export default function PublicLandingPage() {
   const router = useRouter();
   const { token, hydrated, hydrate, clearSession } = useAuthStore();
   const visitorTrackedRef = useRef(false);
-  const headerMenuRef = useRef(null);
-  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [openFaq, setOpenFaq] = useState(0);
 
   useEffect(() => {
     if (!hydrated) hydrate();
@@ -187,202 +213,293 @@ export default function PublicLandingPage() {
     trackVisitMutation.mutate(visitorToken);
   }, [landingQuery.isSuccess, token, trackVisitMutation]);
 
-  useEffect(() => {
-    if (!headerMenuOpen) return undefined;
-    const handlePointerDown = (event) => {
-      if (!headerMenuRef.current?.contains(event.target)) setHeaderMenuOpen(false);
-    };
-    window.addEventListener('pointerdown', handlePointerDown);
-    return () => window.removeEventListener('pointerdown', handlePointerDown);
-  }, [headerMenuOpen]);
-
   const data = landingQuery.data;
-  const settings = data?.settings || {};
-  const featuredItems = Array.isArray(data?.featuredItems) ? data.featuredItems : [];
-  const detailItems = Array.isArray(data?.details) ? data.details : [];
-  const stats = data?.stats || {};
 
-  const heroImage = useMemo(() => {
-    return settings.heroImageUrl || featuredItems[0]?.imageUrl || fallbackImages.ecommerce;
-  }, [featuredItems, settings.heroImageUrl]);
+  const featureCards = useMemo(() => ([
+    {
+      icon: Network,
+      title: 'Binary Income System',
+      description: 'Build left and right team volume with a structure designed for modern network growth and long-term engagement.'
+    },
+    {
+      icon: ShoppingBag,
+      title: 'E-commerce Marketplace',
+      description: 'Shop from a premium catalog, discover featured products, and keep your product journey connected to your platform activity.'
+    },
+    {
+      icon: Trophy,
+      title: 'Auction & Rewards',
+      description: 'Join interactive auction experiences, unlock result-driven excitement, and follow live reward opportunities inside one app.'
+    },
+    {
+      icon: Wallet,
+      title: 'Wallet & Instant Withdrawals',
+      description: 'Track balances, manage transactions, review BTCT activity, and use wallet tools built for fast everyday access.'
+    }
+  ]), []);
 
-  const statCards = useMemo(() => {
-    return [
-      { label: 'Members', value: stats.totalMembers || statsFallback[0].value, icon: Users },
-      { label: 'Products', value: featuredItems.length || statsFallback[1].value, icon: Store },
-      { label: 'Support', value: 24, icon: Headphones },
-      { label: 'Reach', value: Array.isArray(data?.countries) ? data.countries.length : statsFallback[3].value, icon: Globe2, suffix: '+' }
-    ];
-  }, [data?.countries, featuredItems.length, stats.totalMembers]);
+  const steps = useMemo(() => ([
+    {
+      step: 1,
+      icon: Users,
+      title: 'Register Account',
+      description: 'Create your Hope International account in minutes and unlock access to products, teams, and wallet tools.'
+    },
+    {
+      step: 2,
+      icon: Compass,
+      title: 'Choose Placement',
+      description: 'Select your left or right placement strategy and start building your binary structure with intention.'
+    },
+    {
+      step: 3,
+      icon: Globe2,
+      title: 'Build Team',
+      description: 'Grow globally by sharing products, onboarding members, and expanding your network through a simple mobile-first flow.'
+    },
+    {
+      step: 4,
+      icon: HandCoins,
+      title: 'Earn Matching Income',
+      description: 'Turn structured activity into direct and matching opportunities as your team and platform engagement scale up.'
+    }
+  ]), []);
 
-  const highlightCards = useMemo(() => {
-    const used = new Set();
-    const cards = [
-      {
-        kicker: 'Seller Tools',
-        title: 'Seller tools that stay practical',
-        body: 'Manage products, track activity, and grow your business from one clear dashboard.',
-        href: '/register',
-        cta: 'Start selling',
-        image: detailItems[0]?.imageUrl,
-        fallbackImage: fallbackImages.seller
-      },
-      {
-        kicker: 'Auctions',
-        title: 'Live auction experiences with clean flow',
-        body: 'Follow active auctions, place bids, and explore a more engaging buying journey.',
-        href: '/auctions',
-        cta: 'Open auctions',
-        image: featuredItems[1]?.imageUrl,
-        fallbackImage: fallbackImages.auction
-      },
-      {
-        kicker: 'Digital Growth',
-        title: 'Rewards and digital opportunities in one place',
-        body: 'Keep shopping, participation, and digital opportunity flows inside one modern platform.',
-        href: '/register',
-        cta: 'Create account',
-        image: detailItems[1]?.imageUrl,
-        fallbackImage: fallbackImages.digital
-      }
-    ];
+  const incomeCards = useMemo(() => ([
+    {
+      icon: Sparkles,
+      title: 'Direct Income',
+      value: '5%',
+      description: 'Earn direct rewards from personally introduced users when qualifying activity is completed.'
+    },
+    {
+      icon: Network,
+      title: 'Matching Income',
+      value: '10%',
+      description: 'Benefit from matching structure performance as both legs of your team continue to grow.'
+    },
+    {
+      icon: Gem,
+      title: 'Binary System',
+      value: '2 Legs',
+      description: 'A clean left-right team model helps you scale with clarity while staying aligned to the platform plan.'
+    },
+    {
+      icon: Landmark,
+      title: 'Weekly Settlement',
+      value: 'Weekly',
+      description: 'Stay synced with recurring settlement logic designed to keep performance and payout tracking transparent.'
+    }
+  ]), []);
 
-    return cards.map((item, index) => {
-      const candidate = item.image || item.fallbackImage;
-      const image = used.has(candidate) ? Object.values(fallbackImages)[index % Object.values(fallbackImages).length] : candidate;
-      used.add(image);
-      return { ...item, image };
-    });
-  }, [detailItems, featuredItems]);
+  const reasons = useMemo(() => ([
+    {
+      title: 'Secure Platform',
+      description: 'Modern account flows, protected wallet access, and structured user surfaces help keep the experience reliable.'
+    },
+    {
+      title: 'Real Products',
+      description: 'Marketplace participation is backed by real catalog experiences instead of abstract dashboards with no commerce layer.'
+    },
+    {
+      title: 'Smart Earnings',
+      description: 'Direct, matching, auction, and wallet-connected opportunities work together inside one connected platform experience.'
+    },
+    {
+      title: 'Global Growth',
+      description: 'Mobile-first onboarding and a globally oriented structure make it easier to grow beyond a single local market.'
+    }
+  ]), []);
 
   if (hydrated && token && currentUserQuery.isLoading) {
-    return <div className="min-h-screen bg-[#1f2026] px-6 py-16 text-center text-sm text-[#c0c7d4]">Redirecting to your Hope workspace...</div>;
+    return <div className="min-h-screen bg-[#0b0f1a] px-6 py-16 text-center text-sm text-[#9ca3af]">Redirecting to your Hope workspace...</div>;
   }
 
   if (landingQuery.isLoading) {
-    return <div className="min-h-screen bg-[#1f2026] px-6 py-16 text-center text-sm text-[#c0c7d4]">Loading Hope International...</div>;
+    return <div className="min-h-screen bg-[#0b0f1a] px-6 py-16 text-center text-sm text-[#9ca3af]">Loading Hope International...</div>;
   }
 
   if (landingQuery.isError || !data) {
     return (
-      <div className="min-h-screen bg-[#1f2026] px-4 py-10">
+      <div className="min-h-screen bg-[#0b0f1a] px-4 py-10">
         <ErrorState message="Unable to load the Hope International landing page." onRetry={landingQuery.refetch} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#1f2026] text-[#f5f7fb]">
-      <style jsx global>{`
-        @keyframes hopeMenuIn {
-          0% { opacity: 0; transform: translateY(-6px) scale(0.98); }
-          100% { opacity: 1; transform: translateY(0) scale(1); }
-        }
-      `}</style>
-
+    <div className="min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#0b0f1a,#111827)] text-white">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-[-8rem] top-10 h-72 w-72 rounded-full bg-[#8b3dff]/18 blur-3xl" />
-        <div className="absolute right-[-8rem] top-40 h-80 w-80 rounded-full bg-[#32d17d]/14 blur-3xl" />
+        <div className="absolute left-[-10rem] top-10 h-80 w-80 rounded-full bg-[#7c3aed]/20 blur-3xl" />
+        <div className="absolute right-[-8rem] top-28 h-80 w-80 rounded-full bg-[#22c55e]/12 blur-3xl" />
+        <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-[#0ea5e9]/8 blur-3xl" />
       </div>
 
       <div className="relative mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
-        <header className="sticky top-3 z-30 rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(42,44,52,0.96),rgba(34,35,42,0.94))] px-3 py-3 shadow-[0_18px_50px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:top-5 sm:px-4">
+        <header className="sticky top-3 z-30 rounded-[22px] border border-white/10 bg-[rgba(12,17,29,0.88)] px-4 py-3 shadow-[0_16px_40px_rgba(0,0,0,0.32)] backdrop-blur-xl">
           <div className="flex items-center justify-between gap-3">
-            <Link href="/" className="flex min-w-0 items-center gap-3 rounded-[22px] px-1 py-1.5">
-              <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[20px] border border-white/10 bg-[linear-gradient(180deg,#2f3139,#24262d)] shadow-[0_10px_24px_rgba(0,0,0,0.22)]">
-                <div className="relative">
-                  <Logo size={34} />
-                </div>
+            <Link href="/" className="flex min-w-0 items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-[16px] border border-white/10 bg-[#151c2d]">
+                <Logo size={30} />
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-[#a78bfa]">Hope</p>
-                <p className="truncate text-sm font-semibold tracking-[-0.03em] text-[#f5f7fb] sm:text-[15px]">International</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#a78bfa]">Hope</p>
+                <p className="truncate text-sm font-semibold text-white">International</p>
               </div>
             </Link>
 
-            <div ref={headerMenuRef} className="relative">
-              <button
-                type="button"
-                aria-label="Open header menu"
-                onClick={() => setHeaderMenuOpen((prev) => !prev)}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[rgba(255,255,255,0.12)] bg-[linear-gradient(180deg,rgba(48,50,60,0.94),rgba(34,35,42,0.94))] text-[#f5f7fb] shadow-[0_10px_24px_rgba(0,0,0,0.2)] backdrop-blur-xl transition duration-200 hover:-translate-y-[1px] hover:border-[rgba(139,61,255,0.28)] hover:shadow-[0_14px_28px_rgba(90,47,180,0.22)]"
-              >
-                <MoreHorizontal size={18} />
-              </button>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((prev) => !prev)}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#151c2d] text-white md:hidden"
+              aria-label="Toggle landing menu"
+            >
+              <Menu size={18} />
+            </button>
 
-              {headerMenuOpen ? (
-                <div className="absolute right-0 top-[calc(100%+10px)] z-40 w-64 rounded-[22px] border border-[rgba(255,255,255,0.12)] bg-[rgba(31,32,38,0.88)] p-2.5 shadow-[0_24px_52px_rgba(0,0,0,0.32)] backdrop-blur-2xl animate-[hopeMenuIn_180ms_ease-out]">
-                  <div className="mb-2 rounded-[16px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(135deg,rgba(139,61,255,0.16),rgba(50,209,125,0.08))] px-3 py-2.5">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#d3d9e5]">Quick Menu</p>
-                    <p className="mt-1 text-xs text-[#c0c7d4]">Clean premium experience</p>
-                  </div>
-                  <MenuItem href="#about" icon={Sparkles} label="About" onSelect={() => setHeaderMenuOpen(false)} />
-                  <MenuItem href="/login" icon={ShieldCheck} label="Login" onSelect={() => setHeaderMenuOpen(false)} />
-                  <MenuItem href="/register" icon={Users} label="Register" onSelect={() => setHeaderMenuOpen(false)} />
-                  <MenuItem href={`mailto:${settings.footerContactEmail || 'support@example.com'}`} icon={Headphones} label="Contact Support" onSelect={() => setHeaderMenuOpen(false)} />
-                </div>
-              ) : null}
+            <div className="hidden items-center gap-3 md:flex">
+              <SecondaryButton href="#features">Explore Platform</SecondaryButton>
+              <PrimaryButton href="/register">Start Now</PrimaryButton>
             </div>
           </div>
+
+          {menuOpen ? (
+            <div className="mt-3 grid gap-2 border-t border-white/8 pt-3 md:hidden">
+              <SecondaryButton href="#features">Explore Platform</SecondaryButton>
+              <PrimaryButton href="/register">Start Now</PrimaryButton>
+            </div>
+          ) : null}
         </header>
 
-        <section id="about" className="pt-6 sm:pt-8">
-          <div className="grid gap-6 rounded-[34px] border border-white/10 bg-[rgba(43,45,53,0.96)] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.24)] md:grid-cols-[1.05fr_0.95fr] md:p-8">
+        <section className="pt-8">
+          <div className="grid gap-6 rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(18,24,39,0.95),rgba(13,18,30,0.95))] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.35)] md:grid-cols-[1.1fr_0.9fr] md:p-8">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[rgba(32,33,39,0.88)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#d3d9e5]">
-                <Sparkles size={14} className="text-[#a78bfa]" />
-                {settings.heroBadge || 'Hope International'}
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c4b5fd]">
+                <Sparkles size={13} />
+                Premium growth platform
               </div>
-              <h1 className="mt-5 max-w-xl text-4xl font-semibold leading-tight tracking-[-0.06em] text-[#f5f7fb] sm:text-5xl">
-                {settings.heroHeadline || 'A premium platform for shopping, auctions, and digital growth.'}
+              <h1 className="mt-5 text-4xl font-semibold leading-tight tracking-[-0.06em] text-white sm:text-5xl">
+                Build Your Income With Hope International
               </h1>
-              <p className="mt-4 max-w-xl text-base leading-8 text-[#c0c7d4]">
-                {settings.heroSubheadline || 'Explore products, opportunities, and seller tools inside a clean mobile-first experience designed to stay practical and readable.'}
+              <p className="mt-4 max-w-xl text-base leading-8 text-[#9ca3af]">
+                Earn, shop, and grow your network with a powerful binary system and premium marketplace.
               </p>
+
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                <ActionLink href="/login">Login</ActionLink>
-                <ActionLink href="/register" primary>Create Account</ActionLink>
+                <PrimaryButton href="/register">
+                  <span>Start Now</span>
+                  <ArrowRight size={15} />
+                </PrimaryButton>
+                <SecondaryButton href="#features">
+                  <span>Explore Platform</span>
+                </SecondaryButton>
+              </div>
+
+              <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <StatPill title="Users" value="10,000+ Users" />
+                <StatPill title="Reach" value="Global Platform" />
+                <StatPill title="Trust" value="Secure System" />
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-[28px] border border-white/10 bg-[#2b2d35] shadow-[0_18px_50px_rgba(0,0,0,0.22)]">
-              <SafeImage src={heroImage} fallbackSrc={fallbackImages.ecommerce} alt="Hope International hero visual" className="h-[220px] w-full object-cover md:h-full" />
+            <div className="rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,#151b2b,#101726)] p-4 shadow-[0_20px_48px_rgba(0,0,0,0.3)]">
+              <div className="grid gap-3">
+                <div className="rounded-[22px] border border-white/8 bg-[#1a1f2e] p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6b7280]">Growth Engine</p>
+                  <h3 className="mt-2 text-[20px] font-semibold text-white">Crypto-style performance meets marketplace conversion</h3>
+                  <p className="mt-2 text-sm leading-6 text-[#9ca3af]">Designed for users who want a premium app feel across earnings, products, auctions, and wallet tools.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-[20px] border border-white/8 bg-[#131a2b] p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b7280]">Marketplace</p>
+                    <p className="mt-2 text-[18px] font-semibold text-white">Premium Products</p>
+                  </div>
+                  <div className="rounded-[20px] border border-white/8 bg-[#131a2b] p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b7280]">Earnings</p>
+                    <p className="mt-2 text-[18px] font-semibold text-white">Binary + Matching</p>
+                  </div>
+                  <div className="rounded-[20px] border border-white/8 bg-[#131a2b] p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b7280]">Auctions</p>
+                    <p className="mt-2 text-[18px] font-semibold text-white">Reward Driven</p>
+                  </div>
+                  <div className="rounded-[20px] border border-white/8 bg-[#131a2b] p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b7280]">Wallet</p>
+                    <p className="mt-2 text-[18px] font-semibold text-white">Fast Access</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
-        <section className="pt-10">
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {statCards.map((item) => (
-              <StatCard key={item.label} item={item} />
+        <section id="features" className="pt-12">
+          <div className="max-w-2xl">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#a78bfa]">Features</p>
+            <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-white">One premium ecosystem for income, commerce, and network growth</h2>
+          </div>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            {featureCards.map((item) => <FeatureCard key={item.title} {...item} />)}
+          </div>
+        </section>
+
+        <section className="pt-12">
+          <div className="max-w-2xl">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#a78bfa]">How It Works</p>
+            <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-white">Start simple, scale smart</h2>
+          </div>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            {steps.map((item) => <StepCard key={item.step} {...item} />)}
+          </div>
+        </section>
+
+        <section className="pt-12">
+          <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,#131a2b,#0f1625)] p-5 shadow-[0_18px_44px_rgba(0,0,0,0.32)] md:p-7">
+            <div className="max-w-2xl">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#a78bfa]">Income System</p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-white">Built for clear earning paths</h2>
+            </div>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              {incomeCards.map((item) => <IncomeCard key={item.title} {...item} />)}
+            </div>
+          </div>
+        </section>
+
+        <section className="pt-12">
+          <div className="max-w-2xl">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#a78bfa]">Why Choose Us</p>
+            <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-white">A cleaner path to global digital growth</h2>
+          </div>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            {reasons.map((item) => <ReasonCard key={item.title} {...item} />)}
+          </div>
+        </section>
+
+        <section className="pt-12">
+          <div className="max-w-2xl">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#a78bfa]">FAQ</p>
+            <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-white">Everything users ask before they join</h2>
+          </div>
+          <div className="mt-6 grid gap-3">
+            {faqItems.map((item, index) => (
+              <FaqItem
+                key={item.question}
+                item={item}
+                open={openFaq === index}
+                onToggle={() => setOpenFaq((current) => current === index ? -1 : index)}
+              />
             ))}
           </div>
         </section>
 
-        <section className="pt-10">
-          <div className="mb-5 max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#d3d9e5]">Highlights</p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-[#f5f7fb]">Featured opportunities built for clarity</h2>
-          </div>
-          <div className="grid gap-5 md:grid-cols-3">
-            {highlightCards.map((item) => (
-              <HighlightCard key={item.title} item={item} />
-            ))}
-          </div>
-        </section>
-
-        <section className="pt-10 pb-8">
-          <div className="rounded-[30px] border border-white/10 bg-[linear-gradient(135deg,rgba(43,45,53,0.96),rgba(36,38,45,0.96))] p-5 shadow-[0_20px_48px_rgba(0,0,0,0.24)] md:p-7">
+        <section className="pb-10 pt-12">
+          <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(135deg,rgba(124,58,237,0.18),rgba(34,197,94,0.12))] p-6 shadow-[0_20px_52px_rgba(0,0,0,0.3)]">
             <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
               <div className="max-w-xl">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#a78bfa]">Get Started</p>
-                <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-[#f5f7fb]">Join Hope International with a cleaner way to explore and grow.</h2>
-                <p className="mt-3 text-sm leading-7 text-[#c0c7d4]">Simple onboarding, readable sections, and one connected experience across products, auctions, and seller tools.</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#d8b4fe]">Call To Action</p>
+                <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-white">Start Your Income Journey Today</h2>
+                <p className="mt-3 text-sm leading-7 text-[#d1d5db]">Join Hope International and step into a premium mobile-first ecosystem for earnings, shopping, and network growth.</p>
               </div>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <ActionLink href="#about">Learn More</ActionLink>
-                <ActionLink href="/register" primary>Join Now</ActionLink>
-              </div>
+              <PrimaryButton href="/register">Register Now</PrimaryButton>
             </div>
           </div>
         </section>
