@@ -218,15 +218,20 @@ async function creditBtct(client, userId, amount, source, referenceId = null, me
 
 async function getWalletSummary(client, userId) {
   await walletRepository.createWallet(client, userId);
-  const wallet = normalizeWalletBalances(await walletRepository.getWallet(client, userId));
-  const transactions = await walletRepository.listTransactions(client, userId, 100);
-  const btctTransactions = await walletRepository.listBtctTransactions(client, userId, 100);
-  const walletBinding = await walletRepository.getWalletBinding(client, userId);
+  const [walletRow, transactions, incomeTransactions, btctTransactions, walletBinding] = await Promise.all([
+    walletRepository.getWallet(client, userId),
+    walletRepository.listTransactions(client, userId, 100),
+    walletRepository.listIncomeTransactions(client, userId, 200),
+    walletRepository.listBtctTransactions(client, userId, 100),
+    walletRepository.getWalletBinding(client, userId)
+  ]);
+  const wallet = normalizeWalletBalances(walletRow);
 
   return {
     wallet,
     walletBinding,
     transactions,
+    incomeTransactions,
     btctTransactions,
     btctPrice: BTCT_USD_PRICE
   };

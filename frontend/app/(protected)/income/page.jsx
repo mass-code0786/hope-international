@@ -16,7 +16,7 @@ const filters = ['all', 'direct_income', 'direct_deposit_income', 'level_deposit
 export default function IncomePage() {
   const { data, isLoading, isError, refetch } = useWallet();
   const [filter, setFilter] = useState('all');
-  const transactions = Array.isArray(data?.transactions) ? data.transactions : [];
+  const transactions = Array.isArray(data?.incomeTransactions) ? data.incomeTransactions : [];
 
   const filteredTransactions = useMemo(() => transactions.filter((tx) => (filter === 'all' ? true : tx?.source === filter)), [transactions, filter]);
 

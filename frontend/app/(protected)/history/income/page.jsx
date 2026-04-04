@@ -18,10 +18,9 @@ export default function IncomeHistoryPage() {
     return <ErrorState message="Income history is unavailable right now." onRetry={walletQuery.refetch} />;
   }
 
-  const transactions = Array.isArray(walletQuery.data?.transactions) ? walletQuery.data.transactions : [];
   const incomeTransactions = useMemo(
-    () => transactions.filter((item) => item?.tx_type === 'credit'),
-    [transactions]
+    () => (Array.isArray(walletQuery.data?.incomeTransactions) ? walletQuery.data.incomeTransactions : []),
+    [walletQuery.data?.incomeTransactions]
   );
 
   return (

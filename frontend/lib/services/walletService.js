@@ -36,8 +36,8 @@ export async function getWallet() {
   const envelope = toEnvelope(await apiFetch('/wallet'));
   const data = envelope.data || {};
   const normalized = data.wallet ? data : Array.isArray(data.transactions)
-    ? { wallet: data.wallet || {}, walletBinding: data.walletBinding || null, transactions: data.transactions }
-    : { wallet: data, walletBinding: data.walletBinding || null, transactions: data.transactions || [] };
+    ? { wallet: data.wallet || {}, walletBinding: data.walletBinding || null, transactions: data.transactions, incomeTransactions: data.incomeTransactions || [] }
+    : { wallet: data, walletBinding: data.walletBinding || null, transactions: data.transactions || [], incomeTransactions: data.incomeTransactions || [] };
 
   const incomeBalance = toNumber(normalized.wallet?.income_balance ?? normalized.wallet?.income_wallet_balance ?? normalized.wallet?.balance);
   const depositBalance = toNumber(normalized.wallet?.deposit_balance ?? normalized.wallet?.deposit_wallet_balance);
@@ -64,6 +64,7 @@ export async function getWallet() {
       btct_locked_wallet_balance: btctLockedBalance,
       btct_available_wallet_balance: btctAvailableBalance
     },
+    incomeTransactions: Array.isArray(normalized.incomeTransactions) ? normalized.incomeTransactions : [],
     btctTransactions: normalizeBtctTransactions(normalized.btctTransactions || []),
     btctPrice: toNumber(normalized.btctPrice, 0.1)
   };

@@ -236,6 +236,21 @@ async function listTransactions(client, userId, limit = 50) {
   return rows;
 }
 
+async function listIncomeTransactions(client, userId, limit = 200) {
+  const incomeSources = ['direct_income', 'matching_income', 'reward_qualification', 'direct_deposit_income', 'level_deposit_income'];
+  const { rows } = await q(client).query(
+    `SELECT *
+     FROM wallet_transactions
+     WHERE user_id = $1
+       AND tx_type = 'credit'
+       AND source = ANY($2::transaction_source[])
+     ORDER BY created_at DESC
+     LIMIT $3`,
+    [userId, incomeSources, limit]
+  );
+  return rows;
+}
+
 async function listTransactionsBySource(client, userId, source, limit = 200) {
   const { rows } = await q(client).query(
     `SELECT *
@@ -764,6 +779,7 @@ module.exports = {
   createDepositTeamIncomeLedgerEntry,
   updateDepositTeamIncomeLedgerWalletTransaction,
   listTransactions,
+  listIncomeTransactions,
   listTransactionsBySource,
   getTransactionBySourceAndReference,
   upsertWalletBinding,
