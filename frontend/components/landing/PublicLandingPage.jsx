@@ -141,6 +141,53 @@ function ReasonCard({ title, description }) {
   );
 }
 
+function ProductChip({ label }) {
+  return (
+    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-semibold text-[#d1d5db]">
+      {label}
+    </span>
+  );
+}
+
+function FeaturedProductCard({ title, category, price, description, image, icon: Icon }) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  return (
+    <article className="overflow-hidden rounded-[24px] border border-white/8 bg-[#151b2b] shadow-[0_18px_40px_rgba(0,0,0,0.32)]">
+      <div className="relative h-52 overflow-hidden border-b border-white/8 bg-[linear-gradient(135deg,#1c2540,#121827)]">
+        {!imageFailed ? (
+          <img
+            src={image}
+            alt={title}
+            className="h-full w-full object-cover"
+            onError={() => setImageFailed(true)}
+          />
+        ) : null}
+        <div className={`absolute inset-0 bg-[linear-gradient(180deg,rgba(11,15,26,0.02),rgba(11,15,26,0.82))] ${imageFailed ? 'flex items-center justify-center' : ''}`}>
+          {imageFailed ? (
+            <div className="flex h-16 w-16 items-center justify-center rounded-[20px] border border-white/10 bg-[linear-gradient(135deg,rgba(124,58,237,0.22),rgba(34,197,94,0.16))] text-white">
+              <Icon size={26} />
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="p-4">
+        <div className="flex items-center justify-between gap-3">
+          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold text-[#c4b5fd]">
+            {category}
+          </span>
+          <span className="rounded-full bg-[linear-gradient(135deg,#7c3aed,#22c55e)] px-3 py-1 text-[11px] font-semibold text-white shadow-[0_10px_24px_rgba(124,58,237,0.28)]">
+            {price}
+          </span>
+        </div>
+        <h3 className="mt-4 text-[18px] font-semibold text-white">{title}</h3>
+        <p className="mt-2 text-sm leading-6 text-[#9ca3af]">{description}</p>
+      </div>
+    </article>
+  );
+}
+
 function FaqItem({ item, open, onToggle }) {
   return (
     <article className="rounded-[18px] border border-white/8 bg-[#141b2c] shadow-[0_10px_24px_rgba(0,0,0,0.22)]">
@@ -311,6 +358,50 @@ export default function PublicLandingPage() {
     }
   ]), []);
 
+  const productTags = useMemo(() => ([
+    'Activation packs',
+    'Fashion products',
+    'Digital services',
+    'Gift items',
+    'Auction rewards',
+    'Growth packages'
+  ]), []);
+
+  const featuredProducts = useMemo(() => ([
+    {
+      title: 'Hope Elite Starter Pack',
+      category: 'Activation product',
+      price: '$100',
+      description: 'Premium onboarding bundle for new members who want a fast and structured start.',
+      image: 'https://images.unsplash.com/photo-1546868871-7041f2a55e12?auto=format&fit=crop&w=1200&q=80',
+      icon: Sparkles
+    },
+    {
+      title: 'Emerald Stone Collection',
+      category: 'Featured product',
+      price: '$250',
+      description: 'Luxury-style merchandising product for premium presentation and value perception.',
+      image: 'https://images.unsplash.com/photo-1617038220319-276d3cfab638?auto=format&fit=crop&w=1200&q=80',
+      icon: Gem
+    },
+    {
+      title: 'Digital Growth Package',
+      category: 'Digital service',
+      price: '$60',
+      description: 'Social growth and promotion-oriented digital package for visibility support.',
+      image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
+      icon: Globe2
+    },
+    {
+      title: 'Auction Mystery Reward Box',
+      category: 'Auction product',
+      price: '$20 Entry',
+      description: 'Interactive auction reward listing for users who want live engagement and special prize access.',
+      image: 'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?auto=format&fit=crop&w=1200&q=80',
+      icon: Trophy
+    }
+  ]), []);
+
   if (hydrated && token && currentUserQuery.isLoading) {
     return <div className="min-h-screen bg-[#0b0f1a] px-6 py-16 text-center text-sm text-[#9ca3af]">Redirecting to your Hope workspace...</div>;
   }
@@ -471,6 +562,31 @@ export default function PublicLandingPage() {
           </div>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {reasons.map((item) => <ReasonCard key={item.title} {...item} />)}
+          </div>
+        </section>
+
+        <section className="pt-12">
+          <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,#131a2b,#101726)] p-5 shadow-[0_18px_44px_rgba(0,0,0,0.32)] md:p-7">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+              <div className="max-w-3xl">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#a78bfa]">Featured products</p>
+                <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-white">Products for shopping, activation, digital growth, and auctions</h2>
+                <p className="mt-3 max-w-2xl text-sm leading-7 text-[#9ca3af]">
+                  Show visitors that Hope International includes physical products, activation bundles, digital service products, and auction-linked offers inside one ecosystem.
+                </p>
+              </div>
+              <div className="rounded-[22px] border border-white/10 bg-[linear-gradient(135deg,rgba(124,58,237,0.14),rgba(34,197,94,0.08))] px-4 py-3 text-sm font-semibold text-white">
+                Commerce + rewards + activation in one platform
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-2.5">
+              {productTags.map((tag) => <ProductChip key={tag} label={tag} />)}
+            </div>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {featuredProducts.map((item) => <FeaturedProductCard key={item.title} {...item} />)}
+            </div>
           </div>
         </section>
 
