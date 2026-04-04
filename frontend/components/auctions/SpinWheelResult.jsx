@@ -66,13 +66,16 @@ export function SpinWheelResult({
 }) {
   const [rotation, setRotation] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
+  const [spinCount, setSpinCount] = useState(alreadyRevealed ? 1 : 0);
   const [selectedSlot, setSelectedSlot] = useState(alreadyRevealed && winners[0]?.username ? hashNameToSlot(winners[0].username) : null);
   const [selectedWinner, setSelectedWinner] = useState(winners[0]?.username || null);
+  const [winningSegment, setWinningSegment] = useState(null);
 
   useEffect(() => {
     if (alreadyRevealed && winners[0]?.username) {
       setSelectedWinner(winners[0].username);
       setSelectedSlot((current) => current || hashNameToSlot(winners[0].username));
+      setSpinCount((current) => (current > 0 ? current : 1));
     }
   }, [alreadyRevealed, winners]);
 
@@ -84,9 +87,11 @@ export function SpinWheelResult({
   const resultLabel = selectedWinner ? `Winner: ${selectedWinner}` : 'Spin the wheel to reveal the winner';
 
   async function handleSpin() {
-    if (!eligible || alreadyRevealed || isSpinning || revealPending) return;
+    if ((!eligible && !selectedWinner) || isSpinning || revealPending) return;
 
     setIsSpinning(true);
+    setWinningSegment(null);
+    setSelectedSlot(null);
 
     try {
       const result = await onReveal();
@@ -105,6 +110,8 @@ export function SpinWheelResult({
       window.setTimeout(() => {
         setSelectedWinner(winningName);
         setSelectedSlot(winningSlot);
+        setWinningSegment(winningSegmentIndex);
+        setSpinCount((current) => current + 1);
         setIsSpinning(false);
       }, 4200);
     } catch {
@@ -121,7 +128,7 @@ export function SpinWheelResult({
         </div>
         <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[10px] font-semibold ${selectedWinner ? 'bg-emerald-500/15 text-emerald-300' : 'bg-white/8 text-slate-300'}`}>
           <Sparkles size={12} />
-          {selectedWinner ? 'Winner locked' : 'Ready to spin'}
+          {isSpinning ? 'Wheel active' : selectedWinner ? 'Winner ready' : 'Ready to spin'}
         </span>
       </div>
 
@@ -164,7 +171,7 @@ export function SpinWheelResult({
                       style={{ transform: `rotate(${angle}deg)` }}
                     >
                       <span
-                        className="absolute left-1/2 top-2 -translate-x-1/2 text-[10px] font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
+                        className={`absolute left-1/2 top-2 -translate-x-1/2 text-[10px] font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] ${winningSegment === index ? 'scale-110' : ''}`}
                         style={{ transform: `rotate(${90 - angle}deg)` }}
                       >
                         {segment.label}
@@ -193,10 +200,10 @@ export function SpinWheelResult({
       <button
         type="button"
         onClick={handleSpin}
-        disabled={!eligible || alreadyRevealed || isSpinning || revealPending}
+        disabled={isSpinning || revealPending}
         className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-[16px] bg-[linear-gradient(135deg,#7c3aed,#22c55e)] px-4 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(124,58,237,0.35)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {isSpinning || revealPending ? 'Spinning...' : alreadyRevealed ? 'Result Revealed' : 'Spin'}
+        {isSpinning || revealPending ? 'Spinning...' : spinCount > 0 ? 'Spin Again' : 'Spin Now'}
       </button>
     </section>
   );
