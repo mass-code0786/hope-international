@@ -41,6 +41,8 @@ async function distributeDepositTeamIncome(client, deposit, adminUserId, adminNo
       sourceDepositId: deposit.id,
       levelNumber: rule.levelNumber,
       incomeType: rule.incomeType,
+      sourceType: 'deposit',
+      status: 'approved',
       percentageUsed: rule.percentage * 100,
       baseAmount,
       creditedAmount
