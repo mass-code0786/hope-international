@@ -31,12 +31,12 @@ function getAuctionImages(auction) {
 
 function CompactMetric({ label, value, icon: Icon, accent = false }) {
   return (
-    <div className={`rounded-[22px] border p-3 ${accent ? 'border-slate-200 bg-[#232832]' : 'border-slate-200 bg-[#1a1d24]'}`}>
-      <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-        <Icon size={13} className={accent ? 'text-amber-600' : 'text-slate-500'} />
+    <div className={`rounded-[18px] border px-3 py-2.5 ${accent ? 'border-amber-100 bg-amber-50' : 'border-slate-200 bg-white'}`}>
+      <div className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+        <Icon size={12} className={accent ? 'text-amber-600' : 'text-slate-500'} />
         {label}
       </div>
-      <div className="mt-2 text-[15px] font-semibold text-slate-900">{value}</div>
+      <div className="mt-1.5 text-[13px] font-semibold text-slate-900">{value}</div>
     </div>
   );
 }
@@ -59,10 +59,10 @@ function HeroCard({ auction, status, entryPrice, participantCount, latestBidder,
       : 'Get ready to join';
 
   return (
-    <section className="rounded-[30px] bg-[#1a1d24] p-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
-      <div className="rounded-[28px] bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.08),_transparent_30%),radial-gradient(circle_at_bottom_left,_rgba(59,130,246,0.08),_transparent_28%),linear-gradient(180deg,#1a1d24,#16191f)] p-4">
+    <section className="rounded-[24px] border border-slate-200 bg-white p-3 shadow-[0_14px_28px_rgba(15,23,42,0.06)]">
+      <div className="rounded-[20px] border border-slate-100 bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.12),_transparent_30%),radial-gradient(circle_at_bottom_left,_rgba(59,130,246,0.08),_transparent_28%),linear-gradient(180deg,#ffffff,#f8fafc)] p-3">
         <div className="flex items-start justify-between gap-3">
-          <span className="inline-flex items-center gap-1 rounded-full bg-[#232832] px-3 py-1.5 text-[11px] font-semibold text-slate-600 shadow-[0_8px_18px_rgba(15,23,42,0.06)]">
+          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600">
             <Users size={12} />
             {participantCount} watching
           </span>
@@ -71,30 +71,30 @@ function HeroCard({ auction, status, entryPrice, participantCount, latestBidder,
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-[1fr_104px] items-center gap-3">
-          <div className="min-w-0 rounded-[24px] bg-[#232832] p-3 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
-            <div className="mx-auto flex h-[190px] w-full max-w-[190px] items-center justify-center rounded-[28px] bg-[radial-gradient(circle_at_top,_rgba(191,219,254,0.18),_transparent_32%),linear-gradient(180deg,#232832,#1a1d24)] p-4">
+        <div className="mt-3 grid grid-cols-[1fr_88px] items-center gap-2.5">
+          <div className="min-w-0 rounded-[18px] border border-slate-100 bg-slate-50 p-2.5">
+            <div className="mx-auto flex h-[142px] w-full max-w-[142px] items-center justify-center rounded-[22px] bg-[radial-gradient(circle_at_top,_rgba(191,219,254,0.26),_transparent_34%),linear-gradient(180deg,#ffffff,#eef2ff)] p-3">
               <img src={cover} alt={auction?.title || 'Auction'} className="h-full w-full object-contain" />
             </div>
           </div>
 
-          <div className="space-y-3">
-            <div className="rounded-[22px] border border-slate-200 bg-[#232832] p-3 text-center shadow-[0_8px_18px_rgba(15,23,42,0.06)]">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Entry Fee</p>
-              <p className="mt-1 text-[16px] font-bold text-slate-900">{formatAuctionMoney(entryPrice)}</p>
+          <div className="space-y-2">
+            <div className="rounded-[16px] border border-slate-200 bg-white px-2.5 py-2 text-center">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-400">Entry Fee</p>
+              <p className="mt-1 text-[13px] font-bold text-slate-900">{formatAuctionMoney(entryPrice)}</p>
             </div>
-            <div className="rounded-[22px] border border-slate-200 bg-[#232832] p-3 text-center shadow-[0_8px_18px_rgba(15,23,42,0.06)]">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Prize</p>
-              <p className="mt-1 text-[15px] font-bold text-slate-900">{prizeLabel}</p>
+            <div className="rounded-[16px] border border-slate-200 bg-white px-2.5 py-2 text-center">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-400">Prize</p>
+              <p className="mt-1 text-[12px] font-bold text-slate-900">{prizeLabel}</p>
             </div>
           </div>
         </div>
 
-        <div className="mt-4">
-          <div className="mx-auto flex max-w-[210px] flex-col items-center rounded-full border border-slate-200 bg-[#232832] px-4 py-3 text-center shadow-[0_14px_28px_rgba(15,23,42,0.08)]">
+        <div className="mt-3">
+          <div className="mx-auto flex max-w-[176px] flex-col items-center rounded-full border border-slate-200 bg-white px-3 py-2.5 text-center shadow-[0_10px_22px_rgba(15,23,42,0.06)]">
             <AuctionStatusBadge status={status} won={Boolean(auction?.isWinner || auction?.is_winner)} />
-            <p className="mt-2 text-[13px] font-semibold text-slate-900">{liveCenterTitle}</p>
-            <p className="mt-1 text-[11px] text-slate-500">{liveCenterSub}</p>
+            <p className="mt-1.5 text-[12px] font-semibold text-slate-900">{liveCenterTitle}</p>
+            <p className="mt-0.5 text-[10px] text-slate-500">{liveCenterSub}</p>
           </div>
         </div>
       </div>
@@ -104,36 +104,39 @@ function HeroCard({ auction, status, entryPrice, participantCount, latestBidder,
 
 function LeaderboardPanel({ leaderboard = [], myPosition }) {
   return (
-    <section className="rounded-[28px] bg-[#1a1d24] p-4 shadow-[0_16px_36px_rgba(15,23,42,0.06)]">
+    <section className="rounded-[22px] border border-slate-200 bg-white p-3 shadow-[0_12px_26px_rgba(15,23,42,0.05)]">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Live Leaderboard</p>
-          <h2 className="mt-1 text-[15px] font-semibold text-slate-900">Top participants</h2>
+          <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-400">Live Leaderboard</p>
+          <h2 className="mt-0.5 text-[13px] font-semibold text-slate-900">Top participants</h2>
         </div>
-        <div className="rounded-full bg-slate-900 px-3 py-1.5 text-[11px] font-semibold text-white">
+        <div className="rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-semibold text-white">
           {myPosition ? `Rank #${myPosition}` : 'Unranked'}
         </div>
       </div>
 
-      <div className="mt-4 space-y-2.5">
+      <div className="mt-3 space-y-1.5">
         {leaderboard.length ? leaderboard.slice(0, 5).map((entry) => (
-          <div key={entry.user_id || entry.username} className={`flex items-center justify-between gap-2 rounded-[12px] border px-3 py-2 ${entry.is_current_user ? 'border-slate-200 bg-[#232832]' : 'border-slate-200 bg-[#1e222b]'}`}>
-            <div className="flex min-w-0 items-center gap-2.5">
-              <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2a303a] text-[14px] font-bold text-slate-900 shadow-[0_3px_10px_rgba(15,23,42,0.08)]">
+          <div key={entry.user_id || entry.username} className={`flex items-center justify-between gap-2 rounded-[14px] border px-2.5 py-2 ${entry.is_current_user ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-slate-50'}`}>
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-[11px] font-bold text-slate-900 shadow-[0_2px_6px_rgba(15,23,42,0.06)]">
                 {entry.rank}
               </div>
+              <div className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-semibold text-slate-600">
+                {(entry.username || 'P').slice(0, 1).toUpperCase()}
+              </div>
               <div className="min-w-0">
-                <p className="truncate text-[14px] font-semibold text-slate-900">{entry.username || 'Participant'}</p>
-                <p className="text-[11px] text-slate-500">{entry.total_bids || 0} bids</p>
+                <p className="truncate text-[12px] font-semibold text-slate-900">{entry.username || 'Participant'}</p>
+                <p className="text-[10px] text-slate-500">{entry.total_bids || 0} bids</p>
               </div>
             </div>
             <div className="shrink-0 text-right">
-              <p className="text-[14px] font-semibold text-slate-900">{entry.total_entries || 0}</p>
-              <p className="text-[11px] text-slate-400">entries</p>
+              <p className="text-[12px] font-semibold text-slate-900">{entry.total_entries || 0}</p>
+              <p className="text-[10px] text-slate-400">entries</p>
             </div>
           </div>
         )) : (
-          <div className="rounded-[12px] border border-dashed border-slate-200 bg-[#1e222b] px-3 py-4 text-sm text-slate-500">
+          <div className="rounded-[14px] border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-[12px] text-slate-500">
             Leaderboard will appear after the first entries come in.
           </div>
         )}
@@ -168,22 +171,22 @@ function ResultRevealSection({ auction, winners, onReveal, revealMutation }) {
   if (!eligible && !alreadyRevealed) return null;
 
   return (
-    <section className="rounded-[28px] bg-[#1a1d24] p-4 shadow-[0_16px_36px_rgba(15,23,42,0.06)]">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Result Reveal</p>
-      <div className="mt-3 rounded-[24px] bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.08),_transparent_32%),linear-gradient(180deg,#232832,#1a1d24)] p-4">
+    <section className="rounded-[22px] border border-slate-200 bg-white p-3 shadow-[0_12px_26px_rgba(15,23,42,0.05)]">
+      <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-400">Result Reveal</p>
+      <div className="mt-2.5 rounded-[18px] bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.12),_transparent_32%),linear-gradient(180deg,#ffffff,#f8fafc)] p-3">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-[15px] font-semibold text-slate-900">{revealed ? 'Winner revealed' : 'Spin to reveal result'}</p>
-            <p className="mt-1 text-[12px] text-slate-500">{revealed ? (winners.length ? winners.map((winner) => winner.username).join(', ') : 'Winner unavailable') : 'Uses the finalized backend result only.'}</p>
+            <p className="text-[13px] font-semibold text-slate-900">{revealed ? 'Winner revealed' : 'Spin to reveal result'}</p>
+            <p className="mt-1 text-[11px] text-slate-500">{revealed ? (winners.length ? winners.map((winner) => winner.username).join(', ') : 'Winner unavailable') : 'Uses the finalized backend result only.'}</p>
           </div>
           <button
             type="button"
             onClick={handleReveal}
             disabled={!eligible || spinning || revealMutation.isPending || revealed}
-            className={`inline-flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 border-slate-800 bg-[conic-gradient(from_90deg,_#f59e0b,_#f97316,_#f59e0b)] shadow-[0_14px_28px_rgba(15,23,42,0.10)] ${spinning ? 'animate-[spin_1.8s_linear]' : ''} disabled:opacity-60`}
+            className={`inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-4 border-slate-800 bg-[conic-gradient(from_90deg,_#f59e0b,_#f97316,_#f59e0b)] shadow-[0_12px_22px_rgba(15,23,42,0.10)] ${spinning ? 'animate-[spin_1.8s_linear]' : ''} disabled:opacity-60`}
             aria-label="Spin to reveal winner"
           >
-            <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#232832] text-[11px] font-semibold text-slate-900">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-[10px] font-semibold text-slate-900">
               {revealed ? 'Done' : 'Spin'}
             </span>
           </button>
@@ -194,7 +197,6 @@ function ResultRevealSection({ auction, winners, onReveal, revealMutation }) {
 }
 
 function StickyBidBar({ status, entryPrice, walletBalance, walletReady, bidMutation, onBid, participantCount, winners }) {
-  const quickCounts = [1, 5];
   const isLive = status === 'live';
   const isEnded = status === 'ended';
   const primaryBidBlocked = walletReady && walletBalance < entryPrice;
@@ -202,13 +204,13 @@ function StickyBidBar({ status, entryPrice, walletBalance, walletReady, bidMutat
 
   return (
     <div className="fixed inset-x-0 bottom-[56px] z-30 px-3 pb-[calc(10px+env(safe-area-inset-bottom))] md:left-1/2 md:w-full md:max-w-3xl md:-translate-x-1/2 md:px-4">
-      <div className="rounded-[28px] border border-slate-200 bg-[#1a1d24] p-3 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+      <div className="rounded-[22px] border border-slate-200 bg-white p-2.5 shadow-[0_16px_30px_rgba(15,23,42,0.12)]">
         <div className="grid grid-cols-[1fr_auto_auto] gap-2">
           <button
             type="button"
             onClick={() => onBid(1)}
             disabled={!isLive || bidMutation.isPending || primaryBidBlocked}
-            className="inline-flex min-h-[50px] items-center justify-center rounded-full bg-slate-900 px-4 text-[13px] font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="inline-flex h-11 items-center justify-center rounded-full bg-slate-900 px-4 text-[12px] font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
           >
             {bidMutation.isPending ? 'Processing...' : primaryLabel}
           </button>
@@ -216,27 +218,27 @@ function StickyBidBar({ status, entryPrice, walletBalance, walletReady, bidMutat
             type="button"
             onClick={() => onBid(5)}
             disabled={!isLive || bidMutation.isPending || (walletReady && walletBalance < entryPrice * 5)}
-            className="inline-flex min-h-[50px] min-w-[72px] items-center justify-center rounded-full border border-slate-200 bg-[#232832] px-4 text-[13px] font-semibold text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-11 min-w-[62px] items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-3 text-[12px] font-semibold text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
           >
             x5
           </button>
-          <div className="inline-flex min-h-[50px] min-w-[88px] items-center justify-center rounded-full border border-slate-200 bg-[#232832] px-3 text-center">
+          <div className="inline-flex h-11 min-w-[78px] items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-3 text-center">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Entry</p>
-              <p className="text-[12px] font-bold text-slate-900">{formatAuctionMoney(entryPrice)}</p>
+              <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-400">Entry</p>
+              <p className="text-[11px] font-bold text-slate-900">{formatAuctionMoney(entryPrice)}</p>
             </div>
           </div>
         </div>
 
-        <div className="mt-2 flex items-center justify-between rounded-full bg-[#232832] px-3 py-2 text-[11px] text-slate-500">
+        <div className="mt-2 flex items-center justify-between rounded-full bg-slate-50 px-3 py-1.5 text-[10px] text-slate-500">
           <span>{participantCount} participants</span>
           <span>Wallet {formatAuctionMoney(walletBalance)}</span>
         </div>
 
         <div className="mt-2 grid grid-cols-3 gap-2">
-          <div className="rounded-full bg-[#232832] px-3 py-2 text-center text-[10px] font-semibold text-slate-600">Secure</div>
-          <div className="rounded-full bg-[#232832] px-3 py-2 text-center text-[10px] font-semibold text-slate-600">Instant</div>
-          <div className="rounded-full bg-[#232832] px-3 py-2 text-center text-[10px] font-semibold text-slate-600">Lowest Price</div>
+          <div className="rounded-full bg-slate-50 px-3 py-1.5 text-center text-[9px] font-semibold text-slate-600">Secure</div>
+          <div className="rounded-full bg-slate-50 px-3 py-1.5 text-center text-[9px] font-semibold text-slate-600">Instant</div>
+          <div className="rounded-full bg-slate-50 px-3 py-1.5 text-center text-[9px] font-semibold text-slate-600">Lowest Price</div>
         </div>
       </div>
     </div>
@@ -345,22 +347,22 @@ export default function AuctionDetailPage() {
 
   return (
     <>
-      <div className="-mx-4 min-h-screen bg-[#0f1115] px-4 pb-[210px] pt-2 sm:mx-0 sm:rounded-[32px] sm:border sm:border-slate-200 sm:px-5 sm:py-4 sm:pb-[210px]">
-        <div className="mx-auto max-w-xl space-y-4">
-          <section className="rounded-[28px] bg-[#1a1d24] p-4 shadow-[0_16px_36px_rgba(15,23,42,0.06)]">
+      <div className="-mx-4 min-h-screen bg-[#f8fafc] px-4 pb-[188px] pt-2 sm:mx-0 sm:rounded-[28px] sm:border sm:border-slate-200 sm:px-4 sm:py-3 sm:pb-[188px]">
+        <div className="mx-auto max-w-xl space-y-3">
+          <section className="rounded-[22px] border border-slate-200 bg-white p-3 shadow-[0_12px_26px_rgba(15,23,42,0.05)]">
             <div className="flex items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-[#232832] text-slate-700"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700"
                 aria-label="Go back"
               >
-                <ArrowLeft size={18} />
+                <ArrowLeft size={16} />
               </button>
 
               <div className="min-w-0 flex-1 text-center">
-                <p className="truncate text-[15px] font-semibold text-slate-900">{auction?.title || 'Auction'}</p>
-                <div className="mt-1 flex items-center justify-center gap-2">
+                <p className="truncate text-[14px] font-semibold text-slate-900">{auction?.title || 'Auction'}</p>
+                <div className="mt-0.5 flex items-center justify-center gap-2">
                   <AuctionStatusBadge status={status} won={Boolean(auction?.isWinner || auction?.is_winner)} />
                 </div>
               </div>
@@ -368,17 +370,17 @@ export default function AuctionDetailPage() {
               <button
                 type="button"
                 onClick={handleShare}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-[#232832] text-slate-700"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700"
                 aria-label="Share auction"
               >
-                <Share2 size={18} />
+                <Share2 size={16} />
               </button>
             </div>
           </section>
 
-          <section className="rounded-[22px] bg-[#1a1d24] px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
-            <div className="flex items-center gap-2 text-[12px] text-amber-900">
-              <Gift size={14} />
+          <section className="rounded-[18px] border border-amber-200 bg-amber-50 px-3 py-2.5 shadow-[0_10px_20px_rgba(15,23,42,0.03)]">
+            <div className="flex items-center gap-2 text-[11px] text-amber-900">
+              <Gift size={13} />
               <span className="font-semibold">Refer & Earn</span>
               <span className="truncate text-amber-800/80">Share this auction with your network and grow your activity.</span>
             </div>
@@ -393,10 +395,10 @@ export default function AuctionDetailPage() {
             topParticipant={topParticipant}
           />
 
-          <div className="grid grid-cols-2 gap-3">
-            <section className="rounded-[28px] bg-[#1a1d24] p-4 shadow-[0_16px_36px_rgba(15,23,42,0.06)]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Summary</p>
-              <div className="mt-4 space-y-3">
+          <div className="grid grid-cols-2 gap-2.5">
+            <section className="rounded-[22px] border border-slate-200 bg-white p-3 shadow-[0_12px_26px_rgba(15,23,42,0.05)]">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-400">Summary</p>
+              <div className="mt-3 space-y-2">
                 <CompactMetric label="Your Position" value={auction?.myPosition ? `#${auction.myPosition}` : 'Not ranked'} icon={Medal} accent />
                 <CompactMetric label="Community" value={`${communityCount} entries`} icon={Users} />
                 <CompactMetric label="Your Spend" value={formatAuctionMoney(auction?.myTotalSpend || 0)} icon={Wallet} />
@@ -406,18 +408,18 @@ export default function AuctionDetailPage() {
             <LeaderboardPanel leaderboard={leaderboard} myPosition={auction?.myPosition || 0} />
           </div>
 
-          <section className="rounded-[28px] bg-[#1a1d24] p-4 shadow-[0_16px_36px_rgba(15,23,42,0.06)]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">About this auction</p>
-            <div className="mt-3 space-y-2">
-              <p className="text-[12px] font-semibold text-slate-500">{aboutSource}</p>
-              <h2 className="text-[17px] font-semibold leading-6 text-slate-900">{aboutTitle}</h2>
-              <p className="line-clamp-4 text-[13px] leading-6 text-slate-600">{aboutDescription}</p>
+          <section className="rounded-[22px] border border-slate-200 bg-white p-3 shadow-[0_12px_26px_rgba(15,23,42,0.05)]">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-400">About this auction</p>
+            <div className="mt-2.5 space-y-1.5">
+              <p className="text-[11px] font-semibold text-slate-500">{aboutSource}</p>
+              <h2 className="text-[15px] font-semibold leading-5 text-slate-900">{aboutTitle}</h2>
+              <p className="line-clamp-4 text-[12px] leading-5 text-slate-600">{aboutDescription}</p>
             </div>
           </section>
 
-          <section className="rounded-[22px] bg-slate-900 px-4 py-3 text-white shadow-[0_14px_28px_rgba(15,23,42,0.10)]">
-            <div className="flex items-center gap-2 text-[12px]">
-              <Sparkles size={14} />
+          <section className="rounded-[18px] bg-slate-900 px-3 py-2.5 text-white shadow-[0_12px_24px_rgba(15,23,42,0.10)]">
+            <div className="flex items-center gap-2 text-[11px]">
+              <Sparkles size={13} />
               <span className="font-semibold">Win & Earn</span>
               <span className="truncate text-white/80">
                 {rewardDistribution
@@ -435,22 +437,22 @@ export default function AuctionDetailPage() {
             <>
               <ResultRevealSection auction={auction} winners={winners} revealMutation={revealMutation} onReveal={() => revealMutation.mutateAsync()} />
 
-              <section className="rounded-[28px] bg-[#1a1d24] p-4 shadow-[0_16px_36px_rgba(15,23,42,0.06)]">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Auction Result</p>
-                <div className="mt-3">
+              <section className="rounded-[22px] border border-slate-200 bg-white p-3 shadow-[0_12px_26px_rgba(15,23,42,0.05)]">
+                <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-400">Auction Result</p>
+                <div className="mt-2.5">
                   {rewardDistribution ? (
                     rewardDistribution.result_type === 'winner' ? (
-                      <div className="rounded-[22px] border border-slate-200 bg-[#232832] px-4 py-4 text-sm text-emerald-900">
+                      <div className="rounded-[18px] border border-emerald-200 bg-emerald-50 px-3 py-3 text-[12px] text-emerald-900">
                         You won this auction item. No BTCT compensation is issued on a winning result.
                       </div>
                     ) : (
-                      <div className="rounded-[22px] border border-slate-200 bg-[#232832] px-4 py-4 text-sm text-amber-900">
+                      <div className="rounded-[18px] border border-amber-200 bg-amber-50 px-3 py-3 text-[12px] text-amber-900">
                         <p className="font-semibold">BTCT compensation awarded</p>
-                        <p className="mt-1 text-[12px]">You spent {formatAuctionMoney(rewardDistribution.amount_spent)} and received {number(rewardDistribution.btct_awarded)} BTCT.</p>
+                        <p className="mt-1 text-[11px]">You spent {formatAuctionMoney(rewardDistribution.amount_spent)} and received {number(rewardDistribution.btct_awarded)} BTCT.</p>
                       </div>
                     )
                   ) : (
-                    <div className="rounded-[22px] border border-slate-200 bg-[#232832] px-4 py-4 text-sm text-slate-600">
+                    <div className="rounded-[18px] border border-slate-200 bg-slate-50 px-3 py-3 text-[12px] text-slate-600">
                       Final outcome will appear here once settlement records are available.
                     </div>
                   )}
