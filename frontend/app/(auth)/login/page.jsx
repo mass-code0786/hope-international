@@ -30,7 +30,7 @@ export default function LoginPage() {
         router.push('/seller');
         return;
       }
-      router.push('/auctions');
+      router.push('/');
     } catch (err) {
       toast.error(err.message || 'Login failed');
     }
