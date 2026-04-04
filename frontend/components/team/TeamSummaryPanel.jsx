@@ -64,9 +64,11 @@ export function TeamSummaryPanel({ me, teamSummary = {}, children = [] }) {
 function Card({ label, value, icon: Icon }) {
   return (
     <div className="hope-grid-card flex flex-col items-start justify-start gap-2 rounded-[24px] p-4">
-      {Icon ? <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--hope-accent-soft)] text-accent"><Icon size={16} /></div> : null}
-      <p className="text-[13px] tracking-[-0.01em] text-muted opacity-70">{label}</p>
-      <p className="pt-0.5 text-[22px] font-semibold tracking-[-0.04em] text-text break-words">{value}</p>
+      <div className="flex items-start gap-2">
+        {Icon ? <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--hope-accent-soft)] text-accent"><Icon size={16} /></div> : null}
+        <p className="pt-1 text-[13px] tracking-[-0.01em] text-muted opacity-75">{label}</p>
+      </div>
+      <p className="pt-1 text-[22px] font-semibold tracking-[-0.04em] text-text break-words">{value}</p>
     </div>
   );
 }
