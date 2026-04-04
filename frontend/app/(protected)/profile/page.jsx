@@ -175,12 +175,11 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-4">
-      <SectionHeader title="Profile" eyebrow="Account" />
+      <SectionHeader title="Profile" />
 
       <div className="card-surface p-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <span className="hope-kicker mb-3"><Sparkles size={12} /> Account hub</span>
             <h3 className="text-2xl font-semibold tracking-[-0.05em] text-text">{[user.first_name, user.last_name].filter(Boolean).join(' ') || user.username}</h3>
             <p className="mt-2 text-sm leading-6 text-muted">Username @{user.username || '-'} | Current rank {rankLabel(user.rank_name)} | Sponsor {user.sponsor_username || user.sponsor_id || 'N/A'}</p>
           </div>
@@ -188,11 +187,11 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <StatCard compact title="Username" value={user.username || '-'} subtitle={`ID: ${user.id || '-'}`} />
+      <div className="grid grid-cols-2 gap-3">
+        <StatCard compact title="Username" value={user.username || '-'} subtitle={`ID: ${user.id || '-'}`} className="col-span-2" />
         <StatCard compact title="Rank" value={rankLabel(user.rank_name)} subtitle={`Sponsor: ${user.sponsor_username || user.sponsor_id || 'N/A'}`} />
-        <StatCard compact title="Email" value={user.email || '-'} />
         <StatCard compact title="Status" value={<span className={user.is_active === false ? 'text-[#ef4444]' : 'text-[#22c55e]'}>{user.is_active === false ? 'Inactive' : 'Active'}</span>} />
+        <StatCard compact title="Email" value={user.email || '-'} className="col-span-2" />
       </div>
 
       <div className="rounded-[32px] border border-[rgba(255,255,255,0.06)] bg-[#11141b] p-4 shadow-[0_24px_50px_rgba(0,0,0,0.32)]">
