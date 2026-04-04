@@ -51,14 +51,14 @@ function AuctionGridSkeleton() {
   return (
     <div className="grid grid-cols-2 gap-3">
       {Array.from({ length: 6 }).map((_, index) => (
-        <div key={index} className="rounded-[26px] border border-slate-200 bg-[#1a1d24] p-3 shadow-[0_14px_30px_rgba(15,23,42,0.06)]">
+        <div key={index} className="rounded-[26px] border border-white/5 bg-[#1a1f2e] p-3 shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
           <div className="flex items-center justify-between">
-            <div className="h-7 w-20 animate-pulse rounded-full bg-[#232832]" />
-            <div className="h-7 w-14 animate-pulse rounded-full bg-[#232832]" />
+            <div className="h-7 w-20 animate-pulse rounded-full bg-[#1f2937]" />
+            <div className="h-7 w-14 animate-pulse rounded-full bg-[#1f2937]" />
           </div>
-          <div className="mx-auto mt-4 h-28 w-28 animate-pulse rounded-full bg-[#232832]" />
-          <div className="mt-4 h-10 animate-pulse rounded-2xl bg-[#232832]" />
-          <div className="mt-3 h-10 animate-pulse rounded-full bg-[#232832]" />
+          <div className="mx-auto mt-4 h-28 w-28 animate-pulse rounded-full bg-[#1f2937]" />
+          <div className="mt-4 h-10 animate-pulse rounded-2xl bg-[#1f2937]" />
+          <div className="mt-3 h-10 animate-pulse rounded-full bg-[#1f2937]" />
         </div>
       ))}
     </div>
@@ -67,12 +67,12 @@ function AuctionGridSkeleton() {
 
 function EmptyAuctionState() {
   return (
-    <section className="rounded-[28px] border border-slate-200 bg-[#1a1d24] p-6 text-center shadow-[0_16px_36px_rgba(15,23,42,0.06)]">
-      <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#232832] text-white">
+    <section className="rounded-[28px] border border-white/5 bg-[#1a1f2e] p-6 text-center shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
+      <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#1f2937] text-white">
         <Sparkles size={18} />
       </div>
-      <h3 className="mt-4 text-lg font-semibold text-slate-900">No auctions available</h3>
-      <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">Try another tab, clear the search, or check back when the next auction round opens.</p>
+      <h3 className="mt-4 text-lg font-semibold text-white">No auctions available</h3>
+      <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[#9ca3af]">Try another tab, clear the search, or check back when the next auction round opens.</p>
     </section>
   );
 }
@@ -82,7 +82,7 @@ function FilterChip({ active, children, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full px-3 py-2 text-[11px] font-semibold transition ${active ? 'bg-slate-900 text-white shadow-[0_10px_20px_rgba(15,23,42,0.12)]' : 'border border-slate-200 bg-[#1a1d24] text-slate-700'}`}
+      className={`rounded-full px-3 py-2 text-[11px] font-semibold transition ${active ? 'bg-[linear-gradient(135deg,#7c3aed,#22c55e)] text-white shadow-[0_6px_20px_rgba(124,58,237,0.4)]' : 'border border-white/5 bg-[#1f2937] text-[#9ca3af]'}`}
     >
       {children}
     </button>
@@ -103,22 +103,22 @@ function FilterSheet({ open, draftFilters, setDraftFilters, categories, onApply,
 
   return (
     <div className="fixed inset-0 z-50 md:hidden">
-      <button type="button" className="absolute inset-0 bg-slate-950/25 backdrop-blur-[1px]" aria-label="Close filters" onClick={onClose} />
-      <div className="absolute inset-x-0 bottom-0 rounded-t-[30px] bg-[#1a1d24] px-4 pb-[calc(18px+env(safe-area-inset-bottom))] pt-3 shadow-[0_-18px_40px_rgba(15,23,42,0.16)]">
-        <div className="mx-auto h-1.5 w-14 rounded-full bg-[#2a303a]" />
+      <button type="button" className="absolute inset-0 bg-black/55" aria-label="Close filters" onClick={onClose} />
+      <div className="absolute inset-x-0 bottom-0 rounded-t-[30px] border border-white/5 bg-[#111827] px-4 pb-[calc(18px+env(safe-area-inset-bottom))] pt-3 shadow-[0_-18px_40px_rgba(0,0,0,0.5)]">
+        <div className="mx-auto h-1.5 w-14 rounded-full bg-[#374151]" />
         <div className="mt-4 flex items-center justify-between gap-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Filter</p>
-            <h2 className="mt-1 text-lg font-semibold text-slate-900">Refine Auctions</h2>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#6b7280]">Filter</p>
+            <h2 className="mt-1 text-lg font-semibold text-white">Refine Auctions</h2>
           </div>
-          <button type="button" onClick={onClose} className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-[#232832] text-slate-600" aria-label="Close filters">
+          <button type="button" onClick={onClose} className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/5 bg-[#1f2937] text-[#9ca3af]" aria-label="Close filters">
             <X size={16} />
           </button>
         </div>
 
         <div className="mt-5 space-y-5">
           <section>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Status</p>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6b7280]">Status</p>
             <div className="flex flex-wrap gap-2">
               {tabs.map((tab) => (
                 <FilterChip key={tab.value} active={draftFilters.status === tab.value} onClick={() => setDraftFilters((prev) => ({ ...prev, status: tab.value }))}>
@@ -129,21 +129,21 @@ function FilterSheet({ open, draftFilters, setDraftFilters, categories, onApply,
           </section>
 
           <section>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Price Range</p>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6b7280]">Price Range</p>
             <div className="grid grid-cols-2 gap-2">
-              <label className="rounded-[20px] border border-slate-200 bg-[#232832] px-3 py-3">
-                <span className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Min</span>
-                <input value={draftFilters.minPrice} onChange={(e) => setDraftFilters((prev) => ({ ...prev, minPrice: e.target.value.replace(/[^\d.]/g, '') }))} inputMode="decimal" placeholder="0" className="mt-1 w-full bg-transparent text-sm font-semibold text-slate-900 outline-none" />
+              <label className="rounded-[20px] border border-white/5 bg-[#1f2937] px-3 py-3">
+                <span className="text-[10px] uppercase tracking-[0.16em] text-[#6b7280]">Min</span>
+                <input value={draftFilters.minPrice} onChange={(e) => setDraftFilters((prev) => ({ ...prev, minPrice: e.target.value.replace(/[^\d.]/g, '') }))} inputMode="decimal" placeholder="0" className="mt-1 w-full bg-transparent text-sm font-semibold text-white outline-none placeholder:text-[#6b7280]" />
               </label>
-              <label className="rounded-[20px] border border-slate-200 bg-[#232832] px-3 py-3">
-                <span className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Max</span>
-                <input value={draftFilters.maxPrice} onChange={(e) => setDraftFilters((prev) => ({ ...prev, maxPrice: e.target.value.replace(/[^\d.]/g, '') }))} inputMode="decimal" placeholder="100" className="mt-1 w-full bg-transparent text-sm font-semibold text-slate-900 outline-none" />
+              <label className="rounded-[20px] border border-white/5 bg-[#1f2937] px-3 py-3">
+                <span className="text-[10px] uppercase tracking-[0.16em] text-[#6b7280]">Max</span>
+                <input value={draftFilters.maxPrice} onChange={(e) => setDraftFilters((prev) => ({ ...prev, maxPrice: e.target.value.replace(/[^\d.]/g, '') }))} inputMode="decimal" placeholder="100" className="mt-1 w-full bg-transparent text-sm font-semibold text-white outline-none placeholder:text-[#6b7280]" />
               </label>
             </div>
           </section>
 
           <section>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Category</p>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6b7280]">Category</p>
             <div className="flex flex-wrap gap-2">
               <FilterChip active={draftFilters.category === 'all'} onClick={() => setDraftFilters((prev) => ({ ...prev, category: 'all' }))}>All</FilterChip>
               {categories.map((category) => (
@@ -155,14 +155,14 @@ function FilterSheet({ open, draftFilters, setDraftFilters, categories, onApply,
           </section>
 
           <section>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Sorting</p>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6b7280]">Sorting</p>
             <div className="space-y-2">
               {sortOptions.map((option) => (
                 <button
                   key={option.value}
                   type="button"
                   onClick={() => setDraftFilters((prev) => ({ ...prev, sort: option.value }))}
-                  className={`flex w-full items-center justify-between rounded-[18px] px-4 py-3 text-left text-sm ${draftFilters.sort === option.value ? 'bg-slate-900 text-white' : 'border border-slate-200 bg-[#232832] text-slate-700'}`}
+                  className={`flex w-full items-center justify-between rounded-[18px] px-4 py-3 text-left text-sm ${draftFilters.sort === option.value ? 'bg-[linear-gradient(135deg,#7c3aed,#22c55e)] text-white shadow-[0_6px_20px_rgba(124,58,237,0.35)]' : 'border border-white/5 bg-[#1f2937] text-[#9ca3af]'}`}
                 >
                   <span>{option.label}</span>
                   <span className="text-[10px] font-semibold uppercase tracking-[0.18em] opacity-70">{draftFilters.sort === option.value ? 'On' : ''}</span>
@@ -173,8 +173,8 @@ function FilterSheet({ open, draftFilters, setDraftFilters, categories, onApply,
         </div>
 
         <div className="mt-6 grid grid-cols-2 gap-2">
-          <button type="button" onClick={onReset} className="inline-flex min-h-[48px] items-center justify-center rounded-[18px] border border-slate-200 bg-[#232832] px-4 text-sm font-semibold text-slate-700">Reset</button>
-          <button type="button" onClick={onApply} className="inline-flex min-h-[48px] items-center justify-center rounded-[18px] bg-slate-900 px-4 text-sm font-semibold text-white">Apply</button>
+          <button type="button" onClick={onReset} className="inline-flex min-h-[48px] items-center justify-center rounded-[18px] border border-white/5 bg-[#1f2937] px-4 text-sm font-semibold text-[#9ca3af]">Reset</button>
+          <button type="button" onClick={onApply} className="inline-flex min-h-[48px] items-center justify-center rounded-[18px] bg-[linear-gradient(135deg,#7c3aed,#22c55e)] px-4 text-sm font-semibold text-white shadow-[0_6px_20px_rgba(124,58,237,0.4)]">Apply</button>
         </div>
       </div>
     </div>
@@ -256,27 +256,27 @@ export default function AuctionsPage() {
 
   return (
     <>
-      <div className="-mx-4 min-h-screen bg-[#0f1115] px-4 pb-24 pt-2 sm:mx-0 sm:rounded-[32px] sm:border sm:border-slate-200 sm:px-5 sm:py-4">
+      <div className="-mx-4 min-h-screen bg-[linear-gradient(180deg,#0b0f1a,#111827)] px-4 pb-24 pt-2 sm:mx-0 sm:rounded-[32px] sm:border sm:border-white/5 sm:px-5 sm:py-4">
         <div className="mx-auto max-w-xl space-y-4">
-          <section className="rounded-[28px] bg-[#1a1d24] p-4 shadow-[0_16px_36px_rgba(15,23,42,0.06)]">
+          <section className="rounded-[28px] border border-white/5 bg-[#1a1f2e] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
             <div className="flex items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-[#232832] text-slate-700"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/5 bg-[#1f2937] text-white"
                 aria-label="Go back"
               >
                 <ArrowLeft size={18} />
               </button>
 
               <div className="min-w-0 text-center">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Win Now</p>
-                <h1 className="mt-1 text-[20px] font-semibold tracking-[-0.03em] text-slate-900">Auctions</h1>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6b7280]">Win Now</p>
+                <h1 className="mt-1 text-[20px] font-semibold tracking-[-0.03em] text-white">Auctions</h1>
               </div>
 
               <Link
                 href="/history/auctions"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-[#232832] text-amber-700 shadow-[0_8px_18px_rgba(15,23,42,0.05)]"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/5 bg-[#1f2937] text-[#22c55e] shadow-[0_10px_24px_rgba(0,0,0,0.3)]"
                 aria-label="Open auction history hub"
               >
                 <Trophy size={18} />
@@ -284,21 +284,21 @@ export default function AuctionsPage() {
             </div>
           </section>
 
-          <section className="rounded-[28px] bg-[#1a1d24] p-4 shadow-[0_16px_36px_rgba(15,23,42,0.06)]">
+          <section className="rounded-[28px] border border-white/5 bg-[#1a1f2e] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Auction Type</p>
-                <p className="mt-1 text-[15px] font-semibold text-slate-900">Browse active listings</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6b7280]">Auction Type</p>
+                <p className="mt-1 text-[15px] font-semibold text-white">Browse active listings</p>
               </div>
               <button
                 type="button"
                 onClick={() => setFiltersOpen(true)}
-                className="inline-flex h-11 items-center gap-2 rounded-full border border-slate-200 bg-[#232832] px-3 text-slate-700"
+                className="inline-flex h-11 items-center gap-2 rounded-full border border-white/5 bg-[#1f2937] px-3 text-white"
                 aria-label="Open filters"
               >
                 <SlidersHorizontal size={16} />
                 <span className="text-[11px] font-semibold">Filter</span>
-                {activeFilterCount ? <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-slate-900 px-1.5 text-[10px] font-semibold text-white">{activeFilterCount}</span> : null}
+                {activeFilterCount ? <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[linear-gradient(135deg,#7c3aed,#22c55e)] px-1.5 text-[10px] font-semibold text-white">{activeFilterCount}</span> : null}
               </button>
             </div>
 
@@ -312,22 +312,22 @@ export default function AuctionsPage() {
                     setFilters((prev) => ({ ...prev, status: tab.value }));
                     setDraftFilters((prev) => ({ ...prev, status: tab.value }));
                   }}
-                  className={`shrink-0 rounded-full px-4 py-2.5 text-[11px] font-semibold transition ${status === tab.value ? 'bg-slate-900 text-white shadow-[0_12px_24px_rgba(15,23,42,0.12)]' : 'border border-slate-200 bg-[#232832] text-slate-700'}`}
+                  className={`shrink-0 rounded-full px-4 py-2.5 text-[11px] font-semibold transition ${status === tab.value ? 'bg-[linear-gradient(135deg,#7c3aed,#22c55e)] text-white shadow-[0_6px_20px_rgba(124,58,237,0.4)]' : 'border border-white/5 bg-[#1f2937] text-[#9ca3af]'}`}
                 >
                   {tab.label}
                 </button>
               ))}
             </div>
 
-            <div className="mt-4 flex items-center gap-2 rounded-full border border-slate-200 bg-[#232832] px-3 py-2.5">
-              <Search size={15} className="shrink-0 text-slate-400" />
+            <div className="mt-4 flex items-center gap-2 rounded-full border border-white/5 bg-[#1f2937] px-3 py-2.5">
+              <Search size={15} className="shrink-0 text-[#6b7280]" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search auctions"
-                className="w-full bg-transparent text-[13px] text-slate-800 outline-none placeholder:text-slate-400"
+                className="w-full bg-transparent text-[13px] text-white outline-none placeholder:text-[#6b7280]"
               />
-              <span className="inline-flex items-center gap-1 rounded-full bg-[#1a1d24] px-2 py-1 text-[10px] font-semibold text-slate-500">
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#111827] px-2 py-1 text-[10px] font-semibold text-[#9ca3af]">
                 <Clock3 size={11} />
                 {filteredAuctions.length}
               </span>

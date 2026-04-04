@@ -19,7 +19,7 @@ export function auctionStatusVariant(status) {
 function getStatusPalette(status, won = false) {
   if (won) {
     return {
-      chip: 'border-emerald-200 bg-emerald-500 text-white',
+      chip: 'border border-emerald-500/20 bg-[rgba(34,197,94,0.15)] text-[#22c55e]',
       label: 'Won'
     };
   }
@@ -33,7 +33,7 @@ function getStatusPalette(status, won = false) {
   }
   if (safeStatus === 'ended') {
     return {
-      chip: 'border-slate-200 bg-slate-900 text-white',
+      chip: 'border border-white/5 bg-[rgba(156,163,175,0.15)] text-[#9ca3af]',
       label: 'ENDED'
     };
   }
@@ -93,8 +93,8 @@ export function AuctionCountdown({ startAt, endAt, status, compact = false }) {
   const prefix = safeStatus === 'upcoming' ? 'Starts' : safeStatus === 'live' ? 'Ends' : null;
 
   return (
-    <div className="inline-flex min-w-0 items-center gap-1.5 rounded-full border border-slate-200 bg-[#232832] px-2.5 py-1 text-[10px] font-semibold text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.08)]">
-      <Clock3 size={11} className="shrink-0 text-slate-500" />
+    <div className="inline-flex min-w-0 items-center gap-1.5 rounded-full border border-white/5 bg-[#1f2937] px-2.5 py-1 text-[10px] font-semibold text-[#9ca3af] shadow-[0_10px_24px_rgba(0,0,0,0.28)]">
+      <Clock3 size={11} className="shrink-0 text-[#6b7280]" />
       {prefix ? `${prefix} ${compact ? '' : 'in '}${content}`.trim() : content}
     </div>
   );
@@ -143,26 +143,26 @@ function getAuctionCta(status, won = false) {
 function getCardTheme(status) {
   if (status === 'live') {
     return {
-      frame: 'from-[#1a1d24] via-[#171a20] to-[#14171d]',
-      halo: 'from-[#232832] via-[#1d2129] to-[#171a20]',
-      ring: 'from-[#f97316] to-[#ef4444]',
-      cta: 'bg-slate-900 text-white'
+      frame: 'bg-[#1a1f2e] border-white/5',
+      halo: 'bg-[#111827]',
+      ring: 'from-[#7c3aed] to-[#22c55e]',
+      cta: 'bg-[linear-gradient(135deg,#7c3aed,#22c55e)] text-white shadow-[0_6px_20px_rgba(124,58,237,0.4)] hover:brightness-110'
     };
   }
   if (status === 'ended') {
     return {
-      frame: 'from-[#1a1d24] via-[#171a20] to-[#14171d]',
-      halo: 'from-[#232832] via-[#1d2129] to-[#171a20]',
-      ring: 'from-[#94a3b8] to-[#cbd5e1]',
-      cta: 'bg-slate-900 text-white'
+      frame: 'bg-[#1a1f2e] border-white/5',
+      halo: 'bg-[#111827]',
+      ring: 'from-[#7c3aed] to-[#22c55e]',
+      cta: 'bg-[linear-gradient(135deg,#7c3aed,#22c55e)] text-white shadow-[0_6px_20px_rgba(124,58,237,0.4)] hover:brightness-110'
     };
   }
 
   return {
-    frame: 'from-[#1a1d24] via-[#171a20] to-[#14171d]',
-    halo: 'from-[#232832] via-[#1d2129] to-[#171a20]',
-    ring: 'from-[#38bdf8] to-[#2563eb]',
-    cta: 'bg-slate-900 text-white'
+    frame: 'bg-[#1a1f2e] border-white/5',
+    halo: 'bg-[#111827]',
+    ring: 'from-[#7c3aed] to-[#22c55e]',
+    cta: 'bg-[linear-gradient(135deg,#7c3aed,#22c55e)] text-white shadow-[0_6px_20px_rgba(124,58,237,0.4)] hover:brightness-110'
   };
 }
 
@@ -174,21 +174,21 @@ export function AuctionCard({ auction }) {
   const theme = getCardTheme(status);
   const price = formatAuctionMoney(getAuctionPrice(auction));
   const capacity = getAuctionCapacity(auction);
-  const progressStyle = capacity.hasCapacity ? { background: `conic-gradient(#0f172a ${capacity.capacityPercent}%, #e2e8f0 0)` } : { background: 'linear-gradient(135deg, #cbd5e1, #e2e8f0)' };
+  const progressStyle = capacity.hasCapacity ? { background: `conic-gradient(#7c3aed ${capacity.capacityPercent}%, rgba(255,255,255,0.08) 0)` } : { background: 'linear-gradient(135deg, rgba(124,58,237,0.6), rgba(34,197,94,0.45))' };
   const ctaLabel = getAuctionCta(status, won);
 
   return (
-    <article className={`overflow-hidden rounded-[18px] border border-slate-200 bg-gradient-to-b ${theme.frame} p-2 shadow-[0_8px_18px_rgba(15,23,42,0.05)]`}>
+    <article className={`overflow-hidden rounded-[18px] border ${theme.frame} p-2 shadow-[0_10px_30px_rgba(0,0,0,0.4)]`}>
       <div className="flex items-center justify-between gap-2">
         <AuctionCountdown startAt={auction?.start_at} endAt={auction?.end_at} status={status} compact />
         <AuctionStatusBadge status={status} won={won} />
       </div>
 
       <Link href={`/auctions/${auction?.id}`} className="mt-2 block">
-        <div className={`relative rounded-[18px] bg-gradient-to-br ${theme.halo} px-2 py-2.5`}>
+        <div className={`relative rounded-[18px] ${theme.halo} px-2 py-2.5`}>
           <div className="mx-auto mt-[-10px] flex h-[132px] w-[132px] min-w-[120px] max-w-[150px] items-center justify-center rounded-full p-[4px]" style={progressStyle}>
-            <div className="flex h-full w-full items-center justify-center rounded-full bg-[#232832] shadow-[0_10px_20px_rgba(15,23,42,0.10)]">
-              <div className="flex h-[116px] w-[116px] items-center justify-center overflow-hidden rounded-full bg-[#1a1d24] p-[6px]">
+            <div className="flex h-full w-full items-center justify-center rounded-full bg-[#1f2937] shadow-[0_10px_24px_rgba(0,0,0,0.35)]">
+              <div className="flex h-[116px] w-[116px] items-center justify-center overflow-hidden rounded-full bg-[#111827] p-[6px]">
                 <img src={cover} alt={auction?.title || 'Auction'} className="h-full w-full rounded-full object-cover" />
               </div>
             </div>
@@ -196,7 +196,7 @@ export function AuctionCard({ auction }) {
 
           {capacity.hasCapacity ? (
             <div className="mt-1.5 flex justify-center">
-              <span className="rounded-full bg-[#232832] px-2.5 py-1 text-[9px] font-semibold text-slate-500 shadow-[0_8px_18px_rgba(15,23,42,0.06)]">
+              <span className="rounded-full bg-[#1f2937] px-2.5 py-1 text-[9px] font-semibold text-[#9ca3af] shadow-[0_8px_18px_rgba(0,0,0,0.3)]">
                 {capacity.capacityPercent}% filled
               </span>
             </div>
@@ -206,15 +206,15 @@ export function AuctionCard({ auction }) {
 
       <div className="px-1 pb-0.5 pt-2">
         <Link href={`/auctions/${auction?.id}`}>
-          <h3 className="line-clamp-2 min-h-[2rem] text-center text-[10.5px] font-semibold leading-4 text-slate-900">{auction?.title || 'Untitled auction'}</h3>
+          <h3 className="line-clamp-2 min-h-[2rem] text-center text-[10.5px] font-semibold leading-4 text-white">{auction?.title || 'Untitled auction'}</h3>
         </Link>
 
-        <Link href={`/auctions/${auction?.id}`} className={`mt-2 inline-flex h-9 w-full items-center justify-center gap-2 rounded-full px-3 text-[12px] font-semibold shadow-[0_12px_22px_rgba(15,23,42,0.10)] ${theme.cta}`}>
+        <Link href={`/auctions/${auction?.id}`} className={`mt-2 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[14px] px-3 text-[12px] font-semibold transition ${theme.cta}`}>
           <span>{ctaLabel}</span>
           <ArrowRight size={14} />
         </Link>
 
-        <div className="mt-1.5 text-center text-[9px] font-medium text-slate-500">
+        <div className="mt-1.5 text-center text-[9px] font-medium text-[#9ca3af]">
           Entry {price}
         </div>
       </div>
@@ -235,10 +235,10 @@ export function AuctionSummaryGrid({ summary = {} }) {
       {cards.map((card) => {
         const Icon = card.icon;
         return (
-          <article key={card.label} className="rounded-2xl border border-slate-200 bg-[#1a1d24] p-3">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-[#232832] text-slate-700"><Icon size={16} /></span>
-            <p className="mt-3 text-lg font-semibold text-slate-900">{card.value}</p>
-            <p className="text-[11px] text-slate-500">{card.label}</p>
+          <article key={card.label} className="rounded-2xl border border-white/5 bg-[#1a1f2e] p-3 shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-[#1f2937] text-[#9ca3af]"><Icon size={16} /></span>
+            <p className="mt-3 text-lg font-semibold text-white">{card.value}</p>
+            <p className="text-[11px] text-[#9ca3af]">{card.label}</p>
           </article>
         );
       })}
