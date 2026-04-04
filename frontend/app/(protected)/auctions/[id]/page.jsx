@@ -117,21 +117,23 @@ function LeaderboardPanel({ leaderboard = [], myPosition }) {
 
       <div className="mt-4 space-y-2.5">
         {leaderboard.length ? leaderboard.slice(0, 5).map((entry) => (
-          <div key={entry.user_id || entry.username} className={`flex items-center gap-3 rounded-[20px] border px-3 py-2.5 ${entry.is_current_user ? 'border-slate-200 bg-[#232832]' : 'border-slate-200 bg-[#1e222b]'}`}>
-            <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#2a303a] text-[12px] font-bold text-slate-900 shadow-[0_6px_16px_rgba(15,23,42,0.08)]">
-              {entry.rank}
+          <div key={entry.user_id || entry.username} className={`flex items-center justify-between gap-2 rounded-[12px] border px-3 py-2 ${entry.is_current_user ? 'border-slate-200 bg-[#232832]' : 'border-slate-200 bg-[#1e222b]'}`}>
+            <div className="flex min-w-0 items-center gap-2.5">
+              <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2a303a] text-[14px] font-bold text-slate-900 shadow-[0_3px_10px_rgba(15,23,42,0.08)]">
+                {entry.rank}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-[14px] font-semibold text-slate-900">{entry.username || 'Participant'}</p>
+                <p className="text-[11px] text-slate-500">{entry.total_bids || 0} bids</p>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-semibold text-slate-900">{entry.username || 'Participant'}</p>
-              <p className="text-[11px] text-slate-500">{entry.total_bids || 0} bid events</p>
-            </div>
-            <div className="text-right">
-              <p className="text-[13px] font-semibold text-slate-900">{entry.total_entries || 0}</p>
-              <p className="text-[10px] text-slate-400">entries</p>
+            <div className="shrink-0 text-right">
+              <p className="text-[14px] font-semibold text-slate-900">{entry.total_entries || 0}</p>
+              <p className="text-[11px] text-slate-400">entries</p>
             </div>
           </div>
         )) : (
-          <div className="rounded-[20px] border border-dashed border-slate-200 bg-[#1e222b] px-3 py-4 text-sm text-slate-500">
+          <div className="rounded-[12px] border border-dashed border-slate-200 bg-[#1e222b] px-3 py-4 text-sm text-slate-500">
             Leaderboard will appear after the first entries come in.
           </div>
         )}
