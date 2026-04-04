@@ -24,14 +24,12 @@ const hubTabs = [
 function HubHeaderCard() {
   return (
     <section className="rounded-[28px] bg-white p-4 shadow-[0_16px_36px_rgba(15,23,42,0.06)]">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Auction History Hub</p>
-      <h1 className="mt-1 text-[20px] font-semibold tracking-[-0.03em] text-slate-900">Auction records, BTCT, and staking</h1>
-      <p className="mt-2 text-[13px] leading-6 text-slate-500">One place for bids, winning records, BTCT coin history, staking plans, staking income, and complete auction participation history.</p>
+      <h1 className="text-[20px] font-semibold tracking-[-0.03em] text-slate-900">Auction history hub</h1>
     </section>
   );
 }
 
-function SummaryCard({ label, value, subtitle = '', icon: Icon, btct = false }) {
+function SummaryCard({ label, value, icon: Icon, btct = false }) {
   return (
     <article className="rounded-[24px] border border-slate-200 bg-white p-3 shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
       <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
@@ -39,19 +37,17 @@ function SummaryCard({ label, value, subtitle = '', icon: Icon, btct = false }) 
         {label}
       </div>
       <p className="mt-2 text-[17px] font-semibold text-slate-900">{value}</p>
-      {subtitle ? <p className="mt-1 text-[11px] text-slate-500">{subtitle}</p> : null}
     </article>
   );
 }
 
-function SectionCard({ title, subtitle = '', children, btct = false }) {
+function SectionCard({ title, children, btct = false }) {
   return (
     <section className="rounded-[28px] bg-white p-4 shadow-[0_16px_36px_rgba(15,23,42,0.06)]">
       <div className="flex items-center gap-2">
         {btct ? <BtctCoinLogo size={16} className="shrink-0" /> : null}
         <div>
           <p className="text-[15px] font-semibold text-slate-900">{title}</p>
-          {subtitle ? <p className="mt-1 text-[12px] text-slate-500">{subtitle}</p> : null}
         </div>
       </div>
       <div className="mt-4">{children}</div>
@@ -74,9 +70,9 @@ function HubTabButton({ active, tab, onClick }) {
   );
 }
 
-function AuctionGrid({ items = [], emptyTitle, emptyDescription }) {
+function AuctionGrid({ items = [], emptyTitle }) {
   if (!items.length) {
-    return <EmptyState title={emptyTitle} description={emptyDescription} />;
+    return <EmptyState title={emptyTitle} />;
   }
 
   return (
@@ -86,9 +82,9 @@ function AuctionGrid({ items = [], emptyTitle, emptyDescription }) {
   );
 }
 
-function LedgerList({ items = [], emptyTitle, emptyDescription, renderItem }) {
+function LedgerList({ items = [], emptyTitle, renderItem }) {
   if (!items.length) {
-    return <EmptyState title={emptyTitle} description={emptyDescription} />;
+    return <EmptyState title={emptyTitle} />;
   }
 
   return (
@@ -177,10 +173,10 @@ function AuctionHistoryHubContent() {
       <HubHeaderCard />
 
       <div className="grid grid-cols-2 gap-3">
-        <SummaryCard label="My Bids" value={number(summary.bids.my_bids ?? bids.length)} subtitle="Auctions where you placed entries" icon={Gavel} />
-        <SummaryCard label="My Winning" value={number(summary.wins.won_auctions ?? wins.length)} subtitle="Won or result-ready records" icon={Trophy} />
-        <SummaryCard label="BTCT Available" value={`${number(wallet.btct_available_balance ?? wallet.btct_wallet_balance ?? wallet.btct_balance ?? 0)} BTCT`} subtitle="Auction and staking coin balance" icon={BtctCoinLogo} btct />
-        <SummaryCard label="Staking Income" value={currency(stakingPayouts.reduce((sum, item) => sum + Number(item.payout_amount_usd || 0), 0))} subtitle="Credited payout total" icon={Clock3} />
+        <SummaryCard label="My Bids" value={number(summary.bids.my_bids ?? bids.length)} icon={Gavel} />
+        <SummaryCard label="My Winning" value={number(summary.wins.won_auctions ?? wins.length)} icon={Trophy} />
+        <SummaryCard label="BTCT Available" value={`${number(wallet.btct_available_balance ?? wallet.btct_wallet_balance ?? wallet.btct_balance ?? 0)} BTCT`} icon={BtctCoinLogo} btct />
+        <SummaryCard label="Staking Income" value={currency(stakingPayouts.reduce((sum, item) => sum + Number(item.payout_amount_usd || 0), 0))} icon={Clock3} />
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -190,33 +186,32 @@ function AuctionHistoryHubContent() {
       </div>
 
       {activeTab === 'bids' ? (
-        <SectionCard title="My Bids" subtitle="All auctions where you placed bids or entries">
+        <SectionCard title="My Bids">
           {bidsQuery.isLoading ? (
             <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">Loading bid history...</div>
           ) : (
-            <AuctionGrid items={bids} emptyTitle="No bids yet" emptyDescription="Your auction bid activity will appear here after your first entry." />
+            <AuctionGrid items={bids} emptyTitle="No bids yet" />
           )}
         </SectionCard>
       ) : null}
 
       {activeTab === 'wins' ? (
         <div className="space-y-4">
-          <SectionCard title="My Winning" subtitle="Auctions won by your account">
+          <SectionCard title="My Winning">
             {winsQuery.isLoading ? (
               <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">Loading winning records...</div>
             ) : (
-              <AuctionGrid items={wins} emptyTitle="No winning auctions yet" emptyDescription="Won auction records will appear here once you secure a result." />
+              <AuctionGrid items={wins} emptyTitle="No winning auctions yet" />
             )}
           </SectionCard>
 
-          <SectionCard title="Winning History" subtitle="Completed win records and result details">
+          <SectionCard title="Winning History">
             {winsQuery.isLoading ? (
               <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">Loading winning history...</div>
             ) : (
               <LedgerList
                 items={wins}
                 emptyTitle="No completed winning history"
-                emptyDescription="Completed win records and result details will appear here."
                 renderItem={(item) => (
                   <div key={`win-${item.id}`} className="rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-3">
                     <div className="flex items-center justify-between gap-3">
@@ -235,14 +230,13 @@ function AuctionHistoryHubContent() {
       ) : null}
 
       {activeTab === 'btct' ? (
-        <SectionCard title="BTCT Coin" subtitle="BTCT earned from auctions and related coin ledger" btct>
+        <SectionCard title="BTCT Coin" btct>
           {walletQuery.isLoading ? (
             <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">Loading BTCT records...</div>
           ) : (
             <LedgerList
               items={btctAuctionTransactions}
               emptyTitle="No BTCT records yet"
-              emptyDescription="Auction-related BTCT rewards and coin history will appear here."
               renderItem={(tx) => (
                 <div key={tx.id} className="rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-3">
                   <div className="flex items-center justify-between gap-3">
@@ -260,7 +254,7 @@ function AuctionHistoryHubContent() {
       ) : null}
 
       {activeTab === 'staking' ? (
-        <SectionCard title="Staking" subtitle="Active BTCT staking records, locked amount, and next payout" btct>
+        <SectionCard title="Staking" btct>
           {stakingQuery.isLoading ? (
             <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">Loading staking records...</div>
           ) : stakingPlan ? (
@@ -271,20 +265,19 @@ function AuctionHistoryHubContent() {
               <SummaryCard label="Next Payout" value={stakingPlan.next_payout_at ? dateTime(stakingPlan.next_payout_at) : 'Not scheduled'} icon={Clock3} />
             </div>
           ) : (
-            <EmptyState title="No active staking record" description="Start BTCT staking from Wallet to see your active staking plan here." />
+            <EmptyState title="No active staking record" />
           )}
         </SectionCard>
       ) : null}
 
       {activeTab === 'income' ? (
-        <SectionCard title="Staking Income" subtitle="BTCT staking payout history and credited amounts" btct>
+        <SectionCard title="Staking Income" btct>
           {stakingQuery.isLoading ? (
             <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">Loading staking income...</div>
           ) : (
             <LedgerList
               items={stakingPayouts}
               emptyTitle="No staking income yet"
-              emptyDescription="Your staking payout history will appear here after the payout engine runs."
               renderItem={(item) => (
                 <div key={item.id} className="rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-3">
                   <div className="flex items-center justify-between gap-3">
@@ -303,18 +296,18 @@ function AuctionHistoryHubContent() {
 
       {activeTab === 'history' ? (
         <div className="space-y-4">
-          <SectionCard title="Auction History" subtitle="Joined auctions, completed auctions, and result-related records">
+          <SectionCard title="Auction History">
             {joinedQuery.isLoading || historyQuery.isLoading ? (
               <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">Loading auction history...</div>
             ) : (
               <div className="space-y-4">
                 <div>
                   <p className="mb-3 text-[12px] font-semibold text-slate-900">Joined Auctions</p>
-                  <AuctionGrid items={joined} emptyTitle="No joined auctions yet" emptyDescription="Auctions you joined will appear here." />
+                  <AuctionGrid items={joined} emptyTitle="No joined auctions yet" />
                 </div>
                 <div>
                   <p className="mb-3 text-[12px] font-semibold text-slate-900">Completed / Result History</p>
-                  <AuctionGrid items={allHistory} emptyTitle="No completed auction history yet" emptyDescription="Completed and result-related records will appear here." />
+                  <AuctionGrid items={allHistory} emptyTitle="No completed auction history yet" />
                 </div>
               </div>
             )}

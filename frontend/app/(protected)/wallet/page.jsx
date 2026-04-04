@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -12,34 +11,14 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { Badge } from '@/components/ui/Badge';
 import BtctCoinLogo from '@/components/common/BtctCoinLogo';
 import { queryKeys } from '@/lib/query/queryKeys';
-import { bindWalletAddress, getBtctStakingSummary, getWallet, startBtctStaking } from '@/lib/services/walletService';
-import { currency, dateTime, formatLabel, incomeSourceLabel, number, statusVariant } from '@/lib/utils/format';
-
-function getTransactionTone(tx) {
-  const type = String(tx?.tx_type || '').toLowerCase();
-  const source = String(tx?.source || '').toLowerCase();
-
-  if (type === 'debit' || source.includes('withdraw') || source.includes('purchase')) {
-    return { sign: '-', className: 'text-rose-600' };
-  }
-
-  return { sign: '+', className: 'text-emerald-600' };
-}
+import { getBtctStakingSummary, getWallet, startBtctStaking } from '@/lib/services/walletService';
+import { currency, dateTime, formatLabel, number } from '@/lib/utils/format';
 
 export default function WalletPage() {
   const queryClient = useQueryClient();
   const [stakingAmount, setStakingAmount] = useState('');
   const walletQuery = useQuery({ queryKey: queryKeys.wallet, queryFn: getWallet });
   const stakingQuery = useQuery({ queryKey: queryKeys.walletStaking, queryFn: getBtctStakingSummary });
-
-  const bindMutation = useMutation({
-    mutationFn: bindWalletAddress,
-    onSuccess: async () => {
-      toast.success('Wallet address saved');
-      await queryClient.invalidateQueries({ queryKey: queryKeys.wallet });
-    },
-    onError: (error) => toast.error(error.message || 'Failed to save wallet address')
-  });
 
   const startStakingMutation = useMutation({
     mutationFn: (payload) => startBtctStaking(payload),
@@ -59,9 +38,7 @@ export default function WalletPage() {
 
   const data = walletQuery.data || {};
   const wallet = data.wallet || {};
-  const walletBinding = data.walletBinding || null;
   const transactions = Array.isArray(data.transactions) ? data.transactions : [];
-  const btctTransactions = Array.isArray(data.btctTransactions) ? data.btctTransactions : [];
   const staking = stakingQuery.data?.data || {};
   const stakingPlan = staking.plan || null;
   const stakingPayouts = Array.isArray(staking.payouts) ? staking.payouts : [];
@@ -158,83 +135,6 @@ export default function WalletPage() {
             </div>
           )}
         </div>
-      </div>
-
-      <div className="rounded-xl border border-slate-200 bg-white p-3">
-        <p className="text-xs font-semibold text-slate-800">{formatLabel('Wallet Address')}</p>
-
-        <form
-          className="mt-2 space-y-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const formData = new FormData(event.currentTarget);
-            bindMutation.mutate({
-              walletAddress: String(formData.get('walletAddress') || ''),
-              network: String(formData.get('network') || '')
-            });
-          }}
-        >
-          <input name="walletAddress" defaultValue={walletBinding?.wallet_address || ''} placeholder="Wallet address" className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs" required />
-          <input name="network" defaultValue={walletBinding?.network || ''} placeholder="Network (TRC20 / BEP20 / ERC20)" className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs" />
-          <button type="submit" disabled={bindMutation.isPending} className="rounded-lg bg-[#0ea5e9] px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-60">
-            {bindMutation.isPending ? 'Saving...' : 'Save Wallet'}
-          </button>
-        </form>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        <Link href="/deposit" className="rounded-xl border border-slate-200 bg-white p-3 text-center text-xs font-semibold text-slate-700">Deposit</Link>
-        <Link href="/withdraw" className="rounded-xl border border-slate-200 bg-white p-3 text-center text-xs font-semibold text-slate-700">Withdraw</Link>
-        <Link href="/p2p" className="rounded-xl border border-slate-200 bg-white p-3 text-center text-xs font-semibold text-slate-700">P2P Transfer</Link>
-        <Link href="/history/income" className="rounded-xl border border-slate-200 bg-white p-3 text-center text-xs font-semibold text-slate-700">Transaction History</Link>
-      </div>
-
-      <div className="rounded-xl border border-slate-200 bg-white">
-        <div className="border-b border-slate-200 px-3 py-2 text-[11px] text-slate-500">{formatLabel('Recent Transactions')}</div>
-        {!transactions.length ? (
-          <div className="p-3"><EmptyState title="No transactions yet" /></div>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {transactions.slice(0, 10).map((tx) => {
-              const tone = getTransactionTone(tx);
-              return (
-              <div key={tx.id} className="px-3 py-2.5">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-semibold text-slate-800">{incomeSourceLabel(tx.source || 'transaction')}</p>
-                  <Badge variant={statusVariant(tx.metadata?.status || (tx.tx_type === 'credit' ? 'approved' : 'pending'))}>{tx.metadata?.status || tx.tx_type}</Badge>
-                </div>
-                <p className="mt-0.5 text-[10px] text-slate-500">{dateTime(tx.created_at)}</p>
-                <p className={`mt-1 text-xs font-semibold ${tone.className}`}>{tone.sign}{currency(tx.amount)}</p>
-              </div>
-            )})}
-          </div>
-        )}
-      </div>
-
-      <div className="rounded-xl border border-slate-200 bg-white">
-        <div className="flex items-center gap-2 border-b border-slate-200 px-3 py-2 text-[11px] text-slate-500">
-          <BtctCoinLogo size={14} className="shrink-0" />
-          <span>{formatLabel('BTCT Reward Ledger')}</span>
-        </div>
-        {!btctTransactions.length ? (
-          <div className="p-3"><EmptyState title="No BTCT rewards yet" /></div>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {btctTransactions.slice(0, 10).map((tx) => (
-              <div key={tx.id} className="px-3 py-2.5">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-semibold text-slate-800">{incomeSourceLabel(tx.source || 'btct_transaction')}</p>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
-                    <BtctCoinLogo size={12} className="shrink-0" />
-                    <span>BTCT</span>
-                  </span>
-                </div>
-                <p className="mt-0.5 text-[10px] text-slate-500">{dateTime(tx.created_at)}</p>
-                <p className="mt-1 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-900"><BtctCoinLogo size={14} className="shrink-0" />+ {number(tx.amount)} BTCT</p>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );
