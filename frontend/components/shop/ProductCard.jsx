@@ -105,7 +105,7 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
                 }
                 toast.success(`Added to cart (${nextCount})`);
               }}
-              className="inline-flex h-6 w-6 items-center justify-center rounded-[10px] border border-slate-200 bg-[#e2e8f0] text-slate-700"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-[10px] bg-[linear-gradient(135deg,#7c3aed,#22c55e)] text-white shadow-[0_4px_12px_rgba(0,0,0,0.4)] transition-transform hover:scale-105 active:scale-105"
               aria-label="Add to cart"
             >
               <Plus size={10} />
