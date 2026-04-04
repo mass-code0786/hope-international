@@ -120,13 +120,13 @@ export function SpinWheelResult({
   }
 
   return (
-    <section className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,#141b30,#0f172a)] p-4 text-white shadow-[0_18px_45px_rgba(15,23,42,0.28)]">
+    <section className="rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[#1A1D2E] p-4 text-[#FFFFFF] shadow-[0_18px_45px_rgba(15,23,42,0.28)]">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-200/70">Spin Result</p>
-          <h2 className="mt-1 text-[17px] font-semibold">Wheel Reveal</h2>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#a78bfa]">Spin Result</p>
+          <h2 className="mt-1 text-[17px] font-semibold text-[#FFFFFF]">Wheel Reveal</h2>
         </div>
-        <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[10px] font-semibold ${selectedWinner ? 'bg-emerald-500/15 text-emerald-300' : 'bg-white/8 text-slate-300'}`}>
+        <span className={`inline-flex items-center gap-1 rounded-full border border-[rgba(255,255,255,0.08)] px-3 py-1 text-[10px] font-semibold ${selectedWinner ? 'bg-[rgba(34,197,94,0.18)] text-[#FFFFFF]' : 'bg-[rgba(20,24,45,0.9)] text-[#B0B3C6]'}`}>
           <Sparkles size={12} />
           {isSpinning ? 'Wheel active' : selectedWinner ? 'Winner ready' : 'Ready to spin'}
         </span>
@@ -148,10 +148,10 @@ export function SpinWheelResult({
             return (
               <div
                 key={slot}
-                className={`absolute z-20 min-w-[82px] rounded-[16px] border px-3 py-2 text-center shadow-[0_10px_24px_rgba(15,23,42,0.22)] ${positionClass} ${selectedSlot === slot ? 'border-emerald-300 bg-emerald-400/18 text-white' : 'border-white/10 bg-[#192339] text-slate-200'}`}
+                className={`absolute z-20 min-w-[82px] rounded-[16px] border border-[rgba(255,255,255,0.08)] bg-[rgba(20,24,45,0.9)] px-3 py-2 text-center shadow-[0_10px_24px_rgba(15,23,42,0.22)] ${positionClass} ${selectedSlot === slot ? 'ring-1 ring-[#22c55e] ring-offset-0' : ''}`}
               >
-                <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400">Winner</p>
-                <p className="mt-1 text-[12px] font-semibold">{winnerSlots[slot]}</p>
+                <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#a78bfa]">Winner</p>
+                <p className="mt-1 text-[12px] font-semibold text-[#FFFFFF]">{winnerSlots[slot]}</p>
               </div>
             );
           })}
@@ -171,7 +171,7 @@ export function SpinWheelResult({
                       style={{ transform: `rotate(${angle}deg)` }}
                     >
                       <span
-                        className={`absolute left-1/2 top-2 -translate-x-1/2 text-[10px] font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] ${winningSegment === index ? 'scale-110' : ''}`}
+                        className={`absolute left-1/2 top-2 -translate-x-1/2 text-[10px] font-bold text-[#FFFFFF] drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] ${winningSegment === index ? 'scale-110' : ''}`}
                         style={{ transform: `rotate(${90 - angle}deg)` }}
                       >
                         {segment.label}
@@ -181,10 +181,10 @@ export function SpinWheelResult({
                 })}
               </div>
 
-              <div className="absolute inset-[74px] flex items-center justify-center rounded-full border border-white/15 bg-[radial-gradient(circle_at_top,#4338ca,#111827)] text-center shadow-[inset_0_8px_20px_rgba(255,255,255,0.08)]">
+              <div className="absolute inset-[74px] flex items-center justify-center rounded-full border border-[rgba(255,255,255,0.08)] bg-[radial-gradient(circle_at_top,#4338ca,#111827)] text-center shadow-[inset_0_8px_20px_rgba(255,255,255,0.08)]">
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-200/70">Prize</p>
-                  <p className="mt-1 text-[18px] font-semibold">{selectedWinner ? 'Revealed' : 'Spin'}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#B0B3C6]">Prize</p>
+                  <p className="mt-1 text-[18px] font-semibold text-[#FFFFFF]">{selectedWinner ? 'Revealed' : 'Spin'}</p>
                 </div>
               </div>
             </div>
@@ -192,16 +192,16 @@ export function SpinWheelResult({
         </div>
       </div>
 
-      <div className="mt-4 rounded-[18px] border border-white/8 bg-white/5 px-4 py-3 text-center">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Result</p>
-        <p className="mt-1 text-[16px] font-semibold text-white">{resultLabel}</p>
+      <div className="mt-4 rounded-[18px] border border-[rgba(255,255,255,0.08)] bg-[#1A1D2E] px-4 py-3 text-center">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7A7F9A]">Result</p>
+        <p className="mt-1 text-[16px] font-semibold text-[#FFFFFF]">{resultLabel}</p>
       </div>
 
       <button
         type="button"
         onClick={handleSpin}
         disabled={isSpinning || revealPending}
-        className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-[16px] bg-[linear-gradient(135deg,#7c3aed,#22c55e)] px-4 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(124,58,237,0.35)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-[16px] bg-[linear-gradient(135deg,#7c3aed,#22c55e)] px-4 text-sm font-semibold text-[#FFFFFF] shadow-[0_10px_24px_rgba(124,58,237,0.35)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isSpinning || revealPending ? 'Spinning...' : spinCount > 0 ? 'Spin Again' : 'Spin Now'}
       </button>
