@@ -31,12 +31,12 @@ export default function TeamPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold tracking-[-0.04em] text-text">Binary Team</h1>
+        <h1 className="text-2xl font-semibold tracking-[-0.04em] text-text">Team Overview</h1>
       </div>
 
       <TeamSummaryPanel me={me} teamSummary={teamSummary} children={directChildren} />
 
-      <section className="card-surface overflow-hidden p-5">
+      <section className="overflow-hidden rounded-[20px] border border-[rgba(255,255,255,0.05)] bg-[linear-gradient(145deg,#1a1d24,#0f1115)] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.6),inset_0_0_40px_rgba(124,58,237,0.08)]">
         <div className="flex items-center gap-2 border-b border-[var(--hope-border)] pb-4">
           <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-[var(--hope-accent-soft)] text-accent">
             <GitBranchPlus size={16} />
@@ -45,7 +45,7 @@ export default function TeamPage() {
         </div>
 
         {root ? (
-          <div className="mt-5 rounded-[28px] border border-[var(--hope-border)] bg-[radial-gradient(circle_at_top,rgba(15,118,110,0.1),transparent_35%),linear-gradient(180deg,rgba(255,255,255,0.72),rgba(241,245,249,0.68))] p-4 dark:bg-[radial-gradient(circle_at_top,rgba(94,234,212,0.1),transparent_35%),linear-gradient(180deg,rgba(8,15,24,0.82),rgba(11,18,29,0.76))] sm:p-6">
+          <div className="mt-5 rounded-[16px] border border-[rgba(255,255,255,0.05)] bg-[radial-gradient(circle_at_top,rgba(124,58,237,0.15),transparent_60%),radial-gradient(circle_at_bottom,rgba(34,197,94,0.12),transparent_60%),#0f1115] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.6),inset_0_0_40px_rgba(124,58,237,0.08)] sm:p-6">
             <BinaryTreeExplorer root={root} />
           </div>
         ) : (

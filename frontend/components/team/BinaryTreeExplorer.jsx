@@ -54,7 +54,7 @@ function BinaryTreeNode({ node, side = 'root', defaultExpanded = false }) {
       <button
         type="button"
         onClick={() => setExpanded((current) => !current)}
-        className="group w-[108px] rounded-[18px] border border-[var(--hope-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,245,249,0.92))] p-2 text-left shadow-[0_12px_24px_rgba(15,23,42,0.10)] transition hover:-translate-y-0.5 hover:border-[var(--hope-border-strong)] dark:bg-[linear-gradient(180deg,rgba(13,23,35,0.96),rgba(9,17,27,0.92))] sm:w-[122px]"
+        className="group w-[108px] rounded-[18px] border border-[rgba(255,255,255,0.05)] bg-[#1a1d24] p-2 text-left shadow-[0_12px_24px_rgba(0,0,0,0.45)] transition hover:-translate-y-0.5 hover:border-[rgba(255,255,255,0.08)] sm:w-[122px]"
       >
         <div className="flex items-start justify-between gap-1.5">
           <span className="inline-flex h-6 w-6 items-center justify-center rounded-xl bg-[var(--hope-accent-soft)] text-accent">
@@ -73,7 +73,7 @@ function BinaryTreeNode({ node, side = 'root', defaultExpanded = false }) {
           <span>{Number(resolvedNode?.directCount || 0)}</span>
         </div>
 
-        <div className="mt-1.5 flex items-center justify-between rounded-xl border border-[var(--hope-border)] bg-white/70 px-2 py-1.5 text-[10px] font-semibold text-text dark:bg-white/5">
+        <div className="mt-1.5 flex items-center justify-between rounded-xl border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.03)] px-2 py-1.5 text-[10px] font-semibold text-text">
           <span className="inline-flex items-center gap-1.5">
             <GitBranchPlus size={11} className="text-accent" />
             {expanded ? 'Hide' : 'Open'}
@@ -104,20 +104,20 @@ function BinaryTreeNode({ node, side = 'root', defaultExpanded = false }) {
 function BinaryTreeSlot({ side, node, loading = false }) {
   return (
     <div className="flex flex-col items-center gap-1.5">
-      <span className="inline-flex items-center gap-1 rounded-full border border-[var(--hope-border)] bg-white/80 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-muted dark:bg-white/5">
+      <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.03)] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-muted">
         <CircleDot size={8} />
         {slotLabel(side)}
       </span>
 
       {loading ? (
-        <div className="flex w-[108px] items-center justify-center rounded-[18px] border border-[var(--hope-border)] bg-cardSoft px-4 py-6 text-muted shadow-soft sm:w-[122px]">
+        <div className="flex w-[108px] items-center justify-center rounded-[18px] border border-[rgba(255,255,255,0.05)] bg-[#1a1d24] px-4 py-6 text-muted shadow-[0_12px_24px_rgba(0,0,0,0.45)] sm:w-[122px]">
           <Loader2 size={14} className="animate-spin" />
         </div>
       ) : node ? (
         <BinaryTreeNode node={node} side={side} />
       ) : (
-        <div className="flex w-[108px] flex-col items-center justify-center rounded-[18px] border border-dashed border-[var(--hope-border-strong)] bg-white/55 px-3 py-4 text-center text-muted dark:bg-white/5 sm:w-[122px]">
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--hope-border)] bg-white/80 text-sm text-accent dark:bg-white/10">+</span>
+        <div className="flex w-[108px] flex-col items-center justify-center rounded-[18px] border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.03)] px-3 py-4 text-center text-muted sm:w-[122px]">
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.03)] text-sm text-white">+</span>
           <p className="mt-2 text-[11px] font-semibold text-text">Empty</p>
         </div>
       )}

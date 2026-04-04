@@ -65,7 +65,7 @@ function Card({ label, value, icon: Icon }) {
   return (
     <div className="hope-grid-card rounded-[24px] p-4">
       {Icon ? <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--hope-accent-soft)] text-accent"><Icon size={16} /></div> : null}
-      <p className={`text-[11px] uppercase tracking-[0.18em] text-muted ${Icon ? 'mt-4' : ''}`}>{label}</p>
+      <p className={`text-[11px] tracking-[-0.01em] text-muted ${Icon ? 'mt-4' : ''}`}>{label}</p>
       <p className="mt-2 text-lg font-semibold tracking-[-0.04em] text-text break-words">{value}</p>
     </div>
   );
