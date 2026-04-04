@@ -21,22 +21,25 @@ import { clearStoredToken } from '@/lib/utils/tokenStorage';
 import { currency, formatLabel, number, rankLabel } from '@/lib/utils/format';
 import { isSeller } from '@/lib/constants/access';
 
-function WalletCard({ title, description, value, accent, icon: Icon, href, actionLabel, titleIcon = null, valueIcon = null }) {
+function WalletCard({ title, value, accent, icon: Icon, href, actionLabel, titleIcon = null, valueIcon = null }) {
   return (
-    <article className="overflow-hidden rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)] dark:border-[var(--hope-border)] dark:bg-card">
-      <div className="flex items-start justify-between gap-3">
-        <span className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl ${accent}`}><Icon size={18} /></span>
-        {href ? <Link href={href} className="text-[11px] font-semibold text-slate-500 dark:text-muted">{actionLabel}</Link> : null}
+    <article className="overflow-hidden rounded-[28px] border border-slate-200 bg-white px-3.5 py-3 shadow-[0_18px_40px_rgba(15,23,42,0.08)] dark:border-[var(--hope-border)] dark:bg-card">
+      <div className="flex items-start justify-between gap-2.5">
+        <div className="flex min-w-0 items-start gap-2.5">
+          <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${accent}`}><Icon size={18} /></span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold tracking-[-0.01em] text-slate-500 dark:text-muted">
+              {titleIcon}
+              <p>{formatLabel(title)}</p>
+            </div>
+            <div className="mt-1 flex items-center gap-2 text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950 dark:text-text">
+              {valueIcon}
+              <p>{value}</p>
+            </div>
+          </div>
+        </div>
+        {href ? <Link href={href} className="shrink-0 text-[12px] font-semibold text-slate-500 opacity-70 dark:text-muted">{actionLabel}</Link> : null}
       </div>
-      <div className="mt-4 flex items-center gap-2 text-[11px] font-semibold tracking-[-0.01em] text-slate-500 dark:text-muted">
-        {titleIcon}
-        <p>{formatLabel(title)}</p>
-      </div>
-      <div className="mt-2 flex items-center gap-2 text-2xl font-semibold tracking-[-0.05em] text-slate-950 dark:text-text">
-        {valueIcon}
-        <p>{value}</p>
-      </div>
-      <p className="mt-2 text-xs leading-5 text-slate-500 dark:text-muted">{description}</p>
     </article>
   );
 }
@@ -77,7 +80,6 @@ function WalletSection({ walletQuery }) {
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <WalletCard
           title="Income Wallet"
-          description="Your earnings balance"
           value={currency(incomeBalance)}
           accent="bg-emerald-50 text-emerald-700"
           icon={Landmark}
@@ -86,7 +88,6 @@ function WalletSection({ walletQuery }) {
         />
         <WalletCard
           title="Deposit Wallet"
-          description="Your deposited funds"
           value={currency(depositBalance)}
           accent="bg-sky-50 text-sky-700"
           icon={ArrowDownToLine}
@@ -95,7 +96,6 @@ function WalletSection({ walletQuery }) {
         />
         <WalletCard
           title="Withdrawal Wallet"
-          description="Used for payout-ready funds and staking rewards"
           value={currency(withdrawalBalance)}
           accent="bg-violet-50 text-violet-700"
           icon={ArrowUpFromLine}
@@ -104,7 +104,6 @@ function WalletSection({ walletQuery }) {
         />
         <WalletCard
           title="BTCT Wallet"
-          description="Your BTCT reward balance"
           value={`${number(btctBalance)} BTCT`}
           accent="bg-amber-50 text-amber-700"
           icon={Coins}
