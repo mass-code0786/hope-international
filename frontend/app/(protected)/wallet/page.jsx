@@ -49,8 +49,41 @@ export default function WalletPage() {
   const btctLocked = Number(wallet.btct_locked_wallet_balance ?? wallet.btct_locked_balance ?? 0);
   const requestedAmount = Number(stakingAmount || 0);
   const blockSize = Number(eligibility.blockSizeBtct || 5000);
+  const minimumBtct = Number(eligibility.minimumBtct || blockSize || 5000);
   const requestedBlocks = requestedAmount > 0 ? Math.floor(requestedAmount / blockSize) : Number(eligibility.eligibleBlocks || 0);
   const requestedCyclePayout = requestedBlocks * Number(eligibility.payoutUsdPerBlock || 10);
+  const canSubmitStaking = !startStakingMutation.isPending && !stakingPlan;
+  const stakingRuleLabel = `Minimum ${number(minimumBtct)} BTCT required in ${number(blockSize)} BTCT blocks`;
+
+  function getStakingValidationError() {
+    if (stakingPlan) return 'BTCT staking is already active';
+    if (btctAvailable < minimumBtct) return `Minimum ${number(minimumBtct)} BTCT required`;
+    if (!stakingAmount) return '';
+    if (!Number.isFinite(requestedAmount) || requestedAmount <= 0) return 'Enter a valid BTCT staking amount';
+    if (requestedAmount < minimumBtct) return `Minimum ${number(minimumBtct)} BTCT required`;
+    if (requestedAmount % blockSize !== 0) return `Stake amount must be in ${number(blockSize)} BTCT blocks`;
+    if (requestedAmount > btctAvailable) return 'Insufficient BTCT available for staking';
+    return '';
+  }
+
+  const stakingValidationError = getStakingValidationError();
+
+  function handleStartStaking() {
+    if (startStakingMutation.isPending) return;
+
+    if (stakingPlan) {
+      toast.error('BTCT staking is already active');
+      return;
+    }
+
+    if (stakingValidationError) {
+      toast.error(stakingValidationError);
+      return;
+    }
+
+    const payload = stakingAmount ? { stakingAmountBtct: requestedAmount } : {};
+    startStakingMutation.mutate(payload);
+  }
 
   return (
     <div className="space-y-3">
@@ -108,13 +141,18 @@ export default function WalletPage() {
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <button
-            onClick={() => startStakingMutation.mutate(stakingAmount ? { stakingAmountBtct: Number(stakingAmount) } : {})}
-            disabled={startStakingMutation.isPending || !eligibility.isEligible || Boolean(stakingPlan)}
+            onClick={handleStartStaking}
+            disabled={!canSubmitStaking}
             className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
           >
             <LockKeyhole size={15} />
             {startStakingMutation.isPending ? 'Starting...' : 'Start Staking'}
           </button>
+          <p className="text-xs text-slate-500">
+            {stakingPlan
+              ? 'An active BTCT staking plan is already running.'
+              : stakingValidationError || stakingRuleLabel}
+          </p>
         </div>
 
         <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
