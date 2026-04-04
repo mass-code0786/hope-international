@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
@@ -14,6 +14,7 @@ import {
   Wallet
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { SpinWheelResult } from '@/components/auctions/SpinWheelResult';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { AuctionCountdown, AuctionStatusBadge, formatAuctionMoney } from '@/components/auctions/AuctionUi';
 import { getAuctionDetails, placeAuctionBid, revealAuctionResult } from '@/lib/services/auctionsService';
@@ -148,51 +149,17 @@ function LeaderboardPanel({ leaderboard = [], myPosition }) {
 function ResultRevealSection({ auction, winners, onReveal, revealMutation }) {
   const alreadyRevealed = Boolean(auction?.resultReveal?.revealed_at);
   const eligible = Boolean(auction?.revealEligible);
-  const [spinning, setSpinning] = useState(false);
-  const [revealed, setRevealed] = useState(alreadyRevealed);
-
-  useEffect(() => {
-    if (alreadyRevealed) setRevealed(true);
-  }, [alreadyRevealed]);
-
-  const handleReveal = async () => {
-    if (!eligible || spinning || revealMutation.isPending) return;
-    setSpinning(true);
-    window.setTimeout(async () => {
-      try {
-        await onReveal();
-        setRevealed(true);
-      } finally {
-        setSpinning(false);
-      }
-    }, 1800);
-  };
 
   if (!eligible && !alreadyRevealed) return null;
 
   return (
-    <section className="rounded-[22px] border border-[#ececec] bg-white p-3 shadow-[0_8px_18px_rgba(0,0,0,0.05)]">
-      <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#888888]">Result Reveal</p>
-      <div className="mt-2.5 rounded-[18px] border border-[#efefef] bg-[linear-gradient(180deg,#ffffff,#f8f9fb)] p-3">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-[13px] font-semibold text-[#111111]">{revealed ? 'Winner revealed' : 'Spin to reveal result'}</p>
-            <p className="mt-1 text-[11px] text-[#666666]">{revealed ? (winners.length ? winners.map((winner) => winner.username).join(', ') : 'Winner unavailable') : 'Uses the finalized backend result only.'}</p>
-          </div>
-          <button
-            type="button"
-            onClick={handleReveal}
-            disabled={!eligible || spinning || revealMutation.isPending || revealed}
-            className={`inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-4 border-slate-800 bg-[conic-gradient(from_90deg,_#f59e0b,_#f97316,_#f59e0b)] shadow-[0_12px_22px_rgba(15,23,42,0.10)] ${spinning ? 'animate-[spin_1.8s_linear]' : ''} disabled:opacity-60`}
-            aria-label="Spin to reveal winner"
-          >
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-[10px] font-semibold text-[#111111]">
-              {revealed ? 'Done' : 'Spin'}
-            </span>
-          </button>
-        </div>
-      </div>
-    </section>
+    <SpinWheelResult
+      winners={winners}
+      alreadyRevealed={alreadyRevealed}
+      eligible={eligible}
+      revealPending={revealMutation.isPending}
+      onReveal={onReveal}
+    />
   );
 }
 
