@@ -4,7 +4,7 @@
 
 :root {
   color-scheme: dark;
-  --hope-bg: #202127;
+  --hope-bg: #0f1115;
   --hope-bg-muted: #23242b;
   --hope-surface: rgba(42, 44, 52, 0.88);
   --hope-surface-strong: rgba(45, 47, 56, 0.96);
@@ -63,15 +63,22 @@ html[data-theme='dark'] {
 
 html {
   min-height: 100%;
-  background: var(--hope-bg);
+  background: #0f1115;
 }
 
 body {
   @apply bg-bg text-text antialiased;
   font-family: 'Satoshi', 'Manrope', 'Segoe UI', sans-serif;
   min-height: 100vh;
-  background: var(--hope-hero-gradient);
+  background: #0f1115;
   background-attachment: fixed;
+}
+
+#__next,
+#root,
+body > div:first-child {
+  min-height: 100vh;
+  background: #0f1115;
 }
 
 body::before {

@@ -93,7 +93,7 @@ export function AuctionCountdown({ startAt, endAt, status, compact = false }) {
   const prefix = safeStatus === 'upcoming' ? 'Starts' : safeStatus === 'live' ? 'Ends' : null;
 
   return (
-    <div className="inline-flex min-w-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white/92 px-2.5 py-1 text-[10px] font-semibold text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.08)]">
+    <div className="inline-flex min-w-0 items-center gap-1.5 rounded-full border border-slate-200 bg-[#232832] px-2.5 py-1 text-[10px] font-semibold text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.08)]">
       <Clock3 size={11} className="shrink-0 text-slate-500" />
       {prefix ? `${prefix} ${compact ? '' : 'in '}${content}`.trim() : content}
     </div>
@@ -143,24 +143,24 @@ function getAuctionCta(status, won = false) {
 function getCardTheme(status) {
   if (status === 'live') {
     return {
-      frame: 'from-[#fff7f7] via-[#ffffff] to-[#fff1f2]',
-      halo: 'from-[#fee2e2] via-[#fff7ed] to-[#ffffff]',
+      frame: 'from-[#1a1d24] via-[#171a20] to-[#14171d]',
+      halo: 'from-[#232832] via-[#1d2129] to-[#171a20]',
       ring: 'from-[#f97316] to-[#ef4444]',
       cta: 'bg-slate-900 text-white'
     };
   }
   if (status === 'ended') {
     return {
-      frame: 'from-[#f8fafc] via-[#ffffff] to-[#f1f5f9]',
-      halo: 'from-[#e2e8f0] via-[#f8fafc] to-[#ffffff]',
+      frame: 'from-[#1a1d24] via-[#171a20] to-[#14171d]',
+      halo: 'from-[#232832] via-[#1d2129] to-[#171a20]',
       ring: 'from-[#94a3b8] to-[#cbd5e1]',
       cta: 'bg-slate-900 text-white'
     };
   }
 
   return {
-    frame: 'from-[#eff6ff] via-[#ffffff] to-[#eef2ff]',
-    halo: 'from-[#dbeafe] via-[#ecfeff] to-[#ffffff]',
+    frame: 'from-[#1a1d24] via-[#171a20] to-[#14171d]',
+    halo: 'from-[#232832] via-[#1d2129] to-[#171a20]',
     ring: 'from-[#38bdf8] to-[#2563eb]',
     cta: 'bg-slate-900 text-white'
   };
@@ -187,8 +187,8 @@ export function AuctionCard({ auction }) {
       <Link href={`/auctions/${auction?.id}`} className="mt-2 block">
         <div className={`relative rounded-[18px] bg-gradient-to-br ${theme.halo} px-2 py-2.5`}>
           <div className="mx-auto mt-[-10px] flex h-[132px] w-[132px] min-w-[120px] max-w-[150px] items-center justify-center rounded-full p-[4px]" style={progressStyle}>
-            <div className="flex h-full w-full items-center justify-center rounded-full bg-white/95 shadow-[0_10px_20px_rgba(15,23,42,0.10)]">
-              <div className="flex h-[116px] w-[116px] items-center justify-center overflow-hidden rounded-full bg-white p-[6px]">
+            <div className="flex h-full w-full items-center justify-center rounded-full bg-[#232832] shadow-[0_10px_20px_rgba(15,23,42,0.10)]">
+              <div className="flex h-[116px] w-[116px] items-center justify-center overflow-hidden rounded-full bg-[#1a1d24] p-[6px]">
                 <img src={cover} alt={auction?.title || 'Auction'} className="h-full w-full rounded-full object-cover" />
               </div>
             </div>
@@ -196,7 +196,7 @@ export function AuctionCard({ auction }) {
 
           {capacity.hasCapacity ? (
             <div className="mt-1.5 flex justify-center">
-              <span className="rounded-full bg-white px-2.5 py-1 text-[9px] font-semibold text-slate-500 shadow-[0_8px_18px_rgba(15,23,42,0.06)]">
+              <span className="rounded-full bg-[#232832] px-2.5 py-1 text-[9px] font-semibold text-slate-500 shadow-[0_8px_18px_rgba(15,23,42,0.06)]">
                 {capacity.capacityPercent}% filled
               </span>
             </div>
@@ -235,8 +235,8 @@ export function AuctionSummaryGrid({ summary = {} }) {
       {cards.map((card) => {
         const Icon = card.icon;
         return (
-          <article key={card.label} className="rounded-2xl border border-slate-200 bg-white p-3">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-100 text-slate-700"><Icon size={16} /></span>
+          <article key={card.label} className="rounded-2xl border border-slate-200 bg-[#1a1d24] p-3">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-[#232832] text-slate-700"><Icon size={16} /></span>
             <p className="mt-3 text-lg font-semibold text-slate-900">{card.value}</p>
             <p className="text-[11px] text-slate-500">{card.label}</p>
           </article>

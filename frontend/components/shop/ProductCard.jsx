@@ -55,8 +55,8 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
   const buttonLabel = disableBuying ? buyLabel : isBuying ? '...' : buyLabel;
 
   return (
-    <article className="grid h-[17.5rem] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)] grid-rows-[4fr_1fr]">
-      <Link href={href} className={`relative block h-full min-h-0 overflow-hidden bg-gradient-to-br ${imageTheme}`}>
+    <article className="flex h-[15rem] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
+      <Link href={href} className={`relative block aspect-square w-full flex-[7] overflow-hidden bg-gradient-to-br ${imageTheme}`}>
         <span className="absolute left-1.5 top-1.5 rounded bg-emerald-500 px-1 py-0.5 text-[8px] font-semibold text-white">
           -{offerPercent}%
         </span>
@@ -73,12 +73,12 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
         )}
       </Link>
 
-      <div className="grid min-h-0 grid-rows-[auto_auto] gap-1.5 p-2">
-        <Link href={href} className="block">
-          <h3 className="line-clamp-2 text-[10px] font-semibold leading-[1.15] text-slate-900">{safeProduct.name || 'Unnamed Product'}</h3>
+      <div className="flex min-h-0 flex-[3] flex-col justify-between px-2.5 py-2">
+        <Link href={href} className="block min-w-0">
+          <h3 className="truncate text-[11px] font-semibold leading-[1.1] text-slate-900">{safeProduct.name || 'Unnamed Product'}</h3>
         </Link>
 
-        <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_auto] items-end gap-1">
+        <div className="mt-1 grid min-h-0 grid-cols-[minmax(0,1fr)_auto] items-end gap-1">
           <div className="min-w-0">
             <p className="text-[11px] font-bold leading-none text-slate-900">{currency(pricing.finalPrice)}</p>
             <div className="mt-0.5 flex items-center gap-1">
@@ -91,7 +91,7 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
             <button
               disabled={isBuying || disableBuying}
               onClick={() => onBuy?.(safeProduct)}
-              className="inline-flex h-7 min-w-[3.25rem] items-center justify-center gap-0.5 rounded-[10px] bg-[#0ea5e9] px-2 text-[9px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-6 min-w-[3.1rem] items-center justify-center gap-0.5 rounded-[10px] bg-[#0ea5e9] px-2 text-[9px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
               {buttonLabel}
               {isBuying || disableBuying ? null : <ArrowRight size={9} />}
@@ -105,10 +105,10 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
                 }
                 toast.success(`Added to cart (${nextCount})`);
               }}
-              className="inline-flex h-7 w-7 items-center justify-center rounded-[10px] border border-slate-200 bg-[#e2e8f0] text-slate-700"
+              className="inline-flex h-6 w-6 items-center justify-center rounded-[10px] border border-slate-200 bg-[#e2e8f0] text-slate-700"
               aria-label="Add to cart"
             >
-              <Plus size={11} />
+              <Plus size={10} />
             </button>
           </div>
         </div>

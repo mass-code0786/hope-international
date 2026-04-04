@@ -1,9 +1,13 @@
-export function currency(value = 0) {
+export function formatCurrency(value = 0) {
   const amount = Number.isFinite(Number(value)) ? Number(value) : 0;
-  return `USDT ${new Intl.NumberFormat('en-US', {
+  return `$${new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   }).format(amount)}`;
+}
+
+export function currency(value = 0) {
+  return formatCurrency(value);
 }
 
 export function number(value = 0) {
