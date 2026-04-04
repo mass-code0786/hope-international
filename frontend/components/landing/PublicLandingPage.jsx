@@ -27,8 +27,8 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { getMe } from '@/lib/services/authService';
 import { getPublicLandingPage, trackLandingVisit } from '@/lib/services/landingService';
 import { useAuthStore } from '@/lib/store/authStore';
-import { canAccessAdminArea, isSeller } from '@/lib/constants/access';
 import { queryKeys } from '@/lib/query/queryKeys';
+import { getPostLoginRoute } from '@/lib/utils/postLoginRedirect';
 
 const faqItems = [
   { question: 'What is Hope International?', answer: 'Hope International is a hybrid platform that combines network growth, ecommerce participation, auction activity, and wallet tools in one mobile-first experience.' },
@@ -52,12 +52,6 @@ const faqItems = [
   { question: 'How do rewards work after auctions?', answer: 'Auction outcomes and related reward logic depend on the configured backend rules for winners, participation, and any compensation flow tied to the auction.' },
   { question: 'How do I register today?', answer: 'Use the Register button from the hero or CTA section to create your account and begin onboarding into the platform.' }
 ];
-
-function resolveDestination(user) {
-  if (canAccessAdminArea(user)) return '/admin';
-  if (isSeller(user)) return '/seller';
-  return '/auctions';
-}
 
 function PrimaryButton({ href, children }) {
   return (
@@ -235,7 +229,7 @@ export default function PublicLandingPage() {
 
   useEffect(() => {
     if (!hydrated || !token) return;
-    if (currentUserQuery.data) router.replace(resolveDestination(currentUserQuery.data));
+    if (currentUserQuery.data) router.replace(getPostLoginRoute(currentUserQuery.data));
   }, [hydrated, token, currentUserQuery.data, router]);
 
   useEffect(() => {

@@ -7,7 +7,7 @@ import { ArrowRight, Eye, EyeOff, LockKeyhole, ShieldCheck, Sparkles, User2 } fr
 import { useAuthMutations } from '@/hooks/useAuthMutations';
 import toast from 'react-hot-toast';
 import Logo from '@/components/common/Logo';
-import { canAccessAdminArea, isSeller } from '@/lib/constants/access';
+import { getPostLoginRoute } from '@/lib/utils/postLoginRedirect';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,15 +22,7 @@ export default function LoginPage() {
       const data = await loginMutation.mutateAsync(form);
       const user = data?.user || null;
       toast.success('Logged in successfully');
-      if (canAccessAdminArea(user)) {
-        router.push('/admin');
-        return;
-      }
-      if (isSeller(user)) {
-        router.push('/seller');
-        return;
-      }
-      router.push('/');
+      router.push(getPostLoginRoute(user));
     } catch (err) {
       toast.error(err.message || 'Login failed');
     }
