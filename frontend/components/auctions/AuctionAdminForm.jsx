@@ -18,6 +18,8 @@ const EMPTY_FORM = {
   shippingDetails: '',
   entryPrice: '0.10',
   hiddenCapacity: '100',
+  winnerCount: '1',
+  winnerModes: ['highest'],
   stockQuantity: '1',
   rewardMode: 'stock',
   rewardValue: '',
@@ -73,6 +75,8 @@ export function toAuctionFormValues(auction) {
     shippingDetails: auction.shipping_details || '',
     entryPrice: String(Number(auction.entry_price || auction.starting_price || 0.1).toFixed(2)),
     hiddenCapacity: String(Number(auction.hidden_capacity || 100)),
+    winnerCount: String(Number(auction.winner_count || 1)),
+    winnerModes: Array.isArray(auction.winner_modes) && auction.winner_modes.length ? auction.winner_modes : ['highest'],
     stockQuantity: String(Number(auction.stock_quantity || 1)),
     rewardMode: auction.reward_mode || 'stock',
     rewardValue: auction.reward_value ? String(Number(auction.reward_value).toFixed(2)) : '',
@@ -106,6 +110,19 @@ export function AuctionAdminForm({ initialValues, onSubmit, isSaving = false, su
   const hasValidProductId = isUuid(selectedProduct?.id || form.productId);
   const productFallback = selectedProduct?.image_url || selectedProduct?.gallery?.[0] || '';
   const isStandalone = form.sourceMode === 'standalone';
+
+  function toggleWinnerMode(mode) {
+    setForm((prev) => {
+      const current = Array.isArray(prev.winnerModes) ? prev.winnerModes : [];
+      const next = current.includes(mode)
+        ? current.filter((item) => item !== mode)
+        : [...current, mode];
+      return {
+        ...prev,
+        winnerModes: next.length ? next : ['highest']
+      };
+    });
+  }
 
   async function handleMainImageChange(event) {
     const file = event.target.files?.[0];
@@ -153,6 +170,8 @@ export function AuctionAdminForm({ initialValues, onSubmit, isSaving = false, su
       shippingDetails: isStandalone ? form.shippingDetails : undefined,
       entryPrice: Number(form.entryPrice || 0.1),
       hiddenCapacity: Number(form.hiddenCapacity || 1),
+      winnerCount: Number(form.winnerCount || 1),
+      winnerModes: Array.isArray(form.winnerModes) && form.winnerModes.length ? form.winnerModes : ['highest'],
       stockQuantity: Number(form.stockQuantity || 1),
       rewardMode: form.rewardMode,
       rewardValue: form.rewardMode === 'split' ? Number(form.rewardValue || 0.01) : undefined,
@@ -266,6 +285,10 @@ export function AuctionAdminForm({ initialValues, onSubmit, isSaving = false, su
           <input type="number" min="1" step="1" value={form.hiddenCapacity} onChange={(e) => setForm((prev) => ({ ...prev, hiddenCapacity: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-cardSoft px-3 py-2.5 text-sm text-text" />
         </label>
         <label className="space-y-2 text-sm text-muted">
+          <span>Winner count</span>
+          <input type="number" min="1" step="1" value={form.winnerCount} onChange={(e) => setForm((prev) => ({ ...prev, winnerCount: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-cardSoft px-3 py-2.5 text-sm text-text" />
+        </label>
+        <label className="space-y-2 text-sm text-muted">
           <span>Stock quantity</span>
           <input type="number" min="1" step="1" value={form.stockQuantity} onChange={(e) => setForm((prev) => ({ ...prev, stockQuantity: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-cardSoft px-3 py-2.5 text-sm text-text" />
         </label>
@@ -276,6 +299,31 @@ export function AuctionAdminForm({ initialValues, onSubmit, isSaving = false, su
             <option value="split">Split reward</option>
           </select>
         </label>
+      </div>
+
+      <div className="space-y-2 text-sm text-muted">
+        <span>Winner modes</span>
+        <div className="grid gap-2 md:grid-cols-3">
+          {[
+            { value: 'highest', label: 'Highest bidder' },
+            { value: 'middle', label: 'Middle bidder' },
+            { value: 'last', label: 'Last bidder' }
+          ].map((option) => {
+            const enabled = Array.isArray(form.winnerModes) && form.winnerModes.includes(option.value);
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => toggleWinnerMode(option.value)}
+                className={`rounded-2xl border px-3 py-3 text-left ${enabled ? 'border-accent bg-accent/10 text-text' : 'border-white/10 bg-cardSoft text-muted'}`}
+              >
+                <p className="text-sm font-semibold">{option.label}</p>
+                <p className="mt-1 text-xs">Priority follows the selected order shown here.</p>
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-muted">Winner pools are merged in the selected order, duplicates are skipped, and selection continues until the configured winner count is reached.</p>
       </div>
 
       {form.rewardMode === 'split' ? (
@@ -305,6 +353,7 @@ export function AuctionAdminForm({ initialValues, onSubmit, isSaving = false, su
         <p>Entry price must be at least $0.10</p>
         {form.rewardMode === 'split' ? <p className="mt-1">Reward value must be greater than $0.00</p> : null}
         <p className="mt-1">Hidden capacity is admin-only and never shown to users.</p>
+        <p className="mt-1">Winner count controls the total number of winners to select on close.</p>
         <p className="mt-1">Mode: {isStandalone ? 'Standalone auction-only item' : 'Existing catalog product'}</p>
       </div>
 

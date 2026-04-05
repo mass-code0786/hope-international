@@ -37,7 +37,7 @@ export default function AdminNewAuctionPage() {
 
   return (
     <div className="space-y-5">
-      <AdminSectionHeader title="New Auction" subtitle="Select a product, set the fixed entry price, keep capacity hidden, and control tie payouts." />
+      <AdminSectionHeader title="New Auction" subtitle="Select a product, set entry pricing and capacity, and configure deterministic winner rules." />
       <AuctionAdminForm products={products} onSubmit={(payload) => createMutation.mutate(payload)} isSaving={createMutation.isPending} submitLabel="Create Auction" />
     </div>
   );

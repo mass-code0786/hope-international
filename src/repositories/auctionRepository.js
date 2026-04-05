@@ -22,7 +22,8 @@ function normalizeAuctionRow(row) {
     ...row,
     gallery: coerceJsonArray(row.gallery),
     product_gallery: coerceJsonArray(row.product_gallery),
-    specifications: coerceJsonArray(row.specifications)
+    specifications: coerceJsonArray(row.specifications),
+    winner_modes: coerceJsonArray(row.winner_modes)
   };
 }
 
@@ -122,7 +123,7 @@ async function attachWinnerRows(client, auctions) {
      FROM auction_winners aw
      JOIN users u ON u.id = aw.user_id
      WHERE aw.auction_id = ANY($1::uuid[])
-     ORDER BY aw.created_at ASC`,
+     ORDER BY aw.selection_rank ASC, aw.created_at ASC`,
     [ids]
   );
 
@@ -387,7 +388,8 @@ async function createAuction(client, payload) {
   addField('reward_value', payload.rewardValue || null);
   addField('total_entries', payload.totalEntries || 0);
   addField('has_tie', payload.hasTie ?? false);
-  addField('winner_count', payload.winnerCount || 0);
+  addField('winner_count', payload.winnerCount || 1);
+  addField('winner_modes', JSON.stringify(coerceJsonArray(payload.winnerModes)));
   addField('start_at', payload.startAt);
   addField('end_at', payload.endAt);
   addField('status', payload.status);
@@ -431,17 +433,18 @@ async function updateAuction(client, auctionId, payload) {
          total_entries = $20,
          has_tie = $21,
          winner_count = $22,
-         start_at = $23,
-         end_at = $24,
-         status = $25,
-         is_active = $26,
-         cancelled_at = $27,
-         closed_at = $28,
-         close_reason = $29,
-         winner_user_id = $30,
-         winning_bid_id = $31,
-         total_bids = $32,
-         updated_by = $33
+         winner_modes = $23,
+         start_at = $24,
+         end_at = $25,
+         status = $26,
+         is_active = $27,
+         cancelled_at = $28,
+         closed_at = $29,
+         close_reason = $30,
+         winner_user_id = $31,
+         winning_bid_id = $32,
+         total_bids = $33,
+         updated_by = $34
      WHERE id = $1
      RETURNING *`,
     [
@@ -466,7 +469,8 @@ async function updateAuction(client, auctionId, payload) {
       payload.rewardValue || null,
       payload.totalEntries || 0,
       payload.hasTie ?? false,
-      payload.winnerCount || 0,
+      payload.winnerCount || 1,
+      JSON.stringify(coerceJsonArray(payload.winnerModes)),
       payload.startAt,
       payload.endAt,
       payload.status,
@@ -529,6 +533,21 @@ async function listAuctionBids(client, auctionId, limit = 50) {
   return rows;
 }
 
+async function listAuctionBidsAsc(client, auctionId) {
+  const { rows } = await q(client).query(
+    `SELECT
+      b.*,
+      u.username,
+      u.email
+     FROM auction_bids b
+     JOIN users u ON u.id = b.user_id
+     WHERE b.auction_id = $1
+     ORDER BY b.created_at ASC, b.id ASC`,
+    [auctionId]
+  );
+  return rows;
+}
+
 async function listAuctionParticipants(client, auctionId) {
   const { rows } = await q(client).query(
     `SELECT
@@ -581,8 +600,21 @@ async function replaceAuctionWinners(client, auctionId, winners) {
   const inserted = [];
   for (const winner of winners) {
     const { rows } = await q(client).query(
-      `INSERT INTO auction_winners (auction_id, user_id, winning_entry_count, allocation_ratio, allocation_quantity, reward_mode)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO auction_winners (
+         auction_id,
+         user_id,
+         winning_entry_count,
+         allocation_ratio,
+         allocation_quantity,
+         reward_mode,
+         winner_mode,
+         selection_rank,
+         sequence_position,
+         total_bids_snapshot,
+         total_entries_snapshot,
+         selection_metadata
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *`,
       [
         auctionId,
@@ -590,7 +622,13 @@ async function replaceAuctionWinners(client, auctionId, winners) {
         winner.winningEntryCount,
         winner.allocationRatio,
         winner.allocationQuantity || null,
-        winner.rewardMode
+        winner.rewardMode,
+        winner.winnerMode || 'highest',
+        winner.selectionRank || 1,
+        winner.sequencePosition || null,
+        winner.totalBidsSnapshot || 0,
+        winner.totalEntriesSnapshot || 0,
+        winner.selectionMetadata || {}
       ]
     );
     inserted.push(rows[0]);
@@ -604,13 +642,16 @@ async function listAuctionWinners(client, auctionId) {
      FROM auction_winners aw
      JOIN users u ON u.id = aw.user_id
      WHERE aw.auction_id = $1
-     ORDER BY aw.created_at ASC`,
+     ORDER BY aw.selection_rank ASC, aw.created_at ASC`,
     [auctionId]
   );
   return rows;
 }
 
 async function listAuctionLeaderboard(client, auctionId, limit = 100) {
+  const values = [auctionId];
+  const limitSql = limit ? `LIMIT $2` : '';
+  if (limit) values.push(limit);
   const { rows } = await q(client).query(
     `WITH totals AS (
       SELECT
@@ -634,8 +675,8 @@ async function listAuctionLeaderboard(client, auctionId, limit = 100) {
      FROM totals
      JOIN users u ON u.id = totals.user_id
      ORDER BY totals.rank ASC
-     LIMIT $2`,
-    [auctionId, limit]
+     ${limitSql}`,
+    values
   );
   return rows;
 }
@@ -1004,6 +1045,7 @@ module.exports = {
   createBid,
   upsertParticipant,
   listAuctionBids,
+  listAuctionBidsAsc,
   listAuctionParticipants,
   listAuctionLeaderboard,
   getHighestBid,

@@ -21,6 +21,12 @@ const hubTabs = [
   { label: 'History', value: 'history', icon: History }
 ];
 
+function winnerModeLabel(mode) {
+  if (mode === 'middle') return 'Middle winner';
+  if (mode === 'last') return 'Last winner';
+  return 'Highest winner';
+}
+
 function HubHeaderCard() {
   return (
     <section className="rounded-[28px] bg-white p-4 shadow-[0_16px_36px_rgba(15,23,42,0.06)]">
@@ -218,6 +224,11 @@ function AuctionHistoryHubContent() {
                       <div className="min-w-0">
                         <p className="truncate text-[13px] font-semibold text-slate-900">{item.title || item.product_name || 'Auction win'}</p>
                         <p className="mt-1 text-[11px] text-slate-500">{item.end_at ? dateTime(item.end_at) : 'Completed result'}</p>
+                        {Array.isArray(item.winners) && item.winners.length ? (
+                          <p className="mt-1 text-[11px] text-slate-500">
+                            {item.winners.map((winner) => winnerModeLabel(winner.winner_mode)).join(', ')}
+                          </p>
+                        ) : null}
                       </div>
                       <span className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-semibold text-emerald-700">Winner</span>
                     </div>

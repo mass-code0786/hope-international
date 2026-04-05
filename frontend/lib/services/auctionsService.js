@@ -106,9 +106,15 @@ function normalizeAuction(auction) {
   const winners = Array.isArray(auction.winners)
     ? auction.winners.map((winner) => ({
         ...winner,
+        winner_mode: winner.winner_mode || 'highest',
+        selection_rank: toNumber(winner.selection_rank),
+        sequence_position: winner.sequence_position === null || winner.sequence_position === undefined ? null : toNumber(winner.sequence_position),
+        total_bids_snapshot: toNumber(winner.total_bids_snapshot),
+        total_entries_snapshot: toNumber(winner.total_entries_snapshot),
         winning_entry_count: toNumber(winner.winning_entry_count),
         allocation_ratio: toNumber(winner.allocation_ratio),
-        allocation_quantity: toNumber(winner.allocation_quantity)
+        allocation_quantity: toNumber(winner.allocation_quantity),
+        selection_metadata: winner.selection_metadata || {}
       }))
     : [];
 
@@ -133,6 +139,8 @@ function normalizeAuction(auction) {
     capacityPercent: toNumber(auction.capacityPercent),
     total_entries: toNumber(auction.total_entries),
     total_bids: toNumber(auction.total_bids),
+    winner_count: toNumber(auction.winner_count, 1),
+    actualWinnerCount: toNumber(auction.actualWinnerCount),
     participantCount: toNumber(auction.participantCount),
     myEntryCount: toNumber(auction.myEntryCount),
     myTotalSpend: toNumber(auction.myTotalSpend),
@@ -160,6 +168,7 @@ function normalizeAuction(auction) {
     participants: normalizeLeaderboard(auction.participants),
     leaderboard: normalizeLeaderboard(auction.leaderboard),
     winners,
+    winner_modes: Array.isArray(auction.winner_modes) ? auction.winner_modes : ['highest'],
     rewardDistribution: normalizeRewardDistribution(auction.rewardDistribution),
     rewardDistributions: Array.isArray(auction.rewardDistributions) ? auction.rewardDistributions.map(normalizeRewardDistribution) : [],
     resultReveal: normalizeResultReveal(auction.resultReveal),

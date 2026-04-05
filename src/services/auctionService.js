@@ -8,6 +8,7 @@ const MIN_AUCTION_PRICE = 0.10;
 const MIN_REWARD_VALUE = 0.01;
 const BTCT_USD_PRICE = 0.10;
 const AUCTION_SCHEMA_ERROR_CODES = ['42P01', '42703', '42883', '42804'];
+const AUCTION_WINNER_MODES = ['highest', 'middle', 'last'];
 
 function isAuctionSchemaError(error) {
   return AUCTION_SCHEMA_ERROR_CODES.includes(error?.code);
@@ -44,6 +45,17 @@ function validateAuctionRange(value, label) {
     throw new ApiError(400, `${label} must be at least $${MIN_AUCTION_PRICE.toFixed(2)}`);
   }
   return amount;
+}
+
+function normalizeWinnerModes(value, fallback = ['highest']) {
+  const list = Array.isArray(value) ? value : fallback;
+  const normalized = [];
+  for (const mode of list) {
+    const safeMode = String(mode || '').trim().toLowerCase();
+    if (!AUCTION_WINNER_MODES.includes(safeMode)) continue;
+    if (!normalized.includes(safeMode)) normalized.push(safeMode);
+  }
+  return normalized.length ? normalized : [...fallback];
 }
 
 function validateRewardValue(value) {
@@ -95,7 +107,8 @@ function sanitizeAuctionPayload(payload, before = null) {
   const cancelledAt = payload.cancelledAt ?? before?.cancelled_at ?? null;
   const closedAt = payload.closedAt ?? before?.closed_at ?? null;
   const totalEntries = Number(payload.totalEntries ?? before?.total_entries ?? 0);
-  const winnerCount = Number(payload.winnerCount ?? before?.winner_count ?? 0);
+  const winnerCount = Number(payload.winnerCount ?? before?.winner_count ?? 1);
+  const winnerModes = normalizeWinnerModes(payload.winnerModes ?? before?.winner_modes ?? ['highest']);
 
   return {
     productId: payload.productId ?? before?.product_id ?? null,
@@ -118,7 +131,8 @@ function sanitizeAuctionPayload(payload, before = null) {
     rewardValue,
     totalEntries,
     hasTie: Boolean(payload.hasTie ?? before?.has_tie ?? false),
-    winnerCount: Number.isInteger(winnerCount) && winnerCount >= 0 ? winnerCount : 0,
+    winnerCount: Number.isInteger(winnerCount) && winnerCount > 0 ? winnerCount : 1,
+    winnerModes,
     startAt,
     endAt,
     status: payload.status || deriveAuctionStatus({
@@ -141,23 +155,181 @@ function sanitizeAuctionPayload(payload, before = null) {
   };
 }
 
-function buildWinnerAllocations(auction, topParticipants) {
-  if (!topParticipants.length) return [];
+function buildBidSequenceEntries(bids = []) {
+  const ordered = [...bids].sort((left, right) => {
+    const byCreatedAt = new Date(left.created_at).getTime() - new Date(right.created_at).getTime();
+    if (byCreatedAt !== 0) return byCreatedAt;
+    return String(left.id || '').localeCompare(String(right.id || ''));
+  });
 
-  const winnerCount = topParticipants.length;
-  const allocationRatio = Number((1 / winnerCount).toFixed(6));
+  const entries = [];
+  let position = 0;
+  for (const bid of ordered) {
+    const entryCount = Math.max(0, Number(bid.entry_count || 0));
+    for (let index = 0; index < entryCount; index += 1) {
+      position += 1;
+      entries.push({
+        position,
+        bidId: bid.id,
+        userId: bid.user_id,
+        username: bid.username,
+        createdAt: bid.created_at,
+        entryOffset: index + 1
+      });
+    }
+  }
+
+  return entries;
+}
+
+function buildHighestCandidatePool(participants = [], bids = []) {
+  const finalBidMoments = new Map();
+  for (const bid of bids) {
+    finalBidMoments.set(String(bid.user_id), bid.created_at);
+  }
+
+  return [...participants]
+    .sort((left, right) => {
+      const byEntries = Number(right.total_entries || 0) - Number(left.total_entries || 0);
+      if (byEntries !== 0) return byEntries;
+      const leftFinal = new Date(finalBidMoments.get(String(left.user_id)) || left.last_bid_at || 0).getTime();
+      const rightFinal = new Date(finalBidMoments.get(String(right.user_id)) || right.last_bid_at || 0).getTime();
+      if (leftFinal !== rightFinal) return leftFinal - rightFinal;
+      const leftJoin = new Date(left.joined_at || 0).getTime();
+      const rightJoin = new Date(right.joined_at || 0).getTime();
+      if (leftJoin !== rightJoin) return leftJoin - rightJoin;
+      return String(left.user_id).localeCompare(String(right.user_id));
+    })
+    .map((participant, index) => ({
+      userId: participant.user_id,
+      username: participant.username,
+      winnerMode: 'highest',
+      modeRank: index + 1,
+      sequencePosition: null,
+      totalEntriesSnapshot: Number(participant.total_entries || 0),
+      totalBidsSnapshot: Number(participant.total_bids || 0),
+      winningEntryCount: Number(participant.total_entries || 0),
+      selectionMetadata: {
+        tieBreak: 'earliest_final_qualifying_entry_then_earliest_join',
+        finalBidAt: finalBidMoments.get(String(participant.user_id)) || participant.last_bid_at || null
+      }
+    }));
+}
+
+function buildMiddlePositionOrder(totalPositions) {
+  if (totalPositions <= 0) return [];
+  const leftCenter = Math.floor((totalPositions + 1) / 2);
+  const rightCenter = Math.ceil((totalPositions + 1) / 2);
+  const ordered = [];
+  const seen = new Set();
+
+  for (let offset = 0; ordered.length < totalPositions; offset += 1) {
+    const left = leftCenter - offset;
+    const right = rightCenter + offset;
+    if (left >= 1 && left <= totalPositions && !seen.has(left)) {
+      ordered.push(left);
+      seen.add(left);
+    }
+    if (right >= 1 && right <= totalPositions && !seen.has(right)) {
+      ordered.push(right);
+      seen.add(right);
+    }
+  }
+
+  return ordered;
+}
+
+function buildSequenceCandidatePool(sequenceEntries = [], participantsByUserId = new Map(), mode) {
+  const orderedEntries = mode === 'last'
+    ? [...sequenceEntries].sort((left, right) => right.position - left.position)
+    : buildMiddlePositionOrder(sequenceEntries.length)
+      .map((position) => sequenceEntries[position - 1])
+      .filter(Boolean);
+
+  return orderedEntries.map((entry, index) => {
+    const participant = participantsByUserId.get(String(entry.userId)) || {};
+    return {
+      userId: entry.userId,
+      username: entry.username,
+      winnerMode: mode,
+      modeRank: index + 1,
+      sequencePosition: entry.position,
+      totalEntriesSnapshot: Number(participant.total_entries || 0),
+      totalBidsSnapshot: Number(participant.total_bids || 0),
+      winningEntryCount: Number(participant.total_entries || 0),
+      selectionMetadata: {
+        bidId: entry.bidId,
+        entryOffset: entry.entryOffset,
+        createdAt: entry.createdAt
+      }
+    };
+  });
+}
+
+function buildWinnerAllocations(auction, participants, bids) {
+  if (!participants.length) return [];
+
+  const desiredWinnerCount = Math.max(1, Number(auction.winner_count || 1));
+  const winnerModes = normalizeWinnerModes(auction.winner_modes, ['highest']);
+  const participantsByUserId = new Map(participants.map((participant) => [String(participant.user_id), participant]));
+  const sequenceEntries = buildBidSequenceEntries(bids);
+  const candidatePools = {
+    highest: buildHighestCandidatePool(participants, bids),
+    middle: buildSequenceCandidatePool(sequenceEntries, participantsByUserId, 'middle'),
+    last: buildSequenceCandidatePool(sequenceEntries, participantsByUserId, 'last')
+  };
+
+  const selected = [];
+  const selectedUserIds = new Set();
+  const poolIndexes = Object.fromEntries(winnerModes.map((mode) => [mode, 0]));
+
+  while (selected.length < desiredWinnerCount) {
+    let addedInRound = false;
+    for (const mode of winnerModes) {
+      const pool = candidatePools[mode] || [];
+      let pointer = poolIndexes[mode] || 0;
+      while (pointer < pool.length && selectedUserIds.has(String(pool[pointer].userId))) {
+        pointer += 1;
+      }
+      poolIndexes[mode] = pointer;
+      if (pointer >= pool.length) continue;
+      const winner = pool[pointer];
+      poolIndexes[mode] = pointer + 1;
+      selected.push(winner);
+      selectedUserIds.add(String(winner.userId));
+      addedInRound = true;
+      if (selected.length >= desiredWinnerCount) break;
+    }
+    if (!addedInRound) break;
+  }
+
+  if (!selected.length) return [];
+
+  const actualWinnerCount = selected.length;
+  const allocationRatio = Number((1 / actualWinnerCount).toFixed(6));
   const stockQuantity = Number(auction.stock_quantity || 1);
   const rewardValue = Number(auction.reward_value || 0);
   const allocationQuantity = auction.reward_mode === 'split'
-    ? Number((rewardValue / winnerCount).toFixed(2))
-    : Number((stockQuantity / winnerCount).toFixed(2));
+    ? Number((rewardValue / actualWinnerCount).toFixed(2))
+    : Number((stockQuantity / actualWinnerCount).toFixed(2));
 
-  return topParticipants.map((participant) => ({
-    userId: participant.user_id,
-    winningEntryCount: Number(participant.total_entries || 0),
+  return selected.map((winner, index) => ({
+    userId: winner.userId,
+    winningEntryCount: winner.winningEntryCount,
     allocationRatio,
     allocationQuantity,
-    rewardMode: auction.reward_mode || 'stock'
+    rewardMode: auction.reward_mode || 'stock',
+    winnerMode: winner.winnerMode,
+    selectionRank: index + 1,
+    sequencePosition: winner.sequencePosition,
+    totalBidsSnapshot: winner.totalBidsSnapshot,
+    totalEntriesSnapshot: winner.totalEntriesSnapshot,
+    selectionMetadata: {
+      ...winner.selectionMetadata,
+      modeRank: winner.modeRank,
+      configuredWinnerCount: desiredWinnerCount,
+      configuredWinnerModes: winnerModes
+    }
   }));
 }
 
@@ -241,7 +413,8 @@ async function settleAuctionRewards(client, auction, winners) {
         btctPrice: BTCT_USD_PRICE,
         auctionTitle: auction.title,
         isWinner,
-        winnerCount: winners.length
+        winnerCount: winners.length,
+        winnerModes: winners.filter((winner) => String(winner.userId) === String(participant.user_id)).map((winner) => winner.winnerMode)
       }
     });
 
@@ -275,9 +448,15 @@ function stripPrivateFields(auction) {
         user_id: winner.user_id,
         username: winner.username,
         winning_entry_count: winner.winning_entry_count,
+        winner_mode: winner.winner_mode || 'highest',
+        selection_rank: Number(winner.selection_rank || 0),
+        sequence_position: winner.sequence_position === null || winner.sequence_position === undefined ? null : Number(winner.sequence_position),
+        total_bids_snapshot: Number(winner.total_bids_snapshot || 0),
+        total_entries_snapshot: Number(winner.total_entries_snapshot || 0),
         allocation_ratio: winner.allocation_ratio,
         allocation_quantity: winner.allocation_quantity,
         reward_mode: winner.reward_mode,
+        selection_metadata: winner.selection_metadata || {},
         created_at: winner.created_at
       }))
     : [];
@@ -378,11 +557,16 @@ async function ensureAuctionResolved(client, auctionId) {
     return auctionRepository.getAuctionById(client, auctionId);
   }
 
-  const topParticipants = await auctionRepository.getTopParticipants(client, auctionId);
-  const winners = buildWinnerAllocations(auction, topParticipants);
+  const [participants, bids] = await Promise.all([
+    auctionRepository.listAuctionLeaderboard(client, auctionId, null),
+    auctionRepository.listAuctionBidsAsc(client, auctionId)
+  ]);
+  const winners = buildWinnerAllocations(auction, participants, bids);
   await auctionRepository.replaceAuctionWinners(client, auctionId, winners);
 
-  const winningBid = await auctionRepository.getHighestBid(client, auctionId);
+  const winningBid = winners[0]?.selectionMetadata?.bidId
+    ? { id: winners[0].selectionMetadata.bidId }
+    : await auctionRepository.getHighestBid(client, auctionId);
   const primaryWinner = winners[0] || null;
 
   await auctionRepository.updateAuction(client, auctionId, {
@@ -394,7 +578,6 @@ async function ensureAuctionResolved(client, auctionId) {
     winnerUserId: primaryWinner?.userId || null,
     winningBidId: winningBid?.id || null,
     hasTie: winners.length > 1,
-    winnerCount: winners.length,
     totalEntries: Number(auction.total_entries || 0),
     updatedBy: auction.updated_by
   });
@@ -474,6 +657,7 @@ async function buildAuctionDetails(client, auctionId, currentUserId = null, opti
     isWinner: winners.some((winner) => winner.user_id === currentUserId),
     current_user_id: currentUserId,
     btctPrice: BTCT_USD_PRICE,
+    actualWinnerCount: winners.length,
     participated: Boolean(currentParticipant),
     resultFinalized,
     revealEligible,

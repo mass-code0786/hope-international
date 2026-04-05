@@ -163,6 +163,12 @@ function ResultRevealSection({ auction, winners, onReveal, revealMutation }) {
   );
 }
 
+function winnerModeLabel(mode) {
+  if (mode === 'middle') return 'Middle winner';
+  if (mode === 'last') return 'Last winner';
+  return 'Highest winner';
+}
+
 function StickyBidBar({ status, entryPrice, walletBalance, walletReady, bidMutation, onBid, participantCount, winners }) {
   const isLive = status === 'live';
   const isEnded = status === 'ended';
@@ -407,6 +413,16 @@ export default function AuctionDetailPage() {
               <section className="rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#1A1D2E] p-3 shadow-[0_18px_45px_rgba(15,23,42,0.22)]">
                 <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#7A7F9A]">Auction Result</p>
                 <div className="mt-2.5">
+                  {winners.length ? (
+                    <div className="mb-3 space-y-2">
+                      {winners.map((winner) => (
+                        <div key={`${winner.user_id}-${winner.selection_rank || winner.winner_mode}`} className="rounded-[18px] border border-[rgba(255,255,255,0.08)] bg-[#14182D] px-3 py-3 text-[12px] text-[#B0B3C6]">
+                          <p className="font-semibold text-[#FFFFFF]">{winner.username}</p>
+                          <p className="mt-1">{winnerModeLabel(winner.winner_mode)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                   {rewardDistribution ? (
                     rewardDistribution.result_type === 'winner' ? (
                       <div className="rounded-[18px] border border-emerald-500/20 bg-[rgba(34,197,94,0.12)] px-3 py-3 text-[12px] text-[#FFFFFF]">

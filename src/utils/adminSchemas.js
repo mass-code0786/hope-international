@@ -181,6 +181,7 @@ const adminSellerApplicationsQuerySchema = z.object({ body: z.object({}), params
 const adminSellerApplicationReviewSchema = z.object({ body: z.object({ status: z.enum(['approved', 'rejected']), rejectionReason: z.string().max(500).optional(), notes: z.string().max(1000).optional() }).superRefine((body, ctx) => { if (body.status === 'rejected' && !body.rejectionReason) { ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'rejectionReason is required when status is rejected' }); } }), params: z.object({ id: uuid }), query: z.object({}) });
 
 const adminAuctionStatuses = ['upcoming', 'live', 'ended', 'cancelled'];
+const adminAuctionWinnerModes = ['highest', 'middle', 'last'];
 const adminAuctionSpecsSchema = z.array(z.object({ label: z.string().min(1).max(100), value: z.string().min(1).max(300) })).optional();
 const adminAuctionGallerySchema = z.array(z.string().min(3).max(1000000)).optional();
 const adminAuctionSourceModes = ['existing', 'standalone'];
@@ -199,6 +200,8 @@ const adminAuctionBaseBody = z.object({
   shippingDetails: z.string().max(1000).optional(),
   entryPrice: z.number().min(0.1),
   hiddenCapacity: z.number().int().positive(),
+  winnerCount: z.number().int().positive(),
+  winnerModes: z.array(z.enum(adminAuctionWinnerModes)).min(1).max(3),
   stockQuantity: z.number().int().positive().optional(),
   rewardMode: z.enum(['stock', 'split']).optional(),
   rewardValue: z.number().positive().optional(),
@@ -233,6 +236,10 @@ function validateAuctionCreateMode(body, ctx) {
 
   if ((body.rewardMode || 'stock') === 'split' && body.rewardValue === undefined) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rewardValue'], message: 'rewardValue is required when rewardMode is split' });
+  }
+
+  if (Array.isArray(body.winnerModes) && new Set(body.winnerModes).size !== body.winnerModes.length) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['winnerModes'], message: 'winnerModes must not contain duplicates' });
   }
 }
 

@@ -232,7 +232,8 @@ async function createAuction(adminUserId, payload) {
       isActive: payload.isActive ?? true,
       totalEntries: 0,
       hasTie: false,
-      winnerCount: 0
+      winnerCount: payload.winnerCount,
+      winnerModes: payload.winnerModes
     });
 
     if (!sanitized.title) {
@@ -283,7 +284,9 @@ async function updateAuction(adminUserId, auctionId, payload) {
       specifications: payload.specifications ?? source.specifications,
       category: payload.category ?? source.category,
       itemCondition: payload.itemCondition ?? source.itemCondition,
-      shippingDetails: payload.shippingDetails ?? source.shippingDetails
+      shippingDetails: payload.shippingDetails ?? source.shippingDetails,
+      winnerCount: payload.winnerCount ?? before.winner_count,
+      winnerModes: payload.winnerModes ?? before.winner_modes
     }, before);
 
     if (!merged.title) {
