@@ -481,7 +481,7 @@ export default function PublicLandingPage() {
               </div>
 
               <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <StatPill title="Users" value="10,000+ Users" />
+                <StatPill title="Users" value="1M+ Users" />
                 <StatPill title="Reach" value="Global Platform" />
                 <StatPill title="Trust" value="Secure System" />
               </div>
