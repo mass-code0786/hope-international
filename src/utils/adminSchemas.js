@@ -486,6 +486,10 @@ module.exports = {
   adminLandingTestimonialUpdateSchema,
   adminLandingCountryCreateSchema,
   adminLandingCountryUpdateSchema,
-  adminLandingEntityIdParamSchema
+  adminLandingEntityIdParamSchema,
+  adminSupportThreadsQuerySchema,
+  adminSupportThreadIdParamSchema,
+  adminSupportMessageCreateSchema,
+  adminSupportStatusUpdateSchema
 };
 

@@ -10,6 +10,13 @@ const {
 
 const router = express.Router();
 
+console.info('[admin.support.routes] validator schemas', {
+  adminSupportThreadsQuerySchema: Boolean(adminSupportThreadsQuerySchema),
+  adminSupportThreadIdParamSchema: Boolean(adminSupportThreadIdParamSchema),
+  adminSupportMessageCreateSchema: Boolean(adminSupportMessageCreateSchema),
+  adminSupportStatusUpdateSchema: Boolean(adminSupportStatusUpdateSchema)
+});
+
 router.get('/threads', validate(adminSupportThreadsQuerySchema), adminSupportController.listThreads);
 router.get('/threads/:id', validate(adminSupportThreadIdParamSchema), adminSupportController.getThread);
 router.post('/threads/:id/messages', validate(adminSupportMessageCreateSchema), adminSupportController.sendMessage);

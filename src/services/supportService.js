@@ -139,16 +139,26 @@ async function sendUserMessage(userId, threadId, payload) {
 }
 
 async function listAdminThreads(filters = {}, paginationInput = {}) {
-  const pagination = normalizePagination({ ...paginationInput, limit: paginationInput.limit || 20, maxLimit: 100 });
+  const pagination = normalizePagination({ ...paginationInput, limit: paginationInput.limit || 100, maxLimit: 100 });
   const safeFilters = normalizeThreadFilters(filters);
-  const result = await supportRepository.listThreads(null, safeFilters, pagination);
-  const summary = await supportRepository.getThreadSummary();
 
-  return {
-    data: result.items.map(mapThreadRow),
-    summary,
-    pagination: buildPagination({ page: pagination.page, limit: pagination.limit, total: result.total })
-  };
+  try {
+    const result = await supportRepository.listThreads(null, safeFilters, pagination);
+    const summary = await supportRepository.getThreadSummary();
+
+    return {
+      data: result.items.map(mapThreadRow),
+      summary,
+      pagination: buildPagination({ page: pagination.page, limit: pagination.limit, total: result.total })
+    };
+  } catch (error) {
+    console.error('[admin.support.threads] failed', error);
+    return {
+      data: [],
+      summary: {},
+      pagination: buildPagination({ page: pagination.page, limit: pagination.limit, total: 0 })
+    };
+  }
 }
 
 async function getAdminThread(threadId) {

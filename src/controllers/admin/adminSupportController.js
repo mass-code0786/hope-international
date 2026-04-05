@@ -7,6 +7,8 @@ const listThreads = asyncHandler(async (req, res) => {
   const limit = Math.max(1, Number(req.query.limit) || 100);
 
   try {
+    console.info('[admin.support.threads] route hit');
+    console.info('[admin.support.threads] query params', req.query);
     const result = await adminSupportService.listSupportThreads(req.query, req.query);
     return success(res, {
       data: result.data,

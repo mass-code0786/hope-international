@@ -22,6 +22,24 @@ function firstValidationMessage(error) {
 function validate(schema) {
   return (req, _res, next) => {
     try {
+      if (!schema || typeof schema.parse !== 'function') {
+        const error = new ApiError(500, 'Validation schema is not configured');
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('[validate] schema is undefined for route', {
+            method: req.method,
+            path: req.originalUrl,
+            hasSchema: Boolean(schema),
+            schemaType: typeof schema
+          });
+        } else {
+          console.error('[validate] schema is undefined for route', {
+            method: req.method,
+            path: req.originalUrl
+          });
+        }
+        return next(error);
+      }
+
       const parsed = schema.parse({
         body: req.body ?? {},
         query: req.query ?? {},

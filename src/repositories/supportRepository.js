@@ -82,6 +82,13 @@ function buildFilters(filters = {}, values = [], options = {}) {
 }
 
 async function listThreads(client, filters = {}, pagination = {}, options = {}) {
+  console.info('[admin.support.threads] db query start', {
+    page: pagination.page,
+    limit: pagination.limit,
+    offset: pagination.offset,
+    filters
+  });
+
   const [hasSupportThreads, hasSupportMessages, hasUsers] = await Promise.all([
     tableExists(client, 'support_threads'),
     tableExists(client, 'support_messages'),
@@ -283,6 +290,8 @@ async function listMessagesByThreadId(client, threadId) {
 }
 
 async function getThreadSummary(client, options = {}) {
+  console.info('[admin.support.threads] summary query start', options);
+
   if (!(await tableExists(client, 'support_threads'))) {
     return { total_threads: 0, open_threads: 0, replied_threads: 0, closed_threads: 0 };
   }
