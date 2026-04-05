@@ -3,6 +3,26 @@ function q(client) {
 }
 
 const DEFAULT_SECTION_ORDER = ['hero', 'featured', 'benefits', 'details', 'testimonials', 'stats', 'countries', 'footer'];
+const LANDING_MEDIA_SLOT_DEFINITIONS = [
+  { slotKey: 'hero_image', title: 'Hero image', sectionKey: 'hero', description: 'Main visual for the hero panel.' },
+  { slotKey: 'promo_banner_image', title: 'Promo banner image', sectionKey: 'promo', description: 'Background visual for the CTA banner.' },
+  { slotKey: 'feature_image_1', title: 'Feature image 1', sectionKey: 'features', description: 'Binary Income System card image.' },
+  { slotKey: 'feature_image_2', title: 'Feature image 2', sectionKey: 'features', description: 'E-commerce Marketplace card image.' },
+  { slotKey: 'feature_image_3', title: 'Feature image 3', sectionKey: 'features', description: 'Auction & Rewards card image.' },
+  { slotKey: 'feature_image_4', title: 'Feature image 4', sectionKey: 'features', description: 'Wallet & Instant Withdrawals card image.' },
+  { slotKey: 'step_image_1', title: 'Step image 1', sectionKey: 'how_it_works', description: 'Register Account step card image.' },
+  { slotKey: 'step_image_2', title: 'Step image 2', sectionKey: 'how_it_works', description: 'Choose Placement step card image.' },
+  { slotKey: 'step_image_3', title: 'Step image 3', sectionKey: 'how_it_works', description: 'Build Team step card image.' },
+  { slotKey: 'step_image_4', title: 'Step image 4', sectionKey: 'how_it_works', description: 'Earn Matching Income step card image.' },
+  { slotKey: 'reason_image_1', title: 'Reason image 1', sectionKey: 'why_choose_us', description: 'Secure Platform card image.' },
+  { slotKey: 'reason_image_2', title: 'Reason image 2', sectionKey: 'why_choose_us', description: 'Real Products card image.' },
+  { slotKey: 'reason_image_3', title: 'Reason image 3', sectionKey: 'why_choose_us', description: 'Smart Earnings card image.' },
+  { slotKey: 'reason_image_4', title: 'Reason image 4', sectionKey: 'why_choose_us', description: 'Global Growth card image.' },
+  { slotKey: 'product_image_1', title: 'Product image 1', sectionKey: 'featured_products', description: 'Hope Elite Starter Pack product image.' },
+  { slotKey: 'product_image_2', title: 'Product image 2', sectionKey: 'featured_products', description: 'Emerald Stone Collection product image.' },
+  { slotKey: 'product_image_3', title: 'Product image 3', sectionKey: 'featured_products', description: 'Digital Growth Package product image.' },
+  { slotKey: 'product_image_4', title: 'Product image 4', sectionKey: 'featured_products', description: 'Auction Mystery Reward Box product image.' }
+];
 const DEFAULT_SECTION_VISIBILITY = {
   hero: true,
   featured: true,
@@ -17,6 +37,12 @@ const DEFAULT_SECTION_VISIBILITY = {
 async function ensureSingletonRows(client) {
   await q(client).query('INSERT INTO landing_page_settings (id) VALUES (TRUE) ON CONFLICT (id) DO NOTHING');
   await q(client).query('INSERT INTO landing_page_stats (id) VALUES (TRUE) ON CONFLICT (id) DO NOTHING');
+  await q(client).query(
+    `INSERT INTO landing_media_assets (slot_key)
+     SELECT UNNEST($1::text[])
+     ON CONFLICT (slot_key) DO NOTHING`,
+    [LANDING_MEDIA_SLOT_DEFINITIONS.map((item) => item.slotKey)]
+  );
 }
 
 async function getSettings(client) {
@@ -89,6 +115,33 @@ async function updateStats(client, payload) {
       payload.totalReviewsOverride ?? null,
       payload.totalMembersOverride ?? null
     ]
+  );
+  return rows[0] || null;
+}
+
+async function listMediaSlots(client) {
+  const { rows } = await q(client).query(
+    `SELECT *
+     FROM landing_media_assets
+     ORDER BY slot_key ASC`
+  );
+  return rows;
+}
+
+async function getMediaSlotByKey(client, slotKey) {
+  const { rows } = await q(client).query('SELECT * FROM landing_media_assets WHERE slot_key = $1', [slotKey]);
+  return rows[0] || null;
+}
+
+async function updateMediaSlot(client, slotKey, payload) {
+  const { rows } = await q(client).query(
+    `UPDATE landing_media_assets
+     SET image_url = $2,
+         alt_text = $3,
+         updated_by = $4
+     WHERE slot_key = $1
+     RETURNING *`,
+    [slotKey, payload.imageUrl || null, payload.altText || null, payload.updatedBy || null]
   );
   return rows[0] || null;
 }
@@ -486,11 +539,15 @@ async function trackVisitor(client, visitorTokenHash) {
 module.exports = {
   DEFAULT_SECTION_ORDER,
   DEFAULT_SECTION_VISIBILITY,
+  LANDING_MEDIA_SLOT_DEFINITIONS,
   ensureSingletonRows,
   getSettings,
   updateSettings,
   getStats,
   updateStats,
+  listMediaSlots,
+  getMediaSlotByKey,
+  updateMediaSlot,
   listFeaturedItems,
   getFeaturedItemById,
   createFeaturedItem,

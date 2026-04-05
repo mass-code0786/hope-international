@@ -8,14 +8,13 @@ const btctStakingRepository = require('../../repositories/btctStakingRepository'
 const btctStakingService = require('../btctStakingService');
 const userRepository = require('../../repositories/userRepository');
 
-const DEPOSIT_TEAM_INCOME_RULES = [
-  { levelNumber: 1, percentage: 0.02, incomeType: 'direct_deposit_income' },
+const DIRECT_DEPOSIT_INCOME_RULE = { levelNumber: 1, percentage: 0.02, incomeType: 'direct_deposit_income' };
+const LEVEL_DEPOSIT_INCOME_RULES = [
   { levelNumber: 2, percentage: 0.012, incomeType: 'level_deposit_income' },
   { levelNumber: 3, percentage: 0.012, incomeType: 'level_deposit_income' },
   { levelNumber: 4, percentage: 0.012, incomeType: 'level_deposit_income' },
   { levelNumber: 5, percentage: 0.012, incomeType: 'level_deposit_income' },
-  { levelNumber: 6, percentage: 0.012, incomeType: 'level_deposit_income' },
-  { levelNumber: 7, percentage: 0.012, incomeType: 'level_deposit_income' }
+  { levelNumber: 6, percentage: 0.012, incomeType: 'level_deposit_income' }
 ];
 
 function toMoney(value) {
@@ -23,14 +22,28 @@ function toMoney(value) {
 }
 
 async function distributeDepositTeamIncome(client, deposit, adminUserId, adminNote = null) {
-  const uplines = await userRepository.getSponsorUpline(client, deposit.user_id, 7);
+  const maxDepositIncomeLevel = LEVEL_DEPOSIT_INCOME_RULES[LEVEL_DEPOSIT_INCOME_RULES.length - 1]?.levelNumber || DIRECT_DEPOSIT_INCOME_RULE.levelNumber;
+  const uplines = await userRepository.getSponsorUpline(client, deposit.user_id, maxDepositIncomeLevel);
   const uplinesByLevel = new Map(uplines.map((item) => [Number(item.level_number), item]));
+  const levelIncomeRecipientIds = LEVEL_DEPOSIT_INCOME_RULES
+    .map((rule) => uplinesByLevel.get(rule.levelNumber)?.id)
+    .filter(Boolean);
+  const directReferralCounts = await userRepository.getDirectReferralCounts(client, levelIncomeRecipientIds);
   const baseAmount = toMoney(deposit.amount);
   const distributions = [];
 
-  for (const rule of DEPOSIT_TEAM_INCOME_RULES) {
+  const depositIncomeRules = [DIRECT_DEPOSIT_INCOME_RULE, ...LEVEL_DEPOSIT_INCOME_RULES];
+
+  for (const rule of depositIncomeRules) {
     const recipient = uplinesByLevel.get(rule.levelNumber);
     if (!recipient) continue;
+
+    if (rule.incomeType === 'level_deposit_income') {
+      const directReferralCount = Number(directReferralCounts.get(recipient.id) || 0);
+      if (directReferralCount < rule.levelNumber) {
+        continue;
+      }
+    }
 
     const creditedAmount = toMoney(baseAmount * rule.percentage);
     if (creditedAmount <= 0) continue;

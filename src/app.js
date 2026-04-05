@@ -3,6 +3,7 @@ const helmet = require('helmet');
 const cors = require('cors');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+const path = require('path');
 
 const routes = require('./routes');
 const errorHandler = require('./middleware/errorHandler');
@@ -43,6 +44,8 @@ app.get('/', (_req, res) => {
 app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok' });
 });
+
+app.use('/media', express.static(path.resolve(__dirname, '../storage')));
 
 app.use('/', routes);
 

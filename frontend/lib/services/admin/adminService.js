@@ -357,6 +357,23 @@ export async function updateAdminLandingStats(payload) {
   );
 }
 
+export async function updateAdminLandingMediaSlot(slotKey, payload) {
+  return toEnvelope(
+    await apiFetch(`/admin/landing/media/${slotKey}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function deleteAdminLandingMediaSlot(slotKey) {
+  return toEnvelope(
+    await apiFetch(`/admin/landing/media/${slotKey}`, {
+      method: 'DELETE'
+    })
+  );
+}
+
 export async function createAdminLandingFeaturedItem(payload) {
   return toEnvelope(
     await apiFetch('/admin/landing/featured-items', {

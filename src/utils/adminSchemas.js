@@ -245,6 +245,26 @@ const adminAuctionActionSchema = z.object({ body: z.object({ action: z.enum(['cl
 const landingSectionOrderValues = ['hero', 'featured', 'benefits', 'details', 'testimonials', 'stats', 'countries', 'footer'];
 const landingContentSectionValues = ['benefits', 'details'];
 const landingLayoutStyleValues = ['icon-card', 'image-left', 'image-right'];
+const landingMediaSlotValues = [
+  'hero_image',
+  'promo_banner_image',
+  'feature_image_1',
+  'feature_image_2',
+  'feature_image_3',
+  'feature_image_4',
+  'step_image_1',
+  'step_image_2',
+  'step_image_3',
+  'step_image_4',
+  'reason_image_1',
+  'reason_image_2',
+  'reason_image_3',
+  'reason_image_4',
+  'product_image_1',
+  'product_image_2',
+  'product_image_3',
+  'product_image_4'
+];
 const landingSectionOrderSchema = z.array(z.enum(landingSectionOrderValues)).min(1).optional();
 const landingVisibilitySchema = z.record(z.boolean()).optional();
 const nullableNonNegativeInt = z.union([z.number().int().min(0), z.null()]).optional();
@@ -281,6 +301,22 @@ const adminLandingStatsUpdateSchema = z.object({
     totalMembersOverride: nullableNonNegativeInt
   }).refine((body) => Object.keys(body).length > 0, { message: 'At least one field is required for update' }),
   params: z.object({}),
+  query: z.object({})
+});
+
+const adminLandingMediaSlotParamSchema = z.object({
+  body: z.object({}),
+  params: z.object({ slotKey: z.enum(landingMediaSlotValues) }),
+  query: z.object({})
+});
+
+const adminLandingMediaSlotUpdateSchema = z.object({
+  body: z.object({
+    imageDataUrl: z.string().max(5000000).optional(),
+    altText: z.union([z.string().max(255), z.null()]).optional(),
+    removeImage: z.boolean().optional()
+  }).refine((body) => Object.keys(body).length > 0, { message: 'At least one field is required for update' }),
+  params: z.object({ slotKey: z.enum(landingMediaSlotValues) }),
   query: z.object({})
 });
 
@@ -433,6 +469,8 @@ module.exports = {
   adminAuctionActionSchema,
   adminLandingSettingsUpdateSchema,
   adminLandingStatsUpdateSchema,
+  adminLandingMediaSlotParamSchema,
+  adminLandingMediaSlotUpdateSchema,
   adminLandingFeaturedItemCreateSchema,
   adminLandingFeaturedItemUpdateSchema,
   adminLandingContentBlockCreateSchema,

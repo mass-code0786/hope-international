@@ -2,6 +2,7 @@ const { withTransaction } = require('../../db/pool');
 const { ApiError } = require('../../utils/ApiError');
 const landingRepository = require('../../repositories/landingRepository');
 const adminRepository = require('../../repositories/adminRepository');
+const landingMediaStorageService = require('../landingMediaStorageService');
 
 function buildDisplayStats(statsRow, actualMembers, actualReviews) {
   return {
@@ -48,9 +49,22 @@ function mapAggregate(settings, stats, featuredItems, contentBlocks, testimonial
   };
 }
 
+function mapMediaSlot(slot, definition) {
+  return {
+    slotKey: definition.slotKey,
+    title: definition.title,
+    sectionKey: definition.sectionKey,
+    description: definition.description,
+    imageUrl: slot?.image_url || '',
+    altText: slot?.alt_text || '',
+    updatedAt: slot?.updated_at || null,
+    updatedBy: slot?.updated_by || null
+  };
+}
+
 async function getLandingAdminState() {
   await landingRepository.ensureSingletonRows();
-  const [settings, stats, featuredItems, contentBlocks, testimonials, countries, actualMembers, actualReviews] = await Promise.all([
+  const [settings, stats, featuredItems, contentBlocks, testimonials, countries, actualMembers, actualReviews, mediaSlots] = await Promise.all([
     landingRepository.getSettings(),
     landingRepository.getStats(),
     landingRepository.listFeaturedItems(),
@@ -58,10 +72,15 @@ async function getLandingAdminState() {
     landingRepository.listTestimonials(),
     landingRepository.listCountries(),
     landingRepository.countRegisteredMembers(),
-    landingRepository.countActiveTestimonials()
+    landingRepository.countActiveTestimonials(),
+    landingRepository.listMediaSlots()
   ]);
 
-  return mapAggregate(settings, stats, featuredItems, contentBlocks, testimonials, countries, actualMembers, actualReviews);
+  const slotMap = new Map(mediaSlots.map((slot) => [slot.slot_key, slot]));
+  return {
+    ...mapAggregate(settings, stats, featuredItems, contentBlocks, testimonials, countries, actualMembers, actualReviews),
+    mediaSlots: landingRepository.LANDING_MEDIA_SLOT_DEFINITIONS.map((definition) => mapMediaSlot(slotMap.get(definition.slotKey), definition))
+  };
 }
 
 async function updateLandingSettings(adminUserId, payload) {
@@ -128,6 +147,61 @@ async function updateLandingStats(adminUserId, payload) {
     });
 
     return updated;
+  });
+}
+
+async function updateLandingMediaSlot(adminUserId, slotKey, payload) {
+  return withTransaction(async (client) => {
+    await landingRepository.ensureSingletonRows(client);
+    const before = await landingRepository.getMediaSlotByKey(client, slotKey);
+    if (!before) {
+      throw new ApiError(404, 'Landing media slot not found');
+    }
+
+    let imageUrl = before.image_url || null;
+    if (payload.removeImage) {
+      await landingMediaStorageService.removeManagedMedia(imageUrl);
+      imageUrl = null;
+    }
+
+    if (payload.imageDataUrl) {
+      const nextImageUrl = await landingMediaStorageService.saveLandingMediaImage(slotKey, payload.imageDataUrl);
+      await landingMediaStorageService.removeManagedMedia(imageUrl);
+      imageUrl = nextImageUrl;
+    }
+
+    const altText = Object.prototype.hasOwnProperty.call(payload, 'altText')
+      ? String(payload.altText || '').trim() || null
+      : before.alt_text;
+
+    const updated = await landingRepository.updateMediaSlot(client, slotKey, {
+      imageUrl,
+      altText,
+      updatedBy: adminUserId
+    });
+
+    await adminRepository.logAdminAction(client, {
+      adminUserId,
+      actionType: 'landing.media.update',
+      targetEntity: 'landing_media_assets',
+      targetId: slotKey,
+      beforeData: before,
+      afterData: updated,
+      metadata: {
+        slotKey,
+        removeImage: Boolean(payload.removeImage),
+        replacedImage: Boolean(payload.imageDataUrl)
+      }
+    });
+
+    return updated;
+  });
+}
+
+async function deleteLandingMediaSlotImage(adminUserId, slotKey) {
+  return updateLandingMediaSlot(adminUserId, slotKey, {
+    removeImage: true,
+    altText: null
   });
 }
 
@@ -287,6 +361,8 @@ module.exports = {
   getLandingAdminState,
   updateLandingSettings,
   updateLandingStats,
+  updateLandingMediaSlot,
+  deleteLandingMediaSlotImage,
   createLandingEntity,
   updateLandingEntity,
   deleteLandingEntity

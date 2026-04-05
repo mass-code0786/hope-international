@@ -2,6 +2,17 @@ const crypto = require('crypto');
 const { withTransaction } = require('../db/pool');
 const landingRepository = require('../repositories/landingRepository');
 
+function mapMediaSlot(slot, definition) {
+  return {
+    slotKey: definition.slotKey,
+    title: definition.title,
+    sectionKey: definition.sectionKey,
+    description: definition.description,
+    imageUrl: slot?.image_url || '',
+    altText: slot?.alt_text || ''
+  };
+}
+
 function formatPriceLabel(value) {
   const amount = Number(value);
   if (!Number.isFinite(amount)) return null;
@@ -82,7 +93,7 @@ function buildDisplayStats(statsRow, actualMembers, actualReviews) {
 async function getPublicLandingPage() {
   await landingRepository.ensureSingletonRows();
 
-  const [settings, statsRow, featuredItems, contentBlocks, testimonials, countries, actualMembers, actualReviews] = await Promise.all([
+  const [settings, statsRow, featuredItems, contentBlocks, testimonials, countries, actualMembers, actualReviews, mediaSlots] = await Promise.all([
     landingRepository.getSettings(),
     landingRepository.getStats(),
     landingRepository.listFeaturedItems(null, { onlyActive: true }),
@@ -90,11 +101,17 @@ async function getPublicLandingPage() {
     landingRepository.listTestimonials(null, { onlyActive: true }),
     landingRepository.listCountries(null, { onlyActive: true }),
     landingRepository.countRegisteredMembers(),
-    landingRepository.countActiveTestimonials()
+    landingRepository.countActiveTestimonials(),
+    landingRepository.listMediaSlots()
   ]);
 
   const visibility = settings?.section_visibility || landingRepository.DEFAULT_SECTION_VISIBILITY;
   const order = Array.isArray(settings?.section_order) ? settings.section_order : landingRepository.DEFAULT_SECTION_ORDER;
+  const mediaSlotMap = new Map(mediaSlots.map((slot) => [slot.slot_key, slot]));
+  const media = landingRepository.LANDING_MEDIA_SLOT_DEFINITIONS.reduce((accumulator, definition) => {
+    accumulator[definition.slotKey] = mapMediaSlot(mediaSlotMap.get(definition.slotKey), definition);
+    return accumulator;
+  }, {});
 
   return {
     settings: {
@@ -121,7 +138,8 @@ async function getPublicLandingPage() {
     details: contentBlocks.filter((item) => item.section_key === 'details').map(mapContentBlock),
     testimonials: testimonials.map(mapTestimonial),
     countries: countries.map(mapCountry),
-    stats: buildDisplayStats(statsRow, actualMembers, actualReviews)
+    stats: buildDisplayStats(statsRow, actualMembers, actualReviews),
+    media
   };
 }
 

@@ -26,6 +26,22 @@ const updateStats = asyncHandler(async (req, res) => {
   });
 });
 
+const updateMediaSlot = asyncHandler(async (req, res) => {
+  const data = await adminLandingService.updateLandingMediaSlot(req.user.sub, req.params.slotKey, req.body);
+  return success(res, {
+    data,
+    message: 'Landing media updated successfully'
+  });
+});
+
+const deleteMediaSlotImage = asyncHandler(async (req, res) => {
+  const data = await adminLandingService.deleteLandingMediaSlotImage(req.user.sub, req.params.slotKey);
+  return success(res, {
+    data,
+    message: 'Landing media image removed successfully'
+  });
+});
+
 const createFeaturedItem = asyncHandler(async (req, res) => {
   const data = await adminLandingService.createLandingEntity(req.user.sub, 'featured-item', req.body);
   return success(res, {
@@ -130,6 +146,8 @@ module.exports = {
   getState,
   updateSettings,
   updateStats,
+  updateMediaSlot,
+  deleteMediaSlotImage,
   createFeaturedItem,
   updateFeaturedItem,
   deleteFeaturedItem,

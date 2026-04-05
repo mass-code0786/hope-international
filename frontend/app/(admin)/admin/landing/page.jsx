@@ -17,9 +17,11 @@ import {
   deleteAdminLandingContentBlock,
   deleteAdminLandingCountry,
   deleteAdminLandingFeaturedItem,
+  deleteAdminLandingMediaSlot,
   deleteAdminLandingTestimonial,
   getAdminLanding,
   getAdminProducts,
+  updateAdminLandingMediaSlot,
   updateAdminLandingContentBlock,
   updateAdminLandingCountry,
   updateAdminLandingFeaturedItem,
@@ -27,6 +29,8 @@ import {
   updateAdminLandingStats,
   updateAdminLandingTestimonial
 } from '@/lib/services/admin';
+import { compressImageFile } from '@/lib/utils/imageUpload';
+import { resolveMediaUrl } from '@/lib/utils/media';
 
 const sectionKeys = ['hero', 'featured', 'benefits', 'details', 'testimonials', 'stats', 'countries', 'footer'];
 const contentSectionOptions = ['benefits', 'details'];
@@ -78,41 +82,6 @@ const emptyCountryForm = {
   isActive: true
 };
 
-async function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-async function compressImage(file) {
-  const src = await fileToDataUrl(file);
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => {
-      const maxWidth = 1400;
-      const maxHeight = 900;
-      const ratio = Math.min(maxWidth / image.width, maxHeight / image.height, 1);
-      const width = Math.max(1, Math.floor(image.width * ratio));
-      const height = Math.max(1, Math.floor(image.height * ratio));
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        reject(new Error('Unable to process image'));
-        return;
-      }
-      ctx.drawImage(image, 0, 0, width, height);
-      resolve(canvas.toDataURL('image/jpeg', 0.84));
-    };
-    image.onerror = reject;
-    image.src = src;
-  });
-}
-
 function coerceNumber(value, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -141,10 +110,32 @@ function TextArea(props) {
   return <textarea {...props} className={`w-full rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm text-text ${props.className || ''}`} />;
 }
 
+function normalizeMediaForms(slots = []) {
+  return (Array.isArray(slots) ? slots : []).reduce((accumulator, slot) => {
+    accumulator[slot.slotKey] = {
+      previewUrl: slot.imageUrl || '',
+      imageDataUrl: '',
+      altText: slot.altText || ''
+    };
+    return accumulator;
+  }, {});
+}
+
+function validateLandingImageFile(file) {
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!allowedTypes.includes(file.type)) {
+    throw new Error('Only JPG, PNG, and WEBP files are supported');
+  }
+  if (file.size > 3 * 1024 * 1024) {
+    throw new Error('Image must be 3MB or smaller');
+  }
+}
+
 export default function AdminLandingPage() {
   const queryClient = useQueryClient();
   const [settingsForm, setSettingsForm] = useState(null);
   const [statsForm, setStatsForm] = useState(null);
+  const [mediaForms, setMediaForms] = useState({});
   const [featuredForm, setFeaturedForm] = useState(emptyFeaturedForm);
   const [featuredEditingId, setFeaturedEditingId] = useState('');
   const [blockForm, setBlockForm] = useState(emptyBlockForm);
@@ -192,6 +183,7 @@ export default function AdminLandingPage() {
       totalReviewsOverride: payload.stats.totalReviewsOverride ?? '',
       totalMembersOverride: payload.stats.totalMembersOverride ?? ''
     });
+    setMediaForms(normalizeMediaForms(payload.mediaSlots));
   }, [landingQuery.data]);
 
   const refreshLanding = async () => {
@@ -220,6 +212,15 @@ export default function AdminLandingPage() {
       await refreshLanding();
     },
     onError: (error) => toast.error(error.message || 'Failed to update landing stats')
+  });
+
+  const mediaMutation = useMutation({
+    mutationFn: ({ slotKey, payload }) => updateAdminLandingMediaSlot(slotKey, payload),
+    onSuccess: async (result) => {
+      toast.success(result.message || 'Landing image updated');
+      await refreshLanding();
+    },
+    onError: (error) => toast.error(error.message || 'Failed to update landing image')
   });
 
   const featuredMutation = useMutation({
@@ -325,6 +326,7 @@ export default function AdminLandingPage() {
   if (landingQuery.isError) return <ErrorState message="Unable to load landing page admin data." onRetry={landingQuery.refetch} />;
 
   const payload = landingQuery.data?.data || {};
+  const mediaSlots = Array.isArray(payload.mediaSlots) ? payload.mediaSlots : [];
   const featuredItems = Array.isArray(payload.featuredItems) ? payload.featuredItems : [];
   const contentBlocks = Array.isArray(payload.contentBlocks) ? payload.contentBlocks : [];
   const testimonials = Array.isArray(payload.testimonials) ? payload.testimonials : [];
@@ -336,6 +338,7 @@ export default function AdminLandingPage() {
 
       <div className="grid gap-4 xl:grid-cols-3">
         <SummaryPanel title="Landing Summary" items={[
+          { label: 'Image slots', value: mediaSlots.length },
           { label: 'Featured items', value: featuredItems.length },
           { label: 'Content blocks', value: contentBlocks.length },
           { label: 'Testimonials', value: testimonials.length },
@@ -350,6 +353,122 @@ export default function AdminLandingPage() {
         <SummaryPanel title="Section Visibility" items={sectionKeys.map((key) => ({ label: key, value: settingsForm.sectionVisibility[key] === false ? 'Hidden' : 'Visible' }))} />
       </div>
 
+      <ActionPanel title="Landing Media" description="Upload and replace the image slots used across the public landing page without code changes.">
+        <div className="grid gap-4 lg:grid-cols-2">
+          {mediaSlots.map((slot) => {
+            const form = mediaForms[slot.slotKey] || { previewUrl: slot.imageUrl || '', imageDataUrl: '', altText: slot.altText || '' };
+            const previewUrl = resolveMediaUrl(form.previewUrl);
+            const saving = mediaMutation.isPending && mediaMutation.variables?.slotKey === slot.slotKey;
+
+            return (
+              <div key={slot.slotKey} className="rounded-2xl border border-white/10 bg-cardSoft p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-text">{slot.title}</p>
+                    <p className="mt-1 text-xs text-muted">{slot.sectionKey.replace(/_/g, ' ')} • {slot.slotKey}</p>
+                    <p className="mt-2 text-xs text-muted">{slot.description}</p>
+                  </div>
+                  <span className="rounded-full border border-white/10 px-2 py-1 text-[11px] text-muted">
+                    {slot.imageUrl ? 'Configured' : 'Empty'}
+                  </span>
+                </div>
+
+                <div className="mt-3">
+                  {previewUrl ? (
+                    <img src={previewUrl} alt={form.altText || slot.title} className="h-40 w-full rounded-xl border border-white/10 object-cover" />
+                  ) : (
+                    <div className="flex h-40 w-full items-center justify-center rounded-xl border border-dashed border-white/10 bg-[#111827] text-xs text-muted">
+                      No image uploaded
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-3 space-y-3">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="w-full rounded-xl border border-white/10 bg-card px-3 py-2 text-sm"
+                    onChange={async (event) => {
+                      const file = event.target.files?.[0];
+                      if (!file) return;
+                      try {
+                        validateLandingImageFile(file);
+                        const imageUrl = await compressImageFile(file, {
+                          maxWidth: 1600,
+                          maxHeight: 1200,
+                          mimeType: file.type === 'image/png' ? 'image/png' : file.type === 'image/webp' ? 'image/webp' : 'image/jpeg'
+                        });
+                        setMediaForms((prev) => ({
+                          ...prev,
+                          [slot.slotKey]: {
+                            ...(prev[slot.slotKey] || {}),
+                            previewUrl: imageUrl,
+                            imageDataUrl: imageUrl
+                          }
+                        }));
+                        toast.success(`${slot.title} ready to save`);
+                      } catch (error) {
+                        toast.error(error.message || 'Image upload failed');
+                      } finally {
+                        event.target.value = '';
+                      }
+                    }}
+                  />
+                  <TextInput
+                    value={form.altText}
+                      onChange={(e) => setMediaForms((prev) => ({
+                        ...prev,
+                        [slot.slotKey]: {
+                          ...(prev[slot.slotKey] || {}),
+                          previewUrl: (prev[slot.slotKey]?.previewUrl ?? slot.imageUrl ?? ''),
+                          imageDataUrl: (prev[slot.slotKey]?.imageDataUrl ?? ''),
+                          altText: e.target.value
+                        }
+                      }))}
+                    placeholder="Alt text (optional)"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => mediaMutation.mutate({
+                        slotKey: slot.slotKey,
+                        payload: {
+                          imageDataUrl: form.imageDataUrl || undefined,
+                          altText: form.altText || null
+                        }
+                      })}
+                      disabled={saving}
+                      className="flex-1 rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-black disabled:opacity-50"
+                    >
+                      {saving ? 'Saving...' : slot.imageUrl ? 'Replace / Save' : 'Save Image'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await deleteAdminLandingMediaSlot(slot.slotKey);
+                          setMediaForms((prev) => ({
+                            ...prev,
+                            [slot.slotKey]: { previewUrl: '', imageDataUrl: '', altText: '' }
+                          }));
+                          toast.success('Landing image removed');
+                          await refreshLanding();
+                        } catch (error) {
+                          toast.error(error.message || 'Failed to remove landing image');
+                        }
+                      }}
+                      className="rounded-xl border border-white/10 px-3 py-2 text-sm text-muted"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </ActionPanel>
+
       <div className="grid gap-4 xl:grid-cols-2">
         <ActionPanel title="Hero And Page Settings" description="Update the landing page brand story, hero content, section headings, and ordering.">
           <div className="space-y-3">
@@ -361,26 +480,6 @@ export default function AdminLandingPage() {
               <TextInput value={settingsForm.heroSecondaryCtaText} onChange={(e) => setSettingsForm((prev) => ({ ...prev, heroSecondaryCtaText: e.target.value }))} placeholder="Secondary CTA" />
             </div>
             <TextInput value={settingsForm.heroBackgroundNote} onChange={(e) => setSettingsForm((prev) => ({ ...prev, heroBackgroundNote: e.target.value }))} placeholder="Hero note" />
-            <input
-              type="file"
-              accept="image/*"
-              className="w-full rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm"
-              onChange={async (event) => {
-                const file = event.target.files?.[0];
-                if (!file) return;
-                try {
-                  const dataUrl = await compressImage(file);
-                  setSettingsForm((prev) => ({ ...prev, heroImageUrl: dataUrl }));
-                  toast.success('Hero image uploaded');
-                } catch (_error) {
-                  toast.error('Unable to process image');
-                } finally {
-                  event.target.value = '';
-                }
-              }}
-            />
-            <TextInput value={settingsForm.heroImageUrl} onChange={(e) => setSettingsForm((prev) => ({ ...prev, heroImageUrl: e.target.value }))} placeholder="Hero image URL or uploaded data URL" />
-            {settingsForm.heroImageUrl ? <img src={settingsForm.heroImageUrl} alt="Hero preview" className="h-36 w-full rounded-xl object-cover" /> : null}
             <div className="grid gap-2 sm:grid-cols-2">
               <TextInput value={settingsForm.featuredSectionTitle} onChange={(e) => setSettingsForm((prev) => ({ ...prev, featuredSectionTitle: e.target.value }))} placeholder="Featured section title" />
               <TextInput value={settingsForm.benefitsSectionTitle} onChange={(e) => setSettingsForm((prev) => ({ ...prev, benefitsSectionTitle: e.target.value }))} placeholder="Benefits section title" />

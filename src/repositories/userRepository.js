@@ -291,6 +291,20 @@ async function getDirectChildren(client, userId) {
   return rows;
 }
 
+async function getDirectReferralCounts(client, userIds = []) {
+  if (!Array.isArray(userIds) || !userIds.length) return new Map();
+
+  const { rows } = await q(client).query(
+    `SELECT sponsor_id AS user_id, COUNT(*)::int AS direct_referral_count
+     FROM users
+     WHERE sponsor_id = ANY($1::uuid[])
+     GROUP BY sponsor_id`,
+    [userIds]
+  );
+
+  return new Map(rows.map((row) => [row.user_id, Number(row.direct_referral_count || 0)]));
+}
+
 async function getSponsorUpline(client, userId, maxLevels = 7) {
   const { rows } = await q(client).query(
     `WITH RECURSIVE sponsor_chain AS (
@@ -397,6 +411,7 @@ module.exports = {
   listForMatching,
   applyMatchingReset,
   getDirectChildren,
+  getDirectReferralCounts,
   getSponsorUpline,
   listAllUsers
 };

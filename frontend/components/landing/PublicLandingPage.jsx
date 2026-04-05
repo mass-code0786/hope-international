@@ -28,6 +28,7 @@ import { getMe } from '@/lib/services/authService';
 import { getPublicLandingPage, trackLandingVisit } from '@/lib/services/landingService';
 import { useAuthStore } from '@/lib/store/authStore';
 import { queryKeys } from '@/lib/query/queryKeys';
+import { resolveMediaUrl } from '@/lib/utils/media';
 import { getPostLoginRoute } from '@/lib/utils/postLoginRedirect';
 
 const faqItems = [
@@ -84,29 +85,41 @@ function StatPill({ title, value }) {
   );
 }
 
-function FeatureCard({ icon: Icon, title, description }) {
+function FeatureCard({ icon: Icon, title, description, imageUrl }) {
+  const resolvedImageUrl = resolveMediaUrl(imageUrl);
+
   return (
-    <article className="rounded-[22px] border border-white/8 bg-[#1a1f2e] p-4 shadow-[0_12px_30px_rgba(0,0,0,0.32)]">
-      <span className="inline-flex h-12 w-12 items-center justify-center rounded-[16px] bg-[linear-gradient(135deg,rgba(124,58,237,0.18),rgba(34,197,94,0.16))] text-white">
-        <Icon size={20} />
-      </span>
-      <h3 className="mt-4 text-[18px] font-semibold text-white">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-[#9ca3af]">{description}</p>
+    <article className="relative overflow-hidden rounded-[22px] border border-white/8 bg-[#1a1f2e] p-4 shadow-[0_12px_30px_rgba(0,0,0,0.32)]">
+      {resolvedImageUrl ? <div className="absolute inset-0 bg-cover bg-center opacity-20" style={{ backgroundImage: `url(${resolvedImageUrl})` }} /> : null}
+      {resolvedImageUrl ? <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(17,24,39,0.28),rgba(17,24,39,0.88))]" /> : null}
+      <div className="relative">
+        <span className="inline-flex h-12 w-12 items-center justify-center rounded-[16px] bg-[linear-gradient(135deg,rgba(124,58,237,0.18),rgba(34,197,94,0.16))] text-white">
+          <Icon size={20} />
+        </span>
+        <h3 className="mt-4 text-[18px] font-semibold text-white">{title}</h3>
+        <p className="mt-2 text-sm leading-6 text-[#9ca3af]">{description}</p>
+      </div>
     </article>
   );
 }
 
-function StepCard({ step, icon: Icon, title, description }) {
+function StepCard({ step, icon: Icon, title, description, imageUrl }) {
+  const resolvedImageUrl = resolveMediaUrl(imageUrl);
+
   return (
-    <article className="rounded-[22px] border border-white/8 bg-[#151b2b] p-4 shadow-[0_12px_28px_rgba(0,0,0,0.25)]">
-      <div className="flex items-center justify-between gap-3">
-        <span className="inline-flex h-11 w-11 items-center justify-center rounded-[14px] bg-[linear-gradient(135deg,rgba(124,58,237,0.22),rgba(34,197,94,0.16))] text-white">
-          <Icon size={18} />
-        </span>
-        <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-[#c4b5fd]">Step {step}</span>
+    <article className="relative overflow-hidden rounded-[22px] border border-white/8 bg-[#151b2b] p-4 shadow-[0_12px_28px_rgba(0,0,0,0.25)]">
+      {resolvedImageUrl ? <div className="absolute inset-0 bg-cover bg-center opacity-20" style={{ backgroundImage: `url(${resolvedImageUrl})` }} /> : null}
+      {resolvedImageUrl ? <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.28),rgba(15,23,42,0.9))]" /> : null}
+      <div className="relative">
+        <div className="flex items-center justify-between gap-3">
+          <span className="inline-flex h-11 w-11 items-center justify-center rounded-[14px] bg-[linear-gradient(135deg,rgba(124,58,237,0.22),rgba(34,197,94,0.16))] text-white">
+            <Icon size={18} />
+          </span>
+          <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-[#c4b5fd]">Step {step}</span>
+        </div>
+        <h3 className="mt-4 text-[17px] font-semibold text-white">{title}</h3>
+        <p className="mt-2 text-sm leading-6 text-[#9ca3af]">{description}</p>
       </div>
-      <h3 className="mt-4 text-[17px] font-semibold text-white">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-[#9ca3af]">{description}</p>
     </article>
   );
 }
@@ -126,11 +139,17 @@ function IncomeCard({ title, value, description, icon: Icon }) {
   );
 }
 
-function ReasonCard({ title, description }) {
+function ReasonCard({ title, description, imageUrl }) {
+  const resolvedImageUrl = resolveMediaUrl(imageUrl);
+
   return (
-    <article className="rounded-[20px] border border-white/8 bg-[#161d2e] px-4 py-4 shadow-[0_10px_24px_rgba(0,0,0,0.24)]">
-      <h3 className="text-[16px] font-semibold text-white">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-[#9ca3af]">{description}</p>
+    <article className="relative overflow-hidden rounded-[20px] border border-white/8 bg-[#161d2e] px-4 py-4 shadow-[0_10px_24px_rgba(0,0,0,0.24)]">
+      {resolvedImageUrl ? <div className="absolute inset-0 bg-cover bg-center opacity-20" style={{ backgroundImage: `url(${resolvedImageUrl})` }} /> : null}
+      {resolvedImageUrl ? <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(17,24,39,0.22),rgba(17,24,39,0.9))]" /> : null}
+      <div className="relative">
+        <h3 className="text-[16px] font-semibold text-white">{title}</h3>
+        <p className="mt-2 text-sm leading-6 text-[#9ca3af]">{description}</p>
+      </div>
     </article>
   );
 }
@@ -143,16 +162,21 @@ function ProductChip({ label }) {
   );
 }
 
-function FeaturedProductCard({ title, category, price, description, image, icon: Icon }) {
+function FeaturedProductCard({ title, category, price, description, image, imageAlt, icon: Icon }) {
   const [imageFailed, setImageFailed] = useState(false);
+  const resolvedImageUrl = resolveMediaUrl(image);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [resolvedImageUrl]);
 
   return (
     <article className="overflow-hidden rounded-[24px] border border-white/8 bg-[#151b2b] shadow-[0_18px_40px_rgba(0,0,0,0.32)]">
       <div className="relative h-52 overflow-hidden border-b border-white/8 bg-[linear-gradient(135deg,#1c2540,#121827)]">
-        {!imageFailed ? (
+        {!imageFailed && resolvedImageUrl ? (
           <img
-            src={image}
-            alt={title}
+            src={resolvedImageUrl}
+            alt={imageAlt || title}
             className="h-full w-full object-cover"
             onError={() => setImageFailed(true)}
           />
@@ -255,56 +279,66 @@ export default function PublicLandingPage() {
   }, [landingQuery.isSuccess, token, trackVisitMutation]);
 
   const data = landingQuery.data;
+  const media = data?.media || {};
+  const getMedia = (slotKey) => media?.[slotKey] || {};
 
   const featureCards = useMemo(() => ([
     {
       icon: Network,
       title: 'Binary Income System',
-      description: 'Build left and right team volume with a structure designed for modern network growth and long-term engagement.'
+      description: 'Build left and right team volume with a structure designed for modern network growth and long-term engagement.',
+      imageUrl: getMedia('feature_image_1').imageUrl
     },
     {
       icon: ShoppingBag,
       title: 'E-commerce Marketplace',
-      description: 'Shop from a premium catalog, discover featured products, and keep your product journey connected to your platform activity.'
+      description: 'Shop from a premium catalog, discover featured products, and keep your product journey connected to your platform activity.',
+      imageUrl: getMedia('feature_image_2').imageUrl
     },
     {
       icon: Trophy,
       title: 'Auction & Rewards',
-      description: 'Join interactive auction experiences, unlock result-driven excitement, and follow live reward opportunities inside one app.'
+      description: 'Join interactive auction experiences, unlock result-driven excitement, and follow live reward opportunities inside one app.',
+      imageUrl: getMedia('feature_image_3').imageUrl
     },
     {
       icon: Wallet,
       title: 'Wallet & Instant Withdrawals',
-      description: 'Track balances, manage transactions, review BTCT activity, and use wallet tools built for fast everyday access.'
+      description: 'Track balances, manage transactions, review BTCT activity, and use wallet tools built for fast everyday access.',
+      imageUrl: getMedia('feature_image_4').imageUrl
     }
-  ]), []);
+  ]), [data]);
 
   const steps = useMemo(() => ([
     {
       step: 1,
       icon: Users,
       title: 'Register Account',
-      description: 'Create your Hope International account in minutes and unlock access to products, teams, and wallet tools.'
+      description: 'Create your Hope International account in minutes and unlock access to products, teams, and wallet tools.',
+      imageUrl: getMedia('step_image_1').imageUrl
     },
     {
       step: 2,
       icon: Compass,
       title: 'Choose Placement',
-      description: 'Select your left or right placement strategy and start building your binary structure with intention.'
+      description: 'Select your left or right placement strategy and start building your binary structure with intention.',
+      imageUrl: getMedia('step_image_2').imageUrl
     },
     {
       step: 3,
       icon: Globe2,
       title: 'Build Team',
-      description: 'Grow globally by sharing products, onboarding members, and expanding your network through a simple mobile-first flow.'
+      description: 'Grow globally by sharing products, onboarding members, and expanding your network through a simple mobile-first flow.',
+      imageUrl: getMedia('step_image_3').imageUrl
     },
     {
       step: 4,
       icon: HandCoins,
       title: 'Earn Matching Income',
-      description: 'Turn structured activity into direct and matching opportunities as your team and platform engagement scale up.'
+      description: 'Turn structured activity into direct and matching opportunities as your team and platform engagement scale up.',
+      imageUrl: getMedia('step_image_4').imageUrl
     }
-  ]), []);
+  ]), [data]);
 
   const incomeCards = useMemo(() => ([
     {
@@ -336,21 +370,25 @@ export default function PublicLandingPage() {
   const reasons = useMemo(() => ([
     {
       title: 'Secure Platform',
-      description: 'Modern account flows, protected wallet access, and structured user surfaces help keep the experience reliable.'
+      description: 'Modern account flows, protected wallet access, and structured user surfaces help keep the experience reliable.',
+      imageUrl: getMedia('reason_image_1').imageUrl
     },
     {
       title: 'Real Products',
-      description: 'Marketplace participation is backed by real catalog experiences instead of abstract dashboards with no commerce layer.'
+      description: 'Marketplace participation is backed by real catalog experiences instead of abstract dashboards with no commerce layer.',
+      imageUrl: getMedia('reason_image_2').imageUrl
     },
     {
       title: 'Smart Earnings',
-      description: 'Direct, matching, auction, and wallet-connected opportunities work together inside one connected platform experience.'
+      description: 'Direct, matching, auction, and wallet-connected opportunities work together inside one connected platform experience.',
+      imageUrl: getMedia('reason_image_3').imageUrl
     },
     {
       title: 'Global Growth',
-      description: 'Mobile-first onboarding and a globally oriented structure make it easier to grow beyond a single local market.'
+      description: 'Mobile-first onboarding and a globally oriented structure make it easier to grow beyond a single local market.',
+      imageUrl: getMedia('reason_image_4').imageUrl
     }
-  ]), []);
+  ]), [data]);
 
   const productTags = useMemo(() => ([
     'Activation packs',
@@ -367,7 +405,8 @@ export default function PublicLandingPage() {
       category: 'Activation product',
       price: '$100',
       description: 'Premium onboarding bundle for new members who want a fast and structured start.',
-      image: 'https://images.unsplash.com/photo-1546868871-7041f2a55e12?auto=format&fit=crop&w=1200&q=80',
+      image: getMedia('product_image_1').imageUrl,
+      imageAlt: getMedia('product_image_1').altText,
       icon: Sparkles
     },
     {
@@ -375,7 +414,8 @@ export default function PublicLandingPage() {
       category: 'Featured product',
       price: '$250',
       description: 'Luxury-style merchandising product for premium presentation and value perception.',
-      image: 'https://images.unsplash.com/photo-1617038220319-276d3cfab638?auto=format&fit=crop&w=1200&q=80',
+      image: getMedia('product_image_2').imageUrl,
+      imageAlt: getMedia('product_image_2').altText,
       icon: Gem
     },
     {
@@ -383,7 +423,8 @@ export default function PublicLandingPage() {
       category: 'Digital service',
       price: '$60',
       description: 'Social growth and promotion-oriented digital package for visibility support.',
-      image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
+      image: getMedia('product_image_3').imageUrl,
+      imageAlt: getMedia('product_image_3').altText,
       icon: Globe2
     },
     {
@@ -391,10 +432,11 @@ export default function PublicLandingPage() {
       category: 'Auction product',
       price: '$20 Entry',
       description: 'Interactive auction reward listing for users who want live engagement and special prize access.',
-      image: 'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?auto=format&fit=crop&w=1200&q=80',
+      image: getMedia('product_image_4').imageUrl,
+      imageAlt: getMedia('product_image_4').altText,
       icon: Trophy
     }
-  ]), []);
+  ]), [data]);
 
   if (hydrated && token && currentUserQuery.isLoading) {
     return <div className="min-h-screen bg-[#0b0f1a] px-6 py-16 text-center text-sm text-[#9ca3af]">Redirecting to your Hope workspace...</div>;
@@ -487,8 +529,17 @@ export default function PublicLandingPage() {
               </div>
             </div>
 
-            <div className="rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,#151b2b,#101726)] p-4 shadow-[0_20px_48px_rgba(0,0,0,0.3)]">
-              <div className="grid gap-3">
+            <div className="relative overflow-hidden rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,#151b2b,#101726)] p-4 shadow-[0_20px_48px_rgba(0,0,0,0.3)]">
+              {resolveMediaUrl(getMedia('hero_image').imageUrl) ? (
+                <>
+                  <div
+                    className="absolute inset-0 bg-cover bg-center opacity-20"
+                    style={{ backgroundImage: `url(${resolveMediaUrl(getMedia('hero_image').imageUrl)})` }}
+                  />
+                  <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(16,23,38,0.25),rgba(16,23,38,0.92))]" />
+                </>
+              ) : null}
+              <div className="relative grid gap-3">
                 <div className="rounded-[22px] border border-white/8 bg-[#1a1f2e] p-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6b7280]">Growth Engine</p>
                   <h3 className="mt-2 text-[20px] font-semibold text-white">Crypto-style performance meets marketplace conversion</h3>
@@ -602,8 +653,17 @@ export default function PublicLandingPage() {
         </section>
 
         <section className="pb-10 pt-12">
-          <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(135deg,rgba(124,58,237,0.18),rgba(34,197,94,0.12))] p-6 shadow-[0_20px_52px_rgba(0,0,0,0.3)]">
-            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+          <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(135deg,rgba(124,58,237,0.18),rgba(34,197,94,0.12))] p-6 shadow-[0_20px_52px_rgba(0,0,0,0.3)]">
+            {resolveMediaUrl(getMedia('promo_banner_image').imageUrl) ? (
+              <>
+                <div
+                  className="absolute inset-0 bg-cover bg-center opacity-20"
+                  style={{ backgroundImage: `url(${resolveMediaUrl(getMedia('promo_banner_image').imageUrl)})` }}
+                />
+                <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(56,189,248,0.16),rgba(17,24,39,0.7))]" />
+              </>
+            ) : null}
+            <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
               <div className="max-w-xl">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#d8b4fe]">Call To Action</p>
                 <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-white">Start Your Income Journey Today</h2>

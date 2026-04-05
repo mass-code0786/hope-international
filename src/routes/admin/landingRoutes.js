@@ -4,6 +4,7 @@ const adminLandingController = require('../../controllers/admin/adminLandingCont
 const {
   adminLandingSettingsUpdateSchema,
   adminLandingStatsUpdateSchema,
+  adminLandingMediaSlotUpdateSchema,
   adminLandingFeaturedItemCreateSchema,
   adminLandingFeaturedItemUpdateSchema,
   adminLandingContentBlockCreateSchema,
@@ -12,7 +13,8 @@ const {
   adminLandingTestimonialUpdateSchema,
   adminLandingCountryCreateSchema,
   adminLandingCountryUpdateSchema,
-  adminLandingEntityIdParamSchema
+  adminLandingEntityIdParamSchema,
+  adminLandingMediaSlotParamSchema
 } = require('../../utils/adminSchemas');
 
 const router = express.Router();
@@ -20,6 +22,8 @@ const router = express.Router();
 router.get('/', adminLandingController.getState);
 router.patch('/settings', validate(adminLandingSettingsUpdateSchema), adminLandingController.updateSettings);
 router.patch('/stats', validate(adminLandingStatsUpdateSchema), adminLandingController.updateStats);
+router.patch('/media/:slotKey', validate(adminLandingMediaSlotUpdateSchema), adminLandingController.updateMediaSlot);
+router.delete('/media/:slotKey', validate(adminLandingMediaSlotParamSchema), adminLandingController.deleteMediaSlotImage);
 
 router.post('/featured-items', validate(adminLandingFeaturedItemCreateSchema), adminLandingController.createFeaturedItem);
 router.patch('/featured-items/:id', validate(adminLandingFeaturedItemUpdateSchema), adminLandingController.updateFeaturedItem);
