@@ -2,6 +2,18 @@ function q(client) {
   return client || require('../db/pool').pool;
 }
 
+async function tableExists(client, tableName) {
+  const { rows } = await q(client).query(
+    `SELECT EXISTS (
+       SELECT 1
+       FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = $1
+     ) AS exists`,
+    [tableName]
+  );
+  return Boolean(rows[0]?.exists);
+}
+
 async function getTableColumns(client, tableName) {
   const { rows } = await q(client).query(
     `SELECT column_name
@@ -70,11 +82,43 @@ function buildFilters(filters = {}, values = [], options = {}) {
 }
 
 async function listThreads(client, filters = {}, pagination = {}, options = {}) {
+  const [hasSupportThreads, hasSupportMessages, hasUsers] = await Promise.all([
+    tableExists(client, 'support_threads'),
+    tableExists(client, 'support_messages'),
+    tableExists(client, 'users')
+  ]);
+
+  if (!hasSupportThreads) {
+    return { items: [], total: 0 };
+  }
+
   const userColumns = await getTableColumns(client, 'users');
   const userSelect = buildUserSelect('u', userColumns).join(',\n      ');
   const values = [];
   const where = buildFilters(filters, values, options);
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const userJoin = hasUsers ? 'LEFT JOIN users u ON u.id = st.user_id' : 'LEFT JOIN LATERAL (SELECT NULL::text AS username, NULL::text AS email, NULL::text AS first_name, NULL::text AS last_name) u ON TRUE';
+  const lastMessageJoin = hasSupportMessages
+    ? `LEFT JOIN LATERAL (
+      SELECT sm.message, sm.sender_type, sm.created_at
+      FROM support_messages sm
+      WHERE sm.thread_id = st.id
+      ORDER BY sm.created_at DESC
+      LIMIT 1
+    ) last_message ON TRUE`
+    : `LEFT JOIN LATERAL (
+      SELECT NULL::text AS message, NULL::text AS sender_type, NULL::timestamptz AS created_at
+    ) last_message ON TRUE`;
+  const messageCountJoin = hasSupportMessages
+    ? `LEFT JOIN LATERAL (
+      SELECT COUNT(*) AS message_count
+      FROM support_messages smc
+      WHERE smc.thread_id = st.id
+    ) message_counts ON TRUE`
+    : `LEFT JOIN LATERAL (
+      SELECT 0::bigint AS message_count
+    ) message_counts ON TRUE`;
+  const orderColumn = hasSupportThreads && (await getTableColumns(client, 'support_threads')).has('updated_at') ? 'st.updated_at' : 'st.created_at';
 
   values.push(pagination.limit, pagination.offset);
   const listSql = `
@@ -86,35 +130,27 @@ async function listThreads(client, filters = {}, pagination = {}, options = {}) 
       last_message.created_at AS last_message_at,
       COALESCE(message_counts.message_count, 0)::int AS message_count
     FROM support_threads st
-    JOIN users u ON u.id = st.user_id
-    LEFT JOIN LATERAL (
-      SELECT sm.message, sm.sender_type, sm.created_at
-      FROM support_messages sm
-      WHERE sm.thread_id = st.id
-      ORDER BY sm.created_at DESC
-      LIMIT 1
-    ) last_message ON TRUE
-    LEFT JOIN LATERAL (
-      SELECT COUNT(*) AS message_count
-      FROM support_messages smc
-      WHERE smc.thread_id = st.id
-    ) message_counts ON TRUE
+    ${userJoin}
+    ${lastMessageJoin}
+    ${messageCountJoin}
     ${whereSql}
-    ORDER BY st.updated_at DESC
+    ORDER BY ${orderColumn} DESC
     LIMIT $${values.length - 1} OFFSET $${values.length}
   `;
 
   const countSql = `
     SELECT COUNT(*)
     FROM support_threads st
-    JOIN users u ON u.id = st.user_id
-    LEFT JOIN LATERAL (
+    ${userJoin}
+    ${hasSupportMessages ? `LEFT JOIN LATERAL (
       SELECT sm.message
       FROM support_messages sm
       WHERE sm.thread_id = st.id
       ORDER BY sm.created_at DESC
       LIMIT 1
-    ) last_message ON TRUE
+    ) last_message ON TRUE` : `LEFT JOIN LATERAL (
+      SELECT NULL::text AS message
+    ) last_message ON TRUE`}
     ${whereSql}
   `;
   const countValues = values.slice(0, values.length - 2);
@@ -247,6 +283,10 @@ async function listMessagesByThreadId(client, threadId) {
 }
 
 async function getThreadSummary(client, options = {}) {
+  if (!(await tableExists(client, 'support_threads'))) {
+    return { total_threads: 0, open_threads: 0, replied_threads: 0, closed_threads: 0 };
+  }
+
   const values = [];
   const where = [];
 

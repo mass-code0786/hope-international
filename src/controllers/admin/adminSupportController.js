@@ -3,13 +3,31 @@ const { success } = require('../../utils/response');
 const adminSupportService = require('../../services/admin/adminSupportService');
 
 const listThreads = asyncHandler(async (req, res) => {
-  const result = await adminSupportService.listSupportThreads(req.query, req.query);
-  return success(res, {
-    data: result.data,
-    pagination: result.pagination,
-    summary: result.summary,
-    message: 'Support inbox fetched successfully'
-  });
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.max(1, Number(req.query.limit) || 100);
+
+  try {
+    const result = await adminSupportService.listSupportThreads(req.query, req.query);
+    return success(res, {
+      data: result.data,
+      pagination: result.pagination,
+      summary: result.summary,
+      message: result.data.length ? 'Support inbox fetched successfully' : 'No support threads'
+    });
+  } catch (error) {
+    console.error('[admin.support.threads] failed', error);
+    return success(res, {
+      data: [],
+      pagination: {
+        total: 0,
+        page,
+        limit,
+        totalPages: 0
+      },
+      summary: {},
+      message: 'Safe fallback'
+    });
+  }
 });
 
 const getThread = asyncHandler(async (req, res) => {
