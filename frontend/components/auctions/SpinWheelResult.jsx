@@ -15,6 +15,7 @@ const WHEEL_SEGMENTS = [
 ];
 
 const SLOT_ORDER = ['top', 'right', 'bottom', 'left'];
+const HIDDEN_SLOT_LABEL = 'Awaiting reveal';
 
 function hashNameToSlot(name = '') {
   const value = String(name).split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
@@ -30,68 +31,59 @@ function buildWheelGradient() {
   }).join(', ')})`;
 }
 
-function buildWinnerSlots(winners = [], selectedSlot = null, selectedWinner = null) {
-  const slots = { top: null, right: null, bottom: null, left: null };
-  const assigned = new Set();
+function buildWinnerSlots(hasRevealedWinner = false, activeWinnerSlot = null, revealedWinner = null) {
+  const slots = {
+    top: HIDDEN_SLOT_LABEL,
+    right: HIDDEN_SLOT_LABEL,
+    bottom: HIDDEN_SLOT_LABEL,
+    left: HIDDEN_SLOT_LABEL
+  };
 
-  winners.slice(0, 4).forEach((winner, index) => {
-    const preferredSlot = index === 0
-      ? (selectedSlot || hashNameToSlot(winner?.username))
-      : SLOT_ORDER.find((slot) => !assigned.has(slot)) || SLOT_ORDER[index % SLOT_ORDER.length];
-    slots[preferredSlot] = winner?.username || `Winner ${index + 1}`;
-    assigned.add(preferredSlot);
-  });
-
-  if (selectedSlot && selectedWinner) {
-    slots[selectedSlot] = selectedWinner;
-    assigned.add(selectedSlot);
+  if (hasRevealedWinner && activeWinnerSlot && revealedWinner) {
+    slots[activeWinnerSlot] = revealedWinner;
   }
-
-  SLOT_ORDER.forEach((slot, index) => {
-    if (!slots[slot]) {
-      // TODO: replace placeholder slot labels if backend later provides four explicit winner-side placements.
-      slots[slot] = `Winner ${index + 1}`;
-    }
-  });
 
   return slots;
 }
 
 export function SpinWheelResult({
   winners = [],
-  alreadyRevealed = false,
   eligible = false,
   revealPending = false,
   onReveal
 }) {
   const [rotation, setRotation] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
-  const [spinCount, setSpinCount] = useState(alreadyRevealed ? 1 : 0);
-  const [selectedSlot, setSelectedSlot] = useState(alreadyRevealed && winners[0]?.username ? hashNameToSlot(winners[0].username) : null);
-  const [selectedWinner, setSelectedWinner] = useState(winners[0]?.username || null);
+  const [spinCount, setSpinCount] = useState(0);
+  const [hasRevealedWinner, setHasRevealedWinner] = useState(false);
+  const [activeWinnerSlot, setActiveWinnerSlot] = useState(null);
+  const [revealedWinner, setRevealedWinner] = useState(null);
   const [winningSegment, setWinningSegment] = useState(null);
 
   useEffect(() => {
-    if (alreadyRevealed && winners[0]?.username) {
-      setSelectedWinner(winners[0].username);
-      setSelectedSlot((current) => current || hashNameToSlot(winners[0].username));
-      setSpinCount((current) => (current > 0 ? current : 1));
-    }
-  }, [alreadyRevealed, winners]);
+    setIsSpinning(false);
+    setSpinCount(0);
+    setHasRevealedWinner(false);
+    setActiveWinnerSlot(null);
+    setRevealedWinner(null);
+    setWinningSegment(null);
+  }, []);
 
   const winnerSlots = useMemo(
-    () => buildWinnerSlots(winners, selectedSlot, selectedWinner),
-    [winners, selectedSlot, selectedWinner]
+    () => buildWinnerSlots(hasRevealedWinner, activeWinnerSlot, revealedWinner),
+    [hasRevealedWinner, activeWinnerSlot, revealedWinner]
   );
 
-  const resultLabel = selectedWinner ? `Winner: ${selectedWinner}` : 'Spin the wheel to reveal the winner';
+  const resultLabel = hasRevealedWinner && revealedWinner ? `Winner: ${revealedWinner}` : 'Spin to reveal winner';
 
   async function handleSpin() {
-    if ((!eligible && !selectedWinner) || isSpinning || revealPending) return;
+    if (!eligible || isSpinning || revealPending) return;
 
     setIsSpinning(true);
     setWinningSegment(null);
-    setSelectedSlot(null);
+    setHasRevealedWinner(false);
+    setActiveWinnerSlot(null);
+    setRevealedWinner(null);
 
     try {
       const result = await onReveal();
@@ -108,8 +100,9 @@ export function SpinWheelResult({
       setRotation((current) => current + targetRotation);
 
       window.setTimeout(() => {
-        setSelectedWinner(winningName);
-        setSelectedSlot(winningSlot);
+        setHasRevealedWinner(true);
+        setRevealedWinner(winningName);
+        setActiveWinnerSlot(winningSlot);
         setWinningSegment(winningSegmentIndex);
         setSpinCount((current) => current + 1);
         setIsSpinning(false);
@@ -126,9 +119,9 @@ export function SpinWheelResult({
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#a78bfa]">Spin Result</p>
           <h2 className="mt-1 text-[17px] font-semibold text-[#FFFFFF]">Wheel Reveal</h2>
         </div>
-        <span className={`inline-flex items-center gap-1 rounded-full border border-[rgba(255,255,255,0.08)] px-3 py-1 text-[10px] font-semibold ${selectedWinner ? 'bg-[rgba(34,197,94,0.18)] text-[#FFFFFF]' : 'bg-[rgba(20,24,45,0.9)] text-[#B0B3C6]'}`}>
+        <span className={`inline-flex items-center gap-1 rounded-full border border-[rgba(255,255,255,0.08)] px-3 py-1 text-[10px] font-semibold ${hasRevealedWinner ? 'bg-[rgba(34,197,94,0.18)] text-[#FFFFFF]' : 'bg-[rgba(20,24,45,0.9)] text-[#B0B3C6]'}`}>
           <Sparkles size={12} />
-          {isSpinning ? 'Wheel active' : selectedWinner ? 'Winner ready' : 'Ready to spin'}
+          {isSpinning ? 'Wheel active' : hasRevealedWinner ? 'Winner ready' : 'Ready to spin'}
         </span>
       </div>
 
@@ -148,7 +141,7 @@ export function SpinWheelResult({
             return (
               <div
                 key={slot}
-                className={`absolute z-20 min-w-[82px] rounded-[16px] border border-[rgba(255,255,255,0.08)] bg-[rgba(20,24,45,0.9)] px-3 py-2 text-center shadow-[0_10px_24px_rgba(15,23,42,0.22)] ${positionClass} ${selectedSlot === slot ? 'ring-1 ring-[#22c55e] ring-offset-0' : ''}`}
+                className={`absolute z-20 min-w-[82px] rounded-[16px] border border-[rgba(255,255,255,0.08)] bg-[rgba(20,24,45,0.9)] px-3 py-2 text-center shadow-[0_10px_24px_rgba(15,23,42,0.22)] ${positionClass} ${activeWinnerSlot === slot ? 'ring-1 ring-[#22c55e] ring-offset-0' : ''}`}
               >
                 <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#a78bfa]">Winner</p>
                 <p className="mt-1 text-[12px] font-semibold text-[#FFFFFF]">{winnerSlots[slot]}</p>
@@ -184,7 +177,7 @@ export function SpinWheelResult({
               <div className="absolute inset-[74px] flex items-center justify-center rounded-full border border-[rgba(255,255,255,0.08)] bg-[radial-gradient(circle_at_top,#4338ca,#111827)] text-center shadow-[inset_0_8px_20px_rgba(255,255,255,0.08)]">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#B0B3C6]">Prize</p>
-                  <p className="mt-1 text-[18px] font-semibold text-[#FFFFFF]">{selectedWinner ? 'Revealed' : 'Spin'}</p>
+                  <p className="mt-1 text-[18px] font-semibold text-[#FFFFFF]">{hasRevealedWinner ? 'Revealed' : 'Spin'}</p>
                 </div>
               </div>
             </div>
