@@ -45,7 +45,15 @@ app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
-app.use('/media', express.static(path.resolve(__dirname, '../storage')));
+app.use(
+  '/media',
+  (_req, res, next) => {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    next();
+  },
+  express.static(path.resolve(__dirname, '../storage'))
+);
 
 app.use('/', routes);
 
