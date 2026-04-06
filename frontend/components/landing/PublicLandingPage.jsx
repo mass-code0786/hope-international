@@ -281,6 +281,8 @@ export default function PublicLandingPage() {
   const data = landingQuery.data;
   const media = data?.media || {};
   const getMedia = (slotKey) => media?.[slotKey] || {};
+  const headerBelowImage = getMedia('header_below_image');
+  const headerBelowImageUrl = resolveMediaUrl(headerBelowImage.imageUrl);
 
   const featureCards = useMemo(() => ([
     {
@@ -497,6 +499,24 @@ export default function PublicLandingPage() {
             </div>
           ) : null}
         </header>
+
+        {headerBelowImageUrl ? (
+          <section className="pt-6">
+            <div className="group relative overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(135deg,rgba(20,28,45,0.94),rgba(11,15,26,0.9))] shadow-[0_22px_60px_rgba(0,0,0,0.34)]">
+              <div
+                className="absolute inset-0 bg-cover bg-center transition duration-700 group-hover:scale-[1.02]"
+                style={{ backgroundImage: `url(${headerBelowImageUrl})` }}
+              />
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,12,20,0.08),rgba(8,12,20,0.3))]" />
+              <div className="absolute inset-0 ring-1 ring-inset ring-white/10" />
+              <img
+                src={headerBelowImageUrl}
+                alt={headerBelowImage.altText || 'Header banner'}
+                className="h-40 w-full object-cover opacity-0 sm:h-52 lg:h-64"
+              />
+            </div>
+          </section>
+        ) : null}
 
         <section className="pt-8">
           <div className="grid gap-6 rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(18,24,39,0.95),rgba(13,18,30,0.95))] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.35)] md:grid-cols-[1.1fr_0.9fr] md:p-8">

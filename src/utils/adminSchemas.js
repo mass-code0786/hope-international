@@ -254,6 +254,7 @@ const landingContentSectionValues = ['benefits', 'details'];
 const landingLayoutStyleValues = ['icon-card', 'image-left', 'image-right'];
 const landingMediaSlotValues = [
   'hero_image',
+  'header_below_image',
   'promo_banner_image',
   'feature_image_1',
   'feature_image_2',

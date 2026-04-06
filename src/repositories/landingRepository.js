@@ -5,6 +5,7 @@ function q(client) {
 const DEFAULT_SECTION_ORDER = ['hero', 'featured', 'benefits', 'details', 'testimonials', 'stats', 'countries', 'footer'];
 const LANDING_MEDIA_SLOT_DEFINITIONS = [
   { slotKey: 'hero_image', title: 'Hero image', sectionKey: 'hero', description: 'Main visual for the hero panel.' },
+  { slotKey: 'header_below_image', title: 'Header below image', sectionKey: 'header', description: 'Premium banner shown directly below the landing page header.' },
   { slotKey: 'promo_banner_image', title: 'Promo banner image', sectionKey: 'promo', description: 'Background visual for the CTA banner.' },
   { slotKey: 'feature_image_1', title: 'Feature image 1', sectionKey: 'features', description: 'Binary Income System card image.' },
   { slotKey: 'feature_image_2', title: 'Feature image 2', sectionKey: 'features', description: 'E-commerce Marketplace card image.' },
