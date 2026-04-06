@@ -13,7 +13,7 @@ import {
   Globe2,
   HandCoins,
   Landmark,
-  MoreHorizontal,
+  Menu,
   Network,
   ShieldCheck,
   ShoppingBag,
@@ -496,7 +496,7 @@ export default function PublicLandingPage() {
                   className="inline-flex h-10 w-10 items-center justify-center rounded-[16px] border border-white/10 bg-[#151c2d] text-white shadow-[0_10px_24px_rgba(0,0,0,0.24)] transition hover:border-white/15 hover:bg-[#1b2337] hover:shadow-[0_14px_30px_rgba(0,0,0,0.3)] active:scale-[0.98]"
                   aria-label="Open landing options"
                 >
-                  <MoreHorizontal size={18} />
+                  <Menu size={18} />
                 </button>
 
                 <div
