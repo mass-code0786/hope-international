@@ -2,6 +2,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const userService = require('../services/userService');
 const compensationService = require('../services/compensationService');
 const { sanitizeUser } = require('../utils/sanitize');
+const { success } = require('../utils/response');
 
 const me = asyncHandler(async (req, res) => {
   const user = await userService.getProfile(req.user.sub);
@@ -38,6 +39,31 @@ const monthlyCompensation = asyncHandler(async (req, res) => {
   res.status(200).json(data);
 });
 
+const getAddress = asyncHandler(async (req, res) => {
+  const data = await userService.getAddress(req.user.sub);
+  return success(res, {
+    data,
+    message: 'Address fetched successfully'
+  });
+});
+
+const createAddress = asyncHandler(async (req, res) => {
+  const data = await userService.saveAddress(req.user.sub, req.body);
+  return success(res, {
+    data,
+    statusCode: 201,
+    message: 'Address saved successfully'
+  });
+});
+
+const updateAddress = asyncHandler(async (req, res) => {
+  const data = await userService.saveAddress(req.user.sub, req.body);
+  return success(res, {
+    data,
+    message: 'Address updated successfully'
+  });
+});
+
 module.exports = {
   me,
   myChildren,
@@ -45,5 +71,8 @@ module.exports = {
   myTeamTreeRoot,
   myTeamTreeNode,
   weeklyCompensation,
-  monthlyCompensation
+  monthlyCompensation,
+  getAddress,
+  createAddress,
+  updateAddress
 };

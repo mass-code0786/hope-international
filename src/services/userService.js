@@ -1,6 +1,8 @@
 const userRepository = require('../repositories/userRepository');
+const userAddressRepository = require('../repositories/userAddressRepository');
 const adminRepository = require('../repositories/adminRepository');
 const { ApiError } = require('../utils/ApiError');
+const { withTransaction } = require('../db/pool');
 
 function formatTeamNode(row) {
   if (!row) return null;
@@ -73,10 +75,60 @@ async function getTeamTreeNode(userId, nodeId) {
   return buildTeamTreeNode(userId, nodeId);
 }
 
+function mapAddress(address) {
+  if (!address) return null;
+
+  return {
+    id: address.id,
+    userId: address.user_id,
+    fullName: address.full_name,
+    mobile: address.mobile,
+    alternateMobile: address.alternate_mobile || '',
+    country: address.country,
+    state: address.state,
+    city: address.city,
+    area: address.area,
+    addressLine: address.address_line,
+    postalCode: address.postal_code,
+    deliveryNote: address.delivery_note || '',
+    isDefault: Boolean(address.is_default),
+    createdAt: address.created_at,
+    updatedAt: address.updated_at
+  };
+}
+
+async function getAddress(userId) {
+  const user = await getProfile(userId);
+  const address = await userAddressRepository.getByUserId(null, userId);
+
+  return {
+    address: mapAddress(address),
+    prefill: {
+      fullName: [user.first_name, user.last_name].filter(Boolean).join(' ').trim(),
+      mobile: user.mobile_number || '',
+      country: user.country_code || ''
+    }
+  };
+}
+
+async function saveAddress(userId, payload) {
+  return withTransaction(async (client) => {
+    await getProfile(userId);
+    const existing = await userAddressRepository.getByUserId(client, userId);
+    const saved = existing
+      ? await userAddressRepository.update(client, userId, payload)
+      : await userAddressRepository.create(client, userId, payload);
+
+    return mapAddress(saved);
+  });
+}
+
 module.exports = {
   getProfile,
   getChildren,
   getTeamSummary,
   getTeamTreeRoot,
-  getTeamTreeNode
+  getTeamTreeNode,
+  getAddress,
+  saveAddress
 };

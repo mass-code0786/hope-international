@@ -1,5 +1,6 @@
 export const queryKeys = {
   me: ['me'],
+  userAddress: ['user-address'],
   sellerMe: ['seller', 'me'],
   sellerProducts: ['seller', 'products'],
   wallet: ['wallet'],

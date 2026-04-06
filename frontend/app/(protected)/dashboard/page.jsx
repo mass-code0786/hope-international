@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -27,6 +28,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { getMe } from '@/lib/services/authService';
 import { getHomepageBanners } from '@/lib/services/bannersService';
 import { createOrder } from '@/lib/services/ordersService';
+import { getUserAddress } from '@/lib/services/userAddressService';
 import { getWallet } from '@/lib/services/walletService';
 import { useProducts } from '@/hooks/useProducts';
 import { queryKeys } from '@/lib/query/queryKeys';
@@ -73,16 +75,15 @@ function resolveBannerTarget(targetLink) {
   return `/${targetLink}`;
 }
 
-function buildLocationLabel(user) {
-  const pieces = [user?.city, user?.state, user?.country].filter(Boolean);
+function buildLocationLabel(address) {
+  const pieces = [address?.area, address?.city, address?.state].filter(Boolean);
   if (pieces.length) return pieces.join(', ');
   return 'Set your delivery area';
 }
 
-function buildLocationDetail(user) {
-  const address = [user?.address_line1, user?.address_line2].filter(Boolean).join(', ').trim();
-  if (address) return address;
-  if (user?.mobile_number) return [user?.country_code, user?.mobile_number].filter(Boolean).join(' ');
+function buildLocationDetail(address) {
+  if (address?.addressLine) return address.addressLine;
+  if (address?.mobile) return address.mobile;
   return 'Location details will appear here';
 }
 
@@ -210,8 +211,10 @@ function CartPill() {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { data: productData, isLoading: productsLoading, isError: productsError, refetch: refetchProducts } = useProducts();
   const bannersQuery = useQuery({ queryKey: queryKeys.homepageBanners, queryFn: getHomepageBanners });
+  const addressQuery = useQuery({ queryKey: queryKeys.userAddress, queryFn: getUserAddress });
   const [meQuery, walletQuery] = useQueries({
     queries: [
       { queryKey: queryKeys.me, queryFn: getMe },
@@ -244,9 +247,10 @@ export default function DashboardPage() {
     onSettled: () => setBuyingProductId('')
   });
 
-  const isLoading = productsLoading || meQuery.isLoading || walletQuery.isLoading || bannersQuery.isLoading;
+  const isLoading = productsLoading || meQuery.isLoading || walletQuery.isLoading || bannersQuery.isLoading || addressQuery.isLoading;
   const hasFatalError = meQuery.isError || walletQuery.isError;
   const user = meQuery.data || {};
+  const address = addressQuery.data?.data?.address || null;
   const products = Array.isArray(productData) ? productData : [];
   const homepageBanners = Array.isArray(bannersQuery.data) ? bannersQuery.data : [];
 
@@ -306,6 +310,7 @@ export default function DashboardPage() {
           meQuery.refetch();
           walletQuery.refetch();
           bannersQuery.refetch();
+          addressQuery.refetch();
           refetchProducts();
         }}
       />
@@ -317,14 +322,18 @@ export default function DashboardPage() {
       <div className="mx-auto max-w-xl space-y-3">
         <section className="px-1 pt-1">
           <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
+            <button
+              type="button"
+              onClick={() => router.push('/profile/address')}
+              className="min-w-0 text-left"
+            >
               <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">My Location</p>
               <div className="mt-0.5 flex items-center gap-1">
-                <h1 className="truncate text-[15px] font-semibold tracking-[-0.03em] text-slate-900">{buildLocationLabel(user)}</h1>
+                <h1 className="truncate text-[15px] font-semibold tracking-[-0.03em] text-slate-900">{buildLocationLabel(address)}</h1>
                 <ChevronRight size={13} className="shrink-0 text-slate-400" />
               </div>
-              <p className="mt-0.5 truncate text-[10px] text-slate-500">{buildLocationDetail(user)}</p>
-            </div>
+              <p className="mt-0.5 truncate text-[10px] text-slate-500">{buildLocationDetail(address)}</p>
+            </button>
 
             <div className="flex items-center gap-2">
               <CartPill />

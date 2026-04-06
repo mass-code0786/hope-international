@@ -356,6 +356,40 @@ const supportThreadCreateSchema = z.object({
 const supportThreadIdParamSchema = z.object({ body: z.object({}), params: z.object({ id: uuid }), query: z.object({}) });
 const supportMessageCreateSchema = z.object({ body: z.object({ message: z.string().min(1).max(5000) }), params: z.object({ id: uuid }), query: z.object({}) });
 
+const mobileFieldSchema = z.string().trim().min(6).max(40).regex(/^[0-9+\-() ]+$/, 'Enter a valid mobile number');
+const postalCodeFieldSchema = z.string().trim().min(3).max(32).regex(/^[A-Za-z0-9\- ]+$/, 'Enter a valid postal code');
+
+const userAddressBodySchema = z.object({
+  fullName: z.string().trim().min(2).max(160),
+  mobile: mobileFieldSchema,
+  alternateMobile: z.union([mobileFieldSchema, z.literal('')]).optional(),
+  country: z.string().trim().min(2).max(120),
+  state: z.string().trim().min(2).max(120),
+  city: z.string().trim().min(2).max(120),
+  area: z.string().trim().min(2).max(160),
+  addressLine: z.string().trim().min(5).max(500),
+  postalCode: postalCodeFieldSchema,
+  deliveryNote: z.string().trim().max(500).optional()
+});
+
+const userAddressQuerySchema = z.object({
+  body: z.object({}),
+  params: z.object({}),
+  query: z.object({})
+});
+
+const userAddressCreateSchema = z.object({
+  body: userAddressBodySchema,
+  params: z.object({}),
+  query: z.object({})
+});
+
+const userAddressUpdateSchema = z.object({
+  body: userAddressBodySchema,
+  params: z.object({}),
+  query: z.object({})
+});
+
 module.exports = {
   registerSchema,
   loginSchema,
@@ -387,7 +421,10 @@ module.exports = {
   supportThreadsQuerySchema,
   supportThreadCreateSchema,
   supportThreadIdParamSchema,
-  supportMessageCreateSchema
+  supportMessageCreateSchema,
+  userAddressQuerySchema,
+  userAddressCreateSchema,
+  userAddressUpdateSchema
 };
 
 
