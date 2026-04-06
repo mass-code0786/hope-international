@@ -413,6 +413,36 @@ const adminLandingCountryUpdateSchema = z.object({
 
 const adminLandingEntityIdParamSchema = z.object({ body: z.object({}), params: z.object({ id: uuid }), query: z.object({}) });
 
+const adminGalleryCreateSchema = z.object({
+  body: z.object({
+    imageDataUrl: z.string().max(5000000),
+    title: z.string().max(160).optional(),
+    caption: z.string().max(1000).optional(),
+    isVisible: z.boolean().optional(),
+    sortOrder: z.number().int().min(0).max(100000).optional()
+  }),
+  params: z.object({}),
+  query: z.object({})
+});
+
+const adminGalleryUpdateSchema = z.object({
+  body: z.object({
+    imageDataUrl: z.string().max(5000000).optional(),
+    title: z.union([z.string().max(160), z.null()]).optional(),
+    caption: z.union([z.string().max(1000), z.null()]).optional(),
+    isVisible: z.boolean().optional(),
+    sortOrder: z.number().int().min(0).max(100000).optional()
+  }).refine((body) => Object.keys(body).length > 0, { message: 'At least one field is required for update' }),
+  params: z.object({ id: uuid }),
+  query: z.object({})
+});
+
+const adminGalleryIdParamSchema = z.object({
+  body: z.object({}),
+  params: z.object({ id: uuid }),
+  query: z.object({})
+});
+
 const supportCategories = ['order_issue', 'payment_issue', 'auction_issue', 'account_issue', 'seller_issue', 'other'];
 const supportStatuses = ['open', 'replied', 'closed'];
 
@@ -488,6 +518,9 @@ module.exports = {
   adminLandingCountryCreateSchema,
   adminLandingCountryUpdateSchema,
   adminLandingEntityIdParamSchema,
+  adminGalleryCreateSchema,
+  adminGalleryUpdateSchema,
+  adminGalleryIdParamSchema,
   adminSupportThreadsQuerySchema,
   adminSupportThreadIdParamSchema,
   adminSupportMessageCreateSchema,

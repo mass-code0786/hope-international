@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { X, LayoutDashboard, Users, Boxes, ShoppingCart, Wallet, Cpu, Gift, Network, Settings, Image, ArrowDownCircle, ArrowUpCircle, Repeat2, Landmark, BadgeDollarSign, Gavel, Sparkles, Headset } from 'lucide-react';
+import { X, LayoutDashboard, Users, Boxes, ShoppingCart, Wallet, Cpu, Gift, Network, Settings, Image, ArrowDownCircle, ArrowUpCircle, Repeat2, Landmark, BadgeDollarSign, Gavel, Sparkles, Headset, Images } from 'lucide-react';
 import { THEME } from '@/lib/constants/theme';
 import Logo from '@/components/common/Logo';
 
@@ -13,6 +13,7 @@ export const adminNav = [
   { href: '/admin/auctions', label: 'Auctions', icon: Gavel },
   { href: '/admin/banners', label: 'Banners', icon: Image },
   { href: '/admin/landing', label: 'Landing Page', icon: Sparkles },
+  { href: '/admin/gallery', label: 'Gallery', icon: Images },
   { href: '/admin/support', label: 'Support', icon: Headset },
   { href: '/admin/orders', label: 'Orders', icon: ShoppingCart },
   { href: '/admin/deposits', label: 'Deposits', icon: ArrowDownCircle },
@@ -30,7 +31,7 @@ export const adminNav = [
 
 const adminGroups = [
   { title: 'Overview', items: ['/admin'] },
-  { title: 'Commerce', items: ['/admin/products', '/admin/orders', '/admin/auctions', '/admin/banners', '/admin/landing', '/admin/support'] },
+  { title: 'Commerce', items: ['/admin/products', '/admin/orders', '/admin/auctions', '/admin/banners', '/admin/landing', '/admin/gallery', '/admin/support'] },
   { title: 'Finance', items: ['/admin/deposits', '/admin/withdrawals', '/admin/p2p', '/admin/wallets', '/admin/income', '/admin/wallet', '/admin/settings/deposit-wallet'] },
   { title: 'Network', items: ['/admin/users', '/admin/compensation', '/admin/rewards', '/admin/team', '/admin/settings'] }
 ];

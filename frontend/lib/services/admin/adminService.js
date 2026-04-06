@@ -339,6 +339,36 @@ export async function getAdminLanding() {
   return toEnvelope(await apiFetch('/admin/landing'));
 }
 
+export async function getAdminGallery() {
+  return toEnvelope(await apiFetch('/admin/gallery'));
+}
+
+export async function createAdminGalleryItem(payload) {
+  return toEnvelope(
+    await apiFetch('/admin/gallery', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function updateAdminGalleryItem(id, payload) {
+  return toEnvelope(
+    await apiFetch(`/admin/gallery/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function deleteAdminGalleryItem(id) {
+  return toEnvelope(
+    await apiFetch(`/admin/gallery/${id}`, {
+      method: 'DELETE'
+    })
+  );
+}
+
 export async function updateAdminLandingSettings(payload) {
   return toEnvelope(
     await apiFetch('/admin/landing/settings', {

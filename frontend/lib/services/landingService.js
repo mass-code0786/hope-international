@@ -5,6 +5,11 @@ export async function getPublicLandingPage() {
   return payload.data || payload;
 }
 
+export async function getPublicGallery() {
+  const payload = await apiFetch('/gallery');
+  return payload.data || payload;
+}
+
 export async function trackLandingVisit(visitorToken) {
   const payload = await apiFetch('/landing/visit', {
     method: 'POST',

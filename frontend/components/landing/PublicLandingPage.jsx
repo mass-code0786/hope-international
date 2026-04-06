@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   ArrowRight,
+  Calendar,
   ChevronDown,
   Compass,
   Gem,
@@ -13,6 +14,7 @@ import {
   HandCoins,
   Landmark,
   Menu,
+  MoreHorizontal,
   Network,
   ShieldCheck,
   ShoppingBag,
@@ -20,12 +22,13 @@ import {
   Store,
   Trophy,
   Users,
-  Wallet
+  Wallet,
+  X
 } from 'lucide-react';
 import Logo from '@/components/common/Logo';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { getMe } from '@/lib/services/authService';
-import { getPublicLandingPage, trackLandingVisit } from '@/lib/services/landingService';
+import { getPublicGallery, getPublicLandingPage, trackLandingVisit } from '@/lib/services/landingService';
 import { useAuthStore } from '@/lib/store/authStore';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { resolveMediaUrl } from '@/lib/utils/media';
@@ -231,6 +234,9 @@ export default function PublicLandingPage() {
   const { token, hydrated, hydrate, clearSession } = useAuthStore();
   const visitorTrackedRef = useRef(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [selectedGalleryItem, setSelectedGalleryItem] = useState(null);
   const [openFaq, setOpenFaq] = useState(0);
 
   useEffect(() => {
@@ -247,6 +253,12 @@ export default function PublicLandingPage() {
     queryFn: getMe,
     enabled: Boolean(hydrated && token),
     retry: false
+  });
+
+  const galleryQuery = useQuery({
+    queryKey: queryKeys.publicGallery,
+    queryFn: getPublicGallery,
+    enabled: galleryOpen
   });
 
   const trackVisitMutation = useMutation({ mutationFn: trackLandingVisit });
@@ -477,14 +489,47 @@ export default function PublicLandingPage() {
               </div>
             </Link>
 
-            <button
-              type="button"
-              onClick={() => setMenuOpen((prev) => !prev)}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#151c2d] text-white md:hidden"
-              aria-label="Toggle landing menu"
-            >
-              <Menu size={18} />
-            </button>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setMoreMenuOpen((prev) => !prev)}
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#151c2d] text-white transition hover:bg-[#1b2337]"
+                  aria-label="Open landing options"
+                >
+                  <MoreHorizontal size={18} />
+                </button>
+
+                {moreMenuOpen ? (
+                  <div className="absolute right-0 top-[calc(100%+0.75rem)] z-40 w-56 overflow-hidden rounded-[20px] border border-white/10 bg-[rgba(14,20,33,0.96)] p-2 shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-xl">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setGalleryOpen(true);
+                        setMoreMenuOpen(false);
+                      }}
+                      className="flex w-full items-center justify-between rounded-[14px] px-3 py-3 text-left text-sm text-white transition hover:bg-white/6"
+                    >
+                      <span>Gallery</span>
+                      <span className="rounded-full bg-[linear-gradient(135deg,#7c3aed,#22c55e)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white">Open</span>
+                    </button>
+                    <Link href="/login" className="flex w-full items-center justify-between rounded-[14px] px-3 py-3 text-sm text-white transition hover:bg-white/6" onClick={() => setMoreMenuOpen(false)}>
+                      <span>Login</span>
+                      <span className="text-xs text-[#9ca3af]">Account</span>
+                    </Link>
+                  </div>
+                ) : null}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setMenuOpen((prev) => !prev)}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#151c2d] text-white md:hidden"
+                aria-label="Toggle landing menu"
+              >
+                <Menu size={18} />
+              </button>
+            </div>
 
             <div className="hidden items-center gap-3 md:flex">
               <SecondaryButton href="#features">Explore Platform</SecondaryButton>
@@ -694,6 +739,121 @@ export default function PublicLandingPage() {
           </div>
         </section>
       </div>
+
+      {galleryOpen ? (
+        <div className="fixed inset-0 z-[80] px-3 py-4 sm:px-6 sm:py-6">
+          <button
+            type="button"
+            aria-label="Close gallery"
+            className="absolute inset-0 bg-[rgba(3,7,18,0.78)] backdrop-blur-sm"
+            onClick={() => {
+              setGalleryOpen(false);
+              setSelectedGalleryItem(null);
+            }}
+          />
+
+          <div className="relative mx-auto flex h-full max-w-6xl flex-col overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,16,28,0.98),rgba(14,20,33,0.97))] shadow-[0_28px_90px_rgba(0,0,0,0.45)]">
+            <div className="flex items-start justify-between gap-4 border-b border-white/10 px-4 py-4 sm:px-6">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#c4b5fd]">Gallery</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-[-0.05em] text-white">Event photos and media moments</h2>
+                <p className="mt-2 text-sm text-[#9ca3af]">Admin-uploaded photos appear here only when visitors open Gallery from the landing menu.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setGalleryOpen(false);
+                  setSelectedGalleryItem(null);
+                }}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white"
+                aria-label="Close gallery modal"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+              {galleryQuery.isLoading ? (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <div key={index} className="h-64 animate-pulse rounded-[24px] border border-white/8 bg-white/5" />
+                  ))}
+                </div>
+              ) : galleryQuery.isError ? (
+                <div className="rounded-[24px] border border-white/10 bg-white/5 px-6 py-14 text-center">
+                  <p className="text-base font-semibold text-white">Unable to load gallery photos.</p>
+                  <button
+                    type="button"
+                    onClick={() => galleryQuery.refetch()}
+                    className="mt-4 rounded-[16px] bg-[linear-gradient(135deg,#7c3aed,#22c55e)] px-4 py-2 text-sm font-semibold text-white"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : Array.isArray(galleryQuery.data) && galleryQuery.data.length ? (
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {galleryQuery.data.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setSelectedGalleryItem(item)}
+                      className="group overflow-hidden rounded-[24px] border border-white/10 bg-[#121927] text-left shadow-[0_18px_40px_rgba(0,0,0,0.28)] transition hover:-translate-y-1 hover:border-white/16"
+                    >
+                      <div className="relative h-56 overflow-hidden bg-[#0f172a]">
+                        <img
+                          src={resolveMediaUrl(item.imageUrl)}
+                          alt={item.title || 'Gallery photo'}
+                          className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                        />
+                        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.04),rgba(2,6,23,0.58))]" />
+                      </div>
+                      <div className="space-y-2 p-4">
+                        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a78bfa]">
+                          <Calendar size={12} />
+                          {new Date(item.createdAt).toLocaleDateString()}
+                        </div>
+                        <h3 className="text-lg font-semibold text-white">{item.title || 'Event photo'}</h3>
+                        {item.caption ? <p className="line-clamp-2 text-sm leading-6 text-[#9ca3af]">{item.caption}</p> : <p className="text-sm text-[#6b7280]">Tap to enlarge</p>}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-[24px] border border-dashed border-white/10 bg-white/5 px-6 py-14 text-center">
+                  <p className="text-lg font-semibold text-white">No gallery photos yet</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {selectedGalleryItem ? (
+            <div className="absolute inset-0 z-[81] flex items-center justify-center px-4 py-8">
+              <button
+                type="button"
+                aria-label="Close enlarged gallery image"
+                className="absolute inset-0 bg-[rgba(3,7,18,0.8)]"
+                onClick={() => setSelectedGalleryItem(null)}
+              />
+              <div className="relative max-h-full w-full max-w-4xl overflow-hidden rounded-[28px] border border-white/10 bg-[#0f172a] shadow-[0_28px_90px_rgba(0,0,0,0.46)]">
+                <img
+                  src={resolveMediaUrl(selectedGalleryItem.imageUrl)}
+                  alt={selectedGalleryItem.title || 'Gallery photo'}
+                  className="max-h-[72vh] w-full object-contain bg-[#020617]"
+                />
+                <div className="space-y-2 border-t border-white/10 px-5 py-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-lg font-semibold text-white">{selectedGalleryItem.title || 'Event photo'}</h3>
+                    <button type="button" onClick={() => setSelectedGalleryItem(null)} className="rounded-full border border-white/10 p-2 text-white">
+                      <X size={16} />
+                    </button>
+                  </div>
+                  {selectedGalleryItem.caption ? <p className="text-sm leading-6 text-[#9ca3af]">{selectedGalleryItem.caption}</p> : null}
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

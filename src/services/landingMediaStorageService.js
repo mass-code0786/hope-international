@@ -6,6 +6,7 @@ const { ApiError } = require('../utils/ApiError');
 const MEDIA_PUBLIC_PREFIX = '/media';
 const MEDIA_ROOT = path.resolve(__dirname, '../../storage');
 const LANDING_MEDIA_ROOT = path.join(MEDIA_ROOT, 'landing');
+const GALLERY_MEDIA_ROOT = path.join(MEDIA_ROOT, 'gallery');
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 const MIME_TO_EXTENSION = {
   'image/jpeg': 'jpg',
@@ -61,6 +62,14 @@ function resolveManagedMediaPath(publicUrl) {
 }
 
 async function saveLandingMediaImage(slotKey, imageDataUrl) {
+  return saveManagedImage(LANDING_MEDIA_ROOT, slotKey, imageDataUrl);
+}
+
+async function saveGalleryImage(itemKey, imageDataUrl) {
+  return saveManagedImage(GALLERY_MEDIA_ROOT, itemKey, imageDataUrl);
+}
+
+async function saveManagedImage(targetRoot, slotKey, imageDataUrl) {
   const safeSlotKey = normalizeSlotKey(slotKey);
   if (!safeSlotKey) {
     throw new ApiError(400, 'Invalid landing media slot');
@@ -69,10 +78,11 @@ async function saveLandingMediaImage(slotKey, imageDataUrl) {
   const parsed = parseImageDataUrl(imageDataUrl);
   const fileName = `${safeSlotKey}-${Date.now()}-${crypto.randomBytes(6).toString('hex')}.${parsed.extension}`;
 
-  await fs.mkdir(LANDING_MEDIA_ROOT, { recursive: true });
-  await fs.writeFile(path.join(LANDING_MEDIA_ROOT, fileName), parsed.buffer);
+  await fs.mkdir(targetRoot, { recursive: true });
+  await fs.writeFile(path.join(targetRoot, fileName), parsed.buffer);
 
-  return `${MEDIA_PUBLIC_PREFIX}/landing/${fileName}`;
+  const relativeFolder = path.relative(MEDIA_ROOT, targetRoot).replace(/\\/g, '/');
+  return `${MEDIA_PUBLIC_PREFIX}/${relativeFolder}/${fileName}`;
 }
 
 async function removeManagedMedia(publicUrl) {
@@ -89,5 +99,6 @@ async function removeManagedMedia(publicUrl) {
 module.exports = {
   MAX_IMAGE_BYTES,
   saveLandingMediaImage,
+  saveGalleryImage,
   removeManagedMedia
 };

@@ -62,7 +62,9 @@ export const queryKeys = {
   teamTreeRoot: ['team-tree', 'root'],
   teamTreeNode: (id) => ['team-tree', id],
   landingPage: ['landing-page'],
+  publicGallery: ['public-gallery'],
   adminLanding: ['admin', 'landing'],
+  adminGallery: ['admin', 'gallery'],
   adminSupport: ['admin', 'support'],
   adminSupportDetail: (id) => ['admin', 'support', id]
 };
