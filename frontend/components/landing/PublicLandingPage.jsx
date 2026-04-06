@@ -566,11 +566,7 @@ export default function PublicLandingPage() {
         <section className="pt-8">
           <div className="grid gap-6 rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(18,24,39,0.95),rgba(13,18,30,0.95))] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.35)] md:grid-cols-[1.1fr_0.9fr] md:p-8">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c4b5fd]">
-                <Sparkles size={13} />
-                Premium growth platform
-              </div>
-              <h1 className="mt-5 text-4xl font-semibold leading-tight tracking-[-0.06em] text-white sm:text-5xl">
+              <h1 className="text-4xl font-semibold leading-tight tracking-[-0.06em] text-white sm:text-5xl">
                 Build Your Income With Hope International
               </h1>
               <p className="mt-4 max-w-xl text-base leading-8 text-[#9ca3af]">
