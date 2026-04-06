@@ -13,7 +13,6 @@ import {
   Globe2,
   HandCoins,
   Landmark,
-  Menu,
   MoreHorizontal,
   Network,
   ShieldCheck,
@@ -233,7 +232,6 @@ export default function PublicLandingPage() {
   const router = useRouter();
   const { token, hydrated, hydrate, clearSession } = useAuthStore();
   const visitorTrackedRef = useRef(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [selectedGalleryItem, setSelectedGalleryItem] = useState(null);
@@ -295,6 +293,7 @@ export default function PublicLandingPage() {
   const getMedia = (slotKey) => media?.[slotKey] || {};
   const headerBelowImage = getMedia('header_below_image');
   const headerBelowImageUrl = resolveMediaUrl(headerBelowImage.imageUrl);
+  const profileHref = currentUserQuery.data ? getPostLoginRoute(currentUserQuery.data) : '/dashboard';
 
   const featureCards = useMemo(() => ([
     {
@@ -500,35 +499,77 @@ export default function PublicLandingPage() {
                   <MoreHorizontal size={18} />
                 </button>
 
-                {moreMenuOpen ? (
-                  <div className="absolute right-0 top-[calc(100%+0.75rem)] z-40 w-56 overflow-hidden rounded-[20px] border border-white/10 bg-[rgba(14,20,33,0.96)] p-2 shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-xl">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setGalleryOpen(true);
-                        setMoreMenuOpen(false);
-                      }}
-                      className="flex w-full items-center justify-between rounded-[14px] px-3 py-3 text-left text-sm text-white transition hover:bg-white/6"
-                    >
-                      <span>Gallery</span>
-                      <span className="rounded-full bg-[linear-gradient(135deg,#7c3aed,#22c55e)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white">Open</span>
-                    </button>
-                    <Link href="/login" className="flex w-full items-center justify-between rounded-[14px] px-3 py-3 text-sm text-white transition hover:bg-white/6" onClick={() => setMoreMenuOpen(false)}>
-                      <span>Login</span>
-                      <span className="text-xs text-[#9ca3af]">Account</span>
-                    </Link>
-                  </div>
-                ) : null}
-              </div>
+                <div
+                  className={`absolute right-0 top-[calc(100%+0.75rem)] z-40 w-60 origin-top-right overflow-hidden rounded-[20px] border border-white/10 bg-[rgba(14,20,33,0.96)] p-2 text-white shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-xl transition duration-200 ${
+                    moreMenuOpen ? 'pointer-events-auto translate-y-0 scale-100 opacity-100' : 'pointer-events-none -translate-y-2 scale-95 opacity-0'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGalleryOpen(true);
+                      setMoreMenuOpen(false);
+                    }}
+                    className="flex w-full items-center justify-between rounded-[14px] px-3 py-3 text-left text-sm text-white transition hover:bg-white/8"
+                  >
+                    <span>Gallery</span>
+                    <span className="rounded-full bg-[linear-gradient(135deg,#7c3aed,#22c55e)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white">Open</span>
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => setMenuOpen((prev) => !prev)}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#151c2d] text-white md:hidden"
-                aria-label="Toggle landing menu"
-              >
-                <Menu size={18} />
-              </button>
+                  <Link
+                    href="#features"
+                    className="flex w-full items-center justify-between rounded-[14px] px-3 py-3 text-sm text-white transition hover:bg-white/8"
+                    onClick={() => setMoreMenuOpen(false)}
+                  >
+                    <span>Explore Platform</span>
+                    <span className="text-xs text-[#9ca3af]">Section</span>
+                  </Link>
+
+                  {!token ? (
+                    <>
+                      <Link
+                        href="/register"
+                        className="flex w-full items-center justify-between rounded-[14px] px-3 py-3 text-sm text-white transition hover:bg-white/8"
+                        onClick={() => setMoreMenuOpen(false)}
+                      >
+                        <span>Start Now</span>
+                        <span className="text-xs text-[#9ca3af]">Join</span>
+                      </Link>
+                      <Link
+                        href="/login"
+                        className="flex w-full items-center justify-between rounded-[14px] px-3 py-3 text-sm text-white transition hover:bg-white/8"
+                        onClick={() => setMoreMenuOpen(false)}
+                      >
+                        <span>Login</span>
+                        <span className="text-xs text-[#9ca3af]">Account</span>
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <Link
+                        href={profileHref}
+                        className="flex w-full items-center justify-between rounded-[14px] px-3 py-3 text-sm text-white transition hover:bg-white/8"
+                        onClick={() => setMoreMenuOpen(false)}
+                      >
+                        <span>Profile</span>
+                        <span className="text-xs text-[#9ca3af]">Workspace</span>
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          clearSession();
+                          setMoreMenuOpen(false);
+                          router.push('/login');
+                        }}
+                        className="flex w-full items-center justify-between rounded-[14px] px-3 py-3 text-left text-sm text-white transition hover:bg-white/8"
+                      >
+                        <span>Logout</span>
+                        <span className="text-xs text-[#9ca3af]">Secure exit</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div className="hidden items-center gap-3 md:flex">
@@ -536,13 +577,6 @@ export default function PublicLandingPage() {
               <PrimaryButton href="/register">Start Now</PrimaryButton>
             </div>
           </div>
-
-          {menuOpen ? (
-            <div className="mt-3 grid gap-2 border-t border-white/8 pt-3 md:hidden">
-              <SecondaryButton href="#features">Explore Platform</SecondaryButton>
-              <PrimaryButton href="/register">Start Now</PrimaryButton>
-            </div>
-          ) : null}
         </header>
 
         {headerBelowImageUrl ? (
