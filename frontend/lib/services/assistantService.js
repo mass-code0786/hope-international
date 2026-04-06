@@ -18,11 +18,11 @@ function toEnvelope(payload) {
   };
 }
 
-export async function askHopeAssistant(message) {
+export async function askHopeAssistant(message, language = 'en') {
   return toEnvelope(
     await apiFetch('/assistant/chat', {
       method: 'POST',
-      body: JSON.stringify({ message })
+      body: JSON.stringify({ message, language })
     })
   );
 }

@@ -364,7 +364,8 @@ const notificationIdParamSchema = z.object({ body: z.object({}), params: z.objec
 const notificationReadAllSchema = z.object({ body: z.object({}).optional().default({}), params: z.object({}), query: z.object({}) });
 const assistantChatSchema = z.object({
   body: z.object({
-    message: z.string().trim().min(1).max(1000)
+    message: z.string().trim().min(1).max(1000),
+    language: z.enum(['en', 'hi', 'ur', 'ar', 'bn', 'ps']).optional().default('en')
   }),
   params: z.object({}),
   query: z.object({})
