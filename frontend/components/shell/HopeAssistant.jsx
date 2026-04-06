@@ -85,12 +85,18 @@ export function HopeAssistant() {
 
   const askMutation = useMutation({
     mutationFn: ({ message, selectedLanguage }) => askHopeAssistant(message, selectedLanguage),
-    onSuccess: (result) => {
+    onSuccess: (result, variables) => {
       const data = result?.data || {};
-      setMessages((current) => [...current, { id: `assistant-${Date.now()}`, role: 'assistant', text: data.reply || getUi(language).fallback, suggestions: Array.isArray(data.suggestions) ? data.suggestions : [], direction: data.direction || langMeta.dir }]);
+      const responseLanguage = variables?.selectedLanguage || language;
+      const responseUi = getUi(responseLanguage);
+      const responseMeta = getLanguageMeta(responseLanguage);
+      setMessages((current) => [...current, { id: `assistant-${Date.now()}`, role: 'assistant', text: data.reply || responseUi.fallback, suggestions: Array.isArray(data.suggestions) ? data.suggestions : [], direction: data.direction || responseMeta.dir }]);
     },
-    onError: (error) => {
-      setMessages((current) => [...current, { id: `assistant-error-${Date.now()}`, role: 'assistant', text: error.message || getUi(language).unavailable, suggestions: [], direction: langMeta.dir }]);
+    onError: (error, variables) => {
+      const responseLanguage = variables?.selectedLanguage || language;
+      const responseUi = getUi(responseLanguage);
+      const responseMeta = getLanguageMeta(responseLanguage);
+      setMessages((current) => [...current, { id: `assistant-error-${Date.now()}`, role: 'assistant', text: error.message || responseUi.unavailable, suggestions: [], direction: responseMeta.dir }]);
     }
   });
 
