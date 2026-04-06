@@ -493,7 +493,7 @@ export default function PublicLandingPage() {
                 <button
                   type="button"
                   onClick={() => setMoreMenuOpen((prev) => !prev)}
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#151c2d] text-white transition hover:bg-[#1b2337]"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-[16px] border border-white/10 bg-[#151c2d] text-white shadow-[0_10px_24px_rgba(0,0,0,0.24)] transition hover:border-white/15 hover:bg-[#1b2337] hover:shadow-[0_14px_30px_rgba(0,0,0,0.3)] active:scale-[0.98]"
                   aria-label="Open landing options"
                 >
                   <MoreHorizontal size={18} />
