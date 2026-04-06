@@ -2,6 +2,7 @@ const { withTransaction } = require('../db/pool');
 const { normalizePagination, buildPagination } = require('../utils/pagination');
 const { ApiError } = require('../utils/ApiError');
 const supportRepository = require('../repositories/supportRepository');
+const notificationService = require('./notificationService');
 
 const SUPPORT_CATEGORIES = ['order_issue', 'payment_issue', 'auction_issue', 'account_issue', 'seller_issue', 'other'];
 const SUPPORT_STATUSES = ['open', 'replied', 'closed'];
@@ -172,7 +173,7 @@ async function sendAdminMessage(adminUserId, threadId, payload) {
     const thread = await supportRepository.getThreadById(client, threadId);
     if (!thread) throw new ApiError(404, 'Support conversation not found');
 
-    await supportRepository.createMessage(client, {
+    const supportMessage = await supportRepository.createMessage(client, {
       threadId,
       senderType: 'admin',
       senderUserId: adminUserId,
@@ -184,6 +185,15 @@ async function sendAdminMessage(adminUserId, threadId, payload) {
       closedAt: null,
       closedBy: null
     });
+
+    await notificationService.createNotificationOnce(client, notificationService.buildSupportReplyNotification({
+      id: supportMessage.id,
+      thread_id: threadId,
+      user_id: thread.user_id,
+      subject: thread.subject,
+      message,
+      created_at: supportMessage.created_at
+    }));
 
     return buildThreadDetail(client, threadId);
   });

@@ -289,6 +289,26 @@ async function listMessagesByThreadId(client, threadId) {
   return rows;
 }
 
+async function listUserAdminReplies(client, userId, limit = 100) {
+  const { rows } = await q(client).query(
+    `SELECT
+       sm.id,
+       sm.thread_id,
+       sm.message,
+       sm.created_at,
+       st.user_id,
+       st.subject
+     FROM support_messages sm
+     JOIN support_threads st ON st.id = sm.thread_id
+     WHERE st.user_id = $1
+       AND sm.sender_type = 'admin'
+     ORDER BY sm.created_at DESC
+     LIMIT $2`,
+    [userId, limit]
+  );
+  return rows;
+}
+
 async function getThreadSummary(client, options = {}) {
   console.info('[admin.support.threads] summary query start', options);
 
@@ -328,5 +348,6 @@ module.exports = {
   setThreadStatus,
   createMessage,
   listMessagesByThreadId,
+  listUserAdminReplies,
   getThreadSummary
 };

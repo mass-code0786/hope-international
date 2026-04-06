@@ -355,6 +355,20 @@ const supportThreadCreateSchema = z.object({
 
 const supportThreadIdParamSchema = z.object({ body: z.object({}), params: z.object({ id: uuid }), query: z.object({}) });
 const supportMessageCreateSchema = z.object({ body: z.object({ message: z.string().min(1).max(5000) }), params: z.object({ id: uuid }), query: z.object({}) });
+const notificationsListQuerySchema = z.object({
+  body: z.object({}),
+  params: z.object({}),
+  query: pagingQuery
+});
+const notificationIdParamSchema = z.object({ body: z.object({}), params: z.object({ id: uuid }), query: z.object({}) });
+const notificationReadAllSchema = z.object({ body: z.object({}).optional().default({}), params: z.object({}), query: z.object({}) });
+const assistantChatSchema = z.object({
+  body: z.object({
+    message: z.string().trim().min(1).max(1000)
+  }),
+  params: z.object({}),
+  query: z.object({})
+});
 
 const mobileFieldSchema = z.string().trim().min(6).max(40).regex(/^[0-9+\-() ]+$/, 'Enter a valid mobile number');
 const postalCodeFieldSchema = z.string().trim().min(3).max(32).regex(/^[A-Za-z0-9\- ]+$/, 'Enter a valid postal code');
@@ -422,6 +436,10 @@ module.exports = {
   supportThreadCreateSchema,
   supportThreadIdParamSchema,
   supportMessageCreateSchema,
+  notificationsListQuerySchema,
+  notificationIdParamSchema,
+  notificationReadAllSchema,
+  assistantChatSchema,
   userAddressQuerySchema,
   userAddressCreateSchema,
   userAddressUpdateSchema

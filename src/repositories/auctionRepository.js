@@ -755,6 +755,21 @@ async function listAuctionRewardDistributions(client, auctionId) {
   return rows.map(normalizeAuctionRewardDistributionRow);
 }
 
+async function listUserAuctionNotificationEvents(client, userId, limit = 100) {
+  const { rows } = await q(client).query(
+    `SELECT
+       ard.*,
+       a.title AS auction_title
+     FROM auction_reward_distributions ard
+     JOIN auctions a ON a.id = ard.auction_id
+     WHERE ard.user_id = $1
+     ORDER BY COALESCE(ard.distributed_at, ard.created_at) DESC
+     LIMIT $2`,
+    [userId, limit]
+  );
+  return rows.map(normalizeAuctionRewardDistributionRow);
+}
+
 async function getAuctionResultReveal(client, auctionId, userId) {
   const { rows } = await q(client).query(
     `SELECT *
@@ -1055,6 +1070,7 @@ module.exports = {
   getAuctionRewardDistribution,
   upsertAuctionRewardDistribution,
   listAuctionRewardDistributions,
+  listUserAuctionNotificationEvents,
   getAuctionResultReveal,
   upsertAuctionResultReveal,
   getUserBidStats,

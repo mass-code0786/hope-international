@@ -29,6 +29,7 @@ import { getMe } from '@/lib/services/authService';
 import { getHomepageBanners } from '@/lib/services/bannersService';
 import { createOrder } from '@/lib/services/ordersService';
 import { getUserAddress } from '@/lib/services/userAddressService';
+import { getUnreadNotificationCount } from '@/lib/services/notificationsService';
 import { getWallet } from '@/lib/services/walletService';
 import { useProducts } from '@/hooks/useProducts';
 import { queryKeys } from '@/lib/query/queryKeys';
@@ -215,6 +216,11 @@ export default function DashboardPage() {
   const { data: productData, isLoading: productsLoading, isError: productsError, refetch: refetchProducts } = useProducts();
   const bannersQuery = useQuery({ queryKey: queryKeys.homepageBanners, queryFn: getHomepageBanners });
   const addressQuery = useQuery({ queryKey: queryKeys.userAddress, queryFn: getUserAddress });
+  const notificationsCountQuery = useQuery({
+    queryKey: queryKeys.notificationsUnreadCount,
+    queryFn: getUnreadNotificationCount,
+    staleTime: 15_000
+  });
   const [meQuery, walletQuery] = useQueries({
     queries: [
       { queryKey: queryKeys.me, queryFn: getMe },
@@ -240,7 +246,9 @@ export default function DashboardPage() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.orders }),
         queryClient.invalidateQueries({ queryKey: queryKeys.wallet }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.me })
+        queryClient.invalidateQueries({ queryKey: queryKeys.me }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.notificationsRoot }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.notificationsUnreadCount })
       ]);
     },
     onError: (error) => toast.error(error.message || 'Order failed. Please try again.'),
@@ -253,6 +261,7 @@ export default function DashboardPage() {
   const address = addressQuery.data?.data?.address || null;
   const products = Array.isArray(productData) ? productData : [];
   const homepageBanners = Array.isArray(bannersQuery.data) ? bannersQuery.data : [];
+  const unreadNotificationCount = Number(notificationsCountQuery.data?.unreadCount || 0);
 
   const slides = useMemo(() => {
     if (homepageBanners.length) {
@@ -339,10 +348,16 @@ export default function DashboardPage() {
               <CartPill />
               <button
                 type="button"
+                onClick={() => router.push('/notifications')}
                 aria-label="Notifications"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700"
+                className="relative inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700"
               >
                 <Bell size={15} />
+                {unreadNotificationCount > 0 ? (
+                  <span className="absolute -right-1 -top-1 inline-flex min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 py-0.5 text-[9px] font-bold leading-none text-white">
+                    {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+                  </span>
+                ) : null}
               </button>
             </div>
           </div>

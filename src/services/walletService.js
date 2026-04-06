@@ -1,6 +1,7 @@
 const walletRepository = require('../repositories/walletRepository');
 const userRepository = require('../repositories/userRepository');
 const adminRepository = require('../repositories/adminRepository');
+const notificationService = require('./notificationService');
 const { ApiError } = require('../utils/ApiError');
 
 const MIN_WITHDRAWAL_AMOUNT = 10;
@@ -117,6 +118,11 @@ async function credit(client, userId, amount, source, referenceId = null, metada
     createdByAdminId
   });
 
+  const notificationPayload = notificationService.buildWalletTransactionNotification(transaction);
+  if (notificationPayload) {
+    await notificationService.createNotificationOnce(client, notificationPayload);
+  }
+
   return normalizeWalletBalances(wallet);
 }
 
@@ -145,6 +151,11 @@ async function creditWithTransaction(client, userId, amount, source, referenceId
     },
     createdByAdminId
   });
+
+  const notificationPayload = notificationService.buildWalletTransactionNotification(transaction);
+  if (notificationPayload) {
+    await notificationService.createNotificationOnce(client, notificationPayload);
+  }
 
   return {
     wallet: normalizeWalletBalances(wallet),
@@ -208,6 +219,11 @@ async function creditBtct(client, userId, amount, source, referenceId = null, me
     metadata,
     createdByAdminId
   });
+
+  const notificationPayload = notificationService.buildBtctTransactionNotification(transaction);
+  if (notificationPayload) {
+    await notificationService.createNotificationOnce(client, notificationPayload);
+  }
 
   return {
     wallet: normalizeWalletBalances(wallet),

@@ -4,6 +4,7 @@ const productRepository = require('../repositories/productRepository');
 const userRepository = require('../repositories/userRepository');
 const sellerRepository = require('../repositories/sellerRepository');
 const walletService = require('./walletService');
+const notificationService = require('./notificationService');
 const { ApiError } = require('../utils/ApiError');
 const { PV_TO_BV_RATIO } = require('../config/constants');
 
@@ -127,6 +128,8 @@ async function createOrder(userId, payload) {
         }
       }
     }
+
+    await notificationService.createNotificationOnce(client, notificationService.buildOrderStatusNotification(order));
 
     return order;
   });

@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { BottomNav } from '@/components/shell/BottomNav';
+import { HopeAssistant } from '@/components/shell/HopeAssistant';
 import { Sidebar } from '@/components/shell/Sidebar';
 import { useAuthStore } from '@/lib/store/authStore';
 import { useQuery } from '@tanstack/react-query';
@@ -70,6 +71,7 @@ export function AppShell({ children }) {
           {children}
         </div>
       </main>
+      <HopeAssistant />
       <BottomNav />
     </div>
   );

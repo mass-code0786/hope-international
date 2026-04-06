@@ -1,5 +1,6 @@
 const express = require('express');
 const userController = require('../controllers/userController');
+const notificationController = require('../controllers/notificationController');
 const { auth } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 const {
@@ -7,7 +8,10 @@ const {
   compensationMonthlyQuerySchema,
   userAddressQuerySchema,
   userAddressCreateSchema,
-  userAddressUpdateSchema
+  userAddressUpdateSchema,
+  notificationsListQuerySchema,
+  notificationIdParamSchema,
+  notificationReadAllSchema
 } = require('../utils/schemas');
 
 const router = express.Router();
@@ -22,5 +26,9 @@ router.get('/me/compensation/monthly', auth(), validate(compensationMonthlyQuery
 router.get('/me/address', auth(), validate(userAddressQuerySchema), userController.getAddress);
 router.post('/me/address', auth(), validate(userAddressCreateSchema), userController.createAddress);
 router.patch('/me/address', auth(), validate(userAddressUpdateSchema), userController.updateAddress);
+router.get('/me/notifications', auth(), validate(notificationsListQuerySchema), notificationController.listMyNotifications);
+router.get('/me/notifications/unread-count', auth(), notificationController.unreadCount);
+router.patch('/me/notifications/read-all', auth(), validate(notificationReadAllSchema), notificationController.markAllMyNotificationsAsRead);
+router.patch('/me/notifications/:id/read', auth(), validate(notificationIdParamSchema), notificationController.markMyNotificationAsRead);
 
 module.exports = router;

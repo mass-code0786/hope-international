@@ -7,6 +7,7 @@ const walletService = require('../walletService');
 const btctStakingRepository = require('../../repositories/btctStakingRepository');
 const btctStakingService = require('../btctStakingService');
 const userRepository = require('../../repositories/userRepository');
+const notificationService = require('../notificationService');
 
 const DIRECT_DEPOSIT_INCOME_RULE = { levelNumber: 1, percentage: 0.02, incomeType: 'direct_deposit_income' };
 const LEVEL_DEPOSIT_INCOME_RULES = [
@@ -199,6 +200,8 @@ async function reviewDeposit(adminUserId, requestId, payload) {
       };
     }
 
+    await notificationService.createNotificationOnce(client, notificationService.buildDepositStatusNotification(updated));
+
     await adminRepository.logAdminAction(client, {
       adminUserId,
       actionType: 'deposit.review',
@@ -252,6 +255,8 @@ async function reviewWithdrawal(adminUserId, requestId, payload) {
         adminUserId
       );
     }
+
+    await notificationService.createNotificationOnce(client, notificationService.buildWithdrawalStatusNotification(updated));
 
     await adminRepository.logAdminAction(client, {
       adminUserId,

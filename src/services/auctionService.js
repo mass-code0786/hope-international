@@ -3,6 +3,7 @@ const { normalizePagination, buildPagination } = require('../utils/pagination');
 const { ApiError } = require('../utils/ApiError');
 const auctionRepository = require('../repositories/auctionRepository');
 const walletService = require('./walletService');
+const notificationService = require('./notificationService');
 
 const MIN_AUCTION_PRICE = 0.10;
 const MIN_REWARD_VALUE = 0.01;
@@ -419,6 +420,14 @@ async function settleAuctionRewards(client, auction, winners) {
     });
 
     distributions.push(distribution);
+
+    const notificationPayload = notificationService.buildAuctionResultNotification({
+      ...distribution,
+      auction_title: auction.title
+    });
+    if (notificationPayload) {
+      await notificationService.createNotificationOnce(client, notificationPayload);
+    }
   }
 
   return distributions;
