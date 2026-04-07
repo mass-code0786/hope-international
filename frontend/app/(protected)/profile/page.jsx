@@ -179,11 +179,11 @@ function BiometricAccessCard({ user, queryClient }) {
   const enabled = Boolean(webauthnQuery.data?.enabled);
 
   return (
-    <div className="mt-4 rounded-[24px] border border-[rgba(255,255,255,0.07)] bg-[#141923] p-4">
+    <div className="mt-4 rounded-[24px] border border-[rgba(255,255,255,0.07)] bg-[linear-gradient(180deg,rgba(22,27,36,0.98),rgba(17,20,27,0.98))] p-4 shadow-[0_18px_36px_rgba(0,0,0,0.24)]">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[rgba(255,255,255,0.06)] text-white">
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[#1b212c] text-white shadow-[0_10px_24px_rgba(0,0,0,0.18)]">
               <Fingerprint size={18} />
             </span>
             <div>
@@ -191,7 +191,7 @@ function BiometricAccessCard({ user, queryClient }) {
               <p className="mt-1 text-xs leading-5 text-slate-400">Enable passkeys for fingerprint, face unlock, or device PIN on supported browsers.</p>
             </div>
           </div>
-          <p className={`mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${enabled ? 'bg-emerald-500/10 text-emerald-300' : 'bg-[rgba(255,255,255,0.06)] text-slate-300'}`}>
+          <p className={`mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold shadow-[0_10px_24px_rgba(0,0,0,0.14)] ${enabled ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300' : 'border-[rgba(255,255,255,0.08)] bg-[#1b212c] text-slate-300'}`}>
             <ShieldCheck size={13} />
             {enabled ? 'Enabled' : 'Not enabled'}
           </p>
@@ -201,7 +201,7 @@ function BiometricAccessCard({ user, queryClient }) {
           type="button"
           onClick={() => enableMutation.mutate()}
           disabled={!supported || enableMutation.isPending}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-[16px] border border-[rgba(255,255,255,0.12)] bg-[#1b2230] px-4 text-sm font-semibold text-white transition hover:border-[rgba(255,255,255,0.22)] hover:bg-[#20293a] disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-[16px] border border-[rgba(255,255,255,0.12)] bg-[#1a1f28] px-4 text-sm font-semibold text-white shadow-[0_14px_28px_rgba(0,0,0,0.22)] transition hover:border-[rgba(255,255,255,0.2)] hover:bg-[#202631] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {enableMutation.isPending ? <LoaderCircle size={16} className="animate-spin" /> : <Fingerprint size={16} />}
           {enabled ? 'Add Another Device' : 'Enable Biometrics'}
@@ -209,19 +209,19 @@ function BiometricAccessCard({ user, queryClient }) {
       </div>
 
       {!supported ? (
-        <p className="mt-3 rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[#11151d] px-4 py-3 text-xs text-slate-400">
+        <p className="mt-3 rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[#171c26] px-4 py-3 text-xs text-slate-400 shadow-[0_14px_30px_rgba(0,0,0,0.2)]">
           This browser or device does not support WebAuthn passkeys. Continue using your username and password here.
         </p>
       ) : null}
 
       {webauthnQuery.isLoading ? (
-        <div className="mt-4 h-20 animate-pulse rounded-[20px] border border-[rgba(255,255,255,0.06)] bg-[#11151d]" />
+        <div className="mt-4 h-20 animate-pulse rounded-[20px] border border-[rgba(255,255,255,0.06)] bg-[#171c26] shadow-[0_14px_30px_rgba(0,0,0,0.2)]" />
       ) : null}
 
       {credentials.length ? (
         <div className="mt-4 space-y-3">
           {credentials.map((credential) => (
-            <div key={credential.id} className="flex flex-col gap-3 rounded-[20px] border border-[rgba(255,255,255,0.06)] bg-[#11151d] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div key={credential.id} className="flex flex-col gap-3 rounded-[20px] border border-[rgba(255,255,255,0.06)] bg-[linear-gradient(180deg,rgba(27,33,44,0.96),rgba(21,26,35,0.96))] px-4 py-3 shadow-[0_16px_34px_rgba(0,0,0,0.22)] sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-white">{credential.deviceName || 'Biometric Device'}</p>
                 <p className="mt-1 text-xs text-slate-400">
@@ -232,7 +232,7 @@ function BiometricAccessCard({ user, queryClient }) {
                 type="button"
                 onClick={() => removeMutation.mutate(credential.id)}
                 disabled={removeMutation.isPending}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-[14px] border border-rose-500/20 bg-rose-500/10 px-3.5 text-sm font-semibold text-rose-300 transition hover:bg-rose-500/14 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-[14px] border border-rose-500/20 bg-rose-500/10 px-3.5 text-sm font-semibold text-rose-300 shadow-[0_12px_24px_rgba(127,29,29,0.14)] transition hover:bg-rose-500/14 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {removeMutation.isPending ? <LoaderCircle size={15} className="animate-spin" /> : <Trash2 size={15} />}
                 Remove Biometrics
