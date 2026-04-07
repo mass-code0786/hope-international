@@ -41,17 +41,11 @@ export default function LoginPage() {
           </span>
         </div>
 
-        <div className="mb-5 flex flex-col items-center text-center">
+        <div className="mb-6 flex flex-col items-center text-center">
           <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-[24px] border border-[var(--hope-border)] bg-white shadow-[0_18px_32px_rgba(148,163,184,0.18)] dark:bg-slate-950">
             <Logo size={58} />
           </div>
           <h1 className="text-[1.9rem] font-semibold tracking-[-0.05em] text-text">Hope International</h1>
-          <p className="mt-2 max-w-sm text-sm leading-6 text-muted">Sign in to access your wallet, orders, auctions, referrals, and support activity.</p>
-        </div>
-
-        <div className="mb-5 rounded-[24px] border border-[var(--hope-border)] bg-cardSoft p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Member sign in</p>
-          <p className="mt-1 text-sm leading-6 text-muted">Use your Hope login details to continue into the full member workspace.</p>
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
