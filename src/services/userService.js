@@ -1,6 +1,7 @@
 const userRepository = require('../repositories/userRepository');
 const userAddressRepository = require('../repositories/userAddressRepository');
 const adminRepository = require('../repositories/adminRepository');
+const webauthnService = require('./webauthnService');
 const walletService = require('./walletService');
 const { ApiError } = require('../utils/ApiError');
 const { withTransaction } = require('../db/pool');
@@ -132,6 +133,16 @@ async function claimWelcomeSpin(userId) {
   return withTransaction(async (client) => walletService.claimWelcomeSpin(client, userId));
 }
 
+async function getWebauthnStatus(userId) {
+  await getProfile(userId);
+  return webauthnService.getCredentialStatus(userId);
+}
+
+async function removeWebauthnCredential(userId, credentialId) {
+  await getProfile(userId);
+  return webauthnService.removeCredential(userId, credentialId);
+}
+
 module.exports = {
   getProfile,
   getChildren,
@@ -141,5 +152,7 @@ module.exports = {
   getAddress,
   saveAddress,
   getWelcomeSpinStatus,
-  claimWelcomeSpin
+  claimWelcomeSpin,
+  getWebauthnStatus,
+  removeWebauthnCredential
 };

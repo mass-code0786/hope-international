@@ -1,6 +1,8 @@
 const asyncHandler = require('../utils/asyncHandler');
 const authService = require('../services/authService');
+const webauthnService = require('../services/webauthnService');
 const { sanitizeUser } = require('../utils/sanitize');
+const { success } = require('../utils/response');
 
 const register = asyncHandler(async (req, res) => {
   const data = await authService.register(req.body);
@@ -29,8 +31,41 @@ const login = asyncHandler(async (req, res) => {
   res.status(200).json({ user, token: data.token });
 });
 
+const webauthnRegisterOptions = asyncHandler(async (req, res) => {
+  const data = await webauthnService.createRegisterOptions(req.user.sub, req.headers.origin);
+  return success(res, {
+    data,
+    message: 'Biometric registration options generated'
+  });
+});
+
+const webauthnRegisterVerify = asyncHandler(async (req, res) => {
+  const data = await webauthnService.verifyRegisterResponse(req.user.sub, req.body, req.headers.origin);
+  return success(res, {
+    data,
+    message: 'Biometric login enabled successfully'
+  });
+});
+
+const webauthnLoginOptions = asyncHandler(async (req, res) => {
+  const data = await webauthnService.createLoginOptions(req.body, req.headers.origin);
+  return success(res, {
+    data,
+    message: 'Biometric login options generated'
+  });
+});
+
+const webauthnLoginVerify = asyncHandler(async (req, res) => {
+  const data = await webauthnService.verifyLoginResponse(req.body, req.headers.origin);
+  return res.status(200).json({ user: sanitizeUser(data.user), token: data.token });
+});
+
 module.exports = {
   register,
   previewReferral,
-  login
+  login,
+  webauthnRegisterOptions,
+  webauthnRegisterVerify,
+  webauthnLoginOptions,
+  webauthnLoginVerify
 };

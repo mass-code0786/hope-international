@@ -14,6 +14,44 @@ export async function register(payload) {
   });
 }
 
+export async function getWebauthnRegisterOptions() {
+  return apiFetch('/auth/webauthn/register/options', {
+    method: 'POST',
+    body: JSON.stringify({})
+  });
+}
+
+export async function verifyWebauthnRegister(payload) {
+  return apiFetch('/auth/webauthn/register/verify', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function getWebauthnLoginOptions(payload) {
+  return apiFetch('/auth/webauthn/login/options', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function verifyWebauthnLogin(payload) {
+  return apiFetch('/auth/webauthn/login/verify', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function getWebauthnStatus() {
+  return apiFetch('/users/me/webauthn');
+}
+
+export async function removeWebauthnCredential(credentialId) {
+  return apiFetch(`/users/me/webauthn/${credentialId}`, {
+    method: 'DELETE'
+  });
+}
+
 export async function getReferralPreview(params) {
   const query = new URLSearchParams();
   if (params?.ref) query.set('ref', params.ref);

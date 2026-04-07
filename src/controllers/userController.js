@@ -80,6 +80,22 @@ const claimWelcomeSpin = asyncHandler(async (req, res) => {
   });
 });
 
+const webauthnStatus = asyncHandler(async (req, res) => {
+  const data = await userService.getWebauthnStatus(req.user.sub);
+  return success(res, {
+    data,
+    message: data.enabled ? 'Biometric login is enabled' : 'Biometric login is not enabled'
+  });
+});
+
+const removeWebauthnCredential = asyncHandler(async (req, res) => {
+  const data = await userService.removeWebauthnCredential(req.user.sub, req.params.credentialId);
+  return success(res, {
+    data,
+    message: 'Biometric credential removed successfully'
+  });
+});
+
 module.exports = {
   me,
   myChildren,
@@ -92,5 +108,7 @@ module.exports = {
   createAddress,
   updateAddress,
   welcomeSpinStatus,
-  claimWelcomeSpin
+  claimWelcomeSpin,
+  webauthnStatus,
+  removeWebauthnCredential
 };

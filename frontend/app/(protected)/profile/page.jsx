@@ -1,10 +1,10 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowDownToLine, ArrowRight, ArrowUpFromLine, CircleDollarSign, Coins, Headset, History, Landmark, Link2, LogOut, Network, ShieldCheck, Sparkles, Store, WalletCards } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowDownToLine, ArrowRight, ArrowUpFromLine, CircleDollarSign, Coins, Fingerprint, Headset, History, Landmark, Link2, LoaderCircle, LogOut, Network, ShieldCheck, Sparkles, Store, Trash2, WalletCards } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ProfileActions } from '@/components/profile/ProfileActions';
@@ -12,13 +12,14 @@ import { BinaryReferralLinks } from '@/components/referral/BinaryReferralLinks';
 import { ProfileSkeleton } from '@/components/ui/PageSkeletons';
 import { ErrorState } from '@/components/ui/ErrorState';
 import BtctCoinLogo from '@/components/common/BtctCoinLogo';
-import { getMe } from '@/lib/services/authService';
+import { getMe, getWebauthnRegisterOptions, getWebauthnStatus, removeWebauthnCredential, verifyWebauthnRegister } from '@/lib/services/authService';
 import { getWallet } from '@/lib/services/walletService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { useAuthStore } from '@/lib/store/authStore';
 import { clearStoredToken } from '@/lib/utils/tokenStorage';
 import { currency, formatLabel, number, rankLabel } from '@/lib/utils/format';
 import { isSeller } from '@/lib/constants/access';
+import { createWebAuthnCredential, supportsWebAuthn } from '@/lib/utils/webauthn';
 
 function ProfileInfoCard({ label, value, subtitle = null, className = '', statusTone = '' }) {
   return (
@@ -84,30 +85,9 @@ function WalletSection({ walletQuery }) {
       </div>
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <WalletCard
-          title="Income Wallet"
-          value={currency(incomeBalance)}
-          accent="bg-emerald-50 text-emerald-700"
-          icon={Landmark}
-          href="/history/income"
-          actionLabel="View history"
-        />
-        <WalletCard
-          title="Deposit Wallet"
-          value={currency(depositBalance)}
-          accent="bg-sky-50 text-sky-700"
-          icon={ArrowDownToLine}
-          href="/deposit"
-          actionLabel="Open deposits"
-        />
-        <WalletCard
-          title="Withdrawal Wallet"
-          value={currency(withdrawalBalance)}
-          accent="bg-violet-50 text-violet-700"
-          icon={ArrowUpFromLine}
-          href="/withdraw"
-          actionLabel="Open withdrawals"
-        />
+        <WalletCard title="Income Wallet" value={currency(incomeBalance)} accent="bg-emerald-50 text-emerald-700" icon={Landmark} href="/history/income" actionLabel="View history" />
+        <WalletCard title="Deposit Wallet" value={currency(depositBalance)} accent="bg-sky-50 text-sky-700" icon={ArrowDownToLine} href="/deposit" actionLabel="Open deposits" />
+        <WalletCard title="Withdrawal Wallet" value={currency(withdrawalBalance)} accent="bg-violet-50 text-violet-700" icon={ArrowUpFromLine} href="/withdraw" actionLabel="Open withdrawals" />
         <WalletCard
           title="BTCT Wallet"
           value={`${number(btctBalance)} BTCT`}
@@ -137,6 +117,117 @@ function QuickLinkCard({ href, title, description, icon: Icon }) {
   );
 }
 
+function BiometricAccessCard({ user, queryClient }) {
+  const [supported] = useState(() => supportsWebAuthn());
+  const webauthnQuery = useQuery({
+    queryKey: queryKeys.webauthn,
+    queryFn: async () => {
+      const response = await getWebauthnStatus();
+      return response.data || response;
+    },
+    enabled: Boolean(user)
+  });
+
+  const enableMutation = useMutation({
+    mutationFn: async () => {
+      const optionsResponse = await getWebauthnRegisterOptions();
+      const credentialPayload = await createWebAuthnCredential(optionsResponse.data || optionsResponse);
+      const verifyResponse = await verifyWebauthnRegister(credentialPayload);
+      return verifyResponse.data || verifyResponse;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.webauthn });
+      toast.success('Biometric login enabled');
+    },
+    onError: (error) => {
+      toast.error(error?.message || 'Biometric setup failed');
+    }
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: async (credentialId) => {
+      const response = await removeWebauthnCredential(credentialId);
+      return response.data || response;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.webauthn });
+      toast.success('Biometric login removed');
+    },
+    onError: (error) => {
+      toast.error(error?.message || 'Could not remove biometric login');
+    }
+  });
+
+  const credentials = webauthnQuery.data?.credentials || [];
+  const enabled = Boolean(webauthnQuery.data?.enabled);
+
+  return (
+    <div className="mt-4 rounded-[24px] border border-[rgba(255,255,255,0.07)] bg-[#141923] p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[rgba(255,255,255,0.06)] text-white">
+              <Fingerprint size={18} />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-white">Biometric Login</p>
+              <p className="mt-1 text-xs leading-5 text-slate-400">Enable passkeys for fingerprint, face unlock, or device PIN on supported browsers.</p>
+            </div>
+          </div>
+          <p className={`mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${enabled ? 'bg-emerald-500/10 text-emerald-300' : 'bg-[rgba(255,255,255,0.06)] text-slate-300'}`}>
+            <ShieldCheck size={13} />
+            {enabled ? 'Enabled' : 'Not enabled'}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => enableMutation.mutate()}
+          disabled={!supported || enableMutation.isPending}
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-[16px] border border-[rgba(255,255,255,0.12)] bg-[#1b2230] px-4 text-sm font-semibold text-white transition hover:border-[rgba(255,255,255,0.22)] hover:bg-[#20293a] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {enableMutation.isPending ? <LoaderCircle size={16} className="animate-spin" /> : <Fingerprint size={16} />}
+          {enabled ? 'Add Another Device' : 'Enable Biometrics'}
+        </button>
+      </div>
+
+      {!supported ? (
+        <p className="mt-3 rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[#11151d] px-4 py-3 text-xs text-slate-400">
+          This browser or device does not support WebAuthn passkeys. Continue using your username and password here.
+        </p>
+      ) : null}
+
+      {webauthnQuery.isLoading ? (
+        <div className="mt-4 h-20 animate-pulse rounded-[20px] border border-[rgba(255,255,255,0.06)] bg-[#11151d]" />
+      ) : null}
+
+      {credentials.length ? (
+        <div className="mt-4 space-y-3">
+          {credentials.map((credential) => (
+            <div key={credential.id} className="flex flex-col gap-3 rounded-[20px] border border-[rgba(255,255,255,0.06)] bg-[#11151d] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-white">{credential.deviceName || 'Biometric Device'}</p>
+                <p className="mt-1 text-xs text-slate-400">
+                  Added {new Date(credential.createdAt).toLocaleDateString()} {credential.lastUsedAt ? `| Last used ${new Date(credential.lastUsedAt).toLocaleDateString()}` : ''}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => removeMutation.mutate(credential.id)}
+                disabled={removeMutation.isPending}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-[14px] border border-rose-500/20 bg-rose-500/10 px-3.5 text-sm font-semibold text-rose-300 transition hover:bg-rose-500/14 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {removeMutation.isPending ? <LoaderCircle size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                Remove Biometrics
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -149,7 +240,6 @@ export default function ProfilePage() {
   const walletQuery = useQuery({ queryKey: queryKeys.wallet, queryFn: getWallet, enabled: hydrated && Boolean(token) });
 
   const user = meQuery.data ?? sessionUser ?? null;
-  const wallet = walletQuery.data?.wallet || {};
   const sellerHref = isSeller(user) ? '/seller' : '/seller/apply';
   const referralLink = useMemo(() => {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -204,25 +294,10 @@ export default function ProfilePage() {
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <ProfileInfoCard
-          label="Username"
-          value={user.username || '-'}
-          subtitle={`ID: ${user.id || '-'}`}
-        />
-        <ProfileInfoCard
-          label="Rank"
-          value={rankLabel(user.rank_name)}
-          subtitle={`Sponsor: ${user.sponsor_username || user.sponsor_id || 'N/A'}`}
-        />
-        <ProfileInfoCard
-          label="Status"
-          value={user.is_active === false ? 'Inactive' : 'Active'}
-          statusTone={user.is_active === false ? 'text-[#f87171]' : 'text-[#4ade80]'}
-        />
-        <ProfileInfoCard
-          label="Email"
-          value={user.email || '-'}
-        />
+        <ProfileInfoCard label="Username" value={user.username || '-'} subtitle={`ID: ${user.id || '-'}`} />
+        <ProfileInfoCard label="Rank" value={rankLabel(user.rank_name)} subtitle={`Sponsor: ${user.sponsor_username || user.sponsor_id || 'N/A'}`} />
+        <ProfileInfoCard label="Status" value={user.is_active === false ? 'Inactive' : 'Active'} statusTone={user.is_active === false ? 'text-[#f87171]' : 'text-[#4ade80]'} />
+        <ProfileInfoCard label="Email" value={user.email || '-'} />
       </div>
 
       <div className="rounded-[32px] border border-[rgba(255,255,255,0.06)] bg-[#11141b] p-4 shadow-[0_24px_50px_rgba(0,0,0,0.32)]">
@@ -258,6 +333,7 @@ export default function ProfilePage() {
             <p className="text-sm font-semibold text-text">Security and access</p>
             <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${user.is_active === false ? 'bg-rose-500/10 text-[#ef4444]' : 'bg-emerald-500/10 text-[#22c55e]'}`}><ShieldCheck size={13} /> {user.is_active === false ? 'Inactive' : 'Active'}</span>
           </div>
+          <BiometricAccessCard user={user} queryClient={queryClient} />
         </div>
       </div>
 

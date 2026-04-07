@@ -41,6 +41,7 @@ export function useAuthMutations() {
     queryClient.setQueryData(queryKeys.me, user);
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.me }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.webauthn }),
       queryClient.invalidateQueries({ queryKey: queryKeys.welcomeSpinStatus }),
       queryClient.invalidateQueries({ queryKey: queryKeys.sellerMe }),
       queryClient.invalidateQueries({ queryKey: queryKeys.wallet }),
@@ -79,6 +80,7 @@ export function useAuthMutations() {
   return {
     loginMutation,
     registerMutation,
+    refreshCoreQueries,
     error,
     setError
   };

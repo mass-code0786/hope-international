@@ -1,19 +1,29 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Eye, EyeOff, LockKeyhole, ShieldCheck, Sparkles, User2 } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Fingerprint, LoaderCircle, LockKeyhole, ShieldCheck, Sparkles, User2 } from 'lucide-react';
 import { useAuthMutations } from '@/hooks/useAuthMutations';
 import toast from 'react-hot-toast';
 import Logo from '@/components/common/Logo';
+import { useAuthStore } from '@/lib/store/authStore';
+import { getWebauthnLoginOptions, verifyWebauthnLogin } from '@/lib/services/authService';
 import { getPostLoginRoute } from '@/lib/utils/postLoginRedirect';
+import { getWebAuthnAssertion, supportsWebAuthn } from '@/lib/utils/webauthn';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { loginMutation, error, setError } = useAuthMutations();
+  const setSession = useAuthStore((s) => s.setSession);
+  const { loginMutation, refreshCoreQueries, error, setError } = useAuthMutations();
   const [form, setForm] = useState({ username: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
+  const [webauthnSupported, setWebauthnSupported] = useState(false);
+  const [biometricPending, setBiometricPending] = useState(false);
+
+  useEffect(() => {
+    setWebauthnSupported(supportsWebAuthn());
+  }, []);
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -25,6 +35,34 @@ export default function LoginPage() {
       router.push(getPostLoginRoute(user));
     } catch (err) {
       toast.error(err.message || 'Login failed');
+    }
+  }
+
+  async function onBiometricLogin() {
+    setError('');
+
+    if (!form.username.trim()) {
+      const message = 'Enter your username first to continue with biometrics';
+      setError(message);
+      toast.error(message);
+      return;
+    }
+
+    setBiometricPending(true);
+    try {
+      const optionsResponse = await getWebauthnLoginOptions({ username: form.username.trim() });
+      const assertionPayload = await getWebAuthnAssertion(optionsResponse.data || optionsResponse);
+      const data = await verifyWebauthnLogin(assertionPayload);
+      setSession({ token: data.token, user: data.user });
+      await refreshCoreQueries(data.user);
+      toast.success('Biometric login successful');
+      router.push(getPostLoginRoute(data.user));
+    } catch (err) {
+      const message = err?.message || 'Biometric login failed';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setBiometricPending(false);
     }
   }
 
@@ -92,6 +130,22 @@ export default function LoginPage() {
             {loginMutation.isPending ? 'Signing in...' : 'Continue to Hope'}
             {!loginMutation.isPending ? <ArrowRight size={16} /> : null}
           </button>
+
+          {webauthnSupported ? (
+            <button
+              type="button"
+              onClick={onBiometricLogin}
+              disabled={loginMutation.isPending || biometricPending}
+              className="flex w-full items-center justify-center gap-2 rounded-[18px] border border-[rgba(255,255,255,0.12)] bg-[#141923] px-4 py-3 text-sm font-semibold text-white transition hover:border-[rgba(255,255,255,0.2)] hover:bg-[#171d28] disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {biometricPending ? <LoaderCircle size={17} className="animate-spin" /> : <Fingerprint size={17} />}
+              {biometricPending ? 'Checking device...' : 'Login with Biometrics'}
+            </button>
+          ) : (
+            <p className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#141923] px-4 py-3 text-center text-xs text-muted">
+              Biometric login is not available on this browser or device.
+            </p>
+          )}
         </form>
 
         <div className="mt-5 flex items-center justify-center gap-3 text-center text-sm text-muted">

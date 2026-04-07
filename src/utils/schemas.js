@@ -54,6 +54,46 @@ const loginSchema = z.object({
   query: z.object({})
 });
 
+const webauthnRegisterOptionsSchema = z.object({
+  body: z.object({}).optional().default({}),
+  params: z.object({}),
+  query: z.object({})
+});
+
+const webauthnRegisterVerifySchema = z.object({
+  body: z.object({
+    challenge: z.string().min(8).max(255),
+    credentialId: z.string().min(8).max(1024),
+    clientDataJSON: z.string().min(8),
+    authenticatorData: z.string().min(8),
+    publicKey: z.string().min(8),
+    transports: z.array(z.string().min(2).max(32)).optional(),
+    deviceName: z.string().min(1).max(120).optional()
+  }),
+  params: z.object({}),
+  query: z.object({})
+});
+
+const webauthnLoginOptionsSchema = z.object({
+  body: z.object({
+    username: usernameSchema
+  }),
+  params: z.object({}),
+  query: z.object({})
+});
+
+const webauthnLoginVerifySchema = z.object({
+  body: z.object({
+    challenge: z.string().min(8).max(255),
+    credentialId: z.string().min(8).max(1024),
+    clientDataJSON: z.string().min(8),
+    authenticatorData: z.string().min(8),
+    signature: z.string().min(8)
+  }),
+  params: z.object({}),
+  query: z.object({})
+});
+
 const productCreateSchema = z.object({
   body: z.object({
     sku: z.string().min(2).max(64),
@@ -405,6 +445,18 @@ const welcomeSpinClaimSchema = z.object({
   query: z.object({})
 });
 
+const webauthnStatusSchema = z.object({
+  body: z.object({}),
+  params: z.object({}),
+  query: z.object({})
+});
+
+const webauthnCredentialParamSchema = z.object({
+  body: z.object({}),
+  params: z.object({ credentialId: uuid }),
+  query: z.object({})
+});
+
 const userAddressCreateSchema = z.object({
   body: userAddressBodySchema,
   params: z.object({}),
@@ -420,6 +472,10 @@ const userAddressUpdateSchema = z.object({
 module.exports = {
   registerSchema,
   loginSchema,
+  webauthnRegisterOptionsSchema,
+  webauthnRegisterVerifySchema,
+  webauthnLoginOptionsSchema,
+  webauthnLoginVerifySchema,
   productCreateSchema,
   orderCreateSchema,
   matchingRunSchema,
@@ -456,6 +512,8 @@ module.exports = {
   userAddressQuerySchema,
   userAddressCreateSchema,
   userAddressUpdateSchema,
+  webauthnStatusSchema,
+  webauthnCredentialParamSchema,
   welcomeSpinStatusSchema,
   welcomeSpinClaimSchema
 };
