@@ -31,6 +31,11 @@ function normalizeUsername(value) {
   return String(value || '').trim().toLowerCase();
 }
 
+function normalizeTransports(value) {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item) => typeof item === 'string' && item.trim()).map((item) => item.trim());
+}
+
 function mapCredential(row) {
   return {
     id: row.id,
@@ -119,7 +124,17 @@ async function verifyRegisterResponse(userId, payload, originHeader) {
       publicKeyLength: String(payload?.publicKey || '').length
     });
 
-    const challengeRecord = await webauthnRepository.findActiveChallenge(client, payload.challenge, REGISTER_PURPOSE, { forUpdate: true });
+    const normalizedPayload = {
+      ...payload,
+      transports: normalizeTransports(payload?.transports)
+    };
+    debugWebauthn('register-verify-normalized-payload', {
+      transports: normalizedPayload.transports,
+      transportsType: Array.isArray(normalizedPayload.transports) ? 'array' : typeof normalizedPayload.transports,
+      transportsJson: JSON.stringify(normalizedPayload.transports)
+    });
+
+    const challengeRecord = await webauthnRepository.findActiveChallenge(client, normalizedPayload.challenge, REGISTER_PURPOSE, { forUpdate: true });
     if (!challengeRecord) throw new ApiError(400, 'Registration challenge has expired');
     if (challengeRecord.user_id !== userId) throw new ApiError(403, 'Registration challenge does not belong to this user');
 
@@ -128,7 +143,7 @@ async function verifyRegisterResponse(userId, payload, originHeader) {
       throw new ApiError(400, 'WebAuthn relying party mismatch');
     }
 
-    const clientData = parseClientDataJSON(payload.clientDataJSON);
+    const clientData = parseClientDataJSON(normalizedPayload.clientDataJSON);
     debugWebauthn('register-verify-client-data', {
       challengePreview: String(clientData?.challenge || '').slice(0, 24),
       type: clientData?.type,
@@ -138,17 +153,17 @@ async function verifyRegisterResponse(userId, payload, originHeader) {
     ensureExpectedChallenge(clientData, challengeRecord.challenge);
     ensureExpectedOrigin(clientData, challengeRecord.origin);
 
-    const authenticatorData = parseAuthenticatorData(payload.authenticatorData);
+    const authenticatorData = parseAuthenticatorData(normalizedPayload.authenticatorData);
     ensureExpectedRpIdHash(authenticatorData, challengeRecord.rp_id);
     if (!hasUserPresence(authenticatorData.flags)) {
       throw new ApiError(400, 'Biometric confirmation was not completed');
     }
 
-    if (!payload.credentialId || !payload.publicKey) {
+    if (!normalizedPayload.credentialId || !normalizedPayload.publicKey) {
       throw new ApiError(400, 'Incomplete WebAuthn registration response');
     }
 
-    const existingCredential = await webauthnRepository.findCredentialByCredentialId(client, payload.credentialId);
+    const existingCredential = await webauthnRepository.findCredentialByCredentialId(client, normalizedPayload.credentialId);
     if (existingCredential) {
       throw new ApiError(409, 'This biometric credential is already registered');
     }
@@ -156,11 +171,11 @@ async function verifyRegisterResponse(userId, payload, originHeader) {
     const existingCredentials = await webauthnRepository.listCredentialsByUserId(client, userId);
     const credential = await webauthnRepository.createCredential(client, {
       userId,
-      credentialId: payload.credentialId,
-      publicKey: payload.publicKey,
+      credentialId: normalizedPayload.credentialId,
+      publicKey: normalizedPayload.publicKey,
       counter: authenticatorData.counter,
-      transports: payload.transports || [],
-      deviceName: getFriendlyDeviceName(payload.deviceName, existingCredentials.length + 1)
+      transports: normalizedPayload.transports,
+      deviceName: getFriendlyDeviceName(normalizedPayload.deviceName, existingCredentials.length + 1)
     });
 
     await webauthnRepository.markChallengeUsed(client, challengeRecord.id);

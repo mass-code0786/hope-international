@@ -2,6 +2,13 @@ function q(client) {
   return client || require('../db/pool').pool;
 }
 
+function normalizeJsonArray(value) {
+  if (Array.isArray(value)) {
+    return value.filter((item) => typeof item === 'string' && item.trim()).map((item) => item.trim());
+  }
+  return [];
+}
+
 async function createChallenge(client, payload) {
   const { rows } = await q(client).query(
     `INSERT INTO webauthn_challenges (
@@ -52,6 +59,20 @@ async function markChallengeUsed(client, challengeId) {
 }
 
 async function createCredential(client, payload) {
+  const transports = normalizeJsonArray(payload.transports);
+  if (process.env.NODE_ENV !== 'production') {
+    console.info('[webauthn.repository] createCredential payload', {
+      userIdType: typeof payload.userId,
+      credentialIdType: typeof payload.credentialId,
+      publicKeyType: typeof payload.publicKey,
+      counterType: typeof payload.counter,
+      transportsValue: transports,
+      transportsType: Array.isArray(transports) ? 'array' : typeof transports,
+      transportsJson: JSON.stringify(transports),
+      deviceNameType: typeof payload.deviceName
+    });
+  }
+
   const { rows } = await q(client).query(
     `INSERT INTO user_webauthn_credentials (
       user_id,
@@ -61,14 +82,14 @@ async function createCredential(client, payload) {
       transports,
       device_name
     )
-     VALUES ($1, $2, $3, $4, $5, $6)
+     VALUES ($1, $2, $3, $4, $5::jsonb, $6)
      RETURNING *`,
     [
       payload.userId,
       payload.credentialId,
       payload.publicKey,
       payload.counter || 0,
-      payload.transports || [],
+      JSON.stringify(transports),
       payload.deviceName || null
     ]
   );
