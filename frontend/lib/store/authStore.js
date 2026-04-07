@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { clearStoredToken, getStoredToken, setStoredToken } from '@/lib/utils/tokenStorage';
+import { clearStoredToken, getRememberedLoginPreference, getStoredToken, setRememberedUsername, setStoredToken } from '@/lib/utils/tokenStorage';
 
 const REGISTRATION_SUMMARY_KEY = 'hope_registration_summary';
 
@@ -27,9 +27,15 @@ export const useAuthStore = create((set) => ({
   user: null,
   hydrated: false,
   registrationSummary: null,
-  setSession: ({ token, user }) => {
-    if (token) setStoredToken(token);
-    set({ token, user });
+  rememberMe: false,
+  setSession: ({ token, user, rememberMe = false, username = '' }) => {
+    if (token) setStoredToken(token, { rememberMe });
+    setRememberedUsername(username || user?.username || '', true);
+    set({ token, user, rememberMe });
+  },
+  setRememberPreference: (rememberMe, username = '') => {
+    setRememberedUsername(username, rememberMe);
+    set({ rememberMe: Boolean(rememberMe) });
   },
   setUser: (user) => set({ user }),
   setRegistrationSummary: (registrationSummary) => {
@@ -42,10 +48,10 @@ export const useAuthStore = create((set) => ({
   },
   clearSession: () => {
     clearStoredToken();
-    set({ token: null, user: null });
+    set({ token: null, user: null, rememberMe: false });
   },
   hydrate: () => {
     const token = getStoredToken();
-    set({ token, user: null, hydrated: true, registrationSummary: readRegistrationSummary() });
+    set({ token, user: null, hydrated: true, registrationSummary: readRegistrationSummary(), rememberMe: getRememberedLoginPreference() });
   }
 }));

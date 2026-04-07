@@ -11,18 +11,25 @@ import { useAuthStore } from '@/lib/store/authStore';
 import { getWebauthnLoginOptions, verifyWebauthnLogin } from '@/lib/services/authService';
 import { getPostLoginRoute } from '@/lib/utils/postLoginRedirect';
 import { getWebAuthnAssertion, supportsWebAuthn } from '@/lib/utils/webauthn';
+import { getRememberedLoginPreference, getRememberedUsername } from '@/lib/utils/tokenStorage';
 
 export default function LoginPage() {
   const router = useRouter();
   const setSession = useAuthStore((s) => s.setSession);
+  const setRememberPreference = useAuthStore((s) => s.setRememberPreference);
   const { loginMutation, refreshCoreQueries, error, setError } = useAuthMutations();
-  const [form, setForm] = useState({ username: '', password: '' });
+  const [form, setForm] = useState({ username: '', password: '', rememberMe: false });
   const [showPassword, setShowPassword] = useState(false);
   const [webauthnSupported, setWebauthnSupported] = useState(false);
   const [biometricPending, setBiometricPending] = useState(false);
 
   useEffect(() => {
     setWebauthnSupported(supportsWebAuthn());
+    setForm((current) => ({
+      ...current,
+      username: current.username || getRememberedUsername(),
+      rememberMe: getRememberedLoginPreference()
+    }));
   }, []);
 
   async function onSubmit(e) {
@@ -31,6 +38,7 @@ export default function LoginPage() {
     try {
       const data = await loginMutation.mutateAsync(form);
       const user = data?.user || null;
+      setRememberPreference(Boolean(form.rememberMe), form.username);
       toast.success('Logged in successfully');
       router.push(getPostLoginRoute(user));
     } catch (err) {
@@ -52,8 +60,10 @@ export default function LoginPage() {
     try {
       const optionsResponse = await getWebauthnLoginOptions({ username: form.username.trim() });
       const assertionPayload = await getWebAuthnAssertion(optionsResponse.data || optionsResponse);
+      assertionPayload.rememberMe = Boolean(form.rememberMe);
       const data = await verifyWebauthnLogin(assertionPayload);
-      setSession({ token: data.token, user: data.user });
+      setSession({ token: data.token, user: data.user, rememberMe: Boolean(form.rememberMe), username: form.username.trim() });
+      setRememberPreference(Boolean(form.rememberMe), form.username);
       await refreshCoreQueries(data.user);
       toast.success('Biometric login successful');
       router.push(getPostLoginRoute(data.user));
@@ -122,6 +132,16 @@ export default function LoginPage() {
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
+          </label>
+
+          <label className="flex items-center gap-3 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#141923] px-4 py-3 text-sm text-slate-300">
+            <input
+              type="checkbox"
+              checked={form.rememberMe}
+              onChange={(e) => setForm((p) => ({ ...p, rememberMe: e.target.checked }))}
+              className="h-4 w-4 rounded border-[rgba(255,255,255,0.18)] bg-transparent text-[var(--hope-accent)] focus:ring-[var(--hope-accent)] focus:ring-offset-0"
+            />
+            <span>Remember me</span>
           </label>
 
           {error ? <p className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-danger dark:border-red-500/20 dark:bg-red-500/10">{error}</p> : null}

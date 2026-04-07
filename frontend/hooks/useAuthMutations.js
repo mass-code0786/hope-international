@@ -58,7 +58,7 @@ export function useAuthMutations() {
       if (process.env.NODE_ENV !== 'production') {
         console.info('[frontend.auth.login] response role', { username: data?.user?.username, role: data?.user?.role });
       }
-      setSession({ token: data.token, user: data.user });
+      setSession({ token: data.token, user: data.user, rememberMe: Boolean(data?.rememberMe), username: data?.user?.username });
       await refreshCoreQueries(data.user);
     },
     onError: (err) => setError(err.message)
@@ -71,7 +71,7 @@ export function useAuthMutations() {
         console.info('[frontend.auth.register] response role', { username: data?.user?.username, role: data?.user?.role });
       }
       setRegistrationSummary(data?.registrationSummary || buildRegistrationSummary(data?.user));
-      setSession({ token: data.token, user: data.user });
+      setSession({ token: data.token, user: data.user, rememberMe: true, username: data?.user?.username });
       await refreshCoreQueries(data.user);
     },
     onError: (err) => setError(err.message)

@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const env = require('../config/env');
 const { normalizeRole } = require('../middleware/auth');
 
-function createAuthToken(user) {
+function createAuthToken(user, options = {}) {
   return jwt.sign(
     {
       sub: user.id,
@@ -11,7 +11,7 @@ function createAuthToken(user) {
       role: normalizeRole(user.role)
     },
     env.jwtSecret,
-    { expiresIn: env.jwtExpiresIn }
+    { expiresIn: options.rememberMe ? env.jwtRememberMeExpiresIn : env.jwtExpiresIn }
   );
 }
 

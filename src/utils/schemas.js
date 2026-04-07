@@ -48,7 +48,8 @@ const registerSchema = z.object({
 const loginSchema = z.object({
   body: z.object({
     username: usernameSchema,
-    password: z.string().min(8).max(128)
+    password: z.string().min(8).max(128),
+    rememberMe: z.boolean().optional().default(false)
   }),
   params: z.object({}),
   query: z.object({})
@@ -88,7 +89,8 @@ const webauthnLoginVerifySchema = z.object({
     credentialId: z.string().min(8).max(1024),
     clientDataJSON: z.string().min(8),
     authenticatorData: z.string().min(8),
-    signature: z.string().min(8)
+    signature: z.string().min(8),
+    rememberMe: z.boolean().optional().default(false)
   }),
   params: z.object({}),
   query: z.object({})

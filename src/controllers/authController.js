@@ -28,7 +28,7 @@ const login = asyncHandler(async (req, res) => {
   if (process.env.NODE_ENV !== 'production') {
     console.info('[auth.login] response role', { username: user?.username, role: user?.role });
   }
-  res.status(200).json({ user, token: data.token });
+  res.status(200).json({ user, token: data.token, rememberMe: Boolean(req.body.rememberMe) });
 });
 
 const webauthnRegisterOptions = asyncHandler(async (req, res) => {
@@ -57,7 +57,7 @@ const webauthnLoginOptions = asyncHandler(async (req, res) => {
 
 const webauthnLoginVerify = asyncHandler(async (req, res) => {
   const data = await webauthnService.verifyLoginResponse(req.body, req.headers.origin);
-  return res.status(200).json({ user: sanitizeUser(data.user), token: data.token });
+  return res.status(200).json({ user: sanitizeUser(data.user), token: data.token, rememberMe: Boolean(req.body.rememberMe) });
 });
 
 module.exports = {

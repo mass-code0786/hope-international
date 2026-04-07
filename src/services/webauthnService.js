@@ -219,7 +219,7 @@ async function verifyLoginResponse(payload, originHeader) {
 
     return {
       user,
-      token: createAuthToken(user),
+      token: createAuthToken(user, { rememberMe: Boolean(payload.rememberMe) }),
       credential: mapCredential(updatedCredential || credential)
     };
   });

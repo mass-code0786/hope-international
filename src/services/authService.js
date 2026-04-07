@@ -219,7 +219,7 @@ async function login(payload) {
     throw new ApiError(401, 'Invalid username/email or password');
   }
 
-  const token = createAuthToken(user);
+  const token = createAuthToken(user, { rememberMe: Boolean(payload.rememberMe) });
   return { user, token };
 }
 

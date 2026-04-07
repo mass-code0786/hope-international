@@ -16,6 +16,7 @@ module.exports = {
   databaseUrl: getEnv('DATABASE_URL'),
   jwtSecret: getEnv('JWT_SECRET'),
   jwtExpiresIn: getEnv('JWT_EXPIRES_IN', '7d'),
+  jwtRememberMeExpiresIn: getEnv('JWT_REMEMBER_ME_EXPIRES_IN', '30d'),
   webAuthnRpName: getEnv('WEBAUTHN_RP_NAME', 'Hope International'),
   webAuthnRpId: process.env.WEBAUTHN_RP_ID || '',
   webAuthnOrigin: process.env.WEBAUTHN_ORIGIN || ''
