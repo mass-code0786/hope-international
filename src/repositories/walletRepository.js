@@ -17,6 +17,16 @@ async function getTradingBalanceColumn(client) {
   return columns.has('trading_balance') ? 'trading_balance' : 'withdrawal_balance';
 }
 
+async function getWalletTransferColumns(client) {
+  const tradingColumn = await getTradingBalanceColumn(client);
+  return {
+    deposit_wallet: 'deposit_balance',
+    trading_wallet: tradingColumn,
+    income_wallet: 'income_balance',
+    bonus_wallet: 'auction_bonus_balance'
+  };
+}
+
 function withPaging(limit = 20, offset = 0) {
   return {
     limit: Math.max(1, Number(limit) || 20),
@@ -273,8 +283,8 @@ async function listBtctTransactions(client, userId, limit = 50) {
 
 async function createTransaction(client, payload) {
   const { rows } = await q(client).query(
-    `INSERT INTO wallet_transactions (user_id, tx_type, source, amount, reference_id, metadata, created_by_admin_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `INSERT INTO wallet_transactions (user_id, tx_type, source, amount, reference_id, metadata, created_by_admin_id, from_wallet, to_wallet, status, reference_code)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
      RETURNING *`,
     [
       payload.userId,
@@ -283,10 +293,83 @@ async function createTransaction(client, payload) {
       payload.amount,
       payload.referenceId || null,
       payload.metadata || {},
-      payload.createdByAdminId || null
+      payload.createdByAdminId || null,
+      payload.fromWallet || null,
+      payload.toWallet || null,
+      payload.status || 'success',
+      payload.referenceCode || null
     ]
   );
   return rows[0];
+}
+
+async function transferBetweenWallets(client, userId, fromWallet, toWallet, amount) {
+  const walletColumns = await getWalletTransferColumns(client);
+  const fromColumn = walletColumns[fromWallet];
+  const toColumn = walletColumns[toWallet];
+
+  if (!fromColumn || !toColumn) {
+    throw new Error('Unsupported wallet transfer mapping');
+  }
+
+  const { rows } = await q(client).query(
+    `WITH current_wallet AS (
+        SELECT user_id,
+               COALESCE(income_balance, 0)::numeric(14,2) AS income_balance,
+               COALESCE(deposit_balance, 0)::numeric(14,2) AS deposit_balance,
+               COALESCE(${walletColumns.trading_wallet}, 0)::numeric(14,2) AS trading_balance,
+               COALESCE(auction_bonus_balance, 0)::numeric(14,2) AS bonus_balance
+        FROM wallets
+        WHERE user_id = $1
+        FOR UPDATE
+      ),
+      updated_wallet AS (
+        UPDATE wallets w
+        SET ${fromColumn} = CASE
+              WHEN '${fromColumn}' = '${toColumn}' THEN ${fromColumn}
+              ELSE COALESCE(w.${fromColumn}, 0) - $2
+            END,
+            ${toColumn} = COALESCE(w.${toColumn}, 0) + $2,
+            balance = (
+              CASE WHEN '${fromColumn}' = 'income_balance' THEN current_wallet.income_balance - $2
+                   WHEN '${toColumn}' = 'income_balance' THEN current_wallet.income_balance + $2
+                   ELSE current_wallet.income_balance
+              END
+            ) + (
+              CASE WHEN '${fromColumn}' = 'deposit_balance' THEN current_wallet.deposit_balance - $2
+                   WHEN '${toColumn}' = 'deposit_balance' THEN current_wallet.deposit_balance + $2
+                   ELSE current_wallet.deposit_balance
+              END
+            ) + (
+              CASE WHEN '${fromColumn}' = '${walletColumns.trading_wallet}' THEN current_wallet.trading_balance - $2
+                   WHEN '${toColumn}' = '${walletColumns.trading_wallet}' THEN current_wallet.trading_balance + $2
+                   ELSE current_wallet.trading_balance
+              END
+            )
+        FROM current_wallet
+        WHERE w.user_id = current_wallet.user_id
+          AND CASE
+                WHEN $3 = 'income_wallet' THEN current_wallet.income_balance
+                WHEN $3 = 'deposit_wallet' THEN current_wallet.deposit_balance
+                WHEN $3 = 'trading_wallet' THEN current_wallet.trading_balance
+                WHEN $3 = 'bonus_wallet' THEN current_wallet.bonus_balance
+                ELSE 0
+              END >= $2
+        RETURNING w.*,
+                  current_wallet.income_balance AS previous_income_balance,
+                  current_wallet.deposit_balance AS previous_deposit_balance,
+                  current_wallet.trading_balance AS previous_trading_balance,
+                  current_wallet.bonus_balance AS previous_bonus_balance
+      )
+      SELECT *,
+             previous_income_balance - COALESCE(income_balance, 0) AS debited_income_balance,
+             previous_deposit_balance - COALESCE(deposit_balance, 0) AS debited_deposit_balance,
+             previous_trading_balance - COALESCE(${walletColumns.trading_wallet}, 0) AS debited_trading_balance,
+             previous_bonus_balance - COALESCE(auction_bonus_balance, 0) AS debited_bonus_balance
+      FROM updated_wallet`,
+    [userId, amount, fromWallet]
+  );
+  return rows[0] || null;
 }
 
 async function createDepositTeamIncomeLedgerEntry(client, payload) {
@@ -899,6 +982,7 @@ module.exports = {
   adjustBtctBalance,
   adjustBtctLockedBalance,
   createBtctTransaction,
+  transferBetweenWallets,
   listBtctTransactions,
   createTransaction,
   createDepositTeamIncomeLedgerEntry,

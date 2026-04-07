@@ -120,6 +120,20 @@ const p2pCreate = asyncHandler(async (req, res) => {
   res.status(201).json(data);
 });
 
+const transferCreate = asyncHandler(async (req, res) => {
+  const data = await withTransaction(async (client) => walletService.createWalletTransfer(client, req.user.sub, req.body));
+  return success(res, {
+    data: {
+      fromWallet: data.fromWallet,
+      toWallet: data.toWallet,
+      amount: data.amount,
+      reference: data.reference
+    },
+    statusCode: 201,
+    message: 'Transfer successful'
+  });
+});
+
 const p2pList = asyncHandler(async (req, res) => {
   const data = await walletRepository.listP2pTransfers(null, req.user.sub, 300);
   res.status(200).json(data);
@@ -164,6 +178,7 @@ module.exports = {
   depositList,
   withdrawalCreate,
   withdrawalList,
+  transferCreate,
   p2pCreate,
   p2pList,
   stakingSummary,

@@ -6,6 +6,7 @@ const { ApiError } = require('../utils/ApiError');
 
 const MIN_WITHDRAWAL_AMOUNT = 10;
 const MIN_DEPOSIT_AMOUNT = 1;
+const MIN_WALLET_TRANSFER_AMOUNT = 5;
 const BTCT_USD_PRICE = 0.10;
 const DEPOSIT_ASSET = 'USDT';
 const DEPOSIT_NETWORK = 'BEP20';
@@ -18,6 +19,22 @@ const WELCOME_SPIN_REWARD_POOL = [
   { amount: 0.75, weight: 9 },
   { amount: 1.00, weight: 5 }
 ];
+const WALLET_TRANSFER_RULES = new Map([
+  ['deposit_wallet:trading_wallet', true],
+  ['income_wallet:deposit_wallet', true]
+]);
+
+function normalizeWalletTransferType(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function isAllowedWalletTransfer(fromWallet, toWallet) {
+  return WALLET_TRANSFER_RULES.has(`${fromWallet}:${toWallet}`);
+}
+
+function buildTransferReference() {
+  return `WTX_${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+}
 
 function roundBtct(value) {
   return Number(Number(value || 0).toFixed(4));
@@ -487,6 +504,75 @@ async function createP2pTransfer(client, senderUserId, payload) {
   };
 }
 
+async function createWalletTransfer(client, userId, payload) {
+  const fromWallet = normalizeWalletTransferType(payload.fromWallet);
+  const toWallet = normalizeWalletTransferType(payload.toWallet);
+  const amount = toMoney(payload.amount);
+
+  if (!fromWallet || !toWallet) {
+    throw new ApiError(400, 'Source and destination wallets are required');
+  }
+
+  if (fromWallet === toWallet) {
+    throw new ApiError(400, 'Cannot transfer to the same wallet');
+  }
+
+  if (!['deposit_wallet', 'trading_wallet', 'income_wallet', 'bonus_wallet'].includes(fromWallet)
+    || !['deposit_wallet', 'trading_wallet', 'income_wallet', 'bonus_wallet'].includes(toWallet)) {
+    throw new ApiError(400, 'Invalid wallet selection');
+  }
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new ApiError(400, 'Transfer amount must be positive');
+  }
+
+  if (amount < MIN_WALLET_TRANSFER_AMOUNT) {
+    throw new ApiError(400, `Minimum transfer amount is ${MIN_WALLET_TRANSFER_AMOUNT}`);
+  }
+
+  if (!isAllowedWalletTransfer(fromWallet, toWallet)) {
+    throw new ApiError(403, 'This wallet transfer is not allowed');
+  }
+
+  await walletRepository.createWallet(client, userId);
+  const referenceCode = buildTransferReference();
+  const updatedWallet = await walletRepository.transferBetweenWallets(client, userId, fromWallet, toWallet, amount);
+
+  if (!updatedWallet) {
+    throw new ApiError(400, 'Insufficient balance');
+  }
+
+  await walletRepository.createTransaction(client, {
+    userId,
+    txType: 'debit',
+    source: 'wallet_transfer',
+    amount,
+    referenceId: null,
+    fromWallet,
+    toWallet,
+    status: 'success',
+    referenceCode,
+    metadata: {
+      transferType: 'wallet',
+      walletType: 'transfer',
+      walletBreakdown: {
+        income: toMoney(updatedWallet.debited_income_balance || 0),
+        deposit: toMoney(updatedWallet.debited_deposit_balance || 0),
+        trading: toMoney(updatedWallet.debited_trading_balance || 0),
+        bonus: toMoney(updatedWallet.debited_bonus_balance || 0)
+      }
+    }
+  });
+
+  return {
+    fromWallet,
+    toWallet,
+    amount,
+    reference: referenceCode,
+    wallet: normalizeWalletBalances(updatedWallet)
+  };
+}
+
 async function getWelcomeSpinStatus(client, userId) {
   const state = await userRepository.getWelcomeSpinState(client, userId);
   if (!state) {
@@ -575,6 +661,7 @@ module.exports = {
   creditWithTransaction,
   debit,
   debitForAuctionEntry,
+  createWalletTransfer,
   creditBtct,
   getWalletSummary,
   bindWalletAddress,

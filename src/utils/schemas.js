@@ -189,6 +189,16 @@ const walletWithdrawalSchema = z.object({
   query: z.object({})
 });
 
+const walletTransferSchema = z.object({
+  body: z.object({
+    fromWallet: z.enum(['deposit_wallet', 'trading_wallet', 'income_wallet', 'bonus_wallet']),
+    toWallet: z.enum(['deposit_wallet', 'trading_wallet', 'income_wallet', 'bonus_wallet']),
+    amount: z.number().positive()
+  }),
+  params: z.object({}),
+  query: z.object({})
+});
+
 const walletP2pSchema = z.object({
   body: z.object({
     toUsername: usernameSchema.optional(),
@@ -492,6 +502,7 @@ module.exports = {
   walletAdjustSchema,
   walletBindSchema,
   walletDepositSchema,
+  walletTransferSchema,
   walletWithdrawalSchema,
   walletP2pSchema,
   walletBtctStakingStartSchema,

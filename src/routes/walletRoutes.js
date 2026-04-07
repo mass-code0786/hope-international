@@ -6,6 +6,7 @@ const {
   walletAdjustSchema,
   walletBindSchema,
   walletDepositSchema,
+  walletTransferSchema,
   walletWithdrawalSchema,
   walletP2pSchema,
   walletBtctStakingStartSchema
@@ -20,6 +21,7 @@ router.get('/deposits', auth(), walletController.depositList);
 router.post('/deposits', auth(), validate(walletDepositSchema), walletController.depositCreate);
 router.get('/withdrawals', auth(), walletController.withdrawalList);
 router.post('/withdrawals', auth(), validate(walletWithdrawalSchema), walletController.withdrawalCreate);
+router.post('/transfer', auth(), validate(walletTransferSchema), walletController.transferCreate);
 router.get('/p2p', auth(), walletController.p2pList);
 router.get('/staking', auth(), walletController.stakingSummary);
 router.post('/staking/start', auth(), validate(walletBtctStakingStartSchema), walletController.stakingStart);
