@@ -32,6 +32,29 @@ const summary = asyncHandler(async (_req, res) => {
   });
 });
 
+const users = asyncHandler(async (req, res) => {
+  const result = await adminWalletService.listWalletUsers({
+    search: req.query.search
+  }, {
+    page: req.query.page,
+    limit: req.query.limit
+  });
+
+  return success(res, {
+    data: result.data,
+    pagination: result.pagination,
+    message: 'Admin wallet users fetched successfully'
+  });
+});
+
+const user = asyncHandler(async (req, res) => {
+  const data = await adminWalletService.getWalletUser(req.params.userId);
+  return success(res, {
+    data,
+    message: 'Admin wallet user fetched successfully'
+  });
+});
+
 const deposits = asyncHandler(async (req, res) => {
   const filters = {
     search: req.query.search,
@@ -208,6 +231,7 @@ const runBtctStakingPayouts = asyncHandler(async (req, res) => {
 const adjust = asyncHandler(async (req, res) => {
   const data = await adminWalletService.adjustWallet(req.user.sub, {
     userId: req.body.userId,
+    walletType: req.body.walletType,
     amount: req.body.amount,
     type: req.body.type,
     reason: req.body.reason
@@ -219,9 +243,55 @@ const adjust = asyncHandler(async (req, res) => {
   });
 });
 
+const freeze = asyncHandler(async (req, res) => {
+  const data = await adminWalletService.setWalletFreeze(req.user.sub, {
+    userId: req.body.userId,
+    walletType: req.body.walletType,
+    reason: req.body.reason
+  }, true);
+
+  return success(res, {
+    data,
+    message: 'Wallet frozen successfully'
+  });
+});
+
+const unfreeze = asyncHandler(async (req, res) => {
+  const data = await adminWalletService.setWalletFreeze(req.user.sub, {
+    userId: req.body.userId,
+    walletType: req.body.walletType,
+    reason: req.body.reason
+  }, false);
+
+  return success(res, {
+    data,
+    message: 'Wallet unfrozen successfully'
+  });
+});
+
+const logs = asyncHandler(async (req, res) => {
+  const result = await adminWalletService.listWalletLogs({
+    search: req.query.search,
+    userId: req.query.userId,
+    walletType: req.query.walletType,
+    actionType: req.query.actionType
+  }, {
+    page: req.query.page,
+    limit: req.query.limit
+  });
+
+  return success(res, {
+    data: result.data,
+    pagination: result.pagination,
+    message: 'Admin wallet logs fetched successfully'
+  });
+});
+
 module.exports = {
   transactions,
   summary,
+  users,
+  user,
   deposits,
   reviewDeposit,
   withdrawals,
@@ -234,5 +304,8 @@ module.exports = {
   userFinancialOverview,
   btctStaking,
   runBtctStakingPayouts,
-  adjust
+  adjust,
+  freeze,
+  unfreeze,
+  logs
 };

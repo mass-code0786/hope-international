@@ -107,9 +107,50 @@ const adminWalletTransactionsQuerySchema = z.object({
 });
 
 const adminWalletAdjustSchema = z.object({
-  body: z.object({ userId: uuid, amount: z.number().positive(), type: z.enum(['credit', 'debit']), reason: z.string().min(3).max(500) }),
+  body: z.object({
+    userId: uuid,
+    walletType: z.enum(['deposit_wallet', 'trading_wallet', 'income_wallet', 'bonus_wallet']),
+    amount: z.number().positive(),
+    type: z.enum(['credit', 'debit']),
+    reason: z.string().min(3).max(500)
+  }),
   params: z.object({}),
   query: z.object({})
+});
+
+const adminWalletUsersQuerySchema = z.object({
+  body: z.object({}),
+  params: z.object({}),
+  query: pagingQuery.extend({
+    search: z.string().optional()
+  })
+});
+
+const adminWalletUserParamSchema = z.object({
+  body: z.object({}),
+  params: z.object({ userId: uuid }),
+  query: z.object({})
+});
+
+const adminWalletFreezeSchema = z.object({
+  body: z.object({
+    userId: uuid,
+    walletType: z.enum(['deposit_wallet', 'trading_wallet', 'income_wallet', 'bonus_wallet']),
+    reason: z.string().min(3).max(500)
+  }),
+  params: z.object({}),
+  query: z.object({})
+});
+
+const adminWalletLogsQuerySchema = z.object({
+  body: z.object({}),
+  params: z.object({}),
+  query: pagingQuery.extend({
+    search: z.string().optional(),
+    userId: uuid.optional(),
+    walletType: z.enum(['deposit_wallet', 'trading_wallet', 'income_wallet', 'bonus_wallet']).optional(),
+    actionType: z.enum(['adjust_add', 'adjust_deduct', 'freeze', 'unfreeze']).optional()
+  })
 });
 
 const adminFinanceListQuerySchema = z.object({
@@ -477,6 +518,10 @@ module.exports = {
   adminOrderIdParamSchema,
   adminWalletTransactionsQuerySchema,
   adminWalletAdjustSchema,
+  adminWalletUsersQuerySchema,
+  adminWalletUserParamSchema,
+  adminWalletFreezeSchema,
+  adminWalletLogsQuerySchema,
   adminFinanceListQuerySchema,
   adminWalletReviewSchema,
   adminWalletBindingUpsertSchema,

@@ -22,6 +22,12 @@ function toMoney(value) {
   return Number(Number(value || 0).toFixed(2));
 }
 
+const ADMIN_WALLET_TYPES = new Set(['deposit_wallet', 'trading_wallet', 'income_wallet', 'bonus_wallet']);
+
+function normalizeWalletType(walletType) {
+  return String(walletType || '').trim().toLowerCase();
+}
+
 async function distributeDepositTeamIncome(client, deposit, adminUserId, adminNote = null) {
   const maxDepositIncomeLevel = LEVEL_DEPOSIT_INCOME_RULES[LEVEL_DEPOSIT_INCOME_RULES.length - 1]?.levelNumber || DIRECT_DEPOSIT_INCOME_RULE.levelNumber;
   const uplines = await userRepository.getSponsorUpline(client, deposit.user_id, maxDepositIncomeLevel);
@@ -142,6 +148,20 @@ async function listTransactions(filters, paginationInput) {
 
 async function getSummary() {
   return adminRepository.getWalletSummary(null);
+}
+
+async function listWalletUsers(filters, paginationInput) {
+  const pagination = normalizePagination(paginationInput);
+  const result = await walletRepository.listAdminWalletUsers(null, filters, pagination);
+  return buildPagedResult(result, pagination);
+}
+
+async function getWalletUser(userId) {
+  const user = await walletRepository.getAdminWalletUser(null, userId);
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
+  return user;
 }
 
 async function listDeposits(filters, paginationInput) {
@@ -400,21 +420,58 @@ async function adjustWallet(adminUserId, payload) {
     if (!payload.reason) {
       throw new ApiError(400, 'Adjustment reason is required');
     }
+    const walletType = normalizeWalletType(payload.walletType);
+    if (!ADMIN_WALLET_TYPES.has(walletType)) {
+      throw new ApiError(400, 'Valid wallet type is required');
+    }
     await walletRepository.createWallet(client, payload.userId);
     const beforeWallet = await walletRepository.getWallet(client, payload.userId);
 
     const metadata = {
       note: payload.reason,
       adminUserId,
-      kind: 'admin_adjustment'
+      kind: 'admin_adjustment',
+      walletType
     };
 
     let result;
     if (payload.type === 'credit') {
       result = await walletService.credit(client, payload.userId, payload.amount, 'manual_adjustment', null, metadata, adminUserId);
     } else {
-      result = await walletService.debit(client, payload.userId, payload.amount, 'manual_adjustment', null, metadata, adminUserId);
+      const amountDelta = Number(payload.amount || 0) * -1;
+      const adjusted = await walletRepository.adjustWalletBalance(client, payload.userId, walletType, amountDelta);
+      if (!adjusted) {
+        throw new ApiError(400, 'Insufficient wallet balance');
+      }
+      await walletRepository.createTransaction(client, {
+        userId: payload.userId,
+        txType: 'debit',
+        source: 'manual_adjustment',
+        amount: payload.amount,
+        referenceId: null,
+        metadata: {
+          ...metadata,
+          walletBreakdown: {
+            [walletType.replace('_wallet', '')]: toMoney(payload.amount)
+          }
+        },
+        createdByAdminId: adminUserId
+      });
+      result = adjusted;
     }
+
+    await walletRepository.createAdminWalletAction(client, {
+      adminUserId,
+      targetUserId: payload.userId,
+      walletType,
+      actionType: payload.type === 'credit' ? 'adjust_add' : 'adjust_deduct',
+      amount: payload.amount,
+      reason: payload.reason,
+      metadata: {
+        reason: payload.reason,
+        adjustmentType: payload.type
+      }
+    });
 
     await adminRepository.logAdminAction(client, {
       adminUserId,
@@ -426,7 +483,8 @@ async function adjustWallet(adminUserId, payload) {
       metadata: {
         amount: payload.amount,
         type: payload.type,
-        reason: payload.reason
+        reason: payload.reason,
+        walletType
       }
     });
 
@@ -434,9 +492,64 @@ async function adjustWallet(adminUserId, payload) {
   });
 }
 
+async function setWalletFreeze(adminUserId, payload, freeze) {
+  return withTransaction(async (client) => {
+    const walletType = normalizeWalletType(payload.walletType);
+    if (!ADMIN_WALLET_TYPES.has(walletType)) {
+      throw new ApiError(400, 'Valid wallet type is required');
+    }
+    if (!payload.reason) {
+      throw new ApiError(400, 'Reason is required');
+    }
+
+    await walletRepository.createWallet(client, payload.userId);
+    const beforeWallet = await walletRepository.getWallet(client, payload.userId);
+    const updated = await walletRepository.setWalletFreezeStatus(client, payload.userId, walletType, freeze);
+    if (!updated) {
+      throw new ApiError(404, 'Wallet not found');
+    }
+
+    await walletRepository.createAdminWalletAction(client, {
+      adminUserId,
+      targetUserId: payload.userId,
+      walletType,
+      actionType: freeze ? 'freeze' : 'unfreeze',
+      amount: null,
+      reason: payload.reason,
+      metadata: {
+        frozen: freeze
+      }
+    });
+
+    await adminRepository.logAdminAction(client, {
+      adminUserId,
+      actionType: freeze ? 'wallet.freeze' : 'wallet.unfreeze',
+      targetEntity: 'wallet',
+      targetId: payload.userId,
+      beforeData: beforeWallet,
+      afterData: updated,
+      metadata: {
+        walletType,
+        reason: payload.reason,
+        frozen: freeze
+      }
+    });
+
+    return updated;
+  });
+}
+
+async function listWalletLogs(filters, paginationInput) {
+  const pagination = normalizePagination(paginationInput);
+  const result = await walletRepository.listAdminWalletActions(null, filters, pagination);
+  return buildPagedResult(result, pagination);
+}
+
 module.exports = {
   listTransactions,
   getSummary,
+  listWalletUsers,
+  getWalletUser,
   listDeposits,
   reviewDeposit,
   listWithdrawals,
@@ -449,5 +562,7 @@ module.exports = {
   getUserFinancialOverview,
   listBtctStaking,
   runBtctStakingPayouts,
-  adjustWallet
+  adjustWallet,
+  setWalletFreeze,
+  listWalletLogs
 };

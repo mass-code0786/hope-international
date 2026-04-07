@@ -27,6 +27,15 @@ async function getWalletTransferColumns(client) {
   };
 }
 
+function getWalletFreezeColumn(walletType) {
+  return {
+    deposit_wallet: 'deposit_wallet_frozen',
+    trading_wallet: 'trading_wallet_frozen',
+    income_wallet: 'income_wallet_frozen',
+    bonus_wallet: 'bonus_wallet_frozen'
+  }[walletType] || null;
+}
+
 function withPaging(limit = 20, offset = 0) {
   return {
     limit: Math.max(1, Number(limit) || 20),
@@ -46,6 +55,11 @@ async function createWallet(client, userId) {
 
 async function getWallet(client, userId) {
   const { rows } = await q(client).query('SELECT * FROM wallets WHERE user_id = $1', [userId]);
+  return rows[0] || null;
+}
+
+async function getWalletForUpdate(client, userId) {
+  const { rows } = await q(client).query('SELECT * FROM wallets WHERE user_id = $1 FOR UPDATE', [userId]);
   return rows[0] || null;
 }
 
@@ -370,6 +384,206 @@ async function transferBetweenWallets(client, userId, fromWallet, toWallet, amou
     [userId, amount, fromWallet]
   );
   return rows[0] || null;
+}
+
+async function adjustWalletBalance(client, userId, walletType, amountDelta, options = {}) {
+  const walletColumns = await getWalletTransferColumns(client);
+  const targetColumn = walletColumns[walletType];
+  if (!targetColumn) {
+    throw new Error('Unsupported wallet adjustment mapping');
+  }
+
+  const safeAmount = Number(amountDelta || 0);
+  const enforceNonNegative = options.allowNegative !== true;
+  const currentWallet = await getWalletForUpdate(client, userId);
+  if (!currentWallet) return null;
+
+  const currentIncome = Number(currentWallet.income_balance || 0);
+  const currentDeposit = Number(currentWallet.deposit_balance || 0);
+  const currentTrading = Number(currentWallet[walletColumns.trading_wallet] || 0);
+  const currentBonus = Number(currentWallet.auction_bonus_balance || 0);
+  const currentTarget = Number(currentWallet[targetColumn] || 0);
+  const nextTarget = Number((currentTarget + safeAmount).toFixed(2));
+
+  if (enforceNonNegative && nextTarget < 0) {
+    return null;
+  }
+
+  const nextIncome = targetColumn === 'income_balance' ? nextTarget : currentIncome;
+  const nextDeposit = targetColumn === 'deposit_balance' ? nextTarget : currentDeposit;
+  const nextTrading = targetColumn === walletColumns.trading_wallet ? nextTarget : currentTrading;
+  const nextBonus = targetColumn === 'auction_bonus_balance' ? nextTarget : currentBonus;
+
+  const { rows } = await q(client).query(
+    `UPDATE wallets
+     SET ${targetColumn} = $2,
+         balance = $3,
+         auction_bonus_balance = $4
+     WHERE user_id = $1
+     RETURNING *`,
+    [userId, nextTarget, Number((nextIncome + nextDeposit + nextTrading).toFixed(2)), nextBonus]
+  );
+  return rows[0] || null;
+}
+
+async function setWalletFreezeStatus(client, userId, walletType, isFrozen) {
+  const freezeColumn = getWalletFreezeColumn(walletType);
+  if (!freezeColumn) {
+    throw new Error('Unsupported wallet freeze mapping');
+  }
+
+  const { rows } = await q(client).query(
+    `UPDATE wallets
+     SET ${freezeColumn} = $2
+     WHERE user_id = $1
+     RETURNING *`,
+    [userId, Boolean(isFrozen)]
+  );
+  return rows[0] || null;
+}
+
+async function createAdminWalletAction(client, payload) {
+  const { rows } = await q(client).query(
+    `INSERT INTO admin_wallet_actions (admin_user_id, target_user_id, wallet_type, action_type, amount, reason, metadata)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING *`,
+    [
+      payload.adminUserId,
+      payload.targetUserId,
+      payload.walletType,
+      payload.actionType,
+      payload.amount ?? null,
+      payload.reason || null,
+      payload.metadata || {}
+    ]
+  );
+  return rows[0] || null;
+}
+
+async function listAdminWalletUsers(client, filters = {}, pagination = {}) {
+  const tradingColumn = await getTradingBalanceColumn(client);
+  const { limit, offset } = withPaging(pagination?.limit, pagination?.offset);
+  const values = [];
+  const where = [];
+
+  if (filters.search) {
+    values.push(`%${filters.search}%`);
+    where.push(`(
+      u.username ILIKE $${values.length}
+      OR u.email ILIKE $${values.length}
+      OR CAST(u.id AS TEXT) ILIKE $${values.length}
+    )`);
+  }
+
+  const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const selectSql = `SELECT
+      u.id,
+      u.username,
+      u.email,
+      u.is_active,
+      w.deposit_balance,
+      w.income_balance,
+      w.${tradingColumn} AS trading_balance,
+      w.auction_bonus_balance AS bonus_balance,
+      w.deposit_wallet_frozen,
+      w.trading_wallet_frozen,
+      w.income_wallet_frozen,
+      w.bonus_wallet_frozen,
+      w.updated_at AS wallet_updated_at
+    FROM users u
+    LEFT JOIN wallets w ON w.user_id = u.id
+    ${whereClause}
+    ORDER BY w.updated_at DESC NULLS LAST, u.created_at DESC
+    LIMIT $${values.length + 1} OFFSET $${values.length + 2}`;
+  const countSql = `SELECT COUNT(*)
+    FROM users u
+    LEFT JOIN wallets w ON w.user_id = u.id
+    ${whereClause}`;
+
+  const [listResult, countResult] = await Promise.all([
+    q(client).query(selectSql, [...values, limit, offset]),
+    q(client).query(countSql, values)
+  ]);
+
+  return {
+    items: listResult.rows,
+    total: Number(countResult.rows[0]?.count || 0)
+  };
+}
+
+async function getAdminWalletUser(client, userId) {
+  const tradingColumn = await getTradingBalanceColumn(client);
+  const { rows } = await q(client).query(
+    `SELECT
+      u.id,
+      u.username,
+      u.email,
+      u.is_active,
+      w.*,
+      w.${tradingColumn} AS trading_balance,
+      w.auction_bonus_balance AS bonus_balance
+     FROM users u
+     LEFT JOIN wallets w ON w.user_id = u.id
+     WHERE u.id = $1`,
+    [userId]
+  );
+  return rows[0] || null;
+}
+
+async function listAdminWalletActions(client, filters = {}, pagination = {}) {
+  const { limit, offset } = withPaging(pagination?.limit, pagination?.offset);
+  const values = [];
+  const where = [];
+
+  if (filters.search) {
+    values.push(`%${filters.search}%`);
+    where.push(`(
+      tu.username ILIKE $${values.length}
+      OR tu.email ILIKE $${values.length}
+      OR au.username ILIKE $${values.length}
+      OR CAST(a.target_user_id AS TEXT) ILIKE $${values.length}
+    )`);
+  }
+  if (filters.walletType) {
+    values.push(filters.walletType);
+    where.push(`a.wallet_type = $${values.length}`);
+  }
+  if (filters.actionType) {
+    values.push(filters.actionType);
+    where.push(`a.action_type = $${values.length}`);
+  }
+  if (filters.userId) {
+    values.push(filters.userId);
+    where.push(`a.target_user_id = $${values.length}`);
+  }
+
+  const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const selectSql = `SELECT
+      a.*,
+      au.username AS admin_username,
+      tu.username AS target_username,
+      tu.email AS target_email
+    FROM admin_wallet_actions a
+    JOIN users au ON au.id = a.admin_user_id
+    JOIN users tu ON tu.id = a.target_user_id
+    ${whereClause}
+    ORDER BY a.created_at DESC
+    LIMIT $${values.length + 1} OFFSET $${values.length + 2}`;
+  const countSql = `SELECT COUNT(*)
+    FROM admin_wallet_actions a
+    JOIN users au ON au.id = a.admin_user_id
+    JOIN users tu ON tu.id = a.target_user_id
+    ${whereClause}`;
+
+  const [listResult, countResult] = await Promise.all([
+    q(client).query(selectSql, [...values, limit, offset]),
+    q(client).query(countSql, values)
+  ]);
+
+  return {
+    items: listResult.rows,
+    total: Number(countResult.rows[0]?.count || 0)
+  };
 }
 
 async function createDepositTeamIncomeLedgerEntry(client, payload) {
@@ -972,10 +1186,13 @@ async function listIncomeTransactionsAdmin(client, filters, pagination) {
 module.exports = {
   createWallet,
   getWallet,
+  getWalletForUpdate,
   adjustIncomeBalance,
   adjustDepositBalance,
   adjustTradingBalance,
   adjustAuctionBonusBalance,
+  adjustWalletBalance,
+  setWalletFreezeStatus,
   debitCombinedBalanceIfSufficient,
   debitIncomeBalanceIfSufficient,
   debitAuctionBalanceIfSufficient,
@@ -983,6 +1200,10 @@ module.exports = {
   adjustBtctLockedBalance,
   createBtctTransaction,
   transferBetweenWallets,
+  createAdminWalletAction,
+  listAdminWalletUsers,
+  getAdminWalletUser,
+  listAdminWalletActions,
   listBtctTransactions,
   createTransaction,
   createDepositTeamIncomeLedgerEntry,

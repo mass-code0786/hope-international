@@ -4,6 +4,10 @@ const adminWalletController = require('../../controllers/admin/adminWalletContro
 const {
   adminWalletTransactionsQuerySchema,
   adminWalletAdjustSchema,
+  adminWalletUsersQuerySchema,
+  adminWalletUserParamSchema,
+  adminWalletFreezeSchema,
+  adminWalletLogsQuerySchema,
   adminFinanceListQuerySchema,
   adminWalletReviewSchema,
   adminWalletBindingUpsertSchema,
@@ -16,6 +20,9 @@ const router = express.Router();
 
 router.get('/transactions', validate(adminWalletTransactionsQuerySchema), adminWalletController.transactions);
 router.get('/summary', adminWalletController.summary);
+router.get('/users', validate(adminWalletUsersQuerySchema), adminWalletController.users);
+router.get('/users/:userId', validate(adminWalletUserParamSchema), adminWalletController.user);
+router.get('/logs', validate(adminWalletLogsQuerySchema), adminWalletController.logs);
 
 router.get('/deposits', validate(adminFinanceListQuerySchema), adminWalletController.deposits);
 router.patch('/deposits/:id/status', validate(adminWalletReviewSchema), adminWalletController.reviewDeposit);
@@ -35,5 +42,7 @@ router.post('/staking/payouts/run', validate(adminBtctStakingPayoutRunSchema), a
 router.get('/users/:id/financial-overview', validate(adminUserIdParamSchema), adminWalletController.userFinancialOverview);
 
 router.post('/adjust', validate(adminWalletAdjustSchema), adminWalletController.adjust);
+router.post('/freeze', validate(adminWalletFreezeSchema), adminWalletController.freeze);
+router.post('/unfreeze', validate(adminWalletFreezeSchema), adminWalletController.unfreeze);
 
 module.exports = router;

@@ -118,6 +118,14 @@ export async function getAdminWalletSummary() {
   return toEnvelope(await apiFetch('/admin/wallet/summary'));
 }
 
+export async function getAdminWalletUsers(params = {}) {
+  return toEnvelope(await apiFetch(`/admin/wallet/users${withQuery(params)}`));
+}
+
+export async function getAdminWalletUser(userId) {
+  return toEnvelope(await apiFetch(`/admin/wallet/users/${userId}`));
+}
+
 export async function createManualWalletAdjustment(payload) {
   return toEnvelope(
     await apiFetch('/admin/wallet/adjust', {
@@ -125,6 +133,28 @@ export async function createManualWalletAdjustment(payload) {
       body: JSON.stringify(payload)
     })
   );
+}
+
+export async function freezeAdminWallet(payload) {
+  return toEnvelope(
+    await apiFetch('/admin/wallet/freeze', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function unfreezeAdminWallet(payload) {
+  return toEnvelope(
+    await apiFetch('/admin/wallet/unfreeze', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function getAdminWalletLogs(params = {}) {
+  return toEnvelope(await apiFetch(`/admin/wallet/logs${withQuery(params)}`));
 }
 
 export async function getAdminWeeklyCompensation(params = {}) {

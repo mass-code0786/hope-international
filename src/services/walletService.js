@@ -36,6 +36,15 @@ function buildTransferReference() {
   return `WTX_${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
 }
 
+function isWalletFrozen(wallet = {}, walletType) {
+  return Boolean({
+    deposit_wallet: wallet.deposit_wallet_frozen,
+    trading_wallet: wallet.trading_wallet_frozen,
+    income_wallet: wallet.income_wallet_frozen,
+    bonus_wallet: wallet.bonus_wallet_frozen
+  }[walletType]);
+}
+
 function roundBtct(value) {
   return Number(Number(value || 0).toFixed(4));
 }
@@ -88,6 +97,10 @@ function normalizeWalletBalances(wallet = {}) {
     auction_bonus_wallet_balance: bonusBalance,
     withdrawal_balance: tradingBalance,
     withdrawal_wallet_balance: tradingBalance,
+    deposit_wallet_frozen: Boolean(wallet?.deposit_wallet_frozen),
+    trading_wallet_frozen: Boolean(wallet?.trading_wallet_frozen),
+    income_wallet_frozen: Boolean(wallet?.income_wallet_frozen),
+    bonus_wallet_frozen: Boolean(wallet?.bonus_wallet_frozen),
     auction_spendable_wallet_balance: auctionSpendableBalance,
     btct_wallet_balance: btctBalance,
     btct_locked_wallet_balance: btctLockedBalance,
@@ -96,8 +109,9 @@ function normalizeWalletBalances(wallet = {}) {
 }
 
 function resolveCashWalletType(source, metadata = {}) {
-  if (['deposit', 'income', 'trading', 'bonus', 'auction_bonus'].includes(metadata?.walletType)) {
-    return metadata.walletType;
+  const requestedWalletType = String(metadata?.walletType || '').trim().toLowerCase();
+  if (['deposit', 'income', 'trading', 'bonus', 'auction_bonus', 'deposit_wallet', 'income_wallet', 'trading_wallet', 'bonus_wallet'].includes(requestedWalletType)) {
+    return requestedWalletType.replace('_wallet', '');
   }
 
   if (source === 'deposit_request') return 'deposit';
@@ -409,6 +423,9 @@ async function createWithdrawalRequest(client, userId, payload) {
 
   await walletRepository.createWallet(client, userId);
   const wallet = normalizeWalletBalances(await walletRepository.getWallet(client, userId));
+  if (isWalletFrozen(wallet, 'income_wallet')) {
+    throw new ApiError(403, 'Income wallet is frozen');
+  }
   const withdrawableBalance = toMoney(wallet?.income_balance ?? wallet?.income_wallet_balance ?? 0);
   if (!wallet || withdrawableBalance < amount) {
     throw new ApiError(400, 'Insufficient income wallet balance');
@@ -535,6 +552,10 @@ async function createWalletTransfer(client, userId, payload) {
   }
 
   await walletRepository.createWallet(client, userId);
+  const wallet = normalizeWalletBalances(await walletRepository.getWallet(client, userId));
+  if (isWalletFrozen(wallet, fromWallet)) {
+    throw new ApiError(403, 'Source wallet is frozen');
+  }
   const referenceCode = buildTransferReference();
   const updatedWallet = await walletRepository.transferBetweenWallets(client, userId, fromWallet, toWallet, amount);
 

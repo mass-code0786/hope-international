@@ -23,6 +23,7 @@ router.use('/users', usersRoutes);
 router.use('/products', productsRoutes);
 router.use('/orders', ordersRoutes);
 router.use('/wallet', walletRoutes);
+router.use('/wallets', walletRoutes);
 router.use('/compensation', compensationRoutes);
 router.use('/rewards', rewardsRoutes);
 router.use('/team', teamRoutes);
