@@ -23,6 +23,16 @@ export default function TeamPage() {
   const root = treeRootQuery.data || null;
   const directChildren = useMemo(() => [root?.children?.left, root?.children?.right].filter(Boolean), [root]);
 
+  if (process.env.NODE_ENV !== 'production') {
+    console.info('[team.frontend] team-page-data', {
+      teamSummary,
+      rootChildren: {
+        left: root?.children?.left?.username || null,
+        right: root?.children?.right?.username || null
+      }
+    });
+  }
+
   if (meQuery.isLoading || teamSummaryQuery.isLoading || treeRootQuery.isLoading) return <TeamSkeleton />;
   if (meQuery.isError || teamSummaryQuery.isError || treeRootQuery.isError) {
     return <ErrorState message="Team tree is temporarily unavailable." onRetry={() => { meQuery.refetch(); teamSummaryQuery.refetch(); treeRootQuery.refetch(); }} />;

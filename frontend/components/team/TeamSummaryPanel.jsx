@@ -2,16 +2,32 @@ import { ArrowLeftRight, Network, UsersRound } from 'lucide-react';
 import { number } from '@/lib/utils/format';
 
 export function TeamSummaryPanel({ me, teamSummary = {}, children = [] }) {
-  const leftPv = Number(me?.carry_left_pv || 0);
-  const rightPv = Number(me?.carry_right_pv || 0);
-  const matchedPotential = Math.min(leftPv, rightPv);
-  const totalDirects = children.length;
-  const activeDirects = children.filter((child) => child?.is_active !== false).length;
+  const leftPv = Number(teamSummary?.left_pv ?? me?.carry_left_pv ?? 0);
+  const rightPv = Number(teamSummary?.right_pv ?? me?.carry_right_pv ?? 0);
+  const matchedPotential = Number(teamSummary?.matched_potential ?? Math.min(leftPv, rightPv));
+  const totalDirects = Number(teamSummary?.direct_referral_count ?? children.length ?? 0);
+  const activeDirects = children.filter((child) => child?.isActive !== false && child?.is_active !== false).length;
   const totalTeam = Number(teamSummary?.total_descendants || totalDirects || 0);
   const activeTeam = Number(teamSummary?.active_count || activeDirects || 0);
+  const leftTeam = Number(teamSummary?.left_team_count ?? teamSummary?.left_count ?? 0);
+  const rightTeam = Number(teamSummary?.right_team_count ?? teamSummary?.right_count ?? 0);
   const sponsor = [me?.sponsor_first_name, me?.sponsor_last_name].filter(Boolean).join(' ').trim() || me?.sponsor_username || 'No sponsor assigned';
-  const placement = me?.placement_side ? `${String(me.placement_side).charAt(0).toUpperCase()}${String(me.placement_side).slice(1)} leg` : 'Pending placement';
+  const placementSource = teamSummary?.placement_side ?? me?.placement_side;
+  const placement = placementSource ? `${String(placementSource).charAt(0).toUpperCase()}${String(placementSource).slice(1)} leg` : 'Pending placement';
   const balance = leftPv + rightPv > 0 ? Math.min(100, Math.round((leftPv / Math.max(leftPv + rightPv, 1)) * 100)) : 50;
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.info('[team.frontend] mapped-summary-values', {
+      leftPv,
+      rightPv,
+      leftTeam,
+      rightTeam,
+      matchedPotential,
+      totalTeam,
+      activeTeam,
+      totalDirects
+    });
+  }
 
   return (
     <>
@@ -20,6 +36,8 @@ export function TeamSummaryPanel({ me, teamSummary = {}, children = [] }) {
         <Card label="Active Team" value={number(activeTeam)} icon={UsersRound} />
         <Card label="Direct Referrals" value={number(totalDirects)} icon={Network} />
         <Card label="Sponsor" value={sponsor} />
+        <Card label="Left Team" value={number(leftTeam)} icon={UsersRound} />
+        <Card label="Right Team" value={number(rightTeam)} icon={UsersRound} />
         <Card label="Left PV" value={number(leftPv)} icon={ArrowLeftRight} />
         <Card label="Right PV" value={number(rightPv)} icon={ArrowLeftRight} />
         <Card label="Placement Side" value={placement} />
@@ -47,12 +65,14 @@ export function TeamSummaryPanel({ me, teamSummary = {}, children = [] }) {
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
             <div className="rounded-[22px] bg-card px-4 py-3">
-              <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Left</p>
+              <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Left PV</p>
               <p className="mt-2 text-xl font-semibold text-text">{number(leftPv)}</p>
+              <p className="mt-1 text-xs text-muted">Team: {number(leftTeam)}</p>
             </div>
             <div className="rounded-[22px] bg-card px-4 py-3 text-right">
-              <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Right</p>
+              <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Right PV</p>
               <p className="mt-2 text-xl font-semibold text-text">{number(rightPv)}</p>
+              <p className="mt-1 text-xs text-muted">Team: {number(rightTeam)}</p>
             </div>
           </div>
         </div>

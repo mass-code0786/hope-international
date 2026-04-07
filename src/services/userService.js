@@ -66,7 +66,45 @@ async function getChildren(userId) {
 }
 
 async function getTeamSummary(userId) {
-  return adminRepository.getTeamSummary(null, userId);
+  const [profile, summary] = await Promise.all([
+    userRepository.findById(null, userId),
+    adminRepository.getTeamSummary(null, userId)
+  ]);
+
+  if (!profile) {
+    throw new ApiError(404, 'User not found');
+  }
+
+  const leftPv = Number(profile.carry_left_pv || 0);
+  const rightPv = Number(profile.carry_right_pv || 0);
+  const normalized = {
+    total_descendants: Number(summary?.total_descendants || 0),
+    active_count: Number(summary?.active_count || 0),
+    inactive_count: Number(summary?.inactive_count || 0),
+    direct_referral_count: Number(summary?.direct_referral_count || 0),
+    direct_binary_count: Number(summary?.direct_binary_count || 0),
+    left_team_count: Number(summary?.left_team_count || 0),
+    right_team_count: Number(summary?.right_team_count || 0),
+    left_pv: leftPv,
+    right_pv: rightPv,
+    placement_side: profile.placement_side || null,
+    matched_potential: Math.min(leftPv, rightPv)
+  };
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.info('[team.backend] summary-computed', {
+      userId,
+      leftTeamCount: normalized.left_team_count,
+      rightTeamCount: normalized.right_team_count,
+      leftPv: normalized.left_pv,
+      rightPv: normalized.right_pv,
+      totalDescendants: normalized.total_descendants,
+      directReferralCount: normalized.direct_referral_count,
+      directBinaryCount: normalized.direct_binary_count
+    });
+  }
+
+  return normalized;
 }
 
 async function getTeamTreeRoot(userId) {

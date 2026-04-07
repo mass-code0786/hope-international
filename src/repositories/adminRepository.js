@@ -899,22 +899,44 @@ async function getTeamTree(client, userId, depth = 2) {
 async function getTeamSummary(client, userId) {
   const { rows } = await q(client).query(
     `WITH RECURSIVE descendants AS (
-      SELECT id, parent_id, placement_side, is_active
-      FROM users
-      WHERE parent_id = $1
+      SELECT
+        u.id,
+        u.parent_id,
+        u.placement_side,
+        u.is_active,
+        u.placement_side AS root_leg
+      FROM users u
+      WHERE u.parent_id = $1
 
       UNION ALL
 
-      SELECT u.id, u.parent_id, u.placement_side, u.is_active
+      SELECT
+        u.id,
+        u.parent_id,
+        u.placement_side,
+        u.is_active,
+        d.root_leg
       FROM users u
       JOIN descendants d ON u.parent_id = d.id
+    ),
+    direct_referrals AS (
+      SELECT COUNT(*)::int AS direct_referral_count
+      FROM users
+      WHERE sponsor_id = $1
+    ),
+    direct_binary_children AS (
+      SELECT COUNT(*)::int AS direct_binary_count
+      FROM users
+      WHERE parent_id = $1
     )
     SELECT
       COALESCE(COUNT(*), 0)::int AS total_descendants,
-      COALESCE(COUNT(*) FILTER (WHERE placement_side = 'left'), 0)::int AS left_count,
-      COALESCE(COUNT(*) FILTER (WHERE placement_side = 'right'), 0)::int AS right_count,
+      COALESCE(COUNT(*) FILTER (WHERE root_leg = 'left'), 0)::int AS left_team_count,
+      COALESCE(COUNT(*) FILTER (WHERE root_leg = 'right'), 0)::int AS right_team_count,
       COALESCE(COUNT(*) FILTER (WHERE is_active = true), 0)::int AS active_count,
-      COALESCE(COUNT(*) FILTER (WHERE is_active = false), 0)::int AS inactive_count
+      COALESCE(COUNT(*) FILTER (WHERE is_active = false), 0)::int AS inactive_count,
+      COALESCE((SELECT direct_referral_count FROM direct_referrals), 0)::int AS direct_referral_count,
+      COALESCE((SELECT direct_binary_count FROM direct_binary_children), 0)::int AS direct_binary_count
     FROM descendants`,
     [userId]
   );
