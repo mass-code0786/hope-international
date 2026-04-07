@@ -38,6 +38,11 @@ const SPEECH_LANGUAGES = {
   ps: 'ps-AF'
 };
 
+const SPEECH_LANGUAGE_FALLBACKS = {
+  'ps-AF': ['hi-IN', 'en-US'],
+  'ar-SA': ['en-US']
+};
+
 const QUICK_ACTIONS = [
   { label: 'My Wallet', prompt: 'my wallet' },
   { label: 'My Income', prompt: 'my income' },
@@ -399,6 +404,23 @@ export function HopeAssistant() {
   }, []);
 
   useEffect(() => {
+    if (!speechSupported) return undefined;
+
+    const loadVoices = () => {
+      try {
+        window.speechSynthesis.getVoices();
+      } catch (_error) {}
+    };
+
+    loadVoices();
+    window.speechSynthesis.addEventListener?.('voiceschanged', loadVoices);
+
+    return () => {
+      window.speechSynthesis.removeEventListener?.('voiceschanged', loadVoices);
+    };
+  }, [speechSupported]);
+
+  useEffect(() => {
     if (!speechSupported) {
       setVoiceReplyEnabled(false);
     }
@@ -427,21 +449,50 @@ export function HopeAssistant() {
 
   function chooseVoice(utteranceLanguage) {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      return null;
+      return { voice: null, lang: utteranceLanguage, usedFallback: false };
     }
     const voices = window.speechSynthesis.getVoices();
+    const requestedLanguages = [
+      utteranceLanguage,
+      ...(SPEECH_LANGUAGE_FALLBACKS[utteranceLanguage] || []),
+      'en-US'
+    ].filter(Boolean);
+
     if (!Array.isArray(voices) || !voices.length) {
-      return null;
+      return {
+        voice: null,
+        lang: requestedLanguages[0] || 'en-US',
+        usedFallback: requestedLanguages[0] !== utteranceLanguage
+      };
     }
-    const exact = voices.find((voice) => voice.lang === utteranceLanguage);
-    if (exact) return exact;
-    const base = utteranceLanguage.split('-')[0];
-    return (
-      voices.find((voice) => voice.lang?.startsWith(base)) ||
-      voices.find((voice) => voice.default) ||
-      voices[0] ||
-      null
-    );
+
+    for (const candidateLanguage of requestedLanguages) {
+      const exact = voices.find((voice) => voice.lang === candidateLanguage);
+      if (exact) {
+        return {
+          voice: exact,
+          lang: exact.lang || candidateLanguage,
+          usedFallback: candidateLanguage !== utteranceLanguage
+        };
+      }
+
+      const base = candidateLanguage.split('-')[0];
+      const partial = voices.find((voice) => voice.lang?.startsWith(base));
+      if (partial) {
+        return {
+          voice: partial,
+          lang: partial.lang || candidateLanguage,
+          usedFallback: candidateLanguage !== utteranceLanguage
+        };
+      }
+    }
+
+    const defaultVoice = voices.find((voice) => voice.default) || voices[0] || null;
+    return {
+      voice: defaultVoice,
+      lang: defaultVoice?.lang || 'en-US',
+      usedFallback: true
+    };
   }
 
   function speakMessage(message) {
@@ -462,11 +513,10 @@ export function HopeAssistant() {
 
     const utteranceLanguage = SPEECH_LANGUAGES[language] || SPEECH_LANGUAGES.en;
     const utterance = new window.SpeechSynthesisUtterance(message.text.trim());
-    utterance.lang = utteranceLanguage;
-    const voice = chooseVoice(utteranceLanguage);
-    if (voice) {
-      utterance.voice = voice;
-      utterance.lang = voice.lang || utteranceLanguage;
+    const voiceSelection = chooseVoice(utteranceLanguage);
+    utterance.lang = voiceSelection.lang || utteranceLanguage;
+    if (voiceSelection.voice) {
+      utterance.voice = voiceSelection.voice;
     }
     utterance.onend = () => {
       utteranceRef.current = null;
