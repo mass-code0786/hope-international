@@ -266,6 +266,32 @@ export default function DashboardPage() {
     mutationFn: claimWelcomeSpin,
     onSuccess: async (result) => {
       toast.success(result.message || 'Welcome reward claimed successfully');
+      const rewardData = result.data || {};
+      queryClient.setQueryData(queryKeys.wallet, (current) => {
+        if (!current) return current;
+        const currentWallet = current.wallet || {};
+        const nextAuctionBonusBalance = Number(rewardData.auctionBonusBalance ?? currentWallet.auction_bonus_balance ?? currentWallet.auction_bonus_wallet_balance ?? 0);
+        const nextAuctionSpendableBalance = Number(currentWallet.balance ?? 0) + nextAuctionBonusBalance;
+        return {
+          ...current,
+          wallet: {
+            ...currentWallet,
+            auction_bonus_balance: nextAuctionBonusBalance,
+            auction_bonus_wallet_balance: nextAuctionBonusBalance,
+            auction_spendable_balance: nextAuctionSpendableBalance,
+            auction_spendable_wallet_balance: nextAuctionSpendableBalance
+          }
+        };
+      });
+      queryClient.setQueryData(queryKeys.welcomeSpinStatus, {
+        data: {
+          eligible: false,
+          claimed: true,
+          claimedAt: new Date().toISOString(),
+          rewardAmount: Number(rewardData.rewardAmount || 0)
+        },
+        message: result.message || 'Welcome reward claimed successfully'
+      });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.wallet }),
         queryClient.invalidateQueries({ queryKey: queryKeys.me }),
@@ -283,6 +309,7 @@ export default function DashboardPage() {
   const homepageBanners = Array.isArray(bannersQuery.data) ? bannersQuery.data : [];
   const unreadNotificationCount = Number(notificationsCountQuery.data?.unreadCount || 0);
   const welcomeSpinStatus = welcomeSpinQuery.data?.data || null;
+  const auctionBonusBalance = Number(walletQuery.data?.wallet?.auction_bonus_balance ?? walletQuery.data?.wallet?.auction_bonus_wallet_balance ?? 0);
 
   const slides = useMemo(() => {
     if (homepageBanners.length) {
@@ -540,6 +567,7 @@ export default function DashboardPage() {
         open={welcomeSpinOpen}
         status={welcomeSpinStatus}
         claimPending={welcomeSpinMutation.isPending}
+        auctionBonusBalance={auctionBonusBalance}
         onClaim={async () => {
           const result = await welcomeSpinMutation.mutateAsync();
           return result.data || null;
