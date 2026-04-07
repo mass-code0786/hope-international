@@ -22,6 +22,11 @@ const REGISTER_PURPOSE = 'register';
 const LOGIN_PURPOSE = 'login';
 const CHALLENGE_TTL_SECONDS = 300;
 
+function debugWebauthn(label, details = {}) {
+  if (process.env.NODE_ENV === 'production') return;
+  console.info(`[webauthn.backend] ${label}`, details);
+}
+
 function normalizeUsername(value) {
   return String(value || '').trim().toLowerCase();
 }
@@ -64,7 +69,7 @@ async function createRegisterOptions(userId, originHeader) {
       ttlSeconds: CHALLENGE_TTL_SECONDS
     });
 
-    return {
+    const payload = {
       challenge,
       rp: {
         id: rp.rpId,
@@ -83,11 +88,32 @@ async function createRegisterOptions(userId, originHeader) {
       },
       excludeCredentials: buildAllowCredentials(existingCredentials)
     };
+
+    debugWebauthn('register-options', {
+      userId,
+      challengeLength: challenge.length,
+      userHandleLength: payload.user.id.length,
+      excludeCredentialsCount: payload.excludeCredentials.length,
+      rpId: rp.rpId
+    });
+
+    return payload;
   });
 }
 
 async function verifyRegisterResponse(userId, payload, originHeader) {
   return withTransaction(async (client) => {
+    debugWebauthn('register-verify-request', {
+      userId,
+      challengeLength: String(payload?.challenge || '').length,
+      rawIdLength: String(payload?.rawId || '').length,
+      credentialIdLength: String(payload?.credentialId || '').length,
+      clientDataJSONLength: String(payload?.clientDataJSON || '').length,
+      authenticatorDataLength: String(payload?.authenticatorData || '').length,
+      attestationObjectLength: String(payload?.attestationObject || '').length,
+      publicKeyLength: String(payload?.publicKey || '').length
+    });
+
     const challengeRecord = await webauthnRepository.findActiveChallenge(client, payload.challenge, REGISTER_PURPOSE, { forUpdate: true });
     if (!challengeRecord) throw new ApiError(400, 'Registration challenge has expired');
     if (challengeRecord.user_id !== userId) throw new ApiError(403, 'Registration challenge does not belong to this user');
@@ -98,6 +124,11 @@ async function verifyRegisterResponse(userId, payload, originHeader) {
     }
 
     const clientData = parseClientDataJSON(payload.clientDataJSON);
+    debugWebauthn('register-verify-client-data', {
+      challengePreview: String(clientData?.challenge || '').slice(0, 24),
+      type: clientData?.type,
+      origin: clientData?.origin
+    });
     ensureExpectedType(clientData, 'webauthn.create');
     ensureExpectedChallenge(clientData, challengeRecord.challenge);
     ensureExpectedOrigin(clientData, challengeRecord.origin);
@@ -160,18 +191,37 @@ async function createLoginOptions(payload, originHeader) {
       ttlSeconds: CHALLENGE_TTL_SECONDS
     });
 
-    return {
+    const responsePayload = {
       challenge,
       rpId: rp.rpId,
       timeout: CHALLENGE_TTL_SECONDS * 1000,
       userVerification: 'preferred',
       allowCredentials: buildAllowCredentials(credentials)
     };
+
+    debugWebauthn('login-options', {
+      username,
+      challengeLength: challenge.length,
+      allowCredentialsCount: responsePayload.allowCredentials.length,
+      rpId: rp.rpId
+    });
+
+    return responsePayload;
   });
 }
 
 async function verifyLoginResponse(payload, originHeader) {
   return withTransaction(async (client) => {
+    debugWebauthn('login-verify-request', {
+      challengeLength: String(payload?.challenge || '').length,
+      rawIdLength: String(payload?.rawId || '').length,
+      credentialIdLength: String(payload?.credentialId || '').length,
+      clientDataJSONLength: String(payload?.clientDataJSON || '').length,
+      authenticatorDataLength: String(payload?.authenticatorData || '').length,
+      signatureLength: String(payload?.signature || '').length,
+      userHandleLength: String(payload?.userHandle || '').length
+    });
+
     const challengeRecord = await webauthnRepository.findActiveChallenge(client, payload.challenge, LOGIN_PURPOSE, { forUpdate: true });
     if (!challengeRecord) throw new ApiError(400, 'Biometric login challenge has expired');
 
@@ -181,6 +231,11 @@ async function verifyLoginResponse(payload, originHeader) {
     }
 
     const clientData = parseClientDataJSON(payload.clientDataJSON);
+    debugWebauthn('login-verify-client-data', {
+      challengePreview: String(clientData?.challenge || '').slice(0, 24),
+      type: clientData?.type,
+      origin: clientData?.origin
+    });
     ensureExpectedType(clientData, 'webauthn.get');
     ensureExpectedChallenge(clientData, challengeRecord.challenge);
     ensureExpectedOrigin(clientData, challengeRecord.origin);

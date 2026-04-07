@@ -131,7 +131,24 @@ function BiometricAccessCard({ user, queryClient }) {
   const enableMutation = useMutation({
     mutationFn: async () => {
       const optionsResponse = await getWebauthnRegisterOptions();
+      if (process.env.NODE_ENV !== 'production') {
+        console.info('[webauthn.frontend] enable-button-options-response', {
+          hasDataEnvelope: Boolean(optionsResponse?.data),
+          challengeLength: String(optionsResponse?.data?.challenge || optionsResponse?.challenge || '').length,
+          userIdLength: String(optionsResponse?.data?.user?.id || optionsResponse?.user?.id || '').length
+        });
+      }
       const credentialPayload = await createWebAuthnCredential(optionsResponse.data || optionsResponse);
+      if (process.env.NODE_ENV !== 'production') {
+        console.info('[webauthn.frontend] enable-button-verify-payload', {
+          challengeLength: String(credentialPayload?.challenge || '').length,
+          rawIdLength: String(credentialPayload?.rawId || '').length,
+          credentialIdLength: String(credentialPayload?.credentialId || '').length,
+          clientDataJSONLength: String(credentialPayload?.clientDataJSON || '').length,
+          attestationObjectLength: String(credentialPayload?.attestationObject || '').length,
+          authenticatorDataLength: String(credentialPayload?.authenticatorData || '').length
+        });
+      }
       const verifyResponse = await verifyWebauthnRegister(credentialPayload);
       return verifyResponse.data || verifyResponse;
     },

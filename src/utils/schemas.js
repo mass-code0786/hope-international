@@ -64,9 +64,11 @@ const webauthnRegisterOptionsSchema = z.object({
 const webauthnRegisterVerifySchema = z.object({
   body: z.object({
     challenge: z.string().min(8).max(255),
+    rawId: z.string().min(8).max(2048).optional(),
     credentialId: z.string().min(8).max(1024),
     clientDataJSON: z.string().min(8),
     authenticatorData: z.string().min(8),
+    attestationObject: z.string().min(8).optional(),
     publicKey: z.string().min(8),
     transports: z.array(z.string().min(2).max(32)).optional(),
     deviceName: z.string().min(1).max(120).optional()
@@ -86,10 +88,12 @@ const webauthnLoginOptionsSchema = z.object({
 const webauthnLoginVerifySchema = z.object({
   body: z.object({
     challenge: z.string().min(8).max(255),
+    rawId: z.string().min(8).max(2048).optional(),
     credentialId: z.string().min(8).max(1024),
     clientDataJSON: z.string().min(8),
     authenticatorData: z.string().min(8),
     signature: z.string().min(8),
+    userHandle: z.string().nullable().optional(),
     rememberMe: z.boolean().optional().default(false)
   }),
   params: z.object({}),
