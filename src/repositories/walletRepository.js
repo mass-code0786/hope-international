@@ -12,16 +12,9 @@ async function getTableColumns(client, tableName) {
   return new Set(rows.map((row) => row.column_name));
 }
 
-async function getTradingBalanceColumn(client) {
-  const columns = await getTableColumns(client, 'wallets');
-  return columns.has('trading_balance') ? 'trading_balance' : 'withdrawal_balance';
-}
-
 async function getWalletTransferColumns(client) {
-  const tradingColumn = await getTradingBalanceColumn(client);
   return {
     deposit_wallet: 'deposit_balance',
-    trading_wallet: tradingColumn,
     income_wallet: 'income_balance',
     bonus_wallet: 'auction_bonus_balance'
   };
@@ -30,7 +23,6 @@ async function getWalletTransferColumns(client) {
 function getWalletFreezeColumn(walletType) {
   return {
     deposit_wallet: 'deposit_wallet_frozen',
-    trading_wallet: 'trading_wallet_frozen',
     income_wallet: 'income_wallet_frozen',
     bonus_wallet: 'bonus_wallet_frozen'
   }[walletType] || null;
@@ -44,10 +36,9 @@ function withPaging(limit = 20, offset = 0) {
 }
 
 async function createWallet(client, userId) {
-  const tradingColumn = await getTradingBalanceColumn(client);
   await q(client).query(
-    `INSERT INTO wallets (user_id, balance, income_balance, deposit_balance, ${tradingColumn}, auction_bonus_balance, btct_balance, btct_locked_balance)
-     VALUES ($1, 0, 0, 0, 0, 0, 0, 0)
+    `INSERT INTO wallets (user_id, balance, income_balance, deposit_balance, auction_bonus_balance, btct_balance, btct_locked_balance)
+     VALUES ($1, 0, 0, 0, 0, 0, 0)
      ON CONFLICT (user_id) DO NOTHING`,
     [userId]
   );
@@ -64,11 +55,10 @@ async function getWalletForUpdate(client, userId) {
 }
 
 async function adjustIncomeBalance(client, userId, amountDelta) {
-  const tradingColumn = await getTradingBalanceColumn(client);
   const { rows } = await q(client).query(
     `UPDATE wallets
      SET income_balance = COALESCE(income_balance, 0) + $2,
-         balance = COALESCE(income_balance, 0) + $2 + COALESCE(deposit_balance, 0) + COALESCE(${tradingColumn}, 0)
+         balance = COALESCE(income_balance, 0) + $2 + COALESCE(deposit_balance, 0)
      WHERE user_id = $1
      RETURNING *`,
     [userId, amountDelta]
@@ -77,24 +67,10 @@ async function adjustIncomeBalance(client, userId, amountDelta) {
 }
 
 async function adjustDepositBalance(client, userId, amountDelta) {
-  const tradingColumn = await getTradingBalanceColumn(client);
   const { rows } = await q(client).query(
     `UPDATE wallets
      SET deposit_balance = COALESCE(deposit_balance, 0) + $2,
-         balance = COALESCE(income_balance, 0) + COALESCE(deposit_balance, 0) + $2 + COALESCE(${tradingColumn}, 0)
-     WHERE user_id = $1
-     RETURNING *`,
-    [userId, amountDelta]
-  );
-  return rows[0] || null;
-}
-
-async function adjustTradingBalance(client, userId, amountDelta) {
-  const tradingColumn = await getTradingBalanceColumn(client);
-  const { rows } = await q(client).query(
-    `UPDATE wallets
-     SET ${tradingColumn} = COALESCE(${tradingColumn}, 0) + $2,
-         balance = COALESCE(income_balance, 0) + COALESCE(deposit_balance, 0) + COALESCE(${tradingColumn}, 0) + $2
+         balance = COALESCE(income_balance, 0) + COALESCE(deposit_balance, 0) + $2
      WHERE user_id = $1
      RETURNING *`,
     [userId, amountDelta]
@@ -114,13 +90,11 @@ async function adjustAuctionBonusBalance(client, userId, amountDelta) {
 }
 
 async function debitCombinedBalanceIfSufficient(client, userId, amount) {
-  const tradingColumn = await getTradingBalanceColumn(client);
   const { rows } = await q(client).query(
     `WITH current_wallet AS (
         SELECT user_id,
                COALESCE(income_balance, balance, 0)::numeric(14,2) AS income_balance,
-               COALESCE(deposit_balance, 0)::numeric(14,2) AS deposit_balance,
-               COALESCE(${tradingColumn}, 0)::numeric(14,2) AS trading_balance
+               COALESCE(deposit_balance, 0)::numeric(14,2) AS deposit_balance
         FROM wallets
         WHERE user_id = $1
         FOR UPDATE
@@ -131,25 +105,19 @@ async function debitCombinedBalanceIfSufficient(client, userId, amount) {
               WHEN current_wallet.deposit_balance >= $2 THEN current_wallet.deposit_balance - $2
               ELSE 0
             END,
-            ${tradingColumn} = CASE
-              WHEN current_wallet.deposit_balance >= $2 THEN current_wallet.trading_balance
-              WHEN current_wallet.deposit_balance + current_wallet.trading_balance >= $2 THEN current_wallet.trading_balance - ($2 - current_wallet.deposit_balance)
-              ELSE 0
-            END,
             income_balance = CASE
-              WHEN current_wallet.deposit_balance + current_wallet.trading_balance >= $2 THEN current_wallet.income_balance
-              ELSE current_wallet.income_balance - ($2 - current_wallet.deposit_balance - current_wallet.trading_balance)
+              WHEN current_wallet.deposit_balance >= $2 THEN current_wallet.income_balance
+              ELSE current_wallet.income_balance - ($2 - current_wallet.deposit_balance)
             END,
-            balance = current_wallet.income_balance + current_wallet.deposit_balance + current_wallet.trading_balance - $2
+            balance = current_wallet.income_balance + current_wallet.deposit_balance - $2
         FROM current_wallet
         WHERE w.user_id = current_wallet.user_id
-          AND current_wallet.income_balance + current_wallet.deposit_balance + current_wallet.trading_balance >= $2
-        RETURNING w.*, current_wallet.income_balance AS previous_income_balance, current_wallet.deposit_balance AS previous_deposit_balance, current_wallet.trading_balance AS previous_trading_balance
+          AND current_wallet.income_balance + current_wallet.deposit_balance >= $2
+        RETURNING w.*, current_wallet.income_balance AS previous_income_balance, current_wallet.deposit_balance AS previous_deposit_balance
       )
       SELECT *,
              previous_income_balance - income_balance AS debited_income_balance,
-             previous_deposit_balance - deposit_balance AS debited_deposit_balance,
-             previous_trading_balance - ${tradingColumn} AS debited_trading_balance
+             previous_deposit_balance - deposit_balance AS debited_deposit_balance
       FROM updated_wallet`,
     [userId, amount]
   );
@@ -157,7 +125,6 @@ async function debitCombinedBalanceIfSufficient(client, userId, amount) {
 }
 
 async function debitIncomeBalanceIfSufficient(client, userId, amount) {
-  const tradingColumn = await getTradingBalanceColumn(client);
   const { rows } = await q(client).query(
     `WITH current_wallet AS (
         SELECT user_id,
@@ -169,7 +136,7 @@ async function debitIncomeBalanceIfSufficient(client, userId, amount) {
       updated_wallet AS (
         UPDATE wallets w
         SET income_balance = current_wallet.income_balance - $2,
-            balance = (current_wallet.income_balance - $2) + COALESCE(w.deposit_balance, 0) + COALESCE(w.${tradingColumn}, 0)
+            balance = (current_wallet.income_balance - $2) + COALESCE(w.deposit_balance, 0)
         FROM current_wallet
         WHERE w.user_id = current_wallet.user_id
           AND current_wallet.income_balance >= $2
@@ -184,13 +151,11 @@ async function debitIncomeBalanceIfSufficient(client, userId, amount) {
 }
 
 async function debitAuctionBalanceIfSufficient(client, userId, amount) {
-  const tradingColumn = await getTradingBalanceColumn(client);
   const { rows } = await q(client).query(
     `WITH current_wallet AS (
         SELECT user_id,
                COALESCE(income_balance, balance, 0)::numeric(14,2) AS income_balance,
                COALESCE(deposit_balance, 0)::numeric(14,2) AS deposit_balance,
-               COALESCE(${tradingColumn}, 0)::numeric(14,2) AS trading_balance,
                COALESCE(auction_bonus_balance, 0)::numeric(14,2) AS auction_bonus_balance
         FROM wallets
         WHERE user_id = $1
@@ -207,16 +172,11 @@ async function debitAuctionBalanceIfSufficient(client, userId, amount) {
               WHEN current_wallet.auction_bonus_balance + current_wallet.deposit_balance >= $2 THEN current_wallet.deposit_balance - ($2 - current_wallet.auction_bonus_balance)
               ELSE 0
             END,
-            ${tradingColumn} = CASE
-              WHEN current_wallet.auction_bonus_balance + current_wallet.deposit_balance >= $2 THEN current_wallet.trading_balance
-              WHEN current_wallet.auction_bonus_balance + current_wallet.deposit_balance + current_wallet.trading_balance >= $2 THEN current_wallet.trading_balance - ($2 - current_wallet.auction_bonus_balance - current_wallet.deposit_balance)
-              ELSE 0
-            END,
             income_balance = CASE
-              WHEN current_wallet.auction_bonus_balance + current_wallet.deposit_balance + current_wallet.trading_balance >= $2 THEN current_wallet.income_balance
-              ELSE current_wallet.income_balance - ($2 - current_wallet.auction_bonus_balance - current_wallet.deposit_balance - current_wallet.trading_balance)
+              WHEN current_wallet.auction_bonus_balance + current_wallet.deposit_balance >= $2 THEN current_wallet.income_balance
+              ELSE current_wallet.income_balance - ($2 - current_wallet.auction_bonus_balance - current_wallet.deposit_balance)
             END,
-            balance = current_wallet.income_balance + current_wallet.deposit_balance + current_wallet.trading_balance - (
+            balance = current_wallet.income_balance + current_wallet.deposit_balance - (
               CASE
                 WHEN current_wallet.auction_bonus_balance >= $2 THEN 0
                 ELSE $2 - current_wallet.auction_bonus_balance
@@ -224,17 +184,15 @@ async function debitAuctionBalanceIfSufficient(client, userId, amount) {
             )
         FROM current_wallet
         WHERE w.user_id = current_wallet.user_id
-          AND current_wallet.auction_bonus_balance + current_wallet.income_balance + current_wallet.deposit_balance + current_wallet.trading_balance >= $2
+          AND current_wallet.auction_bonus_balance + current_wallet.income_balance + current_wallet.deposit_balance >= $2
         RETURNING w.*,
                   current_wallet.income_balance AS previous_income_balance,
                   current_wallet.deposit_balance AS previous_deposit_balance,
-                  current_wallet.trading_balance AS previous_trading_balance,
                   current_wallet.auction_bonus_balance AS previous_auction_bonus_balance
       )
       SELECT *,
              previous_income_balance - income_balance AS debited_income_balance,
              previous_deposit_balance - deposit_balance AS debited_deposit_balance,
-             previous_trading_balance - ${tradingColumn} AS debited_trading_balance,
              previous_auction_bonus_balance - auction_bonus_balance AS debited_auction_bonus_balance
       FROM updated_wallet`,
     [userId, amount]
@@ -331,7 +289,6 @@ async function transferBetweenWallets(client, userId, fromWallet, toWallet, amou
         SELECT user_id,
                COALESCE(income_balance, 0)::numeric(14,2) AS income_balance,
                COALESCE(deposit_balance, 0)::numeric(14,2) AS deposit_balance,
-               COALESCE(${walletColumns.trading_wallet}, 0)::numeric(14,2) AS trading_balance,
                COALESCE(auction_bonus_balance, 0)::numeric(14,2) AS bonus_balance
         FROM wallets
         WHERE user_id = $1
@@ -354,31 +311,23 @@ async function transferBetweenWallets(client, userId, fromWallet, toWallet, amou
                    WHEN '${toColumn}' = 'deposit_balance' THEN current_wallet.deposit_balance + $2
                    ELSE current_wallet.deposit_balance
               END
-            ) + (
-              CASE WHEN '${fromColumn}' = '${walletColumns.trading_wallet}' THEN current_wallet.trading_balance - $2
-                   WHEN '${toColumn}' = '${walletColumns.trading_wallet}' THEN current_wallet.trading_balance + $2
-                   ELSE current_wallet.trading_balance
-              END
             )
         FROM current_wallet
         WHERE w.user_id = current_wallet.user_id
           AND CASE
                 WHEN $3 = 'income_wallet' THEN current_wallet.income_balance
                 WHEN $3 = 'deposit_wallet' THEN current_wallet.deposit_balance
-                WHEN $3 = 'trading_wallet' THEN current_wallet.trading_balance
                 WHEN $3 = 'bonus_wallet' THEN current_wallet.bonus_balance
                 ELSE 0
               END >= $2
         RETURNING w.*,
                   current_wallet.income_balance AS previous_income_balance,
                   current_wallet.deposit_balance AS previous_deposit_balance,
-                  current_wallet.trading_balance AS previous_trading_balance,
                   current_wallet.bonus_balance AS previous_bonus_balance
       )
       SELECT *,
              previous_income_balance - COALESCE(income_balance, 0) AS debited_income_balance,
              previous_deposit_balance - COALESCE(deposit_balance, 0) AS debited_deposit_balance,
-             previous_trading_balance - COALESCE(${walletColumns.trading_wallet}, 0) AS debited_trading_balance,
              previous_bonus_balance - COALESCE(auction_bonus_balance, 0) AS debited_bonus_balance
       FROM updated_wallet`,
     [userId, amount, fromWallet]
@@ -400,7 +349,6 @@ async function adjustWalletBalance(client, userId, walletType, amountDelta, opti
 
   const currentIncome = Number(currentWallet.income_balance || 0);
   const currentDeposit = Number(currentWallet.deposit_balance || 0);
-  const currentTrading = Number(currentWallet[walletColumns.trading_wallet] || 0);
   const currentBonus = Number(currentWallet.auction_bonus_balance || 0);
   const currentTarget = Number(currentWallet[targetColumn] || 0);
   const nextTarget = Number((currentTarget + safeAmount).toFixed(2));
@@ -411,7 +359,6 @@ async function adjustWalletBalance(client, userId, walletType, amountDelta, opti
 
   const nextIncome = targetColumn === 'income_balance' ? nextTarget : currentIncome;
   const nextDeposit = targetColumn === 'deposit_balance' ? nextTarget : currentDeposit;
-  const nextTrading = targetColumn === walletColumns.trading_wallet ? nextTarget : currentTrading;
   const nextBonus = targetColumn === 'auction_bonus_balance' ? nextTarget : currentBonus;
 
   const { rows } = await q(client).query(
@@ -421,7 +368,34 @@ async function adjustWalletBalance(client, userId, walletType, amountDelta, opti
          auction_bonus_balance = $4
      WHERE user_id = $1
      RETURNING *`,
-    [userId, nextTarget, Number((nextIncome + nextDeposit + nextTrading).toFixed(2)), nextBonus]
+    [userId, nextTarget, Number((nextIncome + nextDeposit).toFixed(2)), nextBonus]
+  );
+  return rows[0] || null;
+}
+
+async function debitDepositBalanceIfSufficient(client, userId, amount) {
+  const { rows } = await q(client).query(
+    `WITH current_wallet AS (
+        SELECT user_id,
+               COALESCE(deposit_balance, 0)::numeric(14,2) AS deposit_balance,
+               COALESCE(income_balance, 0)::numeric(14,2) AS income_balance
+        FROM wallets
+        WHERE user_id = $1
+        FOR UPDATE
+      ),
+      updated_wallet AS (
+        UPDATE wallets w
+        SET deposit_balance = current_wallet.deposit_balance - $2,
+            balance = current_wallet.income_balance + (current_wallet.deposit_balance - $2)
+        FROM current_wallet
+        WHERE w.user_id = current_wallet.user_id
+          AND current_wallet.deposit_balance >= $2
+        RETURNING w.*, current_wallet.deposit_balance AS previous_deposit_balance
+      )
+      SELECT *,
+             previous_deposit_balance - deposit_balance AS debited_deposit_balance
+      FROM updated_wallet`,
+    [userId, amount]
   );
   return rows[0] || null;
 }
@@ -613,7 +587,6 @@ async function countRecentAdminWalletActions(client, adminUserId, withinSeconds 
 }
 
 async function listAdminWalletUsers(client, filters = {}, pagination = {}) {
-  const tradingColumn = await getTradingBalanceColumn(client);
   const { limit, offset } = withPaging(pagination?.limit, pagination?.offset);
   const values = [];
   const where = [];
@@ -635,10 +608,8 @@ async function listAdminWalletUsers(client, filters = {}, pagination = {}) {
       u.is_active,
       w.deposit_balance,
       w.income_balance,
-      w.${tradingColumn} AS trading_balance,
       w.auction_bonus_balance AS bonus_balance,
       w.deposit_wallet_frozen,
-      w.trading_wallet_frozen,
       w.income_wallet_frozen,
       w.bonus_wallet_frozen,
       w.updated_at AS wallet_updated_at
@@ -664,7 +635,6 @@ async function listAdminWalletUsers(client, filters = {}, pagination = {}) {
 }
 
 async function getAdminWalletUser(client, userId) {
-  const tradingColumn = await getTradingBalanceColumn(client);
   const { rows } = await q(client).query(
     `SELECT
       u.id,
@@ -672,7 +642,6 @@ async function getAdminWalletUser(client, userId) {
       u.email,
       u.is_active,
       w.*,
-      w.${tradingColumn} AS trading_balance,
       w.auction_bonus_balance AS bonus_balance
      FROM users u
      LEFT JOIN wallets w ON w.user_id = u.id
@@ -1341,11 +1310,11 @@ module.exports = {
   getWalletForUpdate,
   adjustIncomeBalance,
   adjustDepositBalance,
-  adjustTradingBalance,
   adjustAuctionBonusBalance,
   adjustWalletBalance,
   setWalletFreezeStatus,
   debitCombinedBalanceIfSufficient,
+  debitDepositBalanceIfSufficient,
   debitIncomeBalanceIfSufficient,
   debitAuctionBalanceIfSufficient,
   adjustBtctBalance,

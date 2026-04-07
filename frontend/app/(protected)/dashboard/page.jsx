@@ -11,7 +11,6 @@ import {
   Gavel,
   HeartPulse,
   PackagePlus,
-  Plus,
   Search,
   Shirt,
   ShoppingBasket,
@@ -132,7 +131,7 @@ function ProductTile({ product, onBuy, isBuying, lowBalance }) {
   const href = product?.id ? `/shop/${encodeURIComponent(String(product.id))}` : '/shop';
   const pricing = getProductPricing(product, 1);
   const cover = getProductCover(product);
-  const actionLabel = isBuying ? '...' : lowBalance ? 'Low' : '+';
+  const buyNowLabel = isBuying ? '...' : lowBalance ? 'Low' : 'Buy';
 
   return (
     <article className="overflow-hidden rounded-[18px] border border-slate-200 bg-white shadow-[0_8px_18px_rgba(15,23,42,0.05)]">
@@ -163,15 +162,6 @@ function ProductTile({ product, onBuy, isBuying, lowBalance }) {
           <div className="flex items-center gap-1.5">
             <button
               type="button"
-              onClick={() => onBuy?.(product)}
-              disabled={isBuying || lowBalance}
-              className="inline-flex h-6 min-w-[30px] items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-1.5 text-[8px] font-semibold text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label={lowBalance ? 'Low balance' : 'Quick buy'}
-            >
-              {actionLabel}
-            </button>
-            <button
-              type="button"
               onClick={() => {
                 const nextCount = addToCart(product, 1);
                 if (!nextCount) {
@@ -180,10 +170,19 @@ function ProductTile({ product, onBuy, isBuying, lowBalance }) {
                 }
                 toast.success(`Added to cart (${nextCount})`);
               }}
-              className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-white"
+              className="inline-flex h-7 items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-2.5 text-[8px] font-semibold text-slate-700"
               aria-label="Add to cart"
             >
-              <Plus size={13} />
+              Add
+            </button>
+            <button
+              type="button"
+              onClick={() => onBuy?.(product)}
+              disabled={isBuying || lowBalance}
+              className="inline-flex h-6 min-w-[30px] items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-1.5 text-[8px] font-semibold text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label={lowBalance ? 'Low balance' : 'Buy now'}
+            >
+              {buyNowLabel}
             </button>
           </div>
         </div>
@@ -249,7 +248,7 @@ export default function DashboardPage() {
       }
       return createOrder({
         chargeWallet: true,
-        paymentSource: 'spendable_wallet',
+        paymentSource: 'deposit_wallet',
         items: [{ productId: product.id, quantity: 1 }]
       });
     },
@@ -597,7 +596,7 @@ export default function DashboardPage() {
       <PurchaseConfirmModal
         open={Boolean(pendingPurchase)}
         product={pendingPurchase}
-        paymentSourceLabel="Spendable Wallet"
+        paymentSourceLabel="Deposit Wallet"
         availableBalance={availableWalletBalance}
         payableAmount={pendingPayableAmount}
         canAfford={pendingCanAfford}

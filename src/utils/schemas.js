@@ -120,7 +120,7 @@ const productCreateSchema = z.object({
 const orderCreateSchema = z.object({
   body: z.object({
     chargeWallet: z.boolean().optional().default(true),
-    paymentSource: z.enum(['spendable_wallet']).optional().default('spendable_wallet'),
+    paymentSource: z.enum(['deposit_wallet']).optional().default('deposit_wallet'),
     items: z.array(z.object({ productId: uuid, quantity: z.number().int().positive() })).min(1)
   }),
   params: z.object({}),
@@ -192,8 +192,8 @@ const walletWithdrawalSchema = z.object({
 
 const walletTransferSchema = z.object({
   body: z.object({
-    fromWallet: z.enum(['deposit_wallet', 'trading_wallet', 'income_wallet', 'bonus_wallet']),
-    toWallet: z.enum(['deposit_wallet', 'trading_wallet', 'income_wallet', 'bonus_wallet']),
+    fromWallet: z.enum(['deposit_wallet', 'income_wallet', 'bonus_wallet']),
+    toWallet: z.enum(['deposit_wallet', 'income_wallet', 'bonus_wallet']),
     amount: z.number().positive()
   }),
   params: z.object({}),

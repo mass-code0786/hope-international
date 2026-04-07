@@ -18,7 +18,7 @@ async function createOrder(userId, payload) {
       throw new ApiError(400, 'Order must contain at least one item');
     }
 
-    if (payload.paymentSource && payload.paymentSource !== 'spendable_wallet') {
+    if (payload.paymentSource && payload.paymentSource !== 'deposit_wallet') {
       throw new ApiError(400, 'Selected wallet is not allowed for this purchase');
     }
 
@@ -71,8 +71,9 @@ async function createOrder(userId, payload) {
       throw new ApiError(400, 'Wallet payment is required for this order');
     }
 
-    await walletService.debit(client, userId, totalAmount, 'order_purchase', null, {
+    await walletService.debitDepositBalance(client, userId, totalAmount, 'order_purchase', null, {
       reason: 'Order purchase',
+      walletType: 'deposit',
       totalAmount
     });
 

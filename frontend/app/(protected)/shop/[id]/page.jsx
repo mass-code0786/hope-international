@@ -92,7 +92,7 @@ export default function ProductDetailPage() {
       }
       return createOrder({
         chargeWallet: true,
-        paymentSource: 'spendable_wallet',
+        paymentSource: 'deposit_wallet',
         items: [{ productId: selected.id, quantity: 1 }]
       });
     },
@@ -205,7 +205,7 @@ export default function ProductDetailPage() {
       <PurchaseConfirmModal
         open={purchaseModalOpen}
         product={product}
-        paymentSourceLabel="Spendable Wallet"
+        paymentSourceLabel="Deposit Wallet"
         availableBalance={walletBalance}
         payableAmount={pricing.lineFinalTotal}
         canAfford={canAfford}

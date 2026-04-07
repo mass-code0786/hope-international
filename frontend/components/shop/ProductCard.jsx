@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { ArrowRight, ImageOff, Plus, Star } from 'lucide-react';
+import { ArrowRight, ImageOff, Plus, ShoppingCart, Star } from 'lucide-react';
 import { currency } from '@/lib/utils/format';
 import { addToCart } from '@/lib/utils/cart';
 import { getOfferPercent, getProductPricing } from '@/lib/utils/pricing';
@@ -52,7 +52,8 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
   const category = getCategory(safeProduct);
   const imageTheme = buildImageTheme(safeProduct.id || safeProduct.name);
   const cover = getProductCover(safeProduct);
-  const buttonLabel = disableBuying ? buyLabel : isBuying ? '...' : buyLabel;
+  const buttonLabel = 'Add to Cart';
+  const buyNowLabel = disableBuying ? buyLabel : isBuying ? '...' : buyLabel;
 
   return (
     <article className="flex h-[15rem] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
@@ -87,16 +88,9 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
             </div>
           </div>
 
-          <div className="grid grid-cols-[1fr_auto] gap-1">
+          <div className="grid grid-cols-[1fr_auto_auto] gap-1">
             <button
-              disabled={isBuying || disableBuying}
-              onClick={() => onBuy?.(safeProduct)}
-              className="inline-flex h-6 min-w-[3.1rem] items-center justify-center gap-0.5 rounded-[10px] bg-[#0ea5e9] px-2 text-[9px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {buttonLabel}
-              {isBuying || disableBuying ? null : <ArrowRight size={9} />}
-            </button>
-            <button
+              type="button"
               onClick={() => {
                 const nextCount = addToCart(safeProduct, 1);
                 if (!nextCount) {
@@ -105,7 +99,33 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
                 }
                 toast.success(`Added to cart (${nextCount})`);
               }}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-[10px] bg-[linear-gradient(135deg,#7c3aed,#22c55e)] text-white shadow-[0_4px_12px_rgba(0,0,0,0.4)] transition-transform hover:scale-105 active:scale-105"
+              className="inline-flex h-6 min-w-[4.5rem] items-center justify-center gap-1 rounded-[10px] bg-slate-900 px-2 text-[9px] font-semibold text-white"
+            >
+              {buttonLabel}
+              <ShoppingCart size={9} />
+            </button>
+            {onBuy ? (
+              <button
+                type="button"
+                disabled={isBuying || disableBuying}
+                onClick={() => onBuy?.(safeProduct)}
+                className="inline-flex h-6 min-w-[3.8rem] items-center justify-center gap-0.5 rounded-[10px] bg-[#0ea5e9] px-2 text-[9px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {buyNowLabel}
+                {isBuying || disableBuying ? null : <ArrowRight size={9} />}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => {
+                const nextCount = addToCart(safeProduct, 1);
+                if (!nextCount) {
+                  toast.error('Unable to add this product to cart');
+                  return;
+                }
+                toast.success(`Added to cart (${nextCount})`);
+              }}
+              className="inline-flex h-6 w-6 items-center justify-center rounded-[10px] bg-[linear-gradient(135deg,#7c3aed,#22c55e)] text-white shadow-[0_4px_12px_rgba(0,0,0,0.4)] transition-transform hover:scale-105 active:scale-105"
               aria-label="Add to cart"
             >
               <Plus size={10} />

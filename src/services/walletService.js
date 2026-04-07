@@ -28,7 +28,6 @@ const WELCOME_SPIN_REWARD_POOL = [
   { amount: 1.00, weight: 5 }
 ];
 const WALLET_TRANSFER_RULES = new Map([
-  ['deposit_wallet:trading_wallet', true],
   ['income_wallet:deposit_wallet', true]
 ]);
 
@@ -47,7 +46,6 @@ function buildTransferReference() {
 function isWalletFrozen(wallet = {}, walletType) {
   return Boolean({
     deposit_wallet: wallet.deposit_wallet_frozen,
-    trading_wallet: wallet.trading_wallet_frozen,
     income_wallet: wallet.income_wallet_frozen,
     bonus_wallet: wallet.bonus_wallet_frozen
   }[walletType]);
@@ -103,12 +101,11 @@ function normalizeDepositWalletConfig(value = {}, meta = {}) {
 function normalizeWalletBalances(wallet = {}) {
   const incomeBalance = toMoney(wallet?.income_balance ?? wallet?.income_wallet_balance ?? wallet?.balance ?? 0);
   const depositBalance = toMoney(wallet?.deposit_balance ?? wallet?.deposit_wallet_balance ?? 0);
-  const tradingBalance = toMoney(wallet?.trading_balance ?? wallet?.trading_wallet_balance ?? wallet?.withdrawal_balance ?? wallet?.withdrawal_wallet_balance ?? 0);
   const bonusBalance = toMoney(wallet?.bonus_balance ?? wallet?.bonus_wallet_balance ?? wallet?.auction_bonus_balance ?? wallet?.auction_bonus_wallet_balance ?? 0);
   const btctBalance = roundBtct(wallet?.btct_balance ?? wallet?.btct_wallet_balance ?? 0);
   const btctLockedBalance = roundBtct(wallet?.btct_locked_balance ?? wallet?.btct_locked_wallet_balance ?? 0);
   const btctAvailableBalance = roundBtct(btctBalance - btctLockedBalance);
-  const totalBalance = toMoney(wallet?.balance ?? incomeBalance + depositBalance + tradingBalance);
+  const totalBalance = toMoney(wallet?.balance ?? incomeBalance + depositBalance);
   const auctionSpendableBalance = toMoney(totalBalance + bonusBalance);
 
   return {
@@ -116,7 +113,6 @@ function normalizeWalletBalances(wallet = {}) {
     balance: totalBalance,
     income_balance: incomeBalance,
     deposit_balance: depositBalance,
-    trading_balance: tradingBalance,
     bonus_balance: bonusBalance,
     auction_bonus_balance: bonusBalance,
     auction_spendable_balance: auctionSpendableBalance,
@@ -125,13 +121,9 @@ function normalizeWalletBalances(wallet = {}) {
     btct_available_balance: btctAvailableBalance,
     income_wallet_balance: incomeBalance,
     deposit_wallet_balance: depositBalance,
-    trading_wallet_balance: tradingBalance,
     bonus_wallet_balance: bonusBalance,
     auction_bonus_wallet_balance: bonusBalance,
-    withdrawal_balance: tradingBalance,
-    withdrawal_wallet_balance: tradingBalance,
     deposit_wallet_frozen: Boolean(wallet?.deposit_wallet_frozen),
-    trading_wallet_frozen: Boolean(wallet?.trading_wallet_frozen),
     income_wallet_frozen: Boolean(wallet?.income_wallet_frozen),
     bonus_wallet_frozen: Boolean(wallet?.bonus_wallet_frozen),
     auction_spendable_wallet_balance: auctionSpendableBalance,
@@ -143,7 +135,7 @@ function normalizeWalletBalances(wallet = {}) {
 
 function resolveCashWalletType(source, metadata = {}) {
   const requestedWalletType = String(metadata?.walletType || '').trim().toLowerCase();
-  if (['deposit', 'income', 'trading', 'bonus', 'auction_bonus', 'deposit_wallet', 'income_wallet', 'trading_wallet', 'bonus_wallet'].includes(requestedWalletType)) {
+  if (['deposit', 'income', 'bonus', 'auction_bonus', 'deposit_wallet', 'income_wallet', 'bonus_wallet'].includes(requestedWalletType)) {
     return requestedWalletType.replace('_wallet', '');
   }
 
@@ -193,9 +185,7 @@ async function credit(client, userId, amount, source, referenceId = null, metada
   const walletType = resolveCashWalletType(source, metadata);
   const wallet = walletType === 'deposit'
     ? await walletRepository.adjustDepositBalance(client, userId, amount)
-    : walletType === 'trading'
-      ? await walletRepository.adjustTradingBalance(client, userId, amount)
-      : walletType === 'bonus' || walletType === 'auction_bonus'
+    : walletType === 'bonus' || walletType === 'auction_bonus'
         ? await walletRepository.adjustAuctionBonusBalance(client, userId, amount)
       : await walletRepository.adjustIncomeBalance(client, userId, amount);
 
@@ -229,9 +219,7 @@ async function creditWithTransaction(client, userId, amount, source, referenceId
   const walletType = resolveCashWalletType(source, metadata);
   const wallet = walletType === 'deposit'
     ? await walletRepository.adjustDepositBalance(client, userId, amount)
-    : walletType === 'trading'
-      ? await walletRepository.adjustTradingBalance(client, userId, amount)
-      : walletType === 'bonus' || walletType === 'auction_bonus'
+    : walletType === 'bonus' || walletType === 'auction_bonus'
         ? await walletRepository.adjustAuctionBonusBalance(client, userId, amount)
       : await walletRepository.adjustIncomeBalance(client, userId, amount);
 
@@ -279,8 +267,7 @@ async function debit(client, userId, amount, source, referenceId = null, metadat
 
   const debitBreakdown = {
     income: toMoney(updatedWallet.debited_income_balance || 0),
-    deposit: toMoney(updatedWallet.debited_deposit_balance || 0),
-    trading: toMoney(updatedWallet.debited_trading_balance || 0)
+    deposit: toMoney(updatedWallet.debited_deposit_balance || 0)
   };
 
   await walletRepository.createTransaction(client, {
@@ -324,8 +311,7 @@ async function debitForAuctionEntry(client, userId, amount, source, referenceId 
   const debitBreakdown = {
     bonus: toMoney(updatedWallet.debited_auction_bonus_balance || 0),
     income: toMoney(updatedWallet.debited_income_balance || 0),
-    deposit: toMoney(updatedWallet.debited_deposit_balance || 0),
-    trading: toMoney(updatedWallet.debited_trading_balance || 0)
+    deposit: toMoney(updatedWallet.debited_deposit_balance || 0)
   };
 
   await walletRepository.createTransaction(client, {
@@ -627,8 +613,8 @@ async function createWalletTransfer(client, userId, payload) {
     throw new ApiError(400, 'Cannot transfer to the same wallet');
   }
 
-  if (!['deposit_wallet', 'trading_wallet', 'income_wallet', 'bonus_wallet'].includes(fromWallet)
-    || !['deposit_wallet', 'trading_wallet', 'income_wallet', 'bonus_wallet'].includes(toWallet)) {
+  if (!['deposit_wallet', 'income_wallet', 'bonus_wallet'].includes(fromWallet)
+    || !['deposit_wallet', 'income_wallet', 'bonus_wallet'].includes(toWallet)) {
     await blockWithSecurityLog(client, {
       userId,
       actionType: 'wallet_transfer_blocked',
@@ -726,7 +712,6 @@ async function createWalletTransfer(client, userId, payload) {
       walletBreakdown: {
         income: toMoney(updatedWallet.debited_income_balance || 0),
         deposit: toMoney(updatedWallet.debited_deposit_balance || 0),
-        trading: toMoney(updatedWallet.debited_trading_balance || 0),
         bonus: toMoney(updatedWallet.debited_bonus_balance || 0)
       }
     }
@@ -738,6 +723,48 @@ async function createWalletTransfer(client, userId, payload) {
     amount,
     reference: referenceCode,
     wallet: normalizeWalletBalances(updatedWallet)
+  };
+}
+
+async function debitDepositBalance(client, userId, amount, source, referenceId = null, metadata = {}, createdByAdminId = null) {
+  if (Number(amount) <= 0) {
+    throw new ApiError(400, 'Debit amount must be positive');
+  }
+
+  await walletRepository.createWallet(client, userId);
+  const updatedWallet = await walletRepository.debitDepositBalanceIfSufficient(client, userId, Number(amount));
+
+  if (!updatedWallet) {
+    await logSecurityEvent(client, {
+      userId,
+      actionType: 'wallet_debit_blocked',
+      reason: 'insufficient_balance',
+      metadata: { source, amount: toMoney(amount), referenceId, walletType: 'deposit' }
+    });
+    throw new ApiError(400, 'Insufficient Deposit Wallet balance');
+  }
+
+  await walletRepository.createTransaction(client, {
+    userId,
+    txType: 'debit',
+    source,
+    amount,
+    referenceId,
+    metadata: {
+      ...metadata,
+      walletType: 'deposit',
+      walletBreakdown: {
+        deposit: toMoney(updatedWallet.debited_deposit_balance || 0)
+      }
+    },
+    createdByAdminId
+  });
+
+  return {
+    ...normalizeWalletBalances(updatedWallet),
+    debitBreakdown: {
+      deposit: toMoney(updatedWallet.debited_deposit_balance || 0)
+    }
   };
 }
 
@@ -862,6 +889,7 @@ module.exports = {
   credit,
   creditWithTransaction,
   debit,
+  debitDepositBalance,
   debitForAuctionEntry,
   createWalletTransfer,
   creditBtct,

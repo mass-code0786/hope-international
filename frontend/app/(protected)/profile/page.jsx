@@ -74,7 +74,6 @@ function WalletSection({ walletQuery }) {
   const wallet = walletQuery.data?.wallet || {};
   const incomeBalance = Number(wallet.income_wallet_balance ?? wallet.income_balance ?? 0);
   const depositBalance = Number(wallet.deposit_wallet_balance ?? wallet.deposit_balance ?? 0);
-  const tradingBalance = Number(wallet.trading_wallet_balance ?? wallet.trading_balance ?? wallet.withdrawal_wallet_balance ?? wallet.withdrawal_balance ?? 0);
   const bonusBalance = Number(wallet.bonus_wallet_balance ?? wallet.bonus_balance ?? wallet.auction_bonus_wallet_balance ?? wallet.auction_bonus_balance ?? 0);
   const btctBalance = Number(wallet.btct_wallet_balance ?? wallet.btct_balance ?? 0);
 
@@ -88,7 +87,6 @@ function WalletSection({ walletQuery }) {
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         <WalletCard title="Income Wallet" value={currency(incomeBalance)} accent="bg-emerald-50 text-emerald-700" icon={Landmark} href="/history/income" actionLabel="View history" />
         <WalletCard title="Deposit Wallet" value={currency(depositBalance)} accent="bg-sky-50 text-sky-700" icon={ArrowDownToLine} href="/deposit" actionLabel="Open deposits" />
-        <WalletCard title="Trading Wallet" value={currency(tradingBalance)} accent="bg-violet-50 text-violet-700" icon={ArrowUpFromLine} href="/wallet" actionLabel="Open wallet" />
         <WalletCard title="Bonus Wallet" value={currency(bonusBalance)} accent="bg-amber-50 text-amber-700" icon={Sparkles} href="/wallet" actionLabel="Wallet details" />
         <WalletCard
           title="BTCT Wallet"

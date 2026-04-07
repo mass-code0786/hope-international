@@ -41,21 +41,19 @@ export async function getWallet() {
 
   const incomeBalance = toNumber(normalized.wallet?.income_balance ?? normalized.wallet?.income_wallet_balance ?? normalized.wallet?.balance);
   const depositBalance = toNumber(normalized.wallet?.deposit_balance ?? normalized.wallet?.deposit_wallet_balance);
-  const tradingBalance = toNumber(normalized.wallet?.trading_balance ?? normalized.wallet?.trading_wallet_balance ?? normalized.wallet?.withdrawal_balance ?? normalized.wallet?.withdrawal_wallet_balance);
   const bonusBalance = toNumber(normalized.wallet?.bonus_balance ?? normalized.wallet?.bonus_wallet_balance ?? normalized.wallet?.auction_bonus_balance ?? normalized.wallet?.auction_bonus_wallet_balance);
   const btctBalance = toNumber(normalized.wallet?.btct_balance ?? normalized.wallet?.btct_wallet_balance);
   const btctLockedBalance = toNumber(normalized.wallet?.btct_locked_balance ?? normalized.wallet?.btct_locked_wallet_balance);
   const btctAvailableBalance = toNumber(normalized.wallet?.btct_available_balance ?? normalized.wallet?.btct_available_wallet_balance, btctBalance - btctLockedBalance);
-  const auctionSpendableBalance = toNumber(normalized.wallet?.auction_spendable_balance ?? normalized.wallet?.auction_spendable_wallet_balance, incomeBalance + depositBalance + tradingBalance + bonusBalance);
+  const auctionSpendableBalance = toNumber(normalized.wallet?.auction_spendable_balance ?? normalized.wallet?.auction_spendable_wallet_balance, incomeBalance + depositBalance + bonusBalance);
 
   return {
     ...normalized,
     wallet: {
       ...(normalized.wallet || {}),
-      balance: toNumber(normalized.wallet?.balance, incomeBalance + depositBalance + tradingBalance),
+      balance: toNumber(normalized.wallet?.balance, incomeBalance + depositBalance),
       income_balance: incomeBalance,
       deposit_balance: depositBalance,
-      trading_balance: tradingBalance,
       bonus_balance: bonusBalance,
       auction_bonus_balance: bonusBalance,
       auction_spendable_balance: auctionSpendableBalance,
@@ -64,11 +62,8 @@ export async function getWallet() {
       btct_available_balance: btctAvailableBalance,
       income_wallet_balance: incomeBalance,
       deposit_wallet_balance: depositBalance,
-      trading_wallet_balance: tradingBalance,
       bonus_wallet_balance: bonusBalance,
       auction_bonus_wallet_balance: bonusBalance,
-      withdrawal_balance: tradingBalance,
-      withdrawal_wallet_balance: tradingBalance,
       auction_spendable_wallet_balance: auctionSpendableBalance,
       btct_wallet_balance: btctBalance,
       btct_locked_wallet_balance: btctLockedBalance,

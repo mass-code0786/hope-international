@@ -109,7 +109,7 @@ const adminWalletTransactionsQuerySchema = z.object({
 const adminWalletAdjustSchema = z.object({
   body: z.object({
     userId: uuid,
-    walletType: z.enum(['deposit_wallet', 'trading_wallet', 'income_wallet', 'bonus_wallet']),
+    walletType: z.enum(['deposit_wallet', 'income_wallet', 'bonus_wallet']),
     amount: z.number().positive(),
     type: z.enum(['credit', 'debit']),
     reason: z.string().min(3).max(500)
@@ -135,7 +135,7 @@ const adminWalletUserParamSchema = z.object({
 const adminWalletFreezeSchema = z.object({
   body: z.object({
     userId: uuid,
-    walletType: z.enum(['deposit_wallet', 'trading_wallet', 'income_wallet', 'bonus_wallet']),
+    walletType: z.enum(['deposit_wallet', 'income_wallet', 'bonus_wallet']),
     reason: z.string().min(3).max(500)
   }),
   params: z.object({}),
@@ -148,7 +148,7 @@ const adminWalletLogsQuerySchema = z.object({
   query: pagingQuery.extend({
     search: z.string().optional(),
     userId: uuid.optional(),
-    walletType: z.enum(['deposit_wallet', 'trading_wallet', 'income_wallet', 'bonus_wallet']).optional(),
+    walletType: z.enum(['deposit_wallet', 'income_wallet', 'bonus_wallet']).optional(),
     actionType: z.enum(['adjust_add', 'adjust_deduct', 'freeze', 'unfreeze']).optional()
   })
 });

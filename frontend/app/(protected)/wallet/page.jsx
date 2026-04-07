@@ -16,13 +16,11 @@ import { currency, dateTime, formatLabel, number } from '@/lib/utils/format';
 
 const walletChoices = [
   { value: 'deposit_wallet', label: 'Deposit Wallet' },
-  { value: 'trading_wallet', label: 'Trading Wallet' },
   { value: 'income_wallet', label: 'Income Wallet' },
   { value: 'bonus_wallet', label: 'Bonus Wallet' }
 ];
 
 const transferTargetsBySource = {
-  deposit_wallet: ['trading_wallet'],
   income_wallet: ['deposit_wallet']
 };
 
@@ -30,8 +28,8 @@ export default function WalletPage() {
   const queryClient = useQueryClient();
   const [stakingAmount, setStakingAmount] = useState('');
   const [transferForm, setTransferForm] = useState({
-    fromWallet: 'deposit_wallet',
-    toWallet: 'trading_wallet',
+    fromWallet: 'income_wallet',
+    toWallet: 'deposit_wallet',
     amount: ''
   });
   const walletQuery = useQuery({ queryKey: queryKeys.wallet, queryFn: getWallet });
@@ -80,14 +78,12 @@ export default function WalletPage() {
 
   const incomeBalance = Number(wallet.income_wallet_balance ?? wallet.income_balance ?? 0);
   const depositBalance = Number(wallet.deposit_wallet_balance ?? wallet.deposit_balance ?? 0);
-  const tradingBalance = Number(wallet.trading_wallet_balance ?? wallet.trading_balance ?? wallet.withdrawal_wallet_balance ?? wallet.withdrawal_balance ?? 0);
   const bonusBalance = Number(wallet.bonus_wallet_balance ?? wallet.bonus_balance ?? wallet.auction_bonus_wallet_balance ?? wallet.auction_bonus_balance ?? 0);
   const auctionSpendableBalance = Number(wallet.auction_spendable_wallet_balance ?? wallet.auction_spendable_balance ?? ((wallet.balance || 0) + bonusBalance));
   const btctAvailable = Number(wallet.btct_available_wallet_balance ?? wallet.btct_available_balance ?? wallet.btct_balance ?? 0);
   const btctLocked = Number(wallet.btct_locked_wallet_balance ?? wallet.btct_locked_balance ?? 0);
   const balancesByWallet = {
     deposit_wallet: depositBalance,
-    trading_wallet: tradingBalance,
     income_wallet: incomeBalance,
     bonus_wallet: bonusBalance
   };
@@ -186,7 +182,6 @@ export default function WalletPage() {
         <StatCard compact title={formatLabel('Available Balance')} value={currency(wallet.balance || 0)} emphasis="primary" right={<WalletIcon size={18} className="text-accent" />} uppercaseTitle={false} />
         <StatCard compact title={formatLabel('Income Wallet')} value={currency(incomeBalance)} right={<HandCoins size={18} className="text-emerald-500" />} uppercaseTitle={false} />
         <StatCard compact title={formatLabel('Deposit Wallet')} value={currency(depositBalance)} right={<WalletIcon size={18} className="text-sky-500" />} uppercaseTitle={false} />
-        <StatCard compact title={formatLabel('Trading Wallet')} value={currency(tradingBalance)} right={<WalletIcon size={18} className="text-violet-500" />} uppercaseTitle={false} />
         <StatCard compact title={formatLabel('Bonus Wallet')} value={currency(bonusBalance)} right={<HandCoins size={18} className="text-amber-500" />} uppercaseTitle={false} />
         <StatCard compact title={formatLabel('BTCT Available')} value={`${number(btctAvailable)} BTCT`} right={<BtctCoinLogo size={18} className="shrink-0" />} uppercaseTitle={false} />
         <StatCard compact title="Recent Transactions" value={transactions.length} />
@@ -196,7 +191,6 @@ export default function WalletPage() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-slate-900">Wallet Transfer</p>
-            <p className="mt-1 text-xs text-slate-500">Move funds only through approved wallet paths. Backend rules remain the source of truth.</p>
           </div>
           <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
             <ArrowRightLeft size={18} />
@@ -252,11 +246,6 @@ export default function WalletPage() {
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
             <p className="text-[11px] font-medium text-slate-500">Available Balance</p>
             <p className="mt-1 text-lg font-semibold text-slate-900">{currency(selectedFromWalletBalance)}</p>
-            <p className="mt-2 text-[11px] text-slate-500">
-              Allowed: {(availableTransferTargets.length ? availableTransferTargets : ['none']).map((walletType) => (
-                walletChoices.find((item) => item.value === walletType)?.label || walletType
-              )).join(', ')}
-            </p>
           </div>
         </div>
 
@@ -270,9 +259,7 @@ export default function WalletPage() {
             <ArrowRightLeft size={15} />
             {transferMutation.isPending ? 'Transferring...' : 'Transfer Funds'}
           </button>
-          <p className="text-xs text-slate-500">
-            {transferValidationError || 'Transfers refresh balances automatically after success.'}
-          </p>
+          {transferValidationError ? <p className="text-xs text-slate-500">{transferValidationError}</p> : null}
         </div>
       </div>
 

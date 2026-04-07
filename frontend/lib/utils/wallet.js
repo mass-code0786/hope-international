@@ -15,10 +15,6 @@ export function getBtctWalletBalance(walletData) {
   return toAmount(walletData?.wallet?.btct_balance ?? walletData?.wallet?.btct_wallet_balance ?? walletData?.btct_balance);
 }
 
-export function getTradingWalletBalance(walletData) {
-  return toAmount(walletData?.wallet?.trading_balance ?? walletData?.wallet?.trading_wallet_balance ?? walletData?.wallet?.withdrawal_balance ?? walletData?.trading_balance);
-}
-
 export function getBonusWalletBalance(walletData) {
   return toAmount(walletData?.wallet?.bonus_balance ?? walletData?.wallet?.bonus_wallet_balance ?? walletData?.wallet?.auction_bonus_balance ?? walletData?.bonus_balance);
 }
@@ -28,7 +24,7 @@ export function getAvailableWalletBalance(walletData) {
   if (explicitTotal !== undefined && explicitTotal !== null) {
     return toAmount(explicitTotal);
   }
-  return getIncomeWalletBalance(walletData) + getDepositWalletBalance(walletData) + getTradingWalletBalance(walletData);
+  return getIncomeWalletBalance(walletData) + getDepositWalletBalance(walletData);
 }
 
 export function hasSufficientWalletBalance(walletData, amount) {

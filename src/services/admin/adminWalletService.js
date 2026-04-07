@@ -25,7 +25,7 @@ function toMoney(value) {
   return Number(Number(value || 0).toFixed(2));
 }
 
-const ADMIN_WALLET_TYPES = new Set(['deposit_wallet', 'trading_wallet', 'income_wallet', 'bonus_wallet']);
+const ADMIN_WALLET_TYPES = new Set(['deposit_wallet', 'income_wallet', 'bonus_wallet']);
 
 function normalizeWalletType(walletType) {
   return String(walletType || '').trim().toLowerCase();

@@ -238,7 +238,7 @@ export default function ShopPage() {
       }
       return createOrder({
         chargeWallet: true,
-        paymentSource: 'spendable_wallet',
+        paymentSource: 'deposit_wallet',
         items: [{ productId: product.id, quantity: 1 }]
       });
     },
@@ -452,7 +452,7 @@ export default function ShopPage() {
                   onBuy={(p) => setPendingPurchase(p)}
                   isBuying={buyMutation.isPending && buyingProductId === product.id}
                   disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
-                  buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy'}
+                  buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy Now'}
                 />
               ))}
             </div>
@@ -468,7 +468,7 @@ export default function ShopPage() {
                   onBuy={(p) => setPendingPurchase(p)}
                   isBuying={buyMutation.isPending && buyingProductId === product.id}
                   disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
-                  buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy'}
+                  buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy Now'}
                 />
               ))}
             </div>
@@ -484,7 +484,7 @@ export default function ShopPage() {
                   onBuy={(p) => setPendingPurchase(p)}
                   isBuying={buyMutation.isPending && buyingProductId === product.id}
                   disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
-                  buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy'}
+                  buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy Now'}
                 />
               ))}
             </div>
@@ -500,7 +500,7 @@ export default function ShopPage() {
                   onBuy={(p) => setPendingPurchase(p)}
                   isBuying={buyMutation.isPending && buyingProductId === product.id}
                   disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
-                  buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy'}
+                  buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy Now'}
                 />
               ))}
             </div>
@@ -577,7 +577,7 @@ export default function ShopPage() {
       <PurchaseConfirmModal
         open={Boolean(pendingPurchase)}
         product={pendingPurchase}
-        paymentSourceLabel="Spendable Wallet"
+        paymentSourceLabel="Deposit Wallet"
         availableBalance={walletBalance}
         payableAmount={pendingPayableAmount}
         canAfford={pendingCanAfford}

@@ -28,7 +28,6 @@ import { currency, formatLabel, incomeSourceLabel, number, shortDate } from '@/l
 
 const walletOptions = [
   { value: 'deposit_wallet', label: 'Deposit Wallet', freezeKey: 'deposit_wallet_frozen' },
-  { value: 'trading_wallet', label: 'Trading Wallet', freezeKey: 'trading_wallet_frozen' },
   { value: 'income_wallet', label: 'Income Wallet', freezeKey: 'income_wallet_frozen' },
   { value: 'bonus_wallet', label: 'Bonus Wallet', freezeKey: 'bonus_wallet_frozen' }
 ];
@@ -138,7 +137,6 @@ export default function AdminWalletPage() {
     if (!selectedWalletUser) return [];
     return [
       { key: 'deposit_wallet', label: 'Deposit Wallet', balance: Number(selectedWalletUser.deposit_balance || 0), frozen: Boolean(selectedWalletUser.deposit_wallet_frozen) },
-      { key: 'trading_wallet', label: 'Trading Wallet', balance: Number(selectedWalletUser.trading_balance || 0), frozen: Boolean(selectedWalletUser.trading_wallet_frozen) },
       { key: 'income_wallet', label: 'Income Wallet', balance: Number(selectedWalletUser.income_balance || 0), frozen: Boolean(selectedWalletUser.income_wallet_frozen) },
       { key: 'bonus_wallet', label: 'Bonus Wallet', balance: Number(selectedWalletUser.bonus_balance || selectedWalletUser.auction_bonus_balance || 0), frozen: Boolean(selectedWalletUser.bonus_wallet_frozen) }
     ];
@@ -187,7 +185,6 @@ export default function AdminWalletPage() {
         columns={[
           { key: 'user', title: 'User', className: 'col-span-3', render: (row) => `${row.username || '-'}${row.email ? ` · ${row.email}` : ''}` },
           { key: 'deposit_balance', title: 'Deposit', className: 'col-span-2', render: (row) => currency(row.deposit_balance || 0) },
-          { key: 'trading_balance', title: 'Trading', className: 'col-span-2', render: (row) => currency(row.trading_balance || 0) },
           { key: 'income_balance', title: 'Income', className: 'col-span-2', render: (row) => currency(row.income_balance || 0) },
           { key: 'bonus_balance', title: 'Bonus', className: 'col-span-1', render: (row) => currency(row.bonus_balance || 0) },
           { key: 'actions', title: 'Actions', className: 'col-span-2', render: (row) => (
