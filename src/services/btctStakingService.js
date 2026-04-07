@@ -174,7 +174,7 @@ async function runDuePayouts({ asOf = new Date().toISOString(), limit = 100 } = 
             cycleKey,
             payoutAmountUsd: payoutPerCycleUsd,
             payoutDate: nextPayoutAt,
-            creditedTo: 'withdrawal_wallet'
+            creditedTo: 'income_wallet'
           });
         }
 
@@ -193,8 +193,8 @@ async function runDuePayouts({ asOf = new Date().toISOString(), limit = 100 } = 
               stakedBlocks: Number(plan.staked_blocks || 0),
               stakingAmountBtct: Number(plan.staking_amount_btct || 0),
               payoutPerCycleUsd,
-              creditedTo: 'withdrawal_wallet',
-              walletType: 'withdrawal'
+              creditedTo: 'income_wallet',
+              walletType: 'income'
             }
           );
           await stakingRepository.updateStakingPayoutWalletTransaction(client, payout.id, transaction.id);

@@ -144,7 +144,7 @@ const ACCOUNT_COPY = {
     placement_summary: ({ placementSide }) => placementSide ? `Your placement side is ${placementSide}.` : 'Your placement side is not assigned yet.',
     income_wallet_summary: ({ incomeBalance }) => `Your income wallet balance is ${incomeBalance}.`,
     deposit_wallet_summary: ({ depositBalance }) => `Your deposit wallet balance is ${depositBalance}.`,
-    withdrawal_wallet_summary: ({ withdrawalBalance }) => `Your withdrawal wallet balance is ${withdrawalBalance}.`,
+    withdrawal_wallet_summary: ({ withdrawalBalance }) => `Your income wallet balance is ${withdrawalBalance}.`,
     btct_wallet_summary: ({ btctBalance }) => `Your BTCT balance is ${btctBalance}.`,
     total_income_summary: ({ totalIncome }) => `Your total credited income is ${totalIncome}.`,
     binary_summary: ({ leftPv, rightPv, matchedPv, binaryIncome }) => `Your binary summary shows left PV ${leftPv}, right PV ${rightPv}, matched PV ${matchedPv}, and latest binary income ${binaryIncome}.`,
@@ -161,7 +161,7 @@ const ACCOUNT_COPY = {
     placement_summary: ({ placementSide }) => placementSide ? `आपकी placement side ${placementSide} है।` : 'आपकी placement side अभी assigned नहीं है।',
     income_wallet_summary: ({ incomeBalance }) => `आपका income wallet balance ${incomeBalance} है।`,
     deposit_wallet_summary: ({ depositBalance }) => `आपका deposit wallet balance ${depositBalance} है।`,
-    withdrawal_wallet_summary: ({ withdrawalBalance }) => `आपका withdrawal wallet balance ${withdrawalBalance} है।`,
+    withdrawal_wallet_summary: ({ withdrawalBalance }) => `आपका income wallet balance ${withdrawalBalance} है।`,
     btct_wallet_summary: ({ btctBalance }) => `आपका BTCT balance ${btctBalance} है।`,
     total_income_summary: ({ totalIncome }) => `आपकी total credited income ${totalIncome} है।`,
     binary_summary: ({ leftPv, rightPv, matchedPv, binaryIncome }) => `आपके binary summary में left PV ${leftPv}, right PV ${rightPv}, matched PV ${matchedPv} और latest binary income ${binaryIncome} है।`,
@@ -178,7 +178,7 @@ const ACCOUNT_COPY = {
     placement_summary: ({ placementSide }) => placementSide ? `آپ کی placement side ${placementSide} ہے۔` : 'آپ کی placement side ابھی assigned نہیں ہے۔',
     income_wallet_summary: ({ incomeBalance }) => `آپ کا income wallet balance ${incomeBalance} ہے۔`,
     deposit_wallet_summary: ({ depositBalance }) => `آپ کا deposit wallet balance ${depositBalance} ہے۔`,
-    withdrawal_wallet_summary: ({ withdrawalBalance }) => `آپ کا withdrawal wallet balance ${withdrawalBalance} ہے۔`,
+    withdrawal_wallet_summary: ({ withdrawalBalance }) => `آپ کا income wallet balance ${withdrawalBalance} ہے۔`,
     btct_wallet_summary: ({ btctBalance }) => `آپ کا BTCT balance ${btctBalance} ہے۔`,
     total_income_summary: ({ totalIncome }) => `آپ کی total credited income ${totalIncome} ہے۔`,
     binary_summary: ({ leftPv, rightPv, matchedPv, binaryIncome }) => `آپ کے binary summary میں left PV ${leftPv}, right PV ${rightPv}, matched PV ${matchedPv} اور latest binary income ${binaryIncome} ہے۔`,
@@ -195,7 +195,7 @@ const ACCOUNT_COPY = {
     placement_summary: ({ placementSide }) => placementSide ? `جهة التمركز الخاصة بك هي ${placementSide}.` : 'جهة التمركز غير محددة بعد.',
     income_wallet_summary: ({ incomeBalance }) => `رصيد محفظة الدخل لديك هو ${incomeBalance}.`,
     deposit_wallet_summary: ({ depositBalance }) => `رصيد محفظة الإيداع لديك هو ${depositBalance}.`,
-    withdrawal_wallet_summary: ({ withdrawalBalance }) => `رصيد محفظة السحب لديك هو ${withdrawalBalance}.`,
+    withdrawal_wallet_summary: ({ withdrawalBalance }) => `رصيد محفظة الدخل لديك هو ${withdrawalBalance}.`,
     btct_wallet_summary: ({ btctBalance }) => `رصيد BTCT لديك هو ${btctBalance}.`,
     total_income_summary: ({ totalIncome }) => `إجمالي الدخل المعتمد لديك هو ${totalIncome}.`,
     binary_summary: ({ leftPv, rightPv, matchedPv, binaryIncome }) => `ملخصك الثنائي يوضح PV الأيسر ${leftPv} وPV الأيمن ${rightPv} وPV المتطابق ${matchedPv} وآخر دخل ثنائي ${binaryIncome}.`,
@@ -212,7 +212,7 @@ const ACCOUNT_COPY = {
     placement_summary: ({ placementSide }) => placementSide ? `আপনার placement side হলো ${placementSide}।` : 'আপনার placement side এখনো assigned হয়নি।',
     income_wallet_summary: ({ incomeBalance }) => `আপনার income wallet balance ${incomeBalance}।`,
     deposit_wallet_summary: ({ depositBalance }) => `আপনার deposit wallet balance ${depositBalance}।`,
-    withdrawal_wallet_summary: ({ withdrawalBalance }) => `আপনার withdrawal wallet balance ${withdrawalBalance}।`,
+    withdrawal_wallet_summary: ({ withdrawalBalance }) => `আপনার income wallet balance ${withdrawalBalance}।`,
     btct_wallet_summary: ({ btctBalance }) => `আপনার BTCT balance ${btctBalance}।`,
     total_income_summary: ({ totalIncome }) => `আপনার total credited income ${totalIncome}।`,
     binary_summary: ({ leftPv, rightPv, matchedPv, binaryIncome }) => `আপনার binary summary-তে left PV ${leftPv}, right PV ${rightPv}, matched PV ${matchedPv} এবং latest binary income ${binaryIncome} আছে।`,
@@ -229,7 +229,7 @@ const ACCOUNT_COPY = {
     placement_summary: ({ placementSide }) => placementSide ? `ستاسو placement side ${placementSide} ده.` : 'ستاسو placement side لا نه ده ټاکل شوې.',
     income_wallet_summary: ({ incomeBalance }) => `ستاسو income wallet balance ${incomeBalance} دی.`,
     deposit_wallet_summary: ({ depositBalance }) => `ستاسو deposit wallet balance ${depositBalance} دی.`,
-    withdrawal_wallet_summary: ({ withdrawalBalance }) => `ستاسو withdrawal wallet balance ${withdrawalBalance} دی.`,
+    withdrawal_wallet_summary: ({ withdrawalBalance }) => `ستاسو income wallet balance ${withdrawalBalance} دی.`,
     btct_wallet_summary: ({ btctBalance }) => `ستاسو BTCT balance ${btctBalance} دی.`,
     total_income_summary: ({ totalIncome }) => `ستاسو total credited income ${totalIncome} دی.`,
     binary_summary: ({ leftPv, rightPv, matchedPv, binaryIncome }) => `ستاسو binary summary left PV ${leftPv}, right PV ${rightPv}, matched PV ${matchedPv} او latest binary income ${binaryIncome} ښيي.`,
@@ -1133,18 +1133,18 @@ function buildAssistantData(intentResult, context, language) {
   if (intent === 'placement_summary') return { intent, data: { name, placementSide } };
   if (intent === 'income_wallet_summary') return { intent, data: { name, incomeBalance: money(wallet.income_balance) } };
   if (intent === 'deposit_wallet_summary') return { intent, data: { name, depositBalance: money(wallet.deposit_balance) } };
-  if (intent === 'withdrawal_wallet_summary') return { intent, data: { name, withdrawalBalance: money(wallet.withdrawal_balance) } };
+  if (intent === 'withdrawal_wallet_summary') return { intent, data: { name, withdrawalBalance: money(wallet.income_balance) } };
   if (intent === 'btct_wallet_summary') return { intent, data: { name, btctBalance: btctAvailable ? Number(wallet.btct_available_balance || 0).toFixed(4) : null } };
   if (intent === 'total_income_summary') return { intent, data: { name, totalIncome: money(income.total) } };
 
   if (intent === 'platform_intro') return { intent, data: { name } };
-  if (intent === 'wallet_info') return { intent, data: { name, availableBalance: money(wallet.balance), incomeBalance: money(wallet.income_balance), depositBalance: money(wallet.deposit_balance), withdrawalBalance: money(wallet.withdrawal_balance), btctBalance: btctAvailable ? Number(wallet.btct_available_balance || 0).toFixed(4) : null, btctAvailable } };
+  if (intent === 'wallet_info') return { intent, data: { name, availableBalance: money(wallet.balance), incomeBalance: money(wallet.income_balance), depositBalance: money(wallet.deposit_balance), withdrawalBalance: money(wallet.income_balance), btctBalance: btctAvailable ? Number(wallet.btct_available_balance || 0).toFixed(4) : null, btctAvailable } };
   if (intent === 'income_summary') return { intent, data: { name, totalIncome: money(income.total), directIncome: money(income.direct), matchingIncome: money(income.matching), levelIncome: money(income.level), latestIncome: money(income.latestAmount) } };
   if (intent === 'team_summary') return { intent, data: { name, totalTeam: number(team.total_descendants), leftTeam: number(team.left_count), rightTeam: number(team.right_count), activeTeam: number(team.active_count), inactiveTeam: number(team.inactive_count) } };
   if (intent === 'level_income_summary') return { intent, data: { name, levelIncome: money(income.level), levelIncomeCount: number(income.levelCount) } };
   if (intent === 'binary_status' || intent === 'binary_summary') return { intent: 'binary_summary', data: { name, leftPv, rightPv, weakerLeg: weakerLeg(weekly), matchedPv: number(weekly.matched_pv ?? 0), binaryIncome: money(weekly.matching_income_net ?? weekly.matching_income_gross ?? 0) } };
   if (intent === 'deposit_status') return { intent, data: { name, totalDeposits: number(context.deposits?.length || 0), approvedDeposits: money(approvedDeposits.reduce((sum, item) => sum + toMoney(item.amount), 0)), pendingDeposits: money(pendingDeposits.reduce((sum, item) => sum + toMoney(item.amount), 0)), latestDepositAmount: money(latestDeposit?.amount || 0), latestDepositStatus: localizedStatus(language, latestDeposit?.status || 'none') } };
-  if (intent === 'withdrawal_status') return { intent, data: { name, availableWithdrawal: money(wallet.withdrawal_balance || wallet.balance || 0), pendingWithdrawals: number(pendingWithdrawals.length), latestWithdrawalStatus: localizedStatus(language, latestWithdrawal?.status || 'none') } };
+  if (intent === 'withdrawal_status') return { intent, data: { name, availableWithdrawal: money(wallet.income_balance || 0), pendingWithdrawals: number(pendingWithdrawals.length), latestWithdrawalStatus: localizedStatus(language, latestWithdrawal?.status || 'none') } };
   if (intent === 'auction_summary') return { intent, data: { name, auctionsJoined: number(auctionStats.auctions_joined || 0), wonAuctions: number(auctionStats.won_auctions || 0) } };
   if (intent === 'charity_info') return { intent, data: { name, showDonateHowTo: true, donationModuleAvailable: false } };
   if (intent === 'seller_status') return { intent, data: { name, sellerStatus: sellerInfo?.profile?.application_status || '', canAccessDashboard: Boolean(sellerInfo?.canAccessDashboard) } };
@@ -1319,7 +1319,7 @@ async function chat(userId, message, language = 'en') {
       summary: {
         wallet_balance: toMoney(context.wallet?.balance),
         income_balance: toMoney(context.wallet?.income_balance),
-        withdrawal_balance: toMoney(context.wallet?.withdrawal_balance),
+        withdrawal_balance: toMoney(context.wallet?.income_balance),
         total_income: toMoney(context.incomeStats?.total),
         team_size: Number(context.teamSummary?.total_descendants || 0),
         partial_data: Array.isArray(context.contextErrors) && context.contextErrors.length > 0

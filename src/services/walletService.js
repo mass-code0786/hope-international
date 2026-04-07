@@ -44,29 +44,33 @@ function normalizeDepositWalletConfig(value = {}, meta = {}) {
 function normalizeWalletBalances(wallet = {}) {
   const incomeBalance = toMoney(wallet?.income_balance ?? wallet?.income_wallet_balance ?? wallet?.balance ?? 0);
   const depositBalance = toMoney(wallet?.deposit_balance ?? wallet?.deposit_wallet_balance ?? 0);
-  const withdrawalBalance = toMoney(wallet?.withdrawal_balance ?? wallet?.withdrawal_wallet_balance ?? 0);
-  const auctionBonusBalance = toMoney(wallet?.auction_bonus_balance ?? wallet?.auction_bonus_wallet_balance ?? 0);
+  const tradingBalance = toMoney(wallet?.trading_balance ?? wallet?.trading_wallet_balance ?? wallet?.withdrawal_balance ?? wallet?.withdrawal_wallet_balance ?? 0);
+  const bonusBalance = toMoney(wallet?.bonus_balance ?? wallet?.bonus_wallet_balance ?? wallet?.auction_bonus_balance ?? wallet?.auction_bonus_wallet_balance ?? 0);
   const btctBalance = roundBtct(wallet?.btct_balance ?? wallet?.btct_wallet_balance ?? 0);
   const btctLockedBalance = roundBtct(wallet?.btct_locked_balance ?? wallet?.btct_locked_wallet_balance ?? 0);
   const btctAvailableBalance = roundBtct(btctBalance - btctLockedBalance);
-  const totalBalance = toMoney(wallet?.balance ?? incomeBalance + depositBalance + withdrawalBalance);
-  const auctionSpendableBalance = toMoney(totalBalance + auctionBonusBalance);
+  const totalBalance = toMoney(wallet?.balance ?? incomeBalance + depositBalance + tradingBalance);
+  const auctionSpendableBalance = toMoney(totalBalance + bonusBalance);
 
   return {
     ...(wallet || {}),
     balance: totalBalance,
     income_balance: incomeBalance,
     deposit_balance: depositBalance,
-    withdrawal_balance: withdrawalBalance,
-    auction_bonus_balance: auctionBonusBalance,
+    trading_balance: tradingBalance,
+    bonus_balance: bonusBalance,
+    auction_bonus_balance: bonusBalance,
     auction_spendable_balance: auctionSpendableBalance,
     btct_balance: btctBalance,
     btct_locked_balance: btctLockedBalance,
     btct_available_balance: btctAvailableBalance,
     income_wallet_balance: incomeBalance,
     deposit_wallet_balance: depositBalance,
-    withdrawal_wallet_balance: withdrawalBalance,
-    auction_bonus_wallet_balance: auctionBonusBalance,
+    trading_wallet_balance: tradingBalance,
+    bonus_wallet_balance: bonusBalance,
+    auction_bonus_wallet_balance: bonusBalance,
+    withdrawal_balance: tradingBalance,
+    withdrawal_wallet_balance: tradingBalance,
     auction_spendable_wallet_balance: auctionSpendableBalance,
     btct_wallet_balance: btctBalance,
     btct_locked_wallet_balance: btctLockedBalance,
@@ -75,12 +79,12 @@ function normalizeWalletBalances(wallet = {}) {
 }
 
 function resolveCashWalletType(source, metadata = {}) {
-  if (metadata?.walletType === 'deposit' || metadata?.walletType === 'income') {
+  if (['deposit', 'income', 'trading', 'bonus', 'auction_bonus'].includes(metadata?.walletType)) {
     return metadata.walletType;
   }
 
   if (source === 'deposit_request') return 'deposit';
-  if (source === 'btct_staking_payout') return 'withdrawal';
+  if (source === 'btct_staking_payout') return 'income';
   if (['direct_income', 'matching_income', 'reward_qualification', 'direct_deposit_income', 'level_deposit_income'].includes(source)) return 'income';
   if (source === 'p2p_transfer' && metadata?.direction === 'in') return 'deposit';
   return 'income';
@@ -125,8 +129,10 @@ async function credit(client, userId, amount, source, referenceId = null, metada
   const walletType = resolveCashWalletType(source, metadata);
   const wallet = walletType === 'deposit'
     ? await walletRepository.adjustDepositBalance(client, userId, amount)
-    : walletType === 'withdrawal'
-      ? await walletRepository.adjustWithdrawalBalance(client, userId, amount)
+    : walletType === 'trading'
+      ? await walletRepository.adjustTradingBalance(client, userId, amount)
+      : walletType === 'bonus' || walletType === 'auction_bonus'
+        ? await walletRepository.adjustAuctionBonusBalance(client, userId, amount)
       : await walletRepository.adjustIncomeBalance(client, userId, amount);
 
   const transaction = await walletRepository.createTransaction(client, {
@@ -159,8 +165,10 @@ async function creditWithTransaction(client, userId, amount, source, referenceId
   const walletType = resolveCashWalletType(source, metadata);
   const wallet = walletType === 'deposit'
     ? await walletRepository.adjustDepositBalance(client, userId, amount)
-    : walletType === 'withdrawal'
-      ? await walletRepository.adjustWithdrawalBalance(client, userId, amount)
+    : walletType === 'trading'
+      ? await walletRepository.adjustTradingBalance(client, userId, amount)
+      : walletType === 'bonus' || walletType === 'auction_bonus'
+        ? await walletRepository.adjustAuctionBonusBalance(client, userId, amount)
       : await walletRepository.adjustIncomeBalance(client, userId, amount);
 
   const transaction = await walletRepository.createTransaction(client, {
@@ -202,7 +210,7 @@ async function debit(client, userId, amount, source, referenceId = null, metadat
   const debitBreakdown = {
     income: toMoney(updatedWallet.debited_income_balance || 0),
     deposit: toMoney(updatedWallet.debited_deposit_balance || 0),
-    withdrawal: toMoney(updatedWallet.debited_withdrawal_balance || 0)
+    trading: toMoney(updatedWallet.debited_trading_balance || 0)
   };
 
   await walletRepository.createTransaction(client, {
@@ -213,7 +221,7 @@ async function debit(client, userId, amount, source, referenceId = null, metadat
     referenceId,
     metadata: {
       ...metadata,
-      walletType: 'combined',
+      walletType: 'spendable',
       walletBreakdown: debitBreakdown
     },
     createdByAdminId
@@ -238,10 +246,10 @@ async function debitForAuctionEntry(client, userId, amount, source, referenceId 
   }
 
   const debitBreakdown = {
-    auctionBonus: toMoney(updatedWallet.debited_auction_bonus_balance || 0),
+    bonus: toMoney(updatedWallet.debited_auction_bonus_balance || 0),
     income: toMoney(updatedWallet.debited_income_balance || 0),
     deposit: toMoney(updatedWallet.debited_deposit_balance || 0),
-    withdrawal: toMoney(updatedWallet.debited_withdrawal_balance || 0)
+    trading: toMoney(updatedWallet.debited_trading_balance || 0)
   };
 
   await walletRepository.createTransaction(client, {
@@ -252,7 +260,7 @@ async function debitForAuctionEntry(client, userId, amount, source, referenceId 
     referenceId,
     metadata: {
       ...metadata,
-      walletType: 'auction_combined',
+      walletType: 'auction_entry',
       walletBreakdown: debitBreakdown
     },
     createdByAdminId
@@ -384,8 +392,9 @@ async function createWithdrawalRequest(client, userId, payload) {
 
   await walletRepository.createWallet(client, userId);
   const wallet = normalizeWalletBalances(await walletRepository.getWallet(client, userId));
-  if (!wallet || Number(wallet.balance) < amount) {
-    throw new ApiError(400, 'Insufficient wallet balance');
+  const withdrawableBalance = toMoney(wallet?.income_balance ?? wallet?.income_wallet_balance ?? 0);
+  if (!wallet || withdrawableBalance < amount) {
+    throw new ApiError(400, 'Insufficient income wallet balance');
   }
 
   const binding = await walletRepository.getWalletBinding(client, userId);
@@ -406,9 +415,25 @@ async function createWithdrawalRequest(client, userId, payload) {
     status: 'pending'
   });
 
-  await debit(client, userId, amount, 'withdrawal_request', request.id, {
-    withdrawalRequestId: request.id,
-    status: 'pending'
+  const updatedWallet = await walletRepository.debitIncomeBalanceIfSufficient(client, userId, amount);
+  if (!updatedWallet) {
+    throw new ApiError(400, 'Insufficient income wallet balance');
+  }
+
+  await walletRepository.createTransaction(client, {
+    userId,
+    txType: 'debit',
+    source: 'withdrawal_request',
+    amount,
+    referenceId: request.id,
+    metadata: {
+      withdrawalRequestId: request.id,
+      status: 'pending',
+      walletType: 'income',
+      walletBreakdown: {
+        income: toMoney(updatedWallet.debited_income_balance || 0)
+      }
+    }
   });
 
   return request;
@@ -490,7 +515,7 @@ async function claimWelcomeSpin(client, userId) {
     return {
       claimed: true,
       rewardAmount: toMoney(state.welcome_spin_reward_amount || 0),
-      auctionBonusBalance: toMoney(wallet?.auction_bonus_balance || 0),
+      auctionBonusBalance: toMoney(wallet?.bonus_balance || wallet?.auction_bonus_balance || 0),
       alreadyClaimed: true
     };
   }
@@ -510,7 +535,7 @@ async function claimWelcomeSpin(client, userId) {
     amount: rewardAmount,
     referenceId: null,
     metadata: {
-      walletType: 'auction_bonus',
+      walletType: 'bonus',
       rewardType: 'welcome_spin',
       auctionOnly: true
     }
@@ -519,7 +544,7 @@ async function claimWelcomeSpin(client, userId) {
   return {
     claimed: true,
     rewardAmount,
-    auctionBonusBalance: toMoney(wallet?.auction_bonus_balance || 0),
+    auctionBonusBalance: toMoney(wallet?.bonus_balance || wallet?.auction_bonus_balance || 0),
     alreadyClaimed: false
   };
 }

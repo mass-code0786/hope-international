@@ -34,10 +34,11 @@ export default function WithdrawPage() {
   const wallet = walletQuery.data?.wallet || {};
   const walletBinding = walletQuery.data?.walletBinding || null;
   const withdrawals = Array.isArray(withdrawalsQuery.data) ? withdrawalsQuery.data : [];
+  const withdrawableBalance = Number(wallet.income_wallet_balance ?? wallet.income_balance ?? 0);
 
   return (
     <div className="space-y-3">
-      <SectionHeader title="Withdrawal" subtitle={`Available balance: ${currency(wallet.balance || 0)}`} action={<Link href="/history/withdraw" className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-600">History</Link>} />
+      <SectionHeader title="Withdrawal" subtitle={`Income Wallet available: ${currency(withdrawableBalance)}`} action={<Link href="/history/withdraw" className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-600">History</Link>} />
 
       <form
         onSubmit={(event) => {
@@ -53,6 +54,7 @@ export default function WithdrawPage() {
         className="rounded-xl border border-slate-200 bg-white p-3 space-y-2"
       >
         <input name="amount" type="number" min="10" step="0.01" placeholder="Amount (min 10)" className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs" required />
+        <p className="text-[11px] text-slate-500">Withdrawals are allowed only from your Income Wallet.</p>
         <input name="walletAddress" defaultValue={walletBinding?.wallet_address || ''} placeholder="Wallet address" className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs" required />
         <input name="network" defaultValue={walletBinding?.network || ''} placeholder="Network" className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs" />
         <textarea name="notes" rows={2} placeholder="Notes (optional)" className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs" />

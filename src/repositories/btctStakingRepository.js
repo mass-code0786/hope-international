@@ -105,7 +105,7 @@ async function createStakingPayout(client, payload) {
       payload.cycleNumber,
       payload.cycleKey,
       payload.payoutAmountUsd,
-      payload.creditedTo || 'withdrawal_wallet',
+      payload.creditedTo || 'income_wallet',
       payload.payoutDate,
       payload.walletTransactionId || null
     ]
