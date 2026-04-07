@@ -80,6 +80,10 @@ async function createRegisterOptions(userId, originHeader) {
         name: user.username,
         displayName: [user.first_name, user.last_name].filter(Boolean).join(' ').trim() || user.username
       },
+      pubKeyCredParams: [
+        { type: 'public-key', alg: -7 },
+        { type: 'public-key', alg: -257 }
+      ],
       timeout: CHALLENGE_TTL_SECONDS * 1000,
       attestation: 'none',
       authenticatorSelection: {
@@ -93,6 +97,7 @@ async function createRegisterOptions(userId, originHeader) {
       userId,
       challengeLength: challenge.length,
       userHandleLength: payload.user.id.length,
+      pubKeyCredParamsCount: payload.pubKeyCredParams.length,
       excludeCredentialsCount: payload.excludeCredentials.length,
       rpId: rp.rpId
     });

@@ -94,9 +94,14 @@ export async function createWebAuthnCredential(options) {
     throw new Error('Biometric login is not supported on this device');
   }
 
+  if (!Array.isArray(options?.pubKeyCredParams) || !options.pubKeyCredParams.length) {
+    throw new Error('Biometric setup failed');
+  }
+
   logWebauthn('register-options', {
     challengeLength: String(options?.challenge || '').length,
     userIdLength: String(options?.user?.id || '').length,
+    pubKeyCredParamsCount: Array.isArray(options?.pubKeyCredParams) ? options.pubKeyCredParams.length : 0,
     excludeCredentialsCount: Array.isArray(options?.excludeCredentials) ? options.excludeCredentials.length : 0
   });
 
