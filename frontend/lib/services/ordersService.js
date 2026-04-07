@@ -5,6 +5,7 @@ export async function createOrder(payload) {
     method: 'POST',
     body: JSON.stringify({
       ...payload,
+      paymentSource: payload?.paymentSource ?? 'spendable_wallet',
       chargeWallet: payload?.chargeWallet ?? true
     })
   });

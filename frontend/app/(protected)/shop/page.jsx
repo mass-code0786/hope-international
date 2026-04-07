@@ -26,6 +26,7 @@ import {
 import toast from 'react-hot-toast';
 import { ProductFilters } from '@/components/shop/ProductFilters';
 import { ProductCard } from '@/components/shop/ProductCard';
+import { PurchaseConfirmModal } from '@/components/shop/PurchaseConfirmModal';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { ShopSkeleton } from '@/components/ui/PageSkeletons';
@@ -213,6 +214,7 @@ export default function ShopPage() {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [buyingProductId, setBuyingProductId] = useState('');
+  const [pendingPurchase, setPendingPurchase] = useState(null);
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const bannerTrackRef = useRef(null);
@@ -234,13 +236,18 @@ export default function ShopPage() {
       if (!hasSufficientWalletBalance(walletQuery.data, total)) {
         throw new Error('Insufficient wallet balance');
       }
-      return createOrder({ chargeWallet: true, items: [{ productId: product.id, quantity: 1 }] });
+      return createOrder({
+        chargeWallet: true,
+        paymentSource: 'spendable_wallet',
+        items: [{ productId: product.id, quantity: 1 }]
+      });
     },
     onMutate: (product) => {
       setBuyingProductId(product?.id || '');
     },
     onSuccess: async () => {
       toast.success('Order placed successfully. Dashboard is updating.');
+      setPendingPurchase(null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.orders }),
         queryClient.invalidateQueries({ queryKey: queryKeys.wallet }),
@@ -314,26 +321,29 @@ export default function ShopPage() {
   const user = meQuery.data || {};
   const walletBalance = getAvailableWalletBalance(walletQuery.data);
   const walletReady = !walletQuery.isLoading && !walletQuery.isError;
+  const pendingPayableAmount = pendingPurchase ? getProductPricing(pendingPurchase, 1).lineFinalTotal : 0;
+  const pendingCanAfford = pendingPurchase ? hasSufficientWalletBalance(walletQuery.data, pendingPayableAmount) : true;
 
   return (
-    <div className="-mx-4 space-y-3 bg-[#f8fafc] px-3 pb-2 pt-0 sm:mx-0 sm:rounded-2xl sm:border sm:border-slate-200 sm:px-4 sm:py-3">
-      <Header
-        rightSlot={(
-          <>
-            <ShopCartButton />
-            <Link href="/profile" className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700" aria-label="Open profile">
-              <User size={14} />
-            </Link>
-            <button
-              onClick={() => setMenuOpen(true)}
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700"
-              aria-label="Open menu"
-            >
-              <Menu size={14} />
-            </button>
-          </>
-        )}
-      />
+    <>
+      <div className="-mx-4 space-y-3 bg-[#f8fafc] px-3 pb-2 pt-0 sm:mx-0 sm:rounded-2xl sm:border sm:border-slate-200 sm:px-4 sm:py-3">
+        <Header
+          rightSlot={(
+            <>
+              <ShopCartButton />
+              <Link href="/profile" className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700" aria-label="Open profile">
+                <User size={14} />
+              </Link>
+              <button
+                onClick={() => setMenuOpen(true)}
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700"
+                aria-label="Open menu"
+              >
+                <Menu size={14} />
+              </button>
+            </>
+          )}
+        />
 
       <section className="rounded-xl border border-slate-200 bg-white p-2 shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
         <label className="relative block">
@@ -439,7 +449,7 @@ export default function ShopPage() {
                 <ProductCard
                   key={`deal-${product.id}`}
                   product={product}
-                  onBuy={(p) => buyMutation.mutate(p)}
+                  onBuy={(p) => setPendingPurchase(p)}
                   isBuying={buyMutation.isPending && buyingProductId === product.id}
                   disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
                   buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy'}
@@ -455,7 +465,7 @@ export default function ShopPage() {
                 <ProductCard
                   key={`recommended-${product.id}`}
                   product={product}
-                  onBuy={(p) => buyMutation.mutate(p)}
+                  onBuy={(p) => setPendingPurchase(p)}
                   isBuying={buyMutation.isPending && buyingProductId === product.id}
                   disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
                   buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy'}
@@ -471,7 +481,7 @@ export default function ShopPage() {
                 <ProductCard
                   key={`new-${product.id}`}
                   product={product}
-                  onBuy={(p) => buyMutation.mutate(p)}
+                  onBuy={(p) => setPendingPurchase(p)}
                   isBuying={buyMutation.isPending && buyingProductId === product.id}
                   disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
                   buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy'}
@@ -487,7 +497,7 @@ export default function ShopPage() {
                 <ProductCard
                   key={`trending-${product.id}`}
                   product={product}
-                  onBuy={(p) => buyMutation.mutate(p)}
+                  onBuy={(p) => setPendingPurchase(p)}
                   isBuying={buyMutation.isPending && buyingProductId === product.id}
                   disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
                   buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy'}
@@ -562,6 +572,24 @@ export default function ShopPage() {
           </aside>
         </div>
       ) : null}
-    </div>
+      </div>
+
+      <PurchaseConfirmModal
+        open={Boolean(pendingPurchase)}
+        product={pendingPurchase}
+        paymentSourceLabel="Spendable Wallet"
+        availableBalance={walletBalance}
+        payableAmount={pendingPayableAmount}
+        canAfford={pendingCanAfford}
+        loading={buyMutation.isPending}
+        onClose={() => {
+          if (!buyMutation.isPending) setPendingPurchase(null);
+        }}
+        onConfirm={() => {
+          if (!pendingPurchase || buyMutation.isPending) return;
+          buyMutation.mutate(pendingPurchase);
+        }}
+      />
+    </>
   );
 }

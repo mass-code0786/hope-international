@@ -26,6 +26,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { DashboardSkeleton } from '@/components/ui/PageSkeletons';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { WelcomeSpinModal } from '@/components/auth/WelcomeSpinModal';
+import { PurchaseConfirmModal } from '@/components/shop/PurchaseConfirmModal';
 import { getMe } from '@/lib/services/authService';
 import { getHomepageBanners } from '@/lib/services/bannersService';
 import { createOrder } from '@/lib/services/ordersService';
@@ -233,6 +234,7 @@ export default function DashboardPage() {
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
   const bannerTrackRef = useRef(null);
   const [buyingProductId, setBuyingProductId] = useState('');
+  const [pendingPurchase, setPendingPurchase] = useState(null);
   const [welcomeSpinOpen, setWelcomeSpinOpen] = useState(false);
   const welcomeSpinQuery = useQuery({
     queryKey: queryKeys.welcomeSpinStatus,
@@ -245,11 +247,16 @@ export default function DashboardPage() {
       if (!hasSufficientWalletBalance(walletQuery.data, total)) {
         throw new Error('Insufficient wallet balance');
       }
-      return createOrder({ chargeWallet: true, items: [{ productId: product.id, quantity: 1 }] });
+      return createOrder({
+        chargeWallet: true,
+        paymentSource: 'spendable_wallet',
+        items: [{ productId: product.id, quantity: 1 }]
+      });
     },
     onMutate: (product) => setBuyingProductId(product?.id || ''),
     onSuccess: async () => {
       toast.success('Order placed successfully. Dashboard is updating.');
+      setPendingPurchase(null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.orders }),
         queryClient.invalidateQueries({ queryKey: queryKeys.wallet }),
@@ -310,6 +317,9 @@ export default function DashboardPage() {
   const unreadNotificationCount = Number(notificationsCountQuery.data?.unreadCount || 0);
   const welcomeSpinStatus = welcomeSpinQuery.data?.data || null;
   const auctionBonusBalance = Number(walletQuery.data?.wallet?.auction_bonus_balance ?? walletQuery.data?.wallet?.auction_bonus_wallet_balance ?? 0);
+  const availableWalletBalance = Number(walletQuery.data?.wallet?.balance || 0);
+  const pendingPayableAmount = pendingPurchase ? getProductPricing(pendingPurchase, 1).lineFinalTotal : 0;
+  const pendingCanAfford = pendingPurchase ? hasSufficientWalletBalance(walletQuery.data, pendingPayableAmount) : true;
 
   const slides = useMemo(() => {
     if (homepageBanners.length) {
@@ -539,7 +549,7 @@ export default function DashboardPage() {
                   <ProductTile
                     key={product.id}
                     product={product}
-                    onBuy={(item) => buyMutation.mutate(item)}
+                    onBuy={(item) => setPendingPurchase(item)}
                     isBuying={buyMutation.isPending && buyingProductId === product.id}
                     lowBalance={lowBalance}
                   />
@@ -582,6 +592,22 @@ export default function DashboardPage() {
             setWelcomeSpinOpen(false);
             router.push('/auctions');
           }
+        }}
+      />
+      <PurchaseConfirmModal
+        open={Boolean(pendingPurchase)}
+        product={pendingPurchase}
+        paymentSourceLabel="Spendable Wallet"
+        availableBalance={availableWalletBalance}
+        payableAmount={pendingPayableAmount}
+        canAfford={pendingCanAfford}
+        loading={buyMutation.isPending}
+        onClose={() => {
+          if (!buyMutation.isPending) setPendingPurchase(null);
+        }}
+        onConfirm={() => {
+          if (!pendingPurchase || buyMutation.isPending) return;
+          buyMutation.mutate(pendingPurchase);
         }}
       />
     </>

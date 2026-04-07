@@ -125,6 +125,13 @@ export async function createWithdrawalRequest(payload) {
   });
 }
 
+export async function createWalletTransfer(payload) {
+  return apiFetch('/wallet/transfer', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function getWithdrawalHistory() {
   const data = await apiFetch('/wallet/withdrawals');
   return Array.isArray(data) ? data : data.items || [];

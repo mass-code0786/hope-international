@@ -18,6 +18,10 @@ async function createOrder(userId, payload) {
       throw new ApiError(400, 'Order must contain at least one item');
     }
 
+    if (payload.paymentSource && payload.paymentSource !== 'spendable_wallet') {
+      throw new ApiError(400, 'Selected wallet is not allowed for this purchase');
+    }
+
     const user = await userRepository.getBinaryNode(client, userId);
     if (!user) {
       throw new ApiError(404, 'User not found');
@@ -36,6 +40,9 @@ async function createOrder(userId, payload) {
       }
 
       const price = Number(product.price);
+      if (!Number.isFinite(price) || price <= 0) {
+        throw new ApiError(400, `Product price is invalid: ${item.productId}`);
+      }
       const bv = Number(product.bv);
       const pv = toMoney(bv * PV_TO_BV_RATIO);
       const lineTotal = toMoney(price * quantity);

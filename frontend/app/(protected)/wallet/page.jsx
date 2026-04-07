@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { HandCoins, LockKeyhole, Wallet as WalletIcon } from 'lucide-react';
+import { ArrowRightLeft, HandCoins, LockKeyhole, Wallet as WalletIcon } from 'lucide-react';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { StatCard } from '@/components/ui/StatCard';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -11,12 +11,29 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { Badge } from '@/components/ui/Badge';
 import BtctCoinLogo from '@/components/common/BtctCoinLogo';
 import { queryKeys } from '@/lib/query/queryKeys';
-import { getBtctStakingSummary, getWallet, startBtctStaking } from '@/lib/services/walletService';
+import { createWalletTransfer, getBtctStakingSummary, getWallet, startBtctStaking } from '@/lib/services/walletService';
 import { currency, dateTime, formatLabel, number } from '@/lib/utils/format';
+
+const walletChoices = [
+  { value: 'deposit_wallet', label: 'Deposit Wallet' },
+  { value: 'trading_wallet', label: 'Trading Wallet' },
+  { value: 'income_wallet', label: 'Income Wallet' },
+  { value: 'bonus_wallet', label: 'Bonus Wallet' }
+];
+
+const transferTargetsBySource = {
+  deposit_wallet: ['trading_wallet'],
+  income_wallet: ['deposit_wallet']
+};
 
 export default function WalletPage() {
   const queryClient = useQueryClient();
   const [stakingAmount, setStakingAmount] = useState('');
+  const [transferForm, setTransferForm] = useState({
+    fromWallet: 'deposit_wallet',
+    toWallet: 'trading_wallet',
+    amount: ''
+  });
   const walletQuery = useQuery({ queryKey: queryKeys.wallet, queryFn: getWallet });
   const stakingQuery = useQuery({ queryKey: queryKeys.walletStaking, queryFn: getBtctStakingSummary });
 
@@ -31,6 +48,23 @@ export default function WalletPage() {
       ]);
     },
     onError: (error) => toast.error(error.message || 'Unable to start BTCT staking')
+  });
+
+  const transferMutation = useMutation({
+    mutationFn: (payload) => createWalletTransfer(payload),
+    onSuccess: async (result) => {
+      toast.success(result.message || 'Transfer successful');
+      setTransferForm((current) => ({
+        ...current,
+        amount: ''
+      }));
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.wallet }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.walletTransactions }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.walletHubHistory('all') })
+      ]);
+    },
+    onError: (error) => toast.error(error.message || 'Unable to transfer funds')
   });
 
   if (walletQuery.isError) return <ErrorState message="Wallet data could not be loaded." onRetry={walletQuery.refetch} />;
@@ -51,6 +85,30 @@ export default function WalletPage() {
   const auctionSpendableBalance = Number(wallet.auction_spendable_wallet_balance ?? wallet.auction_spendable_balance ?? ((wallet.balance || 0) + bonusBalance));
   const btctAvailable = Number(wallet.btct_available_wallet_balance ?? wallet.btct_available_balance ?? wallet.btct_balance ?? 0);
   const btctLocked = Number(wallet.btct_locked_wallet_balance ?? wallet.btct_locked_balance ?? 0);
+  const balancesByWallet = {
+    deposit_wallet: depositBalance,
+    trading_wallet: tradingBalance,
+    income_wallet: incomeBalance,
+    bonus_wallet: bonusBalance
+  };
+  const availableTransferTargets = transferTargetsBySource[transferForm.fromWallet] || [];
+  const selectedFromWalletBalance = Number(balancesByWallet[transferForm.fromWallet] || 0);
+  const selectedTransferAmount = Number(transferForm.amount || 0);
+  const transferValidationError = !transferForm.fromWallet || !transferForm.toWallet
+    ? 'Select both wallets'
+    : transferForm.fromWallet === transferForm.toWallet
+      ? 'Choose different wallets'
+      : !availableTransferTargets.includes(transferForm.toWallet)
+        ? 'This transfer path is not allowed'
+        : !transferForm.amount
+          ? ''
+          : !Number.isFinite(selectedTransferAmount) || selectedTransferAmount <= 0
+            ? 'Enter a valid amount'
+            : selectedTransferAmount < 5
+              ? 'Minimum transfer amount is $5.00'
+              : selectedTransferAmount > selectedFromWalletBalance
+                ? 'Insufficient balance'
+                : '';
   const requestedAmount = Number(stakingAmount || 0);
   const blockSize = Number(eligibility.blockSizeBtct || 5000);
   const minimumBtct = Number(eligibility.minimumBtct || blockSize || 5000);
@@ -89,6 +147,37 @@ export default function WalletPage() {
     startStakingMutation.mutate(payload);
   }
 
+  function handleTransferField(field, value) {
+    if (field === 'fromWallet') {
+      const nextTargets = transferTargetsBySource[value] || [];
+      setTransferForm((current) => ({
+        ...current,
+        fromWallet: value,
+        toWallet: nextTargets.includes(current.toWallet) ? current.toWallet : (nextTargets[0] || '')
+      }));
+      return;
+    }
+
+    setTransferForm((current) => ({
+      ...current,
+      [field]: value
+    }));
+  }
+
+  function handleTransferSubmit() {
+    if (transferMutation.isPending) return;
+    if (transferValidationError) {
+      toast.error(transferValidationError);
+      return;
+    }
+
+    transferMutation.mutate({
+      fromWallet: transferForm.fromWallet,
+      toWallet: transferForm.toWallet,
+      amount: selectedTransferAmount
+    });
+  }
+
   return (
     <div className="space-y-3">
       <SectionHeader title={formatLabel('Wallet Overview')} />
@@ -101,6 +190,90 @@ export default function WalletPage() {
         <StatCard compact title={formatLabel('Bonus Wallet')} value={currency(bonusBalance)} right={<HandCoins size={18} className="text-amber-500" />} uppercaseTitle={false} />
         <StatCard compact title={formatLabel('BTCT Available')} value={`${number(btctAvailable)} BTCT`} right={<BtctCoinLogo size={18} className="shrink-0" />} uppercaseTitle={false} />
         <StatCard compact title="Recent Transactions" value={transactions.length} />
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Wallet Transfer</p>
+            <p className="mt-1 text-xs text-slate-500">Move funds only through approved wallet paths. Backend rules remain the source of truth.</p>
+          </div>
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+            <ArrowRightLeft size={18} />
+          </span>
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <label className="space-y-1.5">
+            <span className="text-[11px] font-medium text-slate-500">From Wallet</span>
+            <select
+              value={transferForm.fromWallet}
+              onChange={(event) => handleTransferField('fromWallet', event.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-slate-400"
+            >
+              {Object.keys(transferTargetsBySource).map((walletType) => (
+                <option key={walletType} value={walletType}>
+                  {walletChoices.find((item) => item.value === walletType)?.label || walletType}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="space-y-1.5">
+            <span className="text-[11px] font-medium text-slate-500">To Wallet</span>
+            <select
+              value={transferForm.toWallet}
+              onChange={(event) => handleTransferField('toWallet', event.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-slate-400"
+            >
+              {availableTransferTargets.map((walletType) => (
+                <option key={walletType} value={walletType}>
+                  {walletChoices.find((item) => item.value === walletType)?.label || walletType}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
+          <label className="space-y-1.5">
+            <span className="text-[11px] font-medium text-slate-500">Amount</span>
+            <input
+              value={transferForm.amount}
+              onChange={(event) => handleTransferField('amount', event.target.value)}
+              type="number"
+              min="5"
+              step="0.01"
+              placeholder="Enter transfer amount"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-400"
+            />
+          </label>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <p className="text-[11px] font-medium text-slate-500">Available Balance</p>
+            <p className="mt-1 text-lg font-semibold text-slate-900">{currency(selectedFromWalletBalance)}</p>
+            <p className="mt-2 text-[11px] text-slate-500">
+              Allowed: {(availableTransferTargets.length ? availableTransferTargets : ['none']).map((walletType) => (
+                walletChoices.find((item) => item.value === walletType)?.label || walletType
+              )).join(', ')}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={handleTransferSubmit}
+            disabled={transferMutation.isPending || Boolean(transferValidationError)}
+            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+          >
+            <ArrowRightLeft size={15} />
+            {transferMutation.isPending ? 'Transferring...' : 'Transfer Funds'}
+          </button>
+          <p className="text-xs text-slate-500">
+            {transferValidationError || 'Transfers refresh balances automatically after success.'}
+          </p>
+        </div>
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4">

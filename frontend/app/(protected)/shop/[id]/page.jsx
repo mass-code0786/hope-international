@@ -21,6 +21,7 @@ import {
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
+import { PurchaseConfirmModal } from '@/components/shop/PurchaseConfirmModal';
 import { useProducts } from '@/hooks/useProducts';
 import { useWallet } from '@/hooks/useWallet';
 import { currency, number } from '@/lib/utils/format';
@@ -63,6 +64,7 @@ export default function ProductDetailPage() {
   const { data, isLoading, isError, refetch } = useProducts();
   const walletQuery = useWallet();
   const [isBuying, setIsBuying] = useState(false);
+  const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const products = Array.isArray(data) ? data : [];
@@ -88,11 +90,16 @@ export default function ProductDetailPage() {
       if (!hasSufficientWalletBalance(walletQuery.data, total)) {
         throw new Error('Insufficient wallet balance');
       }
-      return createOrder({ chargeWallet: true, items: [{ productId: selected.id, quantity: 1 }] });
+      return createOrder({
+        chargeWallet: true,
+        paymentSource: 'spendable_wallet',
+        items: [{ productId: selected.id, quantity: 1 }]
+      });
     },
     onMutate: () => setIsBuying(true),
     onSuccess: async () => {
       toast.success('Order placed successfully. Dashboard is updating.');
+      setPurchaseModalOpen(false);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.orders }),
         queryClient.invalidateQueries({ queryKey: queryKeys.wallet }),
@@ -191,9 +198,26 @@ export default function ProductDetailPage() {
       <section className="fixed bottom-12 left-0 right-0 z-30 border-t border-slate-200 bg-white p-2 md:hidden">
         <div className="mx-auto grid max-w-3xl grid-cols-2 gap-2">
           <button onClick={() => { const nextCount = addToCart(product, 1); if (!nextCount) { toast.error('Unable to add this product to cart'); return; } toast.success(`Added to cart (${nextCount})`); }} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[12px] font-semibold text-slate-700">Add to Cart</button>
-          <button onClick={() => buyMutation.mutate(product)} disabled={isBuying || (walletReady && !canAfford)} className="rounded-lg bg-[#0ea5e9] px-3 py-2 text-[12px] font-semibold text-white disabled:bg-slate-300 disabled:opacity-100">{isBuying ? 'Processing...' : walletReady && !canAfford ? 'Low Balance' : 'Buy Now'}</button>
+          <button onClick={() => setPurchaseModalOpen(true)} disabled={isBuying || (walletReady && !canAfford)} className="rounded-lg bg-[#0ea5e9] px-3 py-2 text-[12px] font-semibold text-white disabled:bg-slate-300 disabled:opacity-100">{isBuying ? 'Processing...' : walletReady && !canAfford ? 'Low Balance' : 'Buy Now'}</button>
         </div>
       </section>
+
+      <PurchaseConfirmModal
+        open={purchaseModalOpen}
+        product={product}
+        paymentSourceLabel="Spendable Wallet"
+        availableBalance={walletBalance}
+        payableAmount={pricing.lineFinalTotal}
+        canAfford={canAfford}
+        loading={buyMutation.isPending}
+        onClose={() => {
+          if (!buyMutation.isPending) setPurchaseModalOpen(false);
+        }}
+        onConfirm={() => {
+          if (buyMutation.isPending) return;
+          buyMutation.mutate(product);
+        }}
+      />
     </div>
   );
 }
