@@ -40,14 +40,15 @@ function buildConfetti() {
   }));
 }
 
-export function WelcomeSpinWheel({ status, claimPending, onClaim, onClose, auctionBonusBalance = 0 }) {
+export function WelcomeSpinWheel({ status, claimPending, onClose, onGoToAuctions, onClaim, auctionBonusBalance = 0 }) {
   const [rotation, setRotation] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
   const [isAwaitingResult, setIsAwaitingResult] = useState(false);
   const [rewardAmount, setRewardAmount] = useState(status?.rewardAmount || null);
   const [winningIndex, setWinningIndex] = useState(status?.rewardAmount ? SEGMENTS.findIndex((entry) => Number(entry) === Number(status.rewardAmount)) : -1);
   const [showResult, setShowResult] = useState(Boolean(status?.claimed));
-  const [canContinue, setCanContinue] = useState(Boolean(status?.claimed));
+  const [celebrationActive, setCelebrationActive] = useState(false);
+  const [showActions, setShowActions] = useState(Boolean(status?.claimed));
   const confettiPieces = useMemo(() => buildConfetti(), []);
   const wheelGradient = useMemo(() => buildWheelGradient(), []);
   const winningGlow = useMemo(() => buildWinningGlow(winningIndex), [winningIndex]);
@@ -58,11 +59,25 @@ export function WelcomeSpinWheel({ status, claimPending, onClaim, onClose, aucti
       setRewardAmount(amount);
       setWinningIndex(SEGMENTS.findIndex((entry) => Number(entry) === amount));
       setShowResult(Boolean(amount));
-      setCanContinue(Boolean(amount));
+      setCelebrationActive(false);
+      setShowActions(Boolean(amount));
       setIsSpinning(false);
       setIsAwaitingResult(false);
     }
   }, [status, rewardAmount]);
+
+  useEffect(() => {
+    if (!showResult) return undefined;
+
+    setCelebrationActive(true);
+    const confettiTimer = window.setTimeout(() => setCelebrationActive(false), 3200);
+    const actionsTimer = window.setTimeout(() => setShowActions(true), 900);
+
+    return () => {
+      window.clearTimeout(confettiTimer);
+      window.clearTimeout(actionsTimer);
+    };
+  }, [showResult]);
 
   async function handleSpin() {
     if (claimPending || isSpinning || isAwaitingResult || showResult || status?.claimed) return;
@@ -70,7 +85,8 @@ export function WelcomeSpinWheel({ status, claimPending, onClaim, onClose, aucti
     try {
       setIsAwaitingResult(true);
       setIsSpinning(true);
-      setCanContinue(false);
+      setShowActions(false);
+      setCelebrationActive(false);
 
       const result = await onClaim();
       const amount = Number(result?.rewardAmount || 0);
@@ -88,12 +104,12 @@ export function WelcomeSpinWheel({ status, claimPending, onClaim, onClose, aucti
       window.setTimeout(() => {
         setIsSpinning(false);
         setShowResult(true);
-        setCanContinue(true);
       }, 4200);
     } catch (_error) {
       setIsAwaitingResult(false);
       setIsSpinning(false);
-      setCanContinue(false);
+      setShowActions(false);
+      setCelebrationActive(false);
       setShowResult(false);
     }
   }
@@ -123,7 +139,7 @@ export function WelcomeSpinWheel({ status, claimPending, onClaim, onClose, aucti
                     style={{ transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-112px)` }}
                   >
                     <span
-                      className={`block -rotate-90 rounded-full px-2.5 py-1 text-xs font-bold tracking-[0.08em] drop-shadow-[0_2px_4px_rgba(0,0,0,0.45)] transition ${active ? 'bg-white text-slate-950 shadow-[0_0_28px_rgba(255,255,255,0.55)] scale-110' : 'text-white'}`}
+                      className={`block -rotate-90 rounded-full px-2.5 py-1 text-xs font-bold tracking-[0.08em] drop-shadow-[0_2px_4px_rgba(0,0,0,0.45)] transition ${active ? 'spin-winning-chip bg-white text-slate-950 shadow-[0_0_28px_rgba(255,255,255,0.55)] scale-110' : 'text-white'}`}
                     >
                       {currency(amount)}
                     </span>
@@ -169,35 +185,49 @@ export function WelcomeSpinWheel({ status, claimPending, onClaim, onClose, aucti
           <div className="relative animate-[welcomePrize_520ms_cubic-bezier(0.2,0.8,0.2,1)]">
             <p className="text-3xl font-semibold tracking-[-0.05em] text-white"> Congratulations!</p>
             <p className="mt-2 text-xl font-semibold text-emerald-100">You got {currency(rewardAmount || 0)} Welcome Bonus</p>
-            <p className="mt-2 text-sm text-emerald-50/90">Use this bonus in Auctions now</p>
+            <p className="mt-2 text-sm text-emerald-50/90">Use this bonus in Auctions to start your journey.</p>
+            <div className="mx-auto mt-4 max-w-xs rounded-2xl border border-white/10 bg-white/8 px-4 py-3 text-left shadow-[0_10px_24px_rgba(0,0,0,0.16)]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-100/80">Auction Bonus Balance</p>
+              <p className="mt-1 text-2xl font-semibold text-white">{currency(auctionBonusBalance)}</p>
+            </div>
           </div>
 
-          <div className="relative mt-5 flex flex-col gap-3 sm:flex-row">
+          <div className={`relative mt-5 flex flex-col gap-3 transition duration-300 sm:flex-row ${showActions ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-2 opacity-0'}`}>
             <button
               type="button"
               onClick={onClose}
-              disabled={!canContinue}
+              disabled={!showActions}
               className="inline-flex flex-1 items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 shadow-[0_12px_26px_rgba(255,255,255,0.15)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               Continue
             </button>
+            <button
+              type="button"
+              onClick={onGoToAuctions}
+              disabled={!showActions}
+              className="inline-flex flex-1 items-center justify-center rounded-full border border-white/15 bg-white/8 px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_26px_rgba(0,0,0,0.14)] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Go to Auctions
+            </button>
           </div>
 
-          <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            {confettiPieces.map((piece) => (
-              <span
-                key={piece.id}
-                className="spin-confetti absolute top-0 h-3 w-2 rounded-full opacity-90"
-                style={{
-                  left: piece.left,
-                  animationDelay: piece.delay,
-                  animationDuration: piece.duration,
-                  background: piece.background,
-                  transform: `rotate(${piece.rotate})`
-                }}
-              />
-            ))}
-          </div>
+          {celebrationActive ? (
+            <div className="pointer-events-none absolute inset-0 overflow-hidden">
+              {confettiPieces.map((piece) => (
+                <span
+                  key={piece.id}
+                  className="spin-confetti absolute top-0 h-3 w-2 rounded-full opacity-90"
+                  style={{
+                    left: piece.left,
+                    animationDelay: piece.delay,
+                    animationDuration: piece.duration,
+                    background: piece.background,
+                    transform: `rotate(${piece.rotate})`
+                  }}
+                />
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -206,10 +236,15 @@ export function WelcomeSpinWheel({ status, claimPending, onClaim, onClose, aucti
           animation: welcomeSpinIdle 0.9s linear infinite;
         }
 
+        .spin-winning-chip {
+          animation: winningPulse 1.15s ease-in-out 3;
+        }
+
         .spin-confetti {
           animation-name: welcomeConfetti;
           animation-timing-function: ease-out;
-          animation-iteration-count: infinite;
+          animation-iteration-count: 1;
+          animation-fill-mode: both;
         }
 
         @keyframes welcomeSpinIdle {
@@ -233,6 +268,21 @@ export function WelcomeSpinWheel({ status, claimPending, onClaim, onClose, aucti
           100% {
             opacity: 1;
             transform: scale(1);
+          }
+        }
+
+        @keyframes winningPulse {
+          0% {
+            box-shadow: 0 0 0 rgba(255, 255, 255, 0.2);
+            transform: rotate(-90deg) scale(1);
+          }
+          50% {
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.72);
+            transform: rotate(-90deg) scale(1.14);
+          }
+          100% {
+            box-shadow: 0 0 0 rgba(255, 255, 255, 0.2);
+            transform: rotate(-90deg) scale(1.06);
           }
         }
 

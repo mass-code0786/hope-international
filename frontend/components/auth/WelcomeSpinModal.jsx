@@ -3,7 +3,7 @@
 import { Sparkles } from 'lucide-react';
 import { WelcomeSpinWheel } from '@/components/spin/WelcomeSpinWheel';
 
-export function WelcomeSpinModal({ open, status, onClaim, claimPending, onClose, auctionBonusBalance = 0 }) {
+export function WelcomeSpinModal({ open, status, onClaim, claimPending, onClose, onGoToAuctions, auctionBonusBalance = 0 }) {
   if (!open) return null;
 
   return (
@@ -24,6 +24,7 @@ export function WelcomeSpinModal({ open, status, onClaim, claimPending, onClose,
             claimPending={claimPending}
             onClaim={onClaim}
             onClose={onClose}
+            onGoToAuctions={onGoToAuctions}
             auctionBonusBalance={auctionBonusBalance}
           />
         </div>

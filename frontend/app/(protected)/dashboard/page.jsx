@@ -577,6 +577,12 @@ export default function DashboardPage() {
             setWelcomeSpinOpen(false);
           }
         }}
+        onGoToAuctions={() => {
+          if (welcomeSpinStatus?.claimed) {
+            setWelcomeSpinOpen(false);
+            router.push('/auctions');
+          }
+        }}
       />
     </>
   );
