@@ -7,6 +7,14 @@ const { ApiError } = require('../utils/ApiError');
 const MIN_WITHDRAWAL_AMOUNT = 10;
 const MIN_DEPOSIT_AMOUNT = 1;
 const MIN_WALLET_TRANSFER_AMOUNT = 5;
+const WALLET_TRANSFER_DUPLICATE_WINDOW_SECONDS = 30;
+const WALLET_TRANSFER_BURST_WINDOW_SECONDS = 300;
+const WALLET_TRANSFER_BURST_LIMIT = 5;
+const WITHDRAWAL_DUPLICATE_WINDOW_SECONDS = 300;
+const WITHDRAWAL_BURST_WINDOW_SECONDS = 900;
+const WITHDRAWAL_BURST_LIMIT = 3;
+const WELCOME_SPIN_ATTEMPT_WINDOW_SECONDS = 300;
+const WELCOME_SPIN_ATTEMPT_LIMIT = 5;
 const BTCT_USD_PRICE = 0.10;
 const DEPOSIT_ASSET = 'USDT';
 const DEPOSIT_NETWORK = 'BEP20';
@@ -51,6 +59,31 @@ function roundBtct(value) {
 
 function toMoney(value) {
   return Number(Number(value || 0).toFixed(2));
+}
+
+function sanitizeRequestMeta(meta = {}) {
+  return {
+    ipAddress: String(meta.ipAddress || '').trim() || null
+  };
+}
+
+async function logSecurityEvent(client, payload = {}) {
+  try {
+    await walletRepository.createSecurityEvent(client, {
+      userId: payload.userId || null,
+      actionType: payload.actionType,
+      reason: payload.reason,
+      metadata: payload.metadata || {},
+      ipAddress: payload.ipAddress || null
+    });
+  } catch (_error) {
+    // Security logging must not break the main flow.
+  }
+}
+
+async function blockWithSecurityLog(client, payload, statusCode, message) {
+  await logSecurityEvent(client, payload);
+  throw new ApiError(statusCode, message);
 }
 
 function normalizeDepositWalletConfig(value = {}, meta = {}) {
@@ -235,6 +268,12 @@ async function debit(client, userId, amount, source, referenceId = null, metadat
   const updatedWallet = await walletRepository.debitCombinedBalanceIfSufficient(client, userId, Number(amount));
 
   if (!updatedWallet) {
+    await logSecurityEvent(client, {
+      userId,
+      actionType: 'wallet_debit_blocked',
+      reason: 'insufficient_balance',
+      metadata: { source, amount: toMoney(amount), referenceId, walletType: metadata?.walletType || 'spendable' }
+    });
     throw new ApiError(400, 'Insufficient wallet balance');
   }
 
@@ -273,6 +312,12 @@ async function debitForAuctionEntry(client, userId, amount, source, referenceId 
   const updatedWallet = await walletRepository.debitAuctionBalanceIfSufficient(client, userId, Number(amount));
 
   if (!updatedWallet) {
+    await logSecurityEvent(client, {
+      userId,
+      actionType: 'auction_entry_blocked',
+      reason: 'insufficient_balance',
+      metadata: { source, amount: toMoney(amount), referenceId, auctionId: metadata?.auctionId || null }
+    });
     throw new ApiError(400, 'Insufficient wallet balance');
   }
 
@@ -417,18 +462,31 @@ async function createDepositRequest(client, userId, payload) {
 
 async function createWithdrawalRequest(client, userId, payload) {
   const amount = Number(payload.amount || 0);
+  const requestMeta = sanitizeRequestMeta(payload.requestMeta);
   if (!Number.isFinite(amount) || amount < MIN_WITHDRAWAL_AMOUNT) {
     throw new ApiError(400, `Minimum withdrawal is ${MIN_WITHDRAWAL_AMOUNT}`);
   }
 
   await walletRepository.createWallet(client, userId);
-  const wallet = normalizeWalletBalances(await walletRepository.getWallet(client, userId));
+  const wallet = normalizeWalletBalances(await walletRepository.getWalletForUpdate(client, userId));
   if (isWalletFrozen(wallet, 'income_wallet')) {
-    throw new ApiError(403, 'Income wallet is frozen');
+    await blockWithSecurityLog(client, {
+      userId,
+      actionType: 'withdrawal_blocked',
+      reason: 'wallet_frozen',
+      ipAddress: requestMeta.ipAddress,
+      metadata: { walletType: 'income_wallet', amount: toMoney(amount) }
+    }, 403, 'Income wallet is frozen');
   }
   const withdrawableBalance = toMoney(wallet?.income_balance ?? wallet?.income_wallet_balance ?? 0);
   if (!wallet || withdrawableBalance < amount) {
-    throw new ApiError(400, 'Insufficient income wallet balance');
+    await blockWithSecurityLog(client, {
+      userId,
+      actionType: 'withdrawal_blocked',
+      reason: 'insufficient_balance',
+      ipAddress: requestMeta.ipAddress,
+      metadata: { amount: toMoney(amount), incomeBalance: withdrawableBalance }
+    }, 400, 'Insufficient balance.');
   }
 
   const binding = await walletRepository.getWalletBinding(client, userId);
@@ -439,6 +497,34 @@ async function createWithdrawalRequest(client, userId, payload) {
 
   const network = String(payload.network || binding?.network || '').trim();
   const notes = String(payload.notes || '').trim();
+
+  const recentWithdrawalCount = await walletRepository.countRecentWithdrawalRequests(client, userId, WITHDRAWAL_BURST_WINDOW_SECONDS);
+  if (recentWithdrawalCount >= WITHDRAWAL_BURST_LIMIT) {
+    await blockWithSecurityLog(client, {
+      userId,
+      actionType: 'withdrawal_blocked',
+      reason: 'rate_limited',
+      ipAddress: requestMeta.ipAddress,
+      metadata: { recentWithdrawalCount, windowSeconds: WITHDRAWAL_BURST_WINDOW_SECONDS }
+    }, 429, 'Too many attempts. Please try again later.');
+  }
+
+  const duplicateRequest = await walletRepository.findRecentWithdrawalDuplicate(client, {
+    userId,
+    amount: toMoney(amount),
+    walletAddress,
+    withinSeconds: WITHDRAWAL_DUPLICATE_WINDOW_SECONDS
+  });
+  if (duplicateRequest) {
+    await logSecurityEvent(client, {
+      userId,
+      actionType: 'withdrawal_duplicate',
+      reason: 'already_processed',
+      ipAddress: requestMeta.ipAddress,
+      metadata: { duplicateRequestId: duplicateRequest.id, amount: toMoney(amount), walletAddress }
+    });
+    throw new ApiError(409, 'This action was already processed.');
+  }
 
   const request = await walletRepository.createWithdrawalRequest(client, {
     userId,
@@ -451,7 +537,13 @@ async function createWithdrawalRequest(client, userId, payload) {
 
   const updatedWallet = await walletRepository.debitIncomeBalanceIfSufficient(client, userId, amount);
   if (!updatedWallet) {
-    throw new ApiError(400, 'Insufficient income wallet balance');
+    await blockWithSecurityLog(client, {
+      userId,
+      actionType: 'withdrawal_blocked',
+      reason: 'insufficient_balance_race',
+      ipAddress: requestMeta.ipAddress,
+      metadata: { amount: toMoney(amount) }
+    }, 400, 'Insufficient balance.');
   }
 
   await walletRepository.createTransaction(client, {
@@ -525,6 +617,7 @@ async function createWalletTransfer(client, userId, payload) {
   const fromWallet = normalizeWalletTransferType(payload.fromWallet);
   const toWallet = normalizeWalletTransferType(payload.toWallet);
   const amount = toMoney(payload.amount);
+  const requestMeta = sanitizeRequestMeta(payload.requestMeta);
 
   if (!fromWallet || !toWallet) {
     throw new ApiError(400, 'Source and destination wallets are required');
@@ -536,7 +629,13 @@ async function createWalletTransfer(client, userId, payload) {
 
   if (!['deposit_wallet', 'trading_wallet', 'income_wallet', 'bonus_wallet'].includes(fromWallet)
     || !['deposit_wallet', 'trading_wallet', 'income_wallet', 'bonus_wallet'].includes(toWallet)) {
-    throw new ApiError(400, 'Invalid wallet selection');
+    await blockWithSecurityLog(client, {
+      userId,
+      actionType: 'wallet_transfer_blocked',
+      reason: 'invalid_wallet',
+      ipAddress: requestMeta.ipAddress,
+      metadata: { fromWallet, toWallet }
+    }, 400, 'Invalid wallet selection');
   }
 
   if (!Number.isFinite(amount) || amount <= 0) {
@@ -548,19 +647,67 @@ async function createWalletTransfer(client, userId, payload) {
   }
 
   if (!isAllowedWalletTransfer(fromWallet, toWallet)) {
-    throw new ApiError(403, 'This wallet transfer is not allowed');
+    await blockWithSecurityLog(client, {
+      userId,
+      actionType: 'wallet_transfer_blocked',
+      reason: 'invalid_transfer_path',
+      ipAddress: requestMeta.ipAddress,
+      metadata: { fromWallet, toWallet, amount }
+    }, 403, 'This wallet transfer is not allowed.');
   }
 
   await walletRepository.createWallet(client, userId);
-  const wallet = normalizeWalletBalances(await walletRepository.getWallet(client, userId));
+  const wallet = normalizeWalletBalances(await walletRepository.getWalletForUpdate(client, userId));
   if (isWalletFrozen(wallet, fromWallet)) {
-    throw new ApiError(403, 'Source wallet is frozen');
+    await blockWithSecurityLog(client, {
+      userId,
+      actionType: 'wallet_transfer_blocked',
+      reason: 'wallet_frozen',
+      ipAddress: requestMeta.ipAddress,
+      metadata: { fromWallet, toWallet, amount }
+    }, 403, 'Source wallet is frozen.');
   }
+
+  const recentTransferCount = await walletRepository.countRecentWalletTransfers(client, userId, WALLET_TRANSFER_BURST_WINDOW_SECONDS);
+  if (recentTransferCount >= WALLET_TRANSFER_BURST_LIMIT) {
+    await blockWithSecurityLog(client, {
+      userId,
+      actionType: 'wallet_transfer_blocked',
+      reason: 'rate_limited',
+      ipAddress: requestMeta.ipAddress,
+      metadata: { recentTransferCount, windowSeconds: WALLET_TRANSFER_BURST_WINDOW_SECONDS }
+    }, 429, 'Too many attempts. Please try again later.');
+  }
+
+  const duplicateTransfer = await walletRepository.findRecentWalletTransferDuplicate(client, {
+    userId,
+    fromWallet,
+    toWallet,
+    amount,
+    withinSeconds: WALLET_TRANSFER_DUPLICATE_WINDOW_SECONDS
+  });
+  if (duplicateTransfer) {
+    await logSecurityEvent(client, {
+      userId,
+      actionType: 'wallet_transfer_duplicate',
+      reason: 'already_processed',
+      ipAddress: requestMeta.ipAddress,
+      metadata: { duplicateTransactionId: duplicateTransfer.id, fromWallet, toWallet, amount }
+    });
+    throw new ApiError(409, 'This action was already processed.');
+  }
+
   const referenceCode = buildTransferReference();
   const updatedWallet = await walletRepository.transferBetweenWallets(client, userId, fromWallet, toWallet, amount);
 
   if (!updatedWallet) {
-    throw new ApiError(400, 'Insufficient balance');
+    await blockWithSecurityLog(client, {
+      userId,
+      actionType: 'wallet_transfer_blocked',
+      reason: 'insufficient_balance',
+      ipAddress: requestMeta.ipAddress,
+      metadata: { fromWallet, toWallet, amount }
+    }, 400, 'Insufficient balance.');
   }
 
   await walletRepository.createTransaction(client, {
@@ -611,13 +758,42 @@ async function getWelcomeSpinStatus(client, userId) {
   };
 }
 
-async function claimWelcomeSpin(client, userId) {
+async function claimWelcomeSpin(client, userId, options = {}) {
+  const requestMeta = sanitizeRequestMeta(options.requestMeta);
+  const recentClaimAttempts = await walletRepository.countRecentSecurityEvents(client, {
+    userId,
+    actionType: 'welcome_spin_claim_attempt',
+    sinceSeconds: WELCOME_SPIN_ATTEMPT_WINDOW_SECONDS
+  });
+  if (recentClaimAttempts >= WELCOME_SPIN_ATTEMPT_LIMIT) {
+    await blockWithSecurityLog(client, {
+      userId,
+      actionType: 'welcome_spin_blocked',
+      reason: 'rate_limited',
+      ipAddress: requestMeta.ipAddress,
+      metadata: { recentClaimAttempts, windowSeconds: WELCOME_SPIN_ATTEMPT_WINDOW_SECONDS }
+    }, 429, 'Too many attempts. Please try again later.');
+  }
+
+  await logSecurityEvent(client, {
+    userId,
+    actionType: 'welcome_spin_claim_attempt',
+    reason: 'attempt',
+    ipAddress: requestMeta.ipAddress
+  });
+
   const state = await userRepository.getWelcomeSpinState(client, userId, { forUpdate: true });
   if (!state) {
     throw new ApiError(404, 'User not found');
   }
 
   if (state.has_claimed_welcome_spin) {
+    await logSecurityEvent(client, {
+      userId,
+      actionType: 'welcome_spin_duplicate',
+      reason: 'already_claimed',
+      ipAddress: requestMeta.ipAddress
+    });
     const wallet = normalizeWalletBalances(await walletRepository.getWallet(client, userId));
     return {
       claimed: true,
@@ -628,7 +804,12 @@ async function claimWelcomeSpin(client, userId) {
   }
 
   if (!state.welcome_spin_eligible) {
-    throw new ApiError(403, 'Welcome spin is not available for this account');
+    await blockWithSecurityLog(client, {
+      userId,
+      actionType: 'welcome_spin_blocked',
+      reason: 'not_eligible',
+      ipAddress: requestMeta.ipAddress
+    }, 403, 'This reward has already been claimed.');
   }
 
   const rewardAmount = pickWelcomeSpinReward();

@@ -73,7 +73,11 @@ const welcomeSpinStatus = asyncHandler(async (req, res) => {
 });
 
 const claimWelcomeSpin = asyncHandler(async (req, res) => {
-  const data = await userService.claimWelcomeSpin(req.user.sub);
+  const data = await userService.claimWelcomeSpin(req.user.sub, {
+    requestMeta: {
+      ipAddress: req.ip
+    }
+  });
   return success(res, {
     data,
     message: data.alreadyClaimed ? 'Welcome reward already claimed' : 'Welcome reward claimed successfully'

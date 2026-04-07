@@ -106,7 +106,12 @@ const depositList = asyncHandler(async (req, res) => {
 });
 
 const withdrawalCreate = asyncHandler(async (req, res) => {
-  const data = await withTransaction(async (client) => walletService.createWithdrawalRequest(client, req.user.sub, req.body));
+  const data = await withTransaction(async (client) => walletService.createWithdrawalRequest(client, req.user.sub, {
+    ...req.body,
+    requestMeta: {
+      ipAddress: req.ip
+    }
+  }));
   res.status(201).json(data);
 });
 
@@ -121,7 +126,12 @@ const p2pCreate = asyncHandler(async (req, res) => {
 });
 
 const transferCreate = asyncHandler(async (req, res) => {
-  const data = await withTransaction(async (client) => walletService.createWalletTransfer(client, req.user.sub, req.body));
+  const data = await withTransaction(async (client) => walletService.createWalletTransfer(client, req.user.sub, {
+    ...req.body,
+    requestMeta: {
+      ipAddress: req.ip
+    }
+  }));
   return success(res, {
     data: {
       fromWallet: data.fromWallet,

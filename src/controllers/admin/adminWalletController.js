@@ -79,7 +79,10 @@ const deposits = asyncHandler(async (req, res) => {
 const reviewDeposit = asyncHandler(async (req, res) => {
   const data = await adminWalletService.reviewDeposit(req.user.sub, req.params.id, {
     status: req.body.status,
-    adminNote: req.body.adminNote
+    adminNote: req.body.adminNote,
+    requestMeta: {
+      ipAddress: req.ip
+    }
   });
 
   return success(res, {
@@ -234,7 +237,10 @@ const adjust = asyncHandler(async (req, res) => {
     walletType: req.body.walletType,
     amount: req.body.amount,
     type: req.body.type,
-    reason: req.body.reason
+    reason: req.body.reason,
+    requestMeta: {
+      ipAddress: req.ip
+    }
   });
 
   return success(res, {
@@ -247,7 +253,10 @@ const freeze = asyncHandler(async (req, res) => {
   const data = await adminWalletService.setWalletFreeze(req.user.sub, {
     userId: req.body.userId,
     walletType: req.body.walletType,
-    reason: req.body.reason
+    reason: req.body.reason,
+    requestMeta: {
+      ipAddress: req.ip
+    }
   }, true);
 
   return success(res, {
@@ -260,7 +269,10 @@ const unfreeze = asyncHandler(async (req, res) => {
   const data = await adminWalletService.setWalletFreeze(req.user.sub, {
     userId: req.body.userId,
     walletType: req.body.walletType,
-    reason: req.body.reason
+    reason: req.body.reason,
+    requestMeta: {
+      ipAddress: req.ip
+    }
   }, false);
 
   return success(res, {

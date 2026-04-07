@@ -17,6 +17,9 @@ const LEVEL_DEPOSIT_INCOME_RULES = [
   { levelNumber: 5, percentage: 0.012, incomeType: 'level_deposit_income' },
   { levelNumber: 6, percentage: 0.012, incomeType: 'level_deposit_income' }
 ];
+const ADMIN_WALLET_ACTION_DUPLICATE_WINDOW_SECONDS = 30;
+const ADMIN_WALLET_ACTION_BURST_WINDOW_SECONDS = 300;
+const ADMIN_WALLET_ACTION_BURST_LIMIT = 12;
 
 function toMoney(value) {
   return Number(Number(value || 0).toFixed(2));
@@ -26,6 +29,31 @@ const ADMIN_WALLET_TYPES = new Set(['deposit_wallet', 'trading_wallet', 'income_
 
 function normalizeWalletType(walletType) {
   return String(walletType || '').trim().toLowerCase();
+}
+
+function sanitizeRequestMeta(meta = {}) {
+  return {
+    ipAddress: String(meta.ipAddress || '').trim() || null
+  };
+}
+
+async function logSecurityEvent(client, payload = {}) {
+  try {
+    await walletRepository.createSecurityEvent(client, {
+      userId: payload.userId || null,
+      actionType: payload.actionType,
+      reason: payload.reason,
+      metadata: payload.metadata || {},
+      ipAddress: payload.ipAddress || null
+    });
+  } catch (_error) {
+    // Security logging must not break admin workflows.
+  }
+}
+
+async function blockWithSecurityLog(client, payload, statusCode, message) {
+  await logSecurityEvent(client, payload);
+  throw new ApiError(statusCode, message);
 }
 
 async function distributeDepositTeamIncome(client, deposit, adminUserId, adminNote = null) {
@@ -172,12 +200,19 @@ async function listDeposits(filters, paginationInput) {
 
 async function reviewDeposit(adminUserId, requestId, payload) {
   return withTransaction(async (client) => {
+    const requestMeta = sanitizeRequestMeta(payload.requestMeta);
     const request = await walletRepository.getDepositRequestById(client, requestId, { forUpdate: true });
     if (!request) {
       throw new ApiError(404, 'Deposit request not found');
     }
     if (request.status !== 'pending') {
-      throw new ApiError(400, 'Only pending deposit requests can be reviewed');
+      await blockWithSecurityLog(client, {
+        userId: request.user_id,
+        actionType: 'admin_deposit_review_blocked',
+        reason: 'already_processed',
+        ipAddress: requestMeta.ipAddress,
+        metadata: { adminUserId, requestId, currentStatus: request.status }
+      }, 400, 'This action was already processed.');
     }
 
     const details = {
@@ -194,7 +229,13 @@ async function reviewDeposit(adminUserId, requestId, payload) {
       expectedCurrentStatus: 'pending'
     });
     if (!updated) {
-      throw new ApiError(400, 'Deposit request is no longer pending');
+      await blockWithSecurityLog(client, {
+        userId: request.user_id,
+        actionType: 'admin_deposit_review_blocked',
+        reason: 'already_processed',
+        ipAddress: requestMeta.ipAddress,
+        metadata: { adminUserId, requestId }
+      }, 400, 'This action was already processed.');
     }
 
     if (payload.status === 'approved') {
@@ -417,6 +458,7 @@ async function runBtctStakingPayouts(payload = {}) {
 
 async function adjustWallet(adminUserId, payload) {
   return withTransaction(async (client) => {
+    const requestMeta = sanitizeRequestMeta(payload.requestMeta);
     if (!payload.reason) {
       throw new ApiError(400, 'Adjustment reason is required');
     }
@@ -424,6 +466,37 @@ async function adjustWallet(adminUserId, payload) {
     if (!ADMIN_WALLET_TYPES.has(walletType)) {
       throw new ApiError(400, 'Valid wallet type is required');
     }
+    const recentActionCount = await walletRepository.countRecentAdminWalletActions(client, adminUserId, ADMIN_WALLET_ACTION_BURST_WINDOW_SECONDS);
+    if (recentActionCount >= ADMIN_WALLET_ACTION_BURST_LIMIT) {
+      await blockWithSecurityLog(client, {
+        userId: payload.userId,
+        actionType: 'admin_wallet_adjust_blocked',
+        reason: 'rate_limited',
+        ipAddress: requestMeta.ipAddress,
+        metadata: { adminUserId, recentActionCount, windowSeconds: ADMIN_WALLET_ACTION_BURST_WINDOW_SECONDS }
+      }, 429, 'Too many attempts. Please try again later.');
+    }
+
+    const duplicateAction = await walletRepository.findRecentAdminWalletActionDuplicate(client, {
+      adminUserId,
+      targetUserId: payload.userId,
+      walletType,
+      actionType: payload.type === 'credit' ? 'adjust_add' : 'adjust_deduct',
+      amount: toMoney(payload.amount),
+      reason: payload.reason,
+      withinSeconds: ADMIN_WALLET_ACTION_DUPLICATE_WINDOW_SECONDS
+    });
+    if (duplicateAction) {
+      await logSecurityEvent(client, {
+        userId: payload.userId,
+        actionType: 'admin_wallet_adjust_duplicate',
+        reason: 'already_processed',
+        ipAddress: requestMeta.ipAddress,
+        metadata: { adminUserId, actionId: duplicateAction.id, walletType, amount: toMoney(payload.amount) }
+      });
+      throw new ApiError(409, 'This action was already processed.');
+    }
+
     await walletRepository.createWallet(client, payload.userId);
     const beforeWallet = await walletRepository.getWallet(client, payload.userId);
 
@@ -441,7 +514,13 @@ async function adjustWallet(adminUserId, payload) {
       const amountDelta = Number(payload.amount || 0) * -1;
       const adjusted = await walletRepository.adjustWalletBalance(client, payload.userId, walletType, amountDelta);
       if (!adjusted) {
-        throw new ApiError(400, 'Insufficient wallet balance');
+        await blockWithSecurityLog(client, {
+          userId: payload.userId,
+          actionType: 'admin_wallet_adjust_blocked',
+          reason: 'insufficient_balance',
+          ipAddress: requestMeta.ipAddress,
+          metadata: { adminUserId, walletType, amount: toMoney(payload.amount) }
+        }, 400, 'Insufficient balance.');
       }
       await walletRepository.createTransaction(client, {
         userId: payload.userId,
@@ -494,6 +573,7 @@ async function adjustWallet(adminUserId, payload) {
 
 async function setWalletFreeze(adminUserId, payload, freeze) {
   return withTransaction(async (client) => {
+    const requestMeta = sanitizeRequestMeta(payload.requestMeta);
     const walletType = normalizeWalletType(payload.walletType);
     if (!ADMIN_WALLET_TYPES.has(walletType)) {
       throw new ApiError(400, 'Valid wallet type is required');
@@ -504,6 +584,25 @@ async function setWalletFreeze(adminUserId, payload, freeze) {
 
     await walletRepository.createWallet(client, payload.userId);
     const beforeWallet = await walletRepository.getWallet(client, payload.userId);
+    const duplicateAction = await walletRepository.findRecentAdminWalletActionDuplicate(client, {
+      adminUserId,
+      targetUserId: payload.userId,
+      walletType,
+      actionType: freeze ? 'freeze' : 'unfreeze',
+      amount: null,
+      reason: payload.reason,
+      withinSeconds: ADMIN_WALLET_ACTION_DUPLICATE_WINDOW_SECONDS
+    });
+    if (duplicateAction) {
+      await logSecurityEvent(client, {
+        userId: payload.userId,
+        actionType: 'admin_wallet_freeze_duplicate',
+        reason: 'already_processed',
+        ipAddress: requestMeta.ipAddress,
+        metadata: { adminUserId, actionId: duplicateAction.id, walletType, freeze }
+      });
+      throw new ApiError(409, 'This action was already processed.');
+    }
     const updated = await walletRepository.setWalletFreezeStatus(client, payload.userId, walletType, freeze);
     if (!updated) {
       throw new ApiError(404, 'Wallet not found');

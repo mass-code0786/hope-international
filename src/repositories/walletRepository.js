@@ -460,6 +460,158 @@ async function createAdminWalletAction(client, payload) {
   return rows[0] || null;
 }
 
+async function createSecurityEvent(client, payload) {
+  const { rows } = await q(client).query(
+    `INSERT INTO security_event_logs (user_id, action_type, reason, metadata, ip_address)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING *`,
+    [
+      payload.userId || null,
+      payload.actionType,
+      payload.reason,
+      payload.metadata || {},
+      payload.ipAddress || null
+    ]
+  );
+  return rows[0] || null;
+}
+
+async function countRecentSecurityEvents(client, filters = {}) {
+  const values = [];
+  const where = [];
+
+  if (filters.userId) {
+    values.push(filters.userId);
+    where.push(`user_id = $${values.length}`);
+  }
+  if (filters.actionType) {
+    values.push(filters.actionType);
+    where.push(`action_type = $${values.length}`);
+  }
+  if (filters.reason) {
+    values.push(filters.reason);
+    where.push(`reason = $${values.length}`);
+  }
+  if (filters.sinceSeconds) {
+    values.push(Number(filters.sinceSeconds));
+    where.push(`created_at >= NOW() - ($${values.length} * INTERVAL '1 second')`);
+  }
+
+  const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const { rows } = await q(client).query(
+    `SELECT COUNT(*)::int AS count
+     FROM security_event_logs
+     ${whereClause}`,
+    values
+  );
+  return Number(rows[0]?.count || 0);
+}
+
+async function findRecentWalletTransferDuplicate(client, filters = {}) {
+  const { rows } = await q(client).query(
+    `SELECT *
+     FROM wallet_transactions
+     WHERE user_id = $1
+       AND source = 'wallet_transfer'
+       AND from_wallet = $2
+       AND to_wallet = $3
+       AND amount = $4
+       AND status = 'success'
+       AND created_at >= NOW() - ($5 * INTERVAL '1 second')
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [
+      filters.userId,
+      filters.fromWallet,
+      filters.toWallet,
+      filters.amount,
+      Number(filters.withinSeconds || 30)
+    ]
+  );
+  return rows[0] || null;
+}
+
+async function countRecentWalletTransfers(client, userId, withinSeconds = 300) {
+  const { rows } = await q(client).query(
+    `SELECT COUNT(*)::int AS count
+     FROM wallet_transactions
+     WHERE user_id = $1
+       AND source = 'wallet_transfer'
+       AND created_at >= NOW() - ($2 * INTERVAL '1 second')`,
+    [userId, Number(withinSeconds)]
+  );
+  return Number(rows[0]?.count || 0);
+}
+
+async function findRecentWithdrawalDuplicate(client, filters = {}) {
+  const { rows } = await q(client).query(
+    `SELECT *
+     FROM wallet_withdrawal_requests
+     WHERE user_id = $1
+       AND amount = $2
+       AND LOWER(wallet_address) = LOWER($3)
+       AND status = 'pending'
+       AND created_at >= NOW() - ($4 * INTERVAL '1 second')
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [
+      filters.userId,
+      filters.amount,
+      filters.walletAddress,
+      Number(filters.withinSeconds || 300)
+    ]
+  );
+  return rows[0] || null;
+}
+
+async function countRecentWithdrawalRequests(client, userId, withinSeconds = 900) {
+  const { rows } = await q(client).query(
+    `SELECT COUNT(*)::int AS count
+     FROM wallet_withdrawal_requests
+     WHERE user_id = $1
+       AND created_at >= NOW() - ($2 * INTERVAL '1 second')`,
+    [userId, Number(withinSeconds)]
+  );
+  return Number(rows[0]?.count || 0);
+}
+
+async function findRecentAdminWalletActionDuplicate(client, filters = {}) {
+  const { rows } = await q(client).query(
+    `SELECT *
+     FROM admin_wallet_actions
+     WHERE admin_user_id = $1
+       AND target_user_id = $2
+       AND wallet_type = $3
+       AND action_type = $4
+       AND COALESCE(amount, 0) = COALESCE($5, 0)
+       AND COALESCE(reason, '') = COALESCE($6, '')
+       AND created_at >= NOW() - ($7 * INTERVAL '1 second')
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [
+      filters.adminUserId,
+      filters.targetUserId,
+      filters.walletType,
+      filters.actionType,
+      filters.amount ?? null,
+      filters.reason || null,
+      Number(filters.withinSeconds || 30)
+    ]
+  );
+  return rows[0] || null;
+}
+
+async function countRecentAdminWalletActions(client, adminUserId, withinSeconds = 300) {
+  const { rows } = await q(client).query(
+    `SELECT COUNT(*)::int AS count
+     FROM admin_wallet_actions
+     WHERE admin_user_id = $1
+       AND created_at >= NOW() - ($2 * INTERVAL '1 second')`,
+    [adminUserId, Number(withinSeconds)]
+  );
+  return Number(rows[0]?.count || 0);
+}
+
 async function listAdminWalletUsers(client, filters = {}, pagination = {}) {
   const tradingColumn = await getTradingBalanceColumn(client);
   const { limit, offset } = withPaging(pagination?.limit, pagination?.offset);
@@ -1201,6 +1353,14 @@ module.exports = {
   createBtctTransaction,
   transferBetweenWallets,
   createAdminWalletAction,
+  createSecurityEvent,
+  countRecentSecurityEvents,
+  findRecentWalletTransferDuplicate,
+  countRecentWalletTransfers,
+  findRecentWithdrawalDuplicate,
+  countRecentWithdrawalRequests,
+  findRecentAdminWalletActionDuplicate,
+  countRecentAdminWalletActions,
   listAdminWalletUsers,
   getAdminWalletUser,
   listAdminWalletActions,

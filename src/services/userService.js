@@ -167,8 +167,8 @@ async function getWelcomeSpinStatus(userId) {
   return walletService.getWelcomeSpinStatus(null, userId);
 }
 
-async function claimWelcomeSpin(userId) {
-  return withTransaction(async (client) => walletService.claimWelcomeSpin(client, userId));
+async function claimWelcomeSpin(userId, options = {}) {
+  return withTransaction(async (client) => walletService.claimWelcomeSpin(client, userId, options));
 }
 
 async function getWebauthnStatus(userId) {
