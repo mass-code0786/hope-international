@@ -118,7 +118,7 @@ function RegisterPageContent() {
     try {
       await registerMutation.mutateAsync(payload);
       toast.success('Welcome to Hope International');
-      router.push('/welcome');
+      router.push('/dashboard');
     } catch (err) {
       toast.error(err.message || 'Registration failed');
     }

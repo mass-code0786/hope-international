@@ -21,8 +21,8 @@ function withPaging(limit = 20, offset = 0) {
 
 async function createWallet(client, userId) {
   await q(client).query(
-    `INSERT INTO wallets (user_id, balance, income_balance, deposit_balance, withdrawal_balance, btct_balance, btct_locked_balance)
-     VALUES ($1, 0, 0, 0, 0, 0, 0)
+    `INSERT INTO wallets (user_id, balance, income_balance, deposit_balance, withdrawal_balance, auction_bonus_balance, btct_balance, btct_locked_balance)
+     VALUES ($1, 0, 0, 0, 0, 0, 0, 0)
      ON CONFLICT (user_id) DO NOTHING`,
     [userId]
   );
@@ -69,6 +69,17 @@ async function adjustWithdrawalBalance(client, userId, amountDelta) {
   return rows[0] || null;
 }
 
+async function adjustAuctionBonusBalance(client, userId, amountDelta) {
+  const { rows } = await q(client).query(
+    `UPDATE wallets
+     SET auction_bonus_balance = COALESCE(auction_bonus_balance, 0) + $2
+     WHERE user_id = $1
+     RETURNING *`,
+    [userId, amountDelta]
+  );
+  return rows[0] || null;
+}
+
 async function debitCombinedBalanceIfSufficient(client, userId, amount) {
   const { rows } = await q(client).query(
     `WITH current_wallet AS (
@@ -105,6 +116,64 @@ async function debitCombinedBalanceIfSufficient(client, userId, amount) {
              previous_income_balance - income_balance AS debited_income_balance,
              previous_deposit_balance - deposit_balance AS debited_deposit_balance,
              previous_withdrawal_balance - withdrawal_balance AS debited_withdrawal_balance
+      FROM updated_wallet`,
+    [userId, amount]
+  );
+  return rows[0] || null;
+}
+
+async function debitAuctionBalanceIfSufficient(client, userId, amount) {
+  const { rows } = await q(client).query(
+    `WITH current_wallet AS (
+        SELECT user_id,
+               COALESCE(income_balance, balance, 0)::numeric(14,2) AS income_balance,
+               COALESCE(deposit_balance, 0)::numeric(14,2) AS deposit_balance,
+               COALESCE(withdrawal_balance, 0)::numeric(14,2) AS withdrawal_balance,
+               COALESCE(auction_bonus_balance, 0)::numeric(14,2) AS auction_bonus_balance
+        FROM wallets
+        WHERE user_id = $1
+        FOR UPDATE
+      ),
+      updated_wallet AS (
+        UPDATE wallets w
+        SET auction_bonus_balance = CASE
+              WHEN current_wallet.auction_bonus_balance >= $2 THEN current_wallet.auction_bonus_balance - $2
+              ELSE 0
+            END,
+            deposit_balance = CASE
+              WHEN current_wallet.auction_bonus_balance >= $2 THEN current_wallet.deposit_balance
+              WHEN current_wallet.auction_bonus_balance + current_wallet.deposit_balance >= $2 THEN current_wallet.deposit_balance - ($2 - current_wallet.auction_bonus_balance)
+              ELSE 0
+            END,
+            withdrawal_balance = CASE
+              WHEN current_wallet.auction_bonus_balance + current_wallet.deposit_balance >= $2 THEN current_wallet.withdrawal_balance
+              WHEN current_wallet.auction_bonus_balance + current_wallet.deposit_balance + current_wallet.withdrawal_balance >= $2 THEN current_wallet.withdrawal_balance - ($2 - current_wallet.auction_bonus_balance - current_wallet.deposit_balance)
+              ELSE 0
+            END,
+            income_balance = CASE
+              WHEN current_wallet.auction_bonus_balance + current_wallet.deposit_balance + current_wallet.withdrawal_balance >= $2 THEN current_wallet.income_balance
+              ELSE current_wallet.income_balance - ($2 - current_wallet.auction_bonus_balance - current_wallet.deposit_balance - current_wallet.withdrawal_balance)
+            END,
+            balance = current_wallet.income_balance + current_wallet.deposit_balance + current_wallet.withdrawal_balance - (
+              CASE
+                WHEN current_wallet.auction_bonus_balance >= $2 THEN 0
+                ELSE $2 - current_wallet.auction_bonus_balance
+              END
+            )
+        FROM current_wallet
+        WHERE w.user_id = current_wallet.user_id
+          AND current_wallet.auction_bonus_balance + current_wallet.income_balance + current_wallet.deposit_balance + current_wallet.withdrawal_balance >= $2
+        RETURNING w.*,
+                  current_wallet.income_balance AS previous_income_balance,
+                  current_wallet.deposit_balance AS previous_deposit_balance,
+                  current_wallet.withdrawal_balance AS previous_withdrawal_balance,
+                  current_wallet.auction_bonus_balance AS previous_auction_bonus_balance
+      )
+      SELECT *,
+             previous_income_balance - income_balance AS debited_income_balance,
+             previous_deposit_balance - deposit_balance AS debited_deposit_balance,
+             previous_withdrawal_balance - withdrawal_balance AS debited_withdrawal_balance,
+             previous_auction_bonus_balance - auction_bonus_balance AS debited_auction_bonus_balance
       FROM updated_wallet`,
     [userId, amount]
   );
@@ -785,7 +854,9 @@ module.exports = {
   adjustIncomeBalance,
   adjustDepositBalance,
   adjustWithdrawalBalance,
+  adjustAuctionBonusBalance,
   debitCombinedBalanceIfSufficient,
+  debitAuctionBalanceIfSufficient,
   adjustBtctBalance,
   adjustBtctLockedBalance,
   createBtctTransaction,

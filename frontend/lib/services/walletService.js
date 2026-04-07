@@ -42,9 +42,11 @@ export async function getWallet() {
   const incomeBalance = toNumber(normalized.wallet?.income_balance ?? normalized.wallet?.income_wallet_balance ?? normalized.wallet?.balance);
   const depositBalance = toNumber(normalized.wallet?.deposit_balance ?? normalized.wallet?.deposit_wallet_balance);
   const withdrawalBalance = toNumber(normalized.wallet?.withdrawal_balance ?? normalized.wallet?.withdrawal_wallet_balance);
+  const auctionBonusBalance = toNumber(normalized.wallet?.auction_bonus_balance ?? normalized.wallet?.auction_bonus_wallet_balance);
   const btctBalance = toNumber(normalized.wallet?.btct_balance ?? normalized.wallet?.btct_wallet_balance);
   const btctLockedBalance = toNumber(normalized.wallet?.btct_locked_balance ?? normalized.wallet?.btct_locked_wallet_balance);
   const btctAvailableBalance = toNumber(normalized.wallet?.btct_available_balance ?? normalized.wallet?.btct_available_wallet_balance, btctBalance - btctLockedBalance);
+  const auctionSpendableBalance = toNumber(normalized.wallet?.auction_spendable_balance ?? normalized.wallet?.auction_spendable_wallet_balance, incomeBalance + depositBalance + withdrawalBalance + auctionBonusBalance);
 
   return {
     ...normalized,
@@ -54,12 +56,16 @@ export async function getWallet() {
       income_balance: incomeBalance,
       deposit_balance: depositBalance,
       withdrawal_balance: withdrawalBalance,
+      auction_bonus_balance: auctionBonusBalance,
+      auction_spendable_balance: auctionSpendableBalance,
       btct_balance: btctBalance,
       btct_locked_balance: btctLockedBalance,
       btct_available_balance: btctAvailableBalance,
       income_wallet_balance: incomeBalance,
       deposit_wallet_balance: depositBalance,
       withdrawal_wallet_balance: withdrawalBalance,
+      auction_bonus_wallet_balance: auctionBonusBalance,
+      auction_spendable_wallet_balance: auctionSpendableBalance,
       btct_wallet_balance: btctBalance,
       btct_locked_wallet_balance: btctLockedBalance,
       btct_available_wallet_balance: btctAvailableBalance

@@ -1,6 +1,7 @@
 const userRepository = require('../repositories/userRepository');
 const userAddressRepository = require('../repositories/userAddressRepository');
 const adminRepository = require('../repositories/adminRepository');
+const walletService = require('./walletService');
 const { ApiError } = require('../utils/ApiError');
 const { withTransaction } = require('../db/pool');
 
@@ -123,6 +124,14 @@ async function saveAddress(userId, payload) {
   });
 }
 
+async function getWelcomeSpinStatus(userId) {
+  return walletService.getWelcomeSpinStatus(null, userId);
+}
+
+async function claimWelcomeSpin(userId) {
+  return withTransaction(async (client) => walletService.claimWelcomeSpin(client, userId));
+}
+
 module.exports = {
   getProfile,
   getChildren,
@@ -130,5 +139,7 @@ module.exports = {
   getTeamTreeRoot,
   getTeamTreeNode,
   getAddress,
-  saveAddress
+  saveAddress,
+  getWelcomeSpinStatus,
+  claimWelcomeSpin
 };

@@ -69,6 +69,7 @@ const incomeSourceMap = {
   withdrawal_request: 'Withdrawal Request',
   seller_application_fee: 'Seller Application Fee',
   p2p_transfer: 'P2P Transfer',
+  welcome_spin_bonus: 'Welcome Spin Bonus',
   auction_loss_compensation: 'Auction BTCT Reward',
   btct_staking_payout: 'BTCT Staking Payout'
 };

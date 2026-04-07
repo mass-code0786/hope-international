@@ -777,7 +777,7 @@ async function placeBid(auctionId, userId, payload) {
     const entryPrice = validateAuctionRange(auction.entry_price || auction.starting_price, 'Fixed entry price');
     const totalAmount = roundMoney(entryPrice * entryCount);
 
-    await walletService.debit(client, userId, totalAmount, 'auction_entry', auctionId, {
+    await walletService.debitForAuctionEntry(client, userId, totalAmount, 'auction_entry', auctionId, {
       auctionId,
       entryCount,
       entryPrice

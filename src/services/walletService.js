@@ -10,6 +10,14 @@ const BTCT_USD_PRICE = 0.10;
 const DEPOSIT_ASSET = 'USDT';
 const DEPOSIT_NETWORK = 'BEP20';
 const DEPOSIT_WALLET_SETTING_KEY = 'deposit_wallet_config';
+const WELCOME_SPIN_REWARD_POOL = [
+  { amount: 0.10, weight: 30 },
+  { amount: 0.20, weight: 24 },
+  { amount: 0.30, weight: 18 },
+  { amount: 0.50, weight: 14 },
+  { amount: 0.75, weight: 9 },
+  { amount: 1.00, weight: 5 }
+];
 
 function roundBtct(value) {
   return Number(Number(value || 0).toFixed(4));
@@ -37,10 +45,12 @@ function normalizeWalletBalances(wallet = {}) {
   const incomeBalance = toMoney(wallet?.income_balance ?? wallet?.income_wallet_balance ?? wallet?.balance ?? 0);
   const depositBalance = toMoney(wallet?.deposit_balance ?? wallet?.deposit_wallet_balance ?? 0);
   const withdrawalBalance = toMoney(wallet?.withdrawal_balance ?? wallet?.withdrawal_wallet_balance ?? 0);
+  const auctionBonusBalance = toMoney(wallet?.auction_bonus_balance ?? wallet?.auction_bonus_wallet_balance ?? 0);
   const btctBalance = roundBtct(wallet?.btct_balance ?? wallet?.btct_wallet_balance ?? 0);
   const btctLockedBalance = roundBtct(wallet?.btct_locked_balance ?? wallet?.btct_locked_wallet_balance ?? 0);
   const btctAvailableBalance = roundBtct(btctBalance - btctLockedBalance);
   const totalBalance = toMoney(wallet?.balance ?? incomeBalance + depositBalance + withdrawalBalance);
+  const auctionSpendableBalance = toMoney(totalBalance + auctionBonusBalance);
 
   return {
     ...(wallet || {}),
@@ -48,12 +58,16 @@ function normalizeWalletBalances(wallet = {}) {
     income_balance: incomeBalance,
     deposit_balance: depositBalance,
     withdrawal_balance: withdrawalBalance,
+    auction_bonus_balance: auctionBonusBalance,
+    auction_spendable_balance: auctionSpendableBalance,
     btct_balance: btctBalance,
     btct_locked_balance: btctLockedBalance,
     btct_available_balance: btctAvailableBalance,
     income_wallet_balance: incomeBalance,
     deposit_wallet_balance: depositBalance,
     withdrawal_wallet_balance: withdrawalBalance,
+    auction_bonus_wallet_balance: auctionBonusBalance,
+    auction_spendable_wallet_balance: auctionSpendableBalance,
     btct_wallet_balance: btctBalance,
     btct_locked_wallet_balance: btctLockedBalance,
     btct_available_wallet_balance: btctAvailableBalance
@@ -75,6 +89,16 @@ function resolveCashWalletType(source, metadata = {}) {
 function isSupportedProofImage(value) {
   const normalized = String(value || '').trim();
   return /^data:image\/(png|jpe?g|webp);base64,/i.test(normalized) || /^https:\/\//i.test(normalized);
+}
+
+function pickWelcomeSpinReward() {
+  const totalWeight = WELCOME_SPIN_REWARD_POOL.reduce((sum, entry) => sum + Number(entry.weight || 0), 0);
+  let cursor = Math.random() * totalWeight;
+  for (const entry of WELCOME_SPIN_REWARD_POOL) {
+    cursor -= Number(entry.weight || 0);
+    if (cursor <= 0) return toMoney(entry.amount);
+  }
+  return toMoney(WELCOME_SPIN_REWARD_POOL[WELCOME_SPIN_REWARD_POOL.length - 1]?.amount || 0.1);
 }
 
 async function getDepositWalletConfig(client, options = {}) {
@@ -190,6 +214,45 @@ async function debit(client, userId, amount, source, referenceId = null, metadat
     metadata: {
       ...metadata,
       walletType: 'combined',
+      walletBreakdown: debitBreakdown
+    },
+    createdByAdminId
+  });
+
+  return {
+    ...normalizeWalletBalances(updatedWallet),
+    debitBreakdown
+  };
+}
+
+async function debitForAuctionEntry(client, userId, amount, source, referenceId = null, metadata = {}, createdByAdminId = null) {
+  if (Number(amount) <= 0) {
+    throw new ApiError(400, 'Debit amount must be positive');
+  }
+
+  await walletRepository.createWallet(client, userId);
+  const updatedWallet = await walletRepository.debitAuctionBalanceIfSufficient(client, userId, Number(amount));
+
+  if (!updatedWallet) {
+    throw new ApiError(400, 'Insufficient wallet balance');
+  }
+
+  const debitBreakdown = {
+    auctionBonus: toMoney(updatedWallet.debited_auction_bonus_balance || 0),
+    income: toMoney(updatedWallet.debited_income_balance || 0),
+    deposit: toMoney(updatedWallet.debited_deposit_balance || 0),
+    withdrawal: toMoney(updatedWallet.debited_withdrawal_balance || 0)
+  };
+
+  await walletRepository.createTransaction(client, {
+    userId,
+    txType: 'debit',
+    source,
+    amount,
+    referenceId,
+    metadata: {
+      ...metadata,
+      walletType: 'auction_combined',
       walletBreakdown: debitBreakdown
     },
     createdByAdminId
@@ -399,6 +462,68 @@ async function createP2pTransfer(client, senderUserId, payload) {
   };
 }
 
+async function getWelcomeSpinStatus(client, userId) {
+  const state = await userRepository.getWelcomeSpinState(client, userId);
+  if (!state) {
+    throw new ApiError(404, 'User not found');
+  }
+
+  const eligible = Boolean(state.welcome_spin_eligible) && !Boolean(state.has_claimed_welcome_spin);
+  return {
+    eligible,
+    claimed: Boolean(state.has_claimed_welcome_spin),
+    claimedAt: state.welcome_spin_claimed_at || null,
+    rewardAmount: state.welcome_spin_reward_amount === null || state.welcome_spin_reward_amount === undefined
+      ? null
+      : toMoney(state.welcome_spin_reward_amount)
+  };
+}
+
+async function claimWelcomeSpin(client, userId) {
+  const state = await userRepository.getWelcomeSpinState(client, userId, { forUpdate: true });
+  if (!state) {
+    throw new ApiError(404, 'User not found');
+  }
+
+  if (state.has_claimed_welcome_spin) {
+    const wallet = normalizeWalletBalances(await walletRepository.getWallet(client, userId));
+    return {
+      claimed: true,
+      rewardAmount: toMoney(state.welcome_spin_reward_amount || 0),
+      auctionBonusBalance: toMoney(wallet?.auction_bonus_balance || 0),
+      alreadyClaimed: true
+    };
+  }
+
+  if (!state.welcome_spin_eligible) {
+    throw new ApiError(403, 'Welcome spin is not available for this account');
+  }
+
+  const rewardAmount = pickWelcomeSpinReward();
+  await walletRepository.createWallet(client, userId);
+  await userRepository.markWelcomeSpinClaimed(client, userId, rewardAmount);
+  const wallet = await walletRepository.adjustAuctionBonusBalance(client, userId, rewardAmount);
+  await walletRepository.createTransaction(client, {
+    userId,
+    txType: 'credit',
+    source: 'welcome_spin_bonus',
+    amount: rewardAmount,
+    referenceId: null,
+    metadata: {
+      walletType: 'auction_bonus',
+      rewardType: 'welcome_spin',
+      auctionOnly: true
+    }
+  });
+
+  return {
+    claimed: true,
+    rewardAmount,
+    auctionBonusBalance: toMoney(wallet?.auction_bonus_balance || 0),
+    alreadyClaimed: false
+  };
+}
+
 async function getHubHistory(client, userId) {
   const [deposits, withdrawals, p2pTransfers, orders, btctTransactions] = await Promise.all([
     walletRepository.listDepositRequests(client, userId, 200),
@@ -424,6 +549,7 @@ module.exports = {
   credit,
   creditWithTransaction,
   debit,
+  debitForAuctionEntry,
   creditBtct,
   getWalletSummary,
   bindWalletAddress,
@@ -431,6 +557,8 @@ module.exports = {
   createDepositRequest,
   createWithdrawalRequest,
   createP2pTransfer,
-  getHubHistory
+  getHubHistory,
+  getWelcomeSpinStatus,
+  claimWelcomeSpin
 };
 

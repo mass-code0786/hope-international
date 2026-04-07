@@ -188,7 +188,8 @@ async function register(payload) {
       sponsorId,
       parentId: placement.parentId,
       placementSide: placement.placementSide,
-      rankId: rank.id
+      rankId: rank.id,
+      welcomeSpinEligible: true
     });
 
     if (placement.parentId) {

@@ -25,12 +25,14 @@ import toast from 'react-hot-toast';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { DashboardSkeleton } from '@/components/ui/PageSkeletons';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { WelcomeSpinModal } from '@/components/auth/WelcomeSpinModal';
 import { getMe } from '@/lib/services/authService';
 import { getHomepageBanners } from '@/lib/services/bannersService';
 import { createOrder } from '@/lib/services/ordersService';
 import { getUserAddress } from '@/lib/services/userAddressService';
 import { getUnreadNotificationCount } from '@/lib/services/notificationsService';
 import { getWallet } from '@/lib/services/walletService';
+import { claimWelcomeSpin, getWelcomeSpinStatus } from '@/lib/services/welcomeSpinService';
 import { useProducts } from '@/hooks/useProducts';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { addToCart, subscribeCart } from '@/lib/utils/cart';
@@ -231,6 +233,11 @@ export default function DashboardPage() {
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
   const bannerTrackRef = useRef(null);
   const [buyingProductId, setBuyingProductId] = useState('');
+  const [welcomeSpinOpen, setWelcomeSpinOpen] = useState(false);
+  const welcomeSpinQuery = useQuery({
+    queryKey: queryKeys.welcomeSpinStatus,
+    queryFn: getWelcomeSpinStatus
+  });
 
   const buyMutation = useMutation({
     mutationFn: (product) => {
@@ -255,6 +262,19 @@ export default function DashboardPage() {
     onSettled: () => setBuyingProductId('')
   });
 
+  const welcomeSpinMutation = useMutation({
+    mutationFn: claimWelcomeSpin,
+    onSuccess: async (result) => {
+      toast.success(result.message || 'Welcome reward claimed successfully');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.wallet }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.me }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.welcomeSpinStatus })
+      ]);
+    },
+    onError: (error) => toast.error(error.message || 'Unable to claim welcome reward')
+  });
+
   const isLoading = productsLoading || meQuery.isLoading || walletQuery.isLoading || bannersQuery.isLoading || addressQuery.isLoading;
   const hasFatalError = meQuery.isError || walletQuery.isError;
   const user = meQuery.data || {};
@@ -262,6 +282,7 @@ export default function DashboardPage() {
   const products = Array.isArray(productData) ? productData : [];
   const homepageBanners = Array.isArray(bannersQuery.data) ? bannersQuery.data : [];
   const unreadNotificationCount = Number(notificationsCountQuery.data?.unreadCount || 0);
+  const welcomeSpinStatus = welcomeSpinQuery.data?.data || null;
 
   const slides = useMemo(() => {
     if (homepageBanners.length) {
@@ -293,6 +314,16 @@ export default function DashboardPage() {
     const track = bannerTrackRef.current;
     if (track) track.scrollTo({ left: 0, behavior: 'auto' });
   }, [slides.length]);
+
+  useEffect(() => {
+    if (welcomeSpinStatus?.eligible && !welcomeSpinStatus?.claimed) {
+      setWelcomeSpinOpen(true);
+      return;
+    }
+    if (welcomeSpinStatus?.claimed) {
+      setWelcomeSpinOpen(false);
+    }
+  }, [welcomeSpinStatus]);
 
   useEffect(() => {
     if (slides.length <= 1) return undefined;
@@ -327,8 +358,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="-mx-4 min-h-full bg-[#202127] px-4 pb-24 pt-1.5 sm:mx-0 sm:rounded-[32px] sm:border sm:border-slate-200 sm:px-5 sm:py-3">
-      <div className="mx-auto max-w-xl space-y-3">
+    <>
+      <div className="-mx-4 min-h-full bg-[#202127] px-4 pb-24 pt-1.5 sm:mx-0 sm:rounded-[32px] sm:border sm:border-slate-200 sm:px-5 sm:py-3">
+        <div className="mx-auto max-w-xl space-y-3">
         <section className="px-1 pt-1">
           <div className="flex items-start justify-between gap-3">
             <button
@@ -501,7 +533,23 @@ export default function DashboardPage() {
             </span>
           </div>
         </section>
+        </div>
       </div>
-    </div>
+
+      <WelcomeSpinModal
+        open={welcomeSpinOpen}
+        status={welcomeSpinStatus}
+        claimPending={welcomeSpinMutation.isPending}
+        onClaim={async () => {
+          const result = await welcomeSpinMutation.mutateAsync();
+          return result.data || null;
+        }}
+        onClose={() => {
+          if (welcomeSpinStatus?.claimed) {
+            setWelcomeSpinOpen(false);
+          }
+        }}
+      />
+    </>
   );
 }

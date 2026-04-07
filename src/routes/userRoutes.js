@@ -9,6 +9,8 @@ const {
   userAddressQuerySchema,
   userAddressCreateSchema,
   userAddressUpdateSchema,
+  welcomeSpinStatusSchema,
+  welcomeSpinClaimSchema,
   notificationsListQuerySchema,
   notificationIdParamSchema,
   notificationReadAllSchema
@@ -26,6 +28,8 @@ router.get('/me/compensation/monthly', auth(), validate(compensationMonthlyQuery
 router.get('/me/address', auth(), validate(userAddressQuerySchema), userController.getAddress);
 router.post('/me/address', auth(), validate(userAddressCreateSchema), userController.createAddress);
 router.patch('/me/address', auth(), validate(userAddressUpdateSchema), userController.updateAddress);
+router.get('/me/welcome-spin/status', auth(), validate(welcomeSpinStatusSchema), userController.welcomeSpinStatus);
+router.post('/me/welcome-spin/claim', auth(), validate(welcomeSpinClaimSchema), userController.claimWelcomeSpin);
 router.get('/me/notifications', auth(), validate(notificationsListQuerySchema), notificationController.listMyNotifications);
 router.get('/me/notifications/unread-count', auth(), notificationController.unreadCount);
 router.patch('/me/notifications/read-all', auth(), validate(notificationReadAllSchema), notificationController.markAllMyNotificationsAsRead);

@@ -64,6 +64,22 @@ const updateAddress = asyncHandler(async (req, res) => {
   });
 });
 
+const welcomeSpinStatus = asyncHandler(async (req, res) => {
+  const data = await userService.getWelcomeSpinStatus(req.user.sub);
+  return success(res, {
+    data,
+    message: data.eligible ? 'Eligible for welcome spin' : data.claimed ? 'Welcome spin already claimed' : 'Welcome spin is not available'
+  });
+});
+
+const claimWelcomeSpin = asyncHandler(async (req, res) => {
+  const data = await userService.claimWelcomeSpin(req.user.sub);
+  return success(res, {
+    data,
+    message: data.alreadyClaimed ? 'Welcome reward already claimed' : 'Welcome reward claimed successfully'
+  });
+});
+
 module.exports = {
   me,
   myChildren,
@@ -74,5 +90,7 @@ module.exports = {
   monthlyCompensation,
   getAddress,
   createAddress,
-  updateAddress
+  updateAddress,
+  welcomeSpinStatus,
+  claimWelcomeSpin
 };

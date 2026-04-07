@@ -78,9 +78,10 @@ async function createUser(client, payload) {
       sponsor_id,
       parent_id,
       placement_side,
-      rank_id
+      rank_id,
+      welcome_spin_eligible
     )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
      RETURNING *`,
     [
       payload.firstName,
@@ -94,10 +95,44 @@ async function createUser(client, payload) {
       payload.sponsorId || null,
       payload.parentId || null,
       payload.placementSide || null,
-      payload.rankId
+      payload.rankId,
+      Boolean(payload.welcomeSpinEligible)
     ]
   );
   return rows[0];
+}
+
+async function getWelcomeSpinState(client, userId, options = {}) {
+  const lockClause = options.forUpdate ? ' FOR UPDATE' : '';
+  const { rows } = await q(client).query(
+    `SELECT id,
+            welcome_spin_eligible,
+            has_claimed_welcome_spin,
+            welcome_spin_claimed_at,
+            welcome_spin_reward_amount
+     FROM users
+     WHERE id = $1${lockClause}`,
+    [userId]
+  );
+  return rows[0] || null;
+}
+
+async function markWelcomeSpinClaimed(client, userId, rewardAmount) {
+  const { rows } = await q(client).query(
+    `UPDATE users
+     SET welcome_spin_eligible = FALSE,
+         has_claimed_welcome_spin = TRUE,
+         welcome_spin_claimed_at = NOW(),
+         welcome_spin_reward_amount = $2
+     WHERE id = $1
+     RETURNING id,
+               welcome_spin_eligible,
+               has_claimed_welcome_spin,
+               welcome_spin_claimed_at,
+               welcome_spin_reward_amount`,
+    [userId, rewardAmount]
+  );
+  return rows[0] || null;
 }
 
 async function setChild(client, parentId, side, childId) {
@@ -399,6 +434,8 @@ module.exports = {
   findAdminUser,
   updateAdminCredentials,
   createUser,
+  getWelcomeSpinState,
+  markWelcomeSpinClaimed,
   setChild,
   findFirstAvailableParentByLeg,
   getBinaryNode,

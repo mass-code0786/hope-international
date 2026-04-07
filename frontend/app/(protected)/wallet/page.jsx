@@ -45,6 +45,8 @@ export default function WalletPage() {
   const eligibility = staking.eligibility || {};
 
   const withdrawalBalance = Number(wallet.withdrawal_wallet_balance ?? wallet.withdrawal_balance ?? 0);
+  const auctionBonusBalance = Number(wallet.auction_bonus_wallet_balance ?? wallet.auction_bonus_balance ?? 0);
+  const auctionSpendableBalance = Number(wallet.auction_spendable_wallet_balance ?? wallet.auction_spendable_balance ?? ((wallet.balance || 0) + auctionBonusBalance));
   const btctAvailable = Number(wallet.btct_available_wallet_balance ?? wallet.btct_available_balance ?? wallet.btct_balance ?? 0);
   const btctLocked = Number(wallet.btct_locked_wallet_balance ?? wallet.btct_locked_balance ?? 0);
   const requestedAmount = Number(stakingAmount || 0);
@@ -89,8 +91,10 @@ export default function WalletPage() {
     <div className="space-y-3">
       <SectionHeader title={formatLabel('Wallet Overview')} />
 
-      <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2.5 md:grid-cols-5">
         <StatCard compact title={formatLabel('Available Balance')} value={currency(wallet.balance || 0)} emphasis="primary" right={<WalletIcon size={18} className="text-accent" />} uppercaseTitle={false} />
+        <StatCard compact title={formatLabel('Auction Bonus')} value={currency(auctionBonusBalance)} right={<HandCoins size={18} className="text-emerald-500" />} uppercaseTitle={false} />
+        <StatCard compact title={formatLabel('Auction Spendable')} value={currency(auctionSpendableBalance)} right={<WalletIcon size={18} className="text-violet-500" />} uppercaseTitle={false} />
         <StatCard compact title={formatLabel('Withdrawal Wallet')} value={currency(withdrawalBalance)} right={<HandCoins size={18} className="text-accent" />} uppercaseTitle={false} />
         <StatCard compact title={formatLabel('BTCT Available')} value={`${number(btctAvailable)} BTCT`} right={<BtctCoinLogo size={18} className="shrink-0" />} uppercaseTitle={false} />
         <StatCard compact title="Recent Transactions" value={transactions.length} />

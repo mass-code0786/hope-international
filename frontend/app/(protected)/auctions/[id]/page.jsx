@@ -169,7 +169,7 @@ function winnerModeLabel(mode) {
   return 'Highest winner';
 }
 
-function StickyBidBar({ status, entryPrice, walletBalance, walletReady, bidMutation, onBid, participantCount, winners }) {
+function StickyBidBar({ status, entryPrice, walletBalance, auctionBonusBalance, walletReady, bidMutation, onBid, participantCount, winners }) {
   const isLive = status === 'live';
   const isEnded = status === 'ended';
   const primaryBidBlocked = walletReady && walletBalance < entryPrice;
@@ -205,8 +205,14 @@ function StickyBidBar({ status, entryPrice, walletBalance, walletReady, bidMutat
 
         <div className="mt-2 flex items-center justify-between rounded-full bg-[#14182D] px-3 py-1.5 text-[10px] text-[#B0B3C6]">
           <span>{participantCount} participants</span>
-          <span>Wallet {formatAuctionMoney(walletBalance)}</span>
+          <span>Spendable {formatAuctionMoney(walletBalance)}</span>
         </div>
+
+        {auctionBonusBalance > 0 ? (
+          <div className="mt-2 rounded-full bg-[rgba(34,197,94,0.12)] px-3 py-1.5 text-center text-[10px] font-semibold text-emerald-300">
+            Auction bonus available {formatAuctionMoney(auctionBonusBalance)}
+          </div>
+        ) : null}
 
         <div className="mt-2 grid grid-cols-3 gap-2">
           <div className="rounded-full bg-[#14182D] px-3 py-1.5 text-center text-[9px] font-semibold text-[#7A7F9A]">Secure</div>
@@ -264,7 +270,13 @@ export default function AuctionDetailPage() {
   const winners = Array.isArray(auction?.winners) ? auction.winners : [];
   const leaderboard = Array.isArray(auction?.leaderboard) ? auction.leaderboard : [];
   const rewardDistribution = auction?.rewardDistribution || null;
-  const walletBalance = Number(walletQuery.data?.wallet?.balance || 0);
+  const walletBalance = Number(
+    walletQuery.data?.wallet?.auction_spendable_balance
+    ?? walletQuery.data?.wallet?.auction_spendable_wallet_balance
+    ?? walletQuery.data?.wallet?.balance
+    ?? 0
+  );
+  const auctionBonusBalance = Number(walletQuery.data?.wallet?.auction_bonus_balance ?? walletQuery.data?.wallet?.auction_bonus_wallet_balance ?? 0);
   const walletReady = !walletQuery.isLoading && !walletQuery.isError;
   const participantCount = Number(auction?.participantCount || leaderboard.length || 0);
   const communityCount = Number(auction?.total_entries || auction?.total_bids || participantCount || 0);
@@ -450,6 +462,7 @@ export default function AuctionDetailPage() {
         status={status}
         entryPrice={entryPrice}
         walletBalance={walletBalance}
+        auctionBonusBalance={auctionBonusBalance}
         walletReady={walletReady}
         bidMutation={bidMutation}
         onBid={handleBid}

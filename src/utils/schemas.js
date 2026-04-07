@@ -393,6 +393,18 @@ const userAddressQuerySchema = z.object({
   query: z.object({})
 });
 
+const welcomeSpinStatusSchema = z.object({
+  body: z.object({}),
+  params: z.object({}),
+  query: z.object({})
+});
+
+const welcomeSpinClaimSchema = z.object({
+  body: z.object({}).optional().default({}),
+  params: z.object({}),
+  query: z.object({})
+});
+
 const userAddressCreateSchema = z.object({
   body: userAddressBodySchema,
   params: z.object({}),
@@ -443,7 +455,9 @@ module.exports = {
   assistantChatSchema,
   userAddressQuerySchema,
   userAddressCreateSchema,
-  userAddressUpdateSchema
+  userAddressUpdateSchema,
+  welcomeSpinStatusSchema,
+  welcomeSpinClaimSchema
 };
 
 
