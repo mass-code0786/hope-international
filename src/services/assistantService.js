@@ -20,6 +20,7 @@ const STATUS_TEXT = {
 };
 
 const INTENT_KEYWORDS = {
+  deposit_income_explanation: ['deposit income', 'deposit income explain', 'deposit income explain karo', 'deposit referral income', 'deposit se earning', 'deposit se earning kaise hota hai', 'deposit par kitna income milta hai', 'deposit par income kaise milta hai', 'level income on deposit', 'deposit ka plan kya hai', 'agar koi deposit kare toh upline ko kya milta hai', 'deposit karne par upline ko kya milta hai', 'deposit uplines income', 'deposit commission', 'deposit bonus', 'deposit income system'],
   business_plan: ['business plan', 'hope international plan', 'income plan', 'earning system', 'how hope works', 'how does hope international work', 'mlm plan', 'binary plan', 'binary system', 'what is binary system', 'how binary works', 'compensation plan', 'business model', 'plan samjhao', 'income kaise milta hai', 'earning ka system', 'hope international ka plan kya hai', 'binary plan kya hai', 'binary system kya hai', 'business plan samjhao', 'compensation', 'reward plan', 'pv system', 'direct income', 'matching income'],
   platform_intro: ['what is hope international', 'hope international kya hai', 'platform kya hai', 'platform kya karta hai', 'what does hope international do', 'what is this platform', 'about hope international', 'hope international kya karta hai'],
   user_identity: ['my username', 'username', 'my id', 'user id', 'account id', 'मेरी आईडी', 'यूजरनेम', 'میرا آئی ڈی', 'میرا یوزرنیم', 'اسم المستخدم', 'معرفي', 'আমার আইডি', 'আমার ইউজারনেম', 'زما آی ډي', 'زما کارن نوم'],
@@ -740,6 +741,69 @@ const BUSINESS_PLAN_COPY = {
   }
 };
 
+const DEPOSIT_INCOME_COPY = {
+  en: {
+    intro: 'A. Introduction\nDeposit income in Hope International is team-based. When a deposit is approved, the system may credit income to the sponsor line above that member.',
+    direct: 'B. Direct Deposit Income\nDirect deposit income is 2%. It goes to the level 1 sponsor of the user whose deposit gets approved.',
+    level: 'C. Level Deposit Income\nLevel deposit income works from levels 2 to 6. Each eligible level gets 1.2% of the approved deposit amount.',
+    unlock: 'D. Level Unlock Rule\nLevel 1 works for the direct sponsor. For deeper levels, the current rule is simple: 2 directs open level 2, 3 directs open level 3, 4 directs open level 4, 5 directs open level 5, and 6 directs open level 6.',
+    trigger: 'E. Trigger Point\nDeposit income is generated only when admin approves the deposit. It is not created at deposit request submit time.',
+    wallet: 'F. Wallet Destination\nDeposit-related income is credited to the income wallet.',
+    example: 'G. Example\nIf User A makes an approved deposit of $100, level 1 sponsor gets 2% = $2.00. If level 2 is unlocked, level 2 gets 1.2% = $1.20. If level 3 is unlocked, level 3 also gets 1.2% = $1.20. The same 1.2% rule continues up to level 6 if those levels qualify.',
+    close: 'H. Closing\nThis is an educational explanation, not a fixed-income promise. If you want, I can also explain how many deposit levels you can currently unlock from your own directs.'
+  },
+  hi: {
+    intro: 'A. Introduction\nHope International me deposit income team-based hota hai. Jab koi deposit approve hota hai, to system us member ke upline sponsor chain ko income de sakta hai.',
+    direct: 'B. Direct Deposit Income\nDirect deposit income 2% hota hai. Yeh us user ke level 1 sponsor ko milta hai jiska deposit approve hota hai.',
+    level: 'C. Level Deposit Income\nLevel deposit income level 2 se level 6 tak chalta hai. Har eligible level ko approved deposit amount ka 1.2% milta hai.',
+    unlock: 'D. Level Unlock Rule\nLevel 1 direct sponsor ke liye hota hai. Deeper levels ke liye current rule simple hai: 2 direct = level 2 open, 3 direct = level 3 open, 4 direct = level 4 open, 5 direct = level 5 open, aur 6 direct = level 6 open.',
+    trigger: 'E. Trigger Point\nDeposit income tabhi generate hota hai jab admin deposit approve karta hai. Deposit request submit karte hi income nahi banta.',
+    wallet: 'F. Wallet Destination\nDeposit-related income income wallet me credit hota hai.',
+    example: 'G. Example\nAgar User A ka approved deposit $100 hai, to level 1 sponsor ko 2% = $2.00 milega. Agar level 2 unlocked hai to level 2 ko 1.2% = $1.20 milega. Agar level 3 unlocked hai to level 3 ko bhi 1.2% = $1.20 milega. Isi tarah 1.2% rule level 6 tak continue karta hai agar level qualify kare.',
+    close: 'H. Closing\nYeh educational explanation hai, fixed income promise nahi. Chahein to main aapke current directs ke hisaab se bata sakta hoon ki aap kitne deposit levels unlock kar sakte hain.'
+  },
+  ur: {
+    intro: 'A. Introduction\nHope International mein deposit income team-based hota hai. Jab koi deposit approve hota hai to system us member ki upline sponsor chain ko income de sakta hai.',
+    direct: 'B. Direct Deposit Income\nDirect deposit income 2% hota hai. Yeh us user ke level 1 sponsor ko milta hai jis ka deposit approve hota hai.',
+    level: 'C. Level Deposit Income\nLevel deposit income level 2 se level 6 tak chalta hai. Har eligible level ko approved deposit amount ka 1.2% milta hai.',
+    unlock: 'D. Level Unlock Rule\nLevel 1 direct sponsor ke liye hota hai. Deeper levels ke liye current rule seedha hai: 2 direct = level 2 open, 3 direct = level 3 open, 4 direct = level 4 open, 5 direct = level 5 open, aur 6 direct = level 6 open.',
+    trigger: 'E. Trigger Point\nDeposit income us waqt generate hota hai jab admin deposit approve karta hai. Deposit request submit hote hi income create nahi hoti.',
+    wallet: 'F. Wallet Destination\nDeposit-related income income wallet mein credit hota hai.',
+    example: 'G. Example\nAgar User A ka approved deposit $100 ho, to level 1 sponsor ko 2% = $2.00 milega. Agar level 2 unlocked ho to level 2 ko 1.2% = $1.20 milega. Agar level 3 unlocked ho to level 3 ko bhi 1.2% = $1.20 milega. Isi tarah 1.2% rule level 6 tak chalta hai agar level qualify kare.',
+    close: 'H. Closing\nYeh educational explanation hai, fixed income promise nahi. Agar aap chahein to main aap ke current directs ke hisaab se bata sakta hoon ke aap kitne deposit levels unlock kar sakte hain.'
+  },
+  ar: {
+    intro: 'A. Introduction\nدخل الإيداع في Hope International مبني على الفريق. عندما تتم الموافقة على الإيداع، يمكن للنظام أن يمنح دخلاً لسلسلة الرعاة فوق هذا العضو.',
+    direct: 'B. Direct Deposit Income\nدخل الإيداع المباشر هو 2%. ويذهب إلى الراعي في المستوى الأول للمستخدم الذي تمت الموافقة على إيداعه.',
+    level: 'C. Level Deposit Income\nدخل الإيداع للمستويات يعمل من المستوى 2 إلى المستوى 6. كل مستوى مؤهل يحصل على 1.2% من مبلغ الإيداع المعتمد.',
+    unlock: 'D. Level Unlock Rule\nالمستوى 1 يخص الراعي المباشر. أما المستويات الأعمق فقاعدتها الحالية واضحة: 2 إحالات مباشرة تفتح المستوى 2، و3 تفتح المستوى 3، و4 تفتح المستوى 4، و5 تفتح المستوى 5، و6 تفتح المستوى 6.',
+    trigger: 'E. Trigger Point\nيتم إنشاء دخل الإيداع فقط عندما يوافق المشرف على الإيداع. لا يتم إنشاؤه عند إرسال طلب الإيداع.',
+    wallet: 'F. Wallet Destination\nيتم إضافة دخل الإيداع إلى income wallet.',
+    example: 'G. Example\nإذا قام المستخدم A بإيداع معتمد بقيمة $100، فإن راعي المستوى 1 يحصل على 2% = $2.00. وإذا كان المستوى 2 مفتوحاً فإنه يحصل على 1.2% = $1.20. وإذا كان المستوى 3 مفتوحاً فإنه يحصل أيضاً على 1.2% = $1.20. ويستمر نفس معدل 1.2% حتى المستوى 6 إذا كانت المستويات مؤهلة.',
+    close: 'H. Closing\nهذا شرح تعليمي وليس وعداً بدخل ثابت. وإذا أردت، يمكنني أيضاً توضيح عدد مستويات الإيداع التي تستطيع فتحها حالياً حسب إحالاتك المباشرة.'
+  },
+  bn: {
+    intro: 'A. Introduction\nHope International-এ deposit income team-based। কোনো deposit approve হলে system সেই member-এর upline sponsor chain-এ income দিতে পারে।',
+    direct: 'B. Direct Deposit Income\nDirect deposit income 2%। এটি সেই user-এর level 1 sponsor পায় যার deposit approve হয়।',
+    level: 'C. Level Deposit Income\nLevel deposit income level 2 থেকে level 6 পর্যন্ত চলে। প্রতিটি eligible level approved deposit amount-এর 1.2% পায়।',
+    unlock: 'D. Level Unlock Rule\nLevel 1 direct sponsor-এর জন্য। Deep level-এর current rule হলো: 2 direct = level 2 open, 3 direct = level 3 open, 4 direct = level 4 open, 5 direct = level 5 open, এবং 6 direct = level 6 open.',
+    trigger: 'E. Trigger Point\nDeposit income তখনই generate হয় যখন admin deposit approve করে। Deposit request submit করলেই income তৈরি হয় না।',
+    wallet: 'F. Wallet Destination\nDeposit-related income income wallet-এ credit হয়।',
+    example: 'G. Example\nযদি User A-এর approved deposit $100 হয়, তাহলে level 1 sponsor পাবে 2% = $2.00। যদি level 2 unlocked থাকে তাহলে level 2 পাবে 1.2% = $1.20। যদি level 3 unlocked থাকে তাহলে level 3-ও পাবে 1.2% = $1.20। একই 1.2% rule level 6 পর্যন্ত চলবে যদি level qualify করে।',
+    close: 'H. Closing\nএটি educational explanation, fixed income promise নয়। চাইলে আমি আপনার current directs অনুযায়ী বলতে পারি আপনি কতগুলো deposit level unlock করতে পারবেন।'
+  },
+  ps: {
+    intro: 'A. Introduction\nپه Hope International کې deposit income د ټیم پر بنسټ دی. کله چې deposit approve شي، system د هغه غړي upline sponsor chain ته income ورکولی شي.',
+    direct: 'B. Direct Deposit Income\nDirect deposit income 2% دی. دا د هغه user level 1 sponsor ته ځي چې deposit یې approve شي.',
+    level: 'C. Level Deposit Income\nLevel deposit income له level 2 څخه تر level 6 پورې چلېږي. هر eligible level ته د approved deposit amount 1.2% ورکول کېږي.',
+    unlock: 'D. Level Unlock Rule\nLevel 1 د direct sponsor لپاره دی. د ژورو levelونو current rule داسې دی: 2 direct = level 2 open، 3 direct = level 3 open، 4 direct = level 4 open، 5 direct = level 5 open، او 6 direct = level 6 open.',
+    trigger: 'E. Trigger Point\nDeposit income هغه وخت generate کېږي چې admin deposit approve کړي. د deposit request submit کولو سره income نه جوړېږي.',
+    wallet: 'F. Wallet Destination\nDeposit-related income income wallet ته credit کېږي.',
+    example: 'G. Example\nکه User A approved deposit $100 وي، نو level 1 sponsor ته 2% = $2.00 رسېږي. که level 2 unlocked وي، level 2 ته 1.2% = $1.20 رسېږي. که level 3 unlocked وي، level 3 ته هم 1.2% = $1.20 رسېږي. همداسې 1.2% rule تر level 6 پورې ځي که level qualify وي.',
+    close: 'H. Closing\nدا educational explanation ده، fixed income promise نه دی. که وغواړئ، زه ستاسې د current directs له مخې هم ویلی شم چې څو deposit levelونه خلاصولی شئ.'
+  }
+};
+
 function safeLanguage(language) { return SUPPORTED_LANGUAGES.has(language) ? language : 'en'; }
 function getCopy(language) { return COPY[safeLanguage(language)] || COPY.en; }
 function getReliabilityCopy(language) { return RELIABILITY_COPY[safeLanguage(language)] || RELIABILITY_COPY.en; }
@@ -809,6 +873,10 @@ function businessPlanKeywords(text) {
   return includesAny(text, INTENT_KEYWORDS.business_plan || []);
 }
 
+function depositIncomeKeywords(text) {
+  return includesAny(text, INTENT_KEYWORDS.deposit_income_explanation || []);
+}
+
 function teamGrowthKeywords(text) {
   return includesAny(text, ['team kaise', 'team grow', 'team build', 'direct kaise', 'direct badh', 'left right', 'left and right', 'balance my team', 'balance leg', 'unlock more levels', 'level open', 'level unlock', 'binary build', 'binary grow']);
 }
@@ -828,6 +896,9 @@ function detectAssistantIntent(message) {
   }
   if (normalized.includes('show my suggestions') || normalized.includes('my suggestions') || normalized.includes('next best action') || normalized.includes('what should i improve') || normalized.includes('improve my account') || normalized === 'suggestions') {
     return { intent: 'smart_suggestions', normalizedMessage: normalized, targetAmount: null };
+  }
+  if (depositIncomeKeywords(normalized)) {
+    return { intent: 'deposit_income_explanation', normalizedMessage: normalized, targetAmount: null, recommendationType: 'deposit_income' };
   }
   if (businessPlanKeywords(normalized)) {
     return { intent: 'business_plan', normalizedMessage: normalized, targetAmount: null, recommendationType: 'business_plan' };
@@ -849,10 +920,11 @@ function detectAssistantIntent(message) {
     return { intent: 'earning_strategy', normalizedMessage: normalized, targetAmount, recommendationType: targetAmount ? 'custom_monthly_goal' : 'growth_guidance' };
   }
 
-  const ordered = ['business_plan', 'user_identity', 'sponsor_info', 'rank_info', 'direct_referral_summary', 'team_activity_summary', 'pv_summary', 'placement_summary', 'income_wallet_summary', 'deposit_wallet_summary', 'withdrawal_wallet_summary', 'btct_wallet_summary', 'total_income_summary', 'level_income', 'deposit_status', 'withdrawal_info', 'binary_status', 'team_summary', 'income_summary', 'wallet_info', 'auction_summary', 'seller_status', 'earning_strategy'];
+  const ordered = ['deposit_income_explanation', 'business_plan', 'user_identity', 'sponsor_info', 'rank_info', 'direct_referral_summary', 'team_activity_summary', 'pv_summary', 'placement_summary', 'income_wallet_summary', 'deposit_wallet_summary', 'withdrawal_wallet_summary', 'btct_wallet_summary', 'total_income_summary', 'level_income', 'deposit_status', 'withdrawal_info', 'binary_status', 'team_summary', 'income_summary', 'wallet_info', 'auction_summary', 'seller_status', 'earning_strategy'];
   for (const matchedIntent of ordered) {
     if ((INTENT_KEYWORDS[matchedIntent] || []).some((keyword) => normalized.includes(keyword))) {
       const intentMap = {
+        deposit_income_explanation: 'deposit_income_explanation',
         business_plan: 'business_plan',
         user_identity: 'user_identity',
         sponsor_info: 'sponsor_info',
@@ -1055,6 +1127,19 @@ function formatBusinessPlanResponse(language, data = {}) {
     .join('\n\n');
 }
 
+function formatDepositIncomeResponse(language, data = {}) {
+  const copy = DEPOSIT_INCOME_COPY[safeLanguage(language)] || DEPOSIT_INCOME_COPY.en;
+  const personalization = [];
+
+  if (Number(data.directReferrals || 0) >= 0) {
+    personalization.push(data.nextStep);
+  }
+
+  return [copy.intro, copy.direct, copy.level, copy.unlock, copy.trigger, copy.wallet, copy.example, personalization.join(' '), copy.close]
+    .filter(Boolean)
+    .join('\n\n');
+}
+
 function formatStrategyResponse(language, data) {
   const copy = STRATEGY_COPY[safeLanguage(language)] || STRATEGY_COPY.en;
   const lines = [
@@ -1216,6 +1301,34 @@ function buildAssistantData(intentResult, context, language) {
   const directReferrals = Number(context.directReferrals || 0);
   const activeTeam = Number(team.active_count || 0);
   const totalTeam = Number(team.total_descendants || 0);
+  const depositLevelOpen = Math.max(1, Math.min(6, directReferrals || 1));
+
+  if (intent === 'deposit_income_explanation') {
+    let nextStep = '';
+    if (directReferrals < 6) nextStep = safeLanguage(language) === 'hi'
+      ? `Aapke current directs ${directReferrals} hain, is hisaab se aap abhi level ${depositLevelOpen} tak deposit income qualify karte hain.`
+      : safeLanguage(language) === 'ur'
+        ? `Aap ke current directs ${directReferrals} hain, is hisaab se aap abhi level ${depositLevelOpen} tak deposit income qualify karte hain.`
+        : safeLanguage(language) === 'ar'
+          ? `لديك حالياً ${directReferrals} direct، وبحسب ذلك فأنت مؤهل الآن حتى مستوى ${depositLevelOpen} من دخل الإيداع.`
+          : safeLanguage(language) === 'bn'
+            ? `আপনার current direct ${directReferrals} জন, তাই এখন আপনি level ${depositLevelOpen} পর্যন্ত deposit income qualify করতে পারেন।`
+            : safeLanguage(language) === 'ps'
+              ? `ستاسې current directs ${directReferrals} دي، نو اوس تاسې تر level ${depositLevelOpen} پورې deposit income qualify کوئ.`
+              : `Your current directs are ${directReferrals}, so right now you can qualify up to level ${depositLevelOpen} deposit income.`;
+    else nextStep = safeLanguage(language) === 'hi'
+      ? `Aapke current directs ${directReferrals} hain, is hisaab se aap level 6 tak deposit income unlock kar sakte hain.`
+      : safeLanguage(language) === 'ur'
+        ? `Aap ke current directs ${directReferrals} hain, is hisaab se aap level 6 tak deposit income unlock kar sakte hain.`
+        : safeLanguage(language) === 'ar'
+          ? `لديك حالياً ${directReferrals} direct، وهذا يكفي لفتح دخل الإيداع حتى المستوى 6.`
+          : safeLanguage(language) === 'bn'
+            ? `আপনার current direct ${directReferrals} জন, তাই আপনি level 6 পর্যন্ত deposit income unlock করতে পারেন।`
+            : safeLanguage(language) === 'ps'
+              ? `ستاسې current directs ${directReferrals} دي، نو تاسې تر level 6 پورې deposit income unlock کولی شئ.`
+              : `Your current directs are ${directReferrals}, so you can unlock deposit income up to level 6.`;
+    return { intent, data: { name, directReferrals, depositLevelOpen, nextStep } };
+  }
 
   if (intent === 'business_plan') {
     let nextStep = '';
@@ -1387,6 +1500,7 @@ function formatAssistantResponse(result, language) {
     unknown_fallback: 'fallback'
   };
   const templateKey = templateKeyByIntent[result.intent] || 'fallback';
+  if (result.intent === 'deposit_income_explanation') return formatDepositIncomeResponse(language, result.data);
   if (result.intent === 'business_plan') return formatBusinessPlanResponse(language, result.data);
   if (result.intent === 'earning_strategy') return formatRoadmapResponse(language, 'earning_strategy', result.data);
   if (result.intent === 'team_growth_strategy') return formatRoadmapResponse(language, 'team_growth_strategy', result.data);

@@ -6,17 +6,7 @@ const walletRepository = require('../../repositories/walletRepository');
 const walletService = require('../walletService');
 const btctStakingRepository = require('../../repositories/btctStakingRepository');
 const btctStakingService = require('../btctStakingService');
-const userRepository = require('../../repositories/userRepository');
 const notificationService = require('../notificationService');
-
-const DIRECT_DEPOSIT_INCOME_RULE = { levelNumber: 1, percentage: 0.02, incomeType: 'direct_deposit_income' };
-const LEVEL_DEPOSIT_INCOME_RULES = [
-  { levelNumber: 2, percentage: 0.012, incomeType: 'level_deposit_income' },
-  { levelNumber: 3, percentage: 0.012, incomeType: 'level_deposit_income' },
-  { levelNumber: 4, percentage: 0.012, incomeType: 'level_deposit_income' },
-  { levelNumber: 5, percentage: 0.012, incomeType: 'level_deposit_income' },
-  { levelNumber: 6, percentage: 0.012, incomeType: 'level_deposit_income' }
-];
 const ADMIN_WALLET_ACTION_DUPLICATE_WINDOW_SECONDS = 30;
 const ADMIN_WALLET_ACTION_BURST_WINDOW_SECONDS = 300;
 const ADMIN_WALLET_ACTION_BURST_LIMIT = 12;
@@ -54,90 +44,6 @@ async function logSecurityEvent(client, payload = {}) {
 async function blockWithSecurityLog(client, payload, statusCode, message) {
   await logSecurityEvent(client, payload);
   throw new ApiError(statusCode, message);
-}
-
-async function distributeDepositTeamIncome(client, deposit, adminUserId, adminNote = null) {
-  const maxDepositIncomeLevel = LEVEL_DEPOSIT_INCOME_RULES[LEVEL_DEPOSIT_INCOME_RULES.length - 1]?.levelNumber || DIRECT_DEPOSIT_INCOME_RULE.levelNumber;
-  const uplines = await userRepository.getSponsorUpline(client, deposit.user_id, maxDepositIncomeLevel);
-  const uplinesByLevel = new Map(uplines.map((item) => [Number(item.level_number), item]));
-  const levelIncomeRecipientIds = LEVEL_DEPOSIT_INCOME_RULES
-    .map((rule) => uplinesByLevel.get(rule.levelNumber)?.id)
-    .filter(Boolean);
-  const directReferralCounts = await userRepository.getDirectReferralCounts(client, levelIncomeRecipientIds);
-  const baseAmount = toMoney(deposit.amount);
-  const distributions = [];
-
-  const depositIncomeRules = [DIRECT_DEPOSIT_INCOME_RULE, ...LEVEL_DEPOSIT_INCOME_RULES];
-
-  for (const rule of depositIncomeRules) {
-    const recipient = uplinesByLevel.get(rule.levelNumber);
-    if (!recipient) continue;
-
-    if (rule.incomeType === 'level_deposit_income') {
-      const directReferralCount = Number(directReferralCounts.get(recipient.id) || 0);
-      if (directReferralCount < rule.levelNumber) {
-        continue;
-      }
-    }
-
-    const creditedAmount = toMoney(baseAmount * rule.percentage);
-    if (creditedAmount <= 0) continue;
-
-    const ledger = await walletRepository.createDepositTeamIncomeLedgerEntry(client, {
-      recipientUserId: recipient.id,
-      sourceUserId: deposit.user_id,
-      sourceDepositId: deposit.id,
-      levelNumber: rule.levelNumber,
-      incomeType: rule.incomeType,
-      sourceType: 'deposit',
-      status: 'approved',
-      percentageUsed: rule.percentage * 100,
-      baseAmount,
-      creditedAmount
-    });
-
-    if (!ledger) {
-      continue;
-    }
-
-    const { transaction } = await walletService.creditWithTransaction(
-      client,
-      recipient.id,
-      creditedAmount,
-      rule.incomeType,
-      deposit.id,
-      {
-        status: 'approved',
-        sourceUserId: deposit.user_id,
-        sourceUsername: deposit.username || null,
-        sourceDepositId: deposit.id,
-        depositRequestId: deposit.id,
-        levelNumber: rule.levelNumber,
-        percentageUsed: rule.percentage * 100,
-        baseAmount,
-        creditedAmount,
-        adminNote: adminNote || null,
-        note: `${rule.levelNumber === 1 ? 'Direct' : `Level ${rule.levelNumber}`} deposit income from ${deposit.username || 'team member'}`
-      },
-      adminUserId
-    );
-
-    await walletRepository.updateDepositTeamIncomeLedgerWalletTransaction(client, ledger.id, transaction.id);
-
-    distributions.push({
-      ledgerId: ledger.id,
-      walletTransactionId: transaction.id,
-      recipientUserId: recipient.id,
-      recipientUsername: recipient.username,
-      levelNumber: rule.levelNumber,
-      incomeType: rule.incomeType,
-      percentageUsed: rule.percentage * 100,
-      baseAmount,
-      creditedAmount
-    });
-  }
-
-  return distributions;
 }
 
 function buildPagedResult(result, pagination) {
@@ -239,22 +145,12 @@ async function reviewDeposit(adminUserId, requestId, payload) {
     }
 
     if (payload.status === 'approved') {
-      await walletService.credit(
-        client,
-        request.user_id,
-        Number(request.amount),
-        'deposit_request',
-        request.id,
-        {
-          status: 'approved',
-          adminNote: payload.adminNote || null,
-          depositRequestId: request.id,
-          transactionHash: request.transaction_hash || request.details?.transactionReference || request.details?.txHash || null
-        },
-        adminUserId
-      );
-
-      const teamIncomeDistributions = await distributeDepositTeamIncome(client, request, adminUserId, payload.adminNote || null);
+      const { teamIncomeDistributions } = await walletService.settleDepositRequest(client, updated, {
+        createdByAdminId: adminUserId,
+        adminNote: payload.adminNote || null,
+        status: 'approved',
+        expectedCurrentStatus: 'approved'
+      });
       updated.details = {
         ...(updated.details || {}),
         teamIncomeDistributionCount: teamIncomeDistributions.length

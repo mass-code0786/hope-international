@@ -927,6 +927,17 @@ async function createDepositRequest(client, payload) {
   addField('proof_image_url', payload.proofImageUrl || null);
   addField('method', payload.method || 'crypto');
   addField('instructions', payload.instructions || null);
+  addField('payment_provider', payload.paymentProvider || null);
+  addField('payment_id', payload.paymentId || null);
+  addField('order_id', payload.orderId || null);
+  addField('payment_status', payload.paymentStatus || null);
+  addField('pay_currency', payload.payCurrency || null);
+  addField('pay_amount', payload.payAmount || null);
+  addField('pay_address', payload.payAddress || null);
+  addField('payment_url', payload.paymentUrl || null);
+  addField('is_processed', payload.isProcessed === undefined ? false : Boolean(payload.isProcessed));
+  addField('processed_at', payload.processedAt || null);
+  addField('raw_webhook_data', JSON.stringify(payload.rawWebhookData || {}), { castJsonb: true });
   addField('details', JSON.stringify(payload.details || {}), { castJsonb: true });
   addField('status', payload.status || 'pending');
 
@@ -947,6 +958,30 @@ async function getDepositRequestById(client, id, options = {}) {
      JOIN users u ON u.id = d.user_id
      WHERE d.id = $1${lockClause}`,
     [id]
+  );
+  return rows[0] || null;
+}
+
+async function getDepositRequestByOrderId(client, orderId, options = {}) {
+  const lockClause = options.forUpdate ? ' FOR UPDATE' : '';
+  const { rows } = await q(client).query(
+    `SELECT d.*, u.username, u.email
+     FROM wallet_deposit_requests d
+     JOIN users u ON u.id = d.user_id
+     WHERE d.order_id = $1${lockClause}`,
+    [orderId]
+  );
+  return rows[0] || null;
+}
+
+async function getDepositRequestByPaymentId(client, paymentId, options = {}) {
+  const lockClause = options.forUpdate ? ' FOR UPDATE' : '';
+  const { rows } = await q(client).query(
+    `SELECT d.*, u.username, u.email
+     FROM wallet_deposit_requests d
+     JOIN users u ON u.id = d.user_id
+     WHERE d.payment_id = $1${lockClause}`,
+    [paymentId]
   );
   return rows[0] || null;
 }
@@ -1036,7 +1071,8 @@ async function listDepositRequestsAdmin(client, filters, pagination) {
 
 async function updateDepositRequestStatus(client, id, payload) {
   const columns = await getTableColumns(client, 'wallet_deposit_requests');
-  const values = [id, payload.status, JSON.stringify(payload.details || {})];
+  const details = payload.details && typeof payload.details === 'object' && !Array.isArray(payload.details) ? payload.details : {};
+  const values = [id, payload.status, JSON.stringify(details)];
   const setClauses = [
     `status = $2`,
     `details = COALESCE(details, '{}'::jsonb) || $3::jsonb`,
@@ -1048,6 +1084,50 @@ async function updateDepositRequestStatus(client, id, payload) {
     setClauses.push(`reviewed_by = COALESCE($${values.length}::uuid, reviewed_by)`);
     if (columns.has('reviewed_at')) {
       setClauses.push(`reviewed_at = CASE WHEN $${values.length}::uuid IS NULL THEN reviewed_at ELSE NOW() END`);
+    }
+  }
+
+  if (columns.has('payment_provider') && Object.prototype.hasOwnProperty.call(payload, 'paymentProvider')) {
+    values.push(payload.paymentProvider || null);
+    setClauses.push(`payment_provider = COALESCE($${values.length}, payment_provider)`);
+  }
+  if (columns.has('payment_id') && Object.prototype.hasOwnProperty.call(payload, 'paymentId')) {
+    values.push(payload.paymentId || null);
+    setClauses.push(`payment_id = COALESCE($${values.length}, payment_id)`);
+  }
+  if (columns.has('order_id') && Object.prototype.hasOwnProperty.call(payload, 'orderId')) {
+    values.push(payload.orderId || null);
+    setClauses.push(`order_id = COALESCE($${values.length}, order_id)`);
+  }
+  if (columns.has('payment_status') && Object.prototype.hasOwnProperty.call(payload, 'paymentStatus')) {
+    values.push(payload.paymentStatus || null);
+    setClauses.push(`payment_status = COALESCE($${values.length}, payment_status)`);
+  }
+  if (columns.has('pay_currency') && Object.prototype.hasOwnProperty.call(payload, 'payCurrency')) {
+    values.push(payload.payCurrency || null);
+    setClauses.push(`pay_currency = COALESCE($${values.length}, pay_currency)`);
+  }
+  if (columns.has('pay_amount') && Object.prototype.hasOwnProperty.call(payload, 'payAmount')) {
+    values.push(payload.payAmount === undefined ? null : payload.payAmount);
+    setClauses.push(`pay_amount = COALESCE($${values.length}, pay_amount)`);
+  }
+  if (columns.has('pay_address') && Object.prototype.hasOwnProperty.call(payload, 'payAddress')) {
+    values.push(payload.payAddress || null);
+    setClauses.push(`pay_address = COALESCE($${values.length}, pay_address)`);
+  }
+  if (columns.has('payment_url') && Object.prototype.hasOwnProperty.call(payload, 'paymentUrl')) {
+    values.push(payload.paymentUrl || null);
+    setClauses.push(`payment_url = COALESCE($${values.length}, payment_url)`);
+  }
+  if (columns.has('raw_webhook_data') && Object.prototype.hasOwnProperty.call(payload, 'rawWebhookData')) {
+    values.push(JSON.stringify(payload.rawWebhookData || {}));
+    setClauses.push(`raw_webhook_data = COALESCE(raw_webhook_data, '{}'::jsonb) || $${values.length}::jsonb`);
+  }
+  if (columns.has('is_processed') && Object.prototype.hasOwnProperty.call(payload, 'isProcessed')) {
+    values.push(Boolean(payload.isProcessed));
+    setClauses.push(`is_processed = $${values.length}`);
+    if (columns.has('processed_at')) {
+      setClauses.push(`processed_at = CASE WHEN $${values.length} THEN COALESCE(processed_at, NOW()) ELSE processed_at END`);
     }
   }
 
@@ -1408,6 +1488,8 @@ module.exports = {
   removeWalletBinding,
   createDepositRequest,
   getDepositRequestById,
+  getDepositRequestByOrderId,
+  getDepositRequestByPaymentId,
   listDepositRequests,
   listDepositRequestsAdmin,
   updateDepositRequestStatus,

@@ -2,12 +2,14 @@ const walletRepository = require('../repositories/walletRepository');
 const userRepository = require('../repositories/userRepository');
 const adminRepository = require('../repositories/adminRepository');
 const notificationService = require('./notificationService');
+const nowPaymentsService = require('./nowPaymentsService');
 const { ApiError } = require('../utils/ApiError');
 const { withPerfSpan } = require('../utils/perf');
 
 const MIN_WITHDRAWAL_AMOUNT = 10;
 const MIN_DEPOSIT_AMOUNT = 1;
 const MIN_WALLET_TRANSFER_AMOUNT = 5;
+const AUTO_DEPOSIT_PROVIDER = 'nowpayments';
 const WALLET_TRANSFER_DUPLICATE_WINDOW_SECONDS = 30;
 const WALLET_TRANSFER_BURST_WINDOW_SECONDS = 300;
 const WALLET_TRANSFER_BURST_LIMIT = 5;
@@ -19,7 +21,17 @@ const WELCOME_SPIN_ATTEMPT_LIMIT = 5;
 const BTCT_USD_PRICE = 0.10;
 const DEPOSIT_ASSET = 'USDT';
 const DEPOSIT_NETWORK = 'BEP20';
+const DEPOSIT_METHOD_MANUAL = 'manual';
+const DEPOSIT_METHOD_NOWPAYMENTS = 'nowpayments';
 const DEPOSIT_WALLET_SETTING_KEY = 'deposit_wallet_config';
+const DIRECT_DEPOSIT_INCOME_RULE = { levelNumber: 1, percentage: 0.02, incomeType: 'direct_deposit_income' };
+const LEVEL_DEPOSIT_INCOME_RULES = [
+  { levelNumber: 2, percentage: 0.012, incomeType: 'level_deposit_income' },
+  { levelNumber: 3, percentage: 0.012, incomeType: 'level_deposit_income' },
+  { levelNumber: 4, percentage: 0.012, incomeType: 'level_deposit_income' },
+  { levelNumber: 5, percentage: 0.012, incomeType: 'level_deposit_income' },
+  { levelNumber: 6, percentage: 0.012, incomeType: 'level_deposit_income' }
+];
 const WELCOME_SPIN_REWARD_POOL = [
   { amount: 0.10, weight: 30 },
   { amount: 0.20, weight: 24 },
@@ -42,6 +54,10 @@ function isAllowedWalletTransfer(fromWallet, toWallet) {
 
 function buildTransferReference() {
   return `WTX_${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+}
+
+function buildDepositOrderId(userId) {
+  return `DEP_${String(userId).slice(0, 8).toUpperCase()}_${Date.now()}`;
 }
 
 function isWalletFrozen(wallet = {}, walletType) {
@@ -179,6 +195,156 @@ async function getDepositWalletConfig(client, options = {}) {
   }
 
   return config;
+}
+
+async function distributeDepositTeamIncome(client, deposit, createdByAdminId = null, adminNote = null) {
+  const maxDepositIncomeLevel = LEVEL_DEPOSIT_INCOME_RULES[LEVEL_DEPOSIT_INCOME_RULES.length - 1]?.levelNumber || DIRECT_DEPOSIT_INCOME_RULE.levelNumber;
+  const uplines = await userRepository.getSponsorUpline(client, deposit.user_id, maxDepositIncomeLevel);
+  const uplinesByLevel = new Map(uplines.map((item) => [Number(item.level_number), item]));
+  const levelIncomeRecipientIds = LEVEL_DEPOSIT_INCOME_RULES
+    .map((rule) => uplinesByLevel.get(rule.levelNumber)?.id)
+    .filter(Boolean);
+  const directReferralCounts = await userRepository.getDirectReferralCounts(client, levelIncomeRecipientIds);
+  const baseAmount = toMoney(deposit.amount);
+  const distributions = [];
+
+  for (const rule of [DIRECT_DEPOSIT_INCOME_RULE, ...LEVEL_DEPOSIT_INCOME_RULES]) {
+    const recipient = uplinesByLevel.get(rule.levelNumber);
+    if (!recipient) continue;
+
+    if (rule.incomeType === 'level_deposit_income') {
+      const directReferralCount = Number(directReferralCounts.get(recipient.id) || 0);
+      if (directReferralCount < rule.levelNumber) {
+        continue;
+      }
+    }
+
+    const creditedAmount = toMoney(baseAmount * rule.percentage);
+    if (creditedAmount <= 0) continue;
+
+    const ledger = await walletRepository.createDepositTeamIncomeLedgerEntry(client, {
+      recipientUserId: recipient.id,
+      sourceUserId: deposit.user_id,
+      sourceDepositId: deposit.id,
+      levelNumber: rule.levelNumber,
+      incomeType: rule.incomeType,
+      sourceType: 'deposit',
+      status: 'approved',
+      percentageUsed: rule.percentage * 100,
+      baseAmount,
+      creditedAmount
+    });
+
+    if (!ledger) {
+      continue;
+    }
+
+    const { transaction } = await creditWithTransaction(
+      client,
+      recipient.id,
+      creditedAmount,
+      rule.incomeType,
+      deposit.id,
+      {
+        status: 'approved',
+        sourceUserId: deposit.user_id,
+        sourceUsername: deposit.username || null,
+        sourceDepositId: deposit.id,
+        depositRequestId: deposit.id,
+        levelNumber: rule.levelNumber,
+        percentageUsed: rule.percentage * 100,
+        baseAmount,
+        creditedAmount,
+        adminNote: adminNote || null,
+        note: `${rule.levelNumber === 1 ? 'Direct' : `Level ${rule.levelNumber}`} deposit income from ${deposit.username || 'team member'}`
+      },
+      createdByAdminId
+    );
+
+    await walletRepository.updateDepositTeamIncomeLedgerWalletTransaction(client, ledger.id, transaction.id);
+    distributions.push({
+      ledgerId: ledger.id,
+      walletTransactionId: transaction.id,
+      recipientUserId: recipient.id,
+      levelNumber: rule.levelNumber,
+      incomeType: rule.incomeType,
+      creditedAmount
+    });
+  }
+
+  return distributions;
+}
+
+async function settleDepositRequest(client, requestInput, options = {}) {
+  const request = requestInput?.id
+    ? requestInput
+    : await walletRepository.getDepositRequestById(client, requestInput, { forUpdate: true });
+
+  if (!request) {
+    throw new ApiError(404, 'Deposit request not found');
+  }
+
+  if (request.is_processed) {
+    return {
+      request,
+      alreadyProcessed: true,
+      teamIncomeDistributions: []
+    };
+  }
+
+  const existingCredit = await walletRepository.getTransactionBySourceAndReference(
+    client,
+    request.user_id,
+    'deposit_request',
+    request.id
+  );
+
+  if (!existingCredit) {
+    await credit(
+      client,
+      request.user_id,
+      Number(request.amount),
+      'deposit_request',
+      request.id,
+      {
+        status: 'approved',
+        adminNote: options.adminNote || null,
+        depositRequestId: request.id,
+        transactionHash: request.transaction_hash || request.details?.transactionReference || request.details?.txHash || null
+      },
+      options.createdByAdminId || null
+    );
+  }
+
+  const teamIncomeDistributions = await distributeDepositTeamIncome(
+    client,
+    request,
+    options.createdByAdminId || null,
+    options.adminNote || null
+  );
+
+  const nextDetails = {
+    ...(request.details || {}),
+    ...(options.extraDetails || {}),
+    settledAt: new Date().toISOString(),
+    teamIncomeDistributionCount: teamIncomeDistributions.length
+  };
+
+  const updatedRequest = await walletRepository.updateDepositRequestStatus(client, request.id, {
+    status: options.status || request.status || 'approved',
+    details: nextDetails,
+    reviewedBy: options.createdByAdminId || null,
+    paymentStatus: options.paymentStatus || request.payment_status || null,
+    rawWebhookData: options.rawWebhookData || undefined,
+    isProcessed: true,
+    expectedCurrentStatus: options.expectedCurrentStatus || request.status
+  });
+
+  return {
+    request: updatedRequest || request,
+    alreadyProcessed: false,
+    teamIncomeDistributions
+  };
 }
 
 async function credit(client, userId, amount, source, referenceId = null, metadata = {}, createdByAdminId = null) {
@@ -424,6 +590,50 @@ async function createDepositRequest(client, userId, payload) {
     throw new ApiError(400, `Minimum deposit is ${MIN_DEPOSIT_AMOUNT}`);
   }
 
+  const provider = String(payload.provider || payload.paymentProvider || DEPOSIT_METHOD_MANUAL).trim().toLowerCase();
+
+  if (provider === AUTO_DEPOSIT_PROVIDER || provider === DEPOSIT_METHOD_NOWPAYMENTS) {
+    const payCurrency = nowPaymentsService.normalizeCurrency(payload.payCurrency);
+    const orderId = buildDepositOrderId(userId);
+    const payment = await nowPaymentsService.createPayment({
+      priceAmount: amount,
+      priceCurrency: 'usd',
+      payCurrency,
+      orderId,
+      orderDescription: `Hope International deposit for user ${userId}`
+    });
+
+    return walletRepository.createDepositRequest(client, {
+      userId,
+      asset: DEPOSIT_ASSET,
+      network: payCurrency.toUpperCase(),
+      walletAddressSnapshot: payment.pay_address || null,
+      amount,
+      method: DEPOSIT_METHOD_NOWPAYMENTS,
+      instructions: 'Waiting for NOWPayments confirmation.',
+      paymentProvider: AUTO_DEPOSIT_PROVIDER,
+      paymentId: String(payment.payment_id),
+      orderId,
+      paymentStatus: String(payment.payment_status || 'waiting'),
+      payCurrency,
+      payAmount: Number(payment.pay_amount || 0),
+      payAddress: payment.pay_address || null,
+      paymentUrl: payment.payment_url || payment.invoice_url || null,
+      isProcessed: false,
+      details: {
+        provider: AUTO_DEPOSIT_PROVIDER,
+        priceAmount: amount,
+        priceCurrency: 'USD',
+        payCurrency,
+        payAmount: Number(payment.pay_amount || 0),
+        payAddress: payment.pay_address || null,
+        paymentId: payment.payment_id || null,
+        paymentStatus: payment.payment_status || 'waiting'
+      },
+      status: 'pending'
+    });
+  }
+
   const txHash = String(payload.txHash || payload.transactionHash || '').trim();
   if (txHash.length < 6) {
     throw new ApiError(400, 'Transaction hash is required');
@@ -457,8 +667,9 @@ async function createDepositRequest(client, userId, payload) {
     amount,
     transactionHash: txHash,
     proofImageUrl,
-    method: 'crypto',
+    method: DEPOSIT_METHOD_MANUAL,
     instructions: note || null,
+    paymentProvider: DEPOSIT_METHOD_MANUAL,
     details,
     status: 'pending'
   });
@@ -918,6 +1129,8 @@ module.exports = {
   bindWalletAddress,
   getDepositWalletConfig,
   createDepositRequest,
+  settleDepositRequest,
+  distributeDepositTeamIncome,
   createWithdrawalRequest,
   createP2pTransfer,
   getHubHistory,

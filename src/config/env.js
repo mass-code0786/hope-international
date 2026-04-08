@@ -19,5 +19,10 @@ module.exports = {
   jwtRememberMeExpiresIn: getEnv('JWT_REMEMBER_ME_EXPIRES_IN', '30d'),
   webAuthnRpName: getEnv('WEBAUTHN_RP_NAME', 'Hope International'),
   webAuthnRpId: process.env.WEBAUTHN_RP_ID || '',
-  webAuthnOrigin: process.env.WEBAUTHN_ORIGIN || ''
+  webAuthnOrigin: process.env.WEBAUTHN_ORIGIN || '',
+  appBaseUrl: process.env.APP_BASE_URL || '',
+  nowPaymentsApiBaseUrl: process.env.NOWPAYMENTS_API_BASE_URL || 'https://api.nowpayments.io/v1',
+  nowPaymentsApiKey: process.env.NOWPAYMENTS_API_KEY || '',
+  nowPaymentsIpnSecret: process.env.NOWPAYMENTS_IPN_SECRET || '',
+  nowPaymentsWebhookPublicUrl: process.env.NOWPAYMENTS_WEBHOOK_PUBLIC_URL || ''
 };

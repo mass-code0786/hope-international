@@ -177,9 +177,25 @@ const walletBindSchema = z.object({
 const walletDepositSchema = z.object({
   body: z.object({
     amount: z.number().positive(),
-    txHash: z.string().trim().min(6).max(255),
-    proofImageUrl: z.string().min(16).max(1000000),
+    provider: z.enum(['manual', 'nowpayments']).optional().default('manual'),
+    payCurrency: z.string().trim().min(2).max(40).optional(),
+    txHash: z.string().trim().min(6).max(255).optional(),
+    proofImageUrl: z.string().min(16).max(1000000).optional(),
     note: z.string().max(800).optional()
+  }).superRefine((body, ctx) => {
+    if (body.provider === 'nowpayments') {
+      if (!body.payCurrency) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Crypto currency is required', path: ['payCurrency'] });
+      }
+      return;
+    }
+
+    if (!body.txHash) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Transaction hash is required', path: ['txHash'] });
+    }
+    if (!body.proofImageUrl) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Screenshot proof is required', path: ['proofImageUrl'] });
+    }
   }),
   params: z.object({}),
   query: z.object({})

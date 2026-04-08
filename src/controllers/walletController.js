@@ -21,6 +21,16 @@ function normalizeDepositRecord(item) {
     tx_hash: transactionReference,
     wallet_address_snapshot: walletAddressSnapshot,
     proof_image_url: proofImageUrl,
+    payment_provider: item.payment_provider || details.provider || null,
+    payment_id: item.payment_id || details.paymentId || null,
+    payment_status: item.payment_status || details.paymentStatus || null,
+    order_id: item.order_id || null,
+    pay_currency: item.pay_currency || details.payCurrency || null,
+    pay_amount: item.pay_amount ?? details.payAmount ?? null,
+    pay_address: item.pay_address || details.payAddress || walletAddressSnapshot || null,
+    payment_url: item.payment_url || details.paymentUrl || null,
+    is_processed: Boolean(item.is_processed),
+    processed_at: item.processed_at || null,
     note: item.instructions || details.note || null,
     details
   };
@@ -91,9 +101,12 @@ const depositConfig = asyncHandler(async (_req, res) => {
 
 const depositCreate = asyncHandler(async (req, res) => {
   const data = await withTransaction(async (client) => walletService.createDepositRequest(client, req.user.sub, req.body));
+  const isAutoDeposit = String(data.payment_provider || '').toLowerCase() === 'nowpayments';
   return success(res, {
     data: normalizeDepositRecord(data),
-    message: 'USDT BEP20 deposit request submitted successfully',
+    message: isAutoDeposit
+      ? 'NOWPayments deposit created successfully'
+      : 'USDT BEP20 deposit request submitted successfully',
     statusCode: 201
   });
 });
