@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Baby,
   Bell,
@@ -26,7 +26,6 @@ import { DashboardSkeleton } from '@/components/ui/PageSkeletons';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { WelcomeSpinModal } from '@/components/auth/WelcomeSpinModal';
 import { PurchaseConfirmModal } from '@/components/shop/PurchaseConfirmModal';
-import { getMe } from '@/lib/services/authService';
 import { getHomepageBanners } from '@/lib/services/bannersService';
 import { createOrder } from '@/lib/services/ordersService';
 import { getUserAddress } from '@/lib/services/userAddressService';
@@ -138,7 +137,13 @@ function ProductTile({ product, onBuy, isBuying, lowBalance }) {
       <Link href={href} className="block">
         <div className="relative h-[146px] overflow-hidden bg-[#2b2e37]">
           {cover ? (
-            <img src={cover} alt={product?.name || 'Product'} className="h-full w-full object-cover" />
+            <img
+              src={cover}
+              alt={product?.name || 'Product'}
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover"
+            />
           ) : (
             <div className="flex h-full items-center justify-center bg-gradient-to-br from-[#343743] via-[#2f323b] to-[#282b33] text-slate-400">
               <Store size={20} />
@@ -223,11 +228,9 @@ export default function DashboardPage() {
     queryFn: getUnreadNotificationCount,
     staleTime: 15_000
   });
-  const [meQuery, walletQuery] = useQueries({
-    queries: [
-      { queryKey: queryKeys.me, queryFn: getMe },
-      { queryKey: queryKeys.wallet, queryFn: getWallet }
-    ]
+  const walletQuery = useQuery({
+    queryKey: queryKeys.wallet,
+    queryFn: getWallet
   });
   const queryClient = useQueryClient();
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
@@ -311,9 +314,8 @@ export default function DashboardPage() {
     onError: (error) => toast.error(error.message || 'Unable to claim welcome reward')
   });
 
-  const isLoading = productsLoading || meQuery.isLoading || walletQuery.isLoading || bannersQuery.isLoading || addressQuery.isLoading;
-  const hasFatalError = meQuery.isError || walletQuery.isError;
-  const user = meQuery.data || {};
+  const isLoading = productsLoading || walletQuery.isLoading;
+  const hasFatalError = walletQuery.isError;
   const address = addressQuery.data?.data?.address || null;
   const products = Array.isArray(productData) ? productData : [];
   const homepageBanners = Array.isArray(bannersQuery.data) ? bannersQuery.data : [];
@@ -387,7 +389,6 @@ export default function DashboardPage() {
       <ErrorState
         message="Home page data could not be loaded."
         onRetry={() => {
-          meQuery.refetch();
           walletQuery.refetch();
           bannersQuery.refetch();
           addressQuery.refetch();
@@ -461,7 +462,13 @@ export default function DashboardPage() {
               <div key={banner.id} className="min-w-full snap-start">
                 {banner.imageUrl ? (
                   <Link href={resolveBannerTarget(banner.targetLink)} className="relative block h-[124px] overflow-hidden rounded-[14px] border border-slate-200 bg-white shadow-[0_10px_20px_rgba(15,23,42,0.08)]">
-                    <img src={banner.imageUrl} alt={banner.title || 'Homepage banner'} className="h-full w-full object-cover" />
+                    <img
+                      src={banner.imageUrl}
+                      alt={banner.title || 'Homepage banner'}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-cover"
+                    />
                     <div className="absolute inset-0 bg-gradient-to-r from-[#111217]/85 via-[#111217]/40 to-transparent p-2.5 text-white">
                       <div className="max-w-[72%]">
                         <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/75">Hope Marketplace</p>

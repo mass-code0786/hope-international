@@ -32,6 +32,18 @@ export async function getSellerMe() {
   };
 }
 
+export async function getSellerAccess() {
+  const data = await apiFetch('/seller/access');
+  const unwrapped = unwrap(data) || {};
+
+  return {
+    hasProfile: Boolean(unwrapped.hasProfile),
+    applicationStatus: unwrapped.applicationStatus || null,
+    canAccessDashboard: Boolean(unwrapped.canAccessDashboard),
+    applicationFee: Number(unwrapped.applicationFee || SELLER_APPLICATION_FEE_USD)
+  };
+}
+
 export async function createSellerProduct(payload) {
   const data = await apiFetch('/seller/products', {
     method: 'POST',

@@ -19,6 +19,14 @@ const me = asyncHandler(async (req, res) => {
   });
 });
 
+const access = asyncHandler(async (req, res) => {
+  const data = await sellerService.getAccess(req.user.sub);
+  return success(res, {
+    data,
+    message: 'Seller access fetched successfully'
+  });
+});
+
 const createProduct = asyncHandler(async (req, res) => {
   const data = await sellerService.createProduct(req.user.sub, req.body);
   return success(res, {
@@ -114,6 +122,7 @@ const deleteDocument = asyncHandler(async (req, res) => {
 
 module.exports = {
   apply,
+  access,
   me,
   createProduct,
   getProduct,

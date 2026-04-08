@@ -16,6 +16,7 @@ const {
 const router = express.Router();
 
 router.post('/apply', auth(), validate(sellerApplySchema), sellerController.apply);
+router.get('/access', auth(), sellerController.access);
 router.get('/me', auth(), sellerController.me);
 router.get('/orders', auth(), requireSeller, validate(sellerOrdersQuerySchema), sellerController.orders);
 router.get('/payouts', auth(), requireSeller, validate(sellerPayoutsQuerySchema), sellerController.payouts);

@@ -8,6 +8,7 @@ const sellerRepository = require('../repositories/sellerRepository');
 const userRepository = require('../repositories/userRepository');
 const walletRepository = require('../repositories/walletRepository');
 const walletService = require('./walletService');
+const { withPerfSpan } = require('../utils/perf');
 
 const ALLOWED_DOC_MIME = new Set([
   'application/pdf',
@@ -108,39 +109,60 @@ async function apply(userId, payload) {
 }
 
 async function getMe(userId) {
-  const profile = await sellerRepository.getSellerProfileByUserId(null, userId);
-  if (!profile) {
+  return withPerfSpan(`seller.me:${userId}`, async () => {
+    const profile = await withPerfSpan(
+      `seller.me.db.profile:${userId}`,
+      () => sellerRepository.getSellerProfileByUserId(null, userId),
+      { thresholdMs: 80 }
+    );
+    if (!profile) {
+      return {
+        profile: null,
+        documents: [],
+        products: [],
+        recentModeration: [],
+        summary: null,
+        canAccessDashboard: false,
+        applicationFee: SELLER_APPLICATION_FEE_USD
+      };
+    }
+
+    const [documents, products, productSummary, orderSummary, recentModeration] = await Promise.all([
+      withPerfSpan(`seller.me.db.documents:${profile.id}`, () => sellerRepository.getSellerDocuments(null, profile.id), { thresholdMs: 80 }),
+      withPerfSpan(`seller.me.db.products:${profile.id}`, () => sellerRepository.listSellerProducts(null, profile.id), { thresholdMs: 100 }),
+      withPerfSpan(`seller.me.db.product-summary:${profile.id}`, () => sellerRepository.getSellerProductSummary(null, profile.id), { thresholdMs: 80 }),
+      withPerfSpan(`seller.me.db.order-summary:${profile.id}`, () => sellerRepository.getSellerOrderSummary(null, profile.id), { thresholdMs: 80 }),
+      withPerfSpan(`seller.me.db.moderation:${profile.id}`, () => sellerRepository.getRecentModerationActivity(null, profile.id, 5), { thresholdMs: 80 })
+    ]);
+
     return {
-      profile: null,
-      documents: [],
-      products: [],
-      recentModeration: [],
-      summary: null,
-      canAccessDashboard: false,
+      profile,
+      documents,
+      products,
+      recentModeration,
+      summary: {
+        ...productSummary,
+        ...orderSummary
+      },
+      canAccessDashboard: profile.application_status === 'approved',
       applicationFee: SELLER_APPLICATION_FEE_USD
     };
-  }
+  }, { thresholdMs: 120 });
+}
 
-  const [documents, products, productSummary, orderSummary, recentModeration] = await Promise.all([
-    sellerRepository.getSellerDocuments(null, profile.id),
-    sellerRepository.listSellerProducts(null, profile.id),
-    sellerRepository.getSellerProductSummary(null, profile.id),
-    sellerRepository.getSellerOrderSummary(null, profile.id),
-    sellerRepository.getRecentModerationActivity(null, profile.id, 5)
-  ]);
+async function getAccess(userId) {
+  return withPerfSpan(`seller.access:${userId}`, async () => {
+    const profile = await sellerRepository.getSellerProfileAccess(null, userId);
+    const applicationStatus = profile?.application_status || null;
+    const canAccessDashboard = applicationStatus === 'approved';
 
-  return {
-    profile,
-    documents,
-    products,
-    recentModeration,
-    summary: {
-      ...productSummary,
-      ...orderSummary
-    },
-    canAccessDashboard: profile.application_status === 'approved',
-    applicationFee: SELLER_APPLICATION_FEE_USD
-  };
+    return {
+      hasProfile: Boolean(profile),
+      applicationStatus,
+      canAccessDashboard,
+      applicationFee: SELLER_APPLICATION_FEE_USD
+    };
+  }, { thresholdMs: 80 });
 }
 
 async function createProduct(userId, payload) {
@@ -340,6 +362,7 @@ async function deleteDocument(userId, documentId) {
 
 module.exports = {
   apply,
+  getAccess,
   getMe,
   createProduct,
   getProduct,

@@ -4,6 +4,7 @@ export const queryKeys = {
   welcomeSpinStatus: ['me', 'welcome-spin', 'status'],
   userAddress: ['user-address'],
   sellerMe: ['seller', 'me'],
+  sellerAccess: ['seller', 'access'],
   sellerProducts: ['seller', 'products'],
   wallet: ['wallet'],
   walletTransactions: ['wallet', 'transactions'],

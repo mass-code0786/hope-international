@@ -387,7 +387,13 @@ export default function ShopPage() {
             <div key={banner.id} className="min-w-full snap-start pr-1">
               {banner.imageUrl ? (
                 <Link href={resolveBannerTarget(banner.targetLink)} className="relative block overflow-hidden rounded-xl border border-slate-200">
-                  <img src={banner.imageUrl} alt={banner.title || 'Offer banner'} className="h-[132px] w-full object-cover" />
+                  <img
+                    src={banner.imageUrl}
+                    alt={banner.title || 'Offer banner'}
+                    loading="lazy"
+                    decoding="async"
+                    className="h-[132px] w-full object-cover"
+                  />
                   <div className="absolute inset-0 bg-gradient-to-r from-slate-900/45 via-slate-800/20 to-transparent p-3 text-white">
                     <p className="line-clamp-2 text-[14px] font-semibold leading-4">{banner.title}</p>
                     {banner.subtitle ? <p className="mt-1 line-clamp-2 text-[10px] text-white/90">{banner.subtitle}</p> : null}

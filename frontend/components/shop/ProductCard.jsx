@@ -65,7 +65,13 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
           {rating}
         </span>
         {cover ? (
-          <img src={cover} alt={safeProduct.name || 'Product'} className="h-full w-full object-cover" />
+          <img
+            src={cover}
+            alt={safeProduct.name || 'Product'}
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover"
+          />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-slate-500">
             <ImageOff size={20} />

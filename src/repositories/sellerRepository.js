@@ -38,6 +38,17 @@ async function getSellerProfileByUserId(client, userId) {
   return rows[0] || null;
 }
 
+async function getSellerProfileAccess(client, userId) {
+  const { rows } = await q(client).query(
+    `SELECT id, application_status
+     FROM seller_profiles
+     WHERE user_id = $1
+     LIMIT 1`,
+    [userId]
+  );
+  return rows[0] || null;
+}
+
 async function getSellerProfileById(client, profileId) {
   const { rows } = await q(client).query(
     `SELECT sp.*, u.username, u.email AS user_email, u.role
@@ -780,6 +791,7 @@ async function createProductModerationLog(client, payload) {
 
 module.exports = {
   getSellerProfileByUserId,
+  getSellerProfileAccess,
   getSellerProfileById,
   upsertSellerProfile,
   replaceSellerDocuments,

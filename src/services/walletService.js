@@ -371,11 +371,17 @@ async function getWalletSummary(client, userId, options = {}) {
     await walletRepository.createWallet(client, userId);
     const includeHistory = options.includeHistory === true;
     const [walletRow, walletBinding, transactions, incomeTransactions, btctTransactions] = await Promise.all([
-      walletRepository.getWallet(client, userId),
-      walletRepository.getWalletBinding(client, userId),
-      includeHistory ? walletRepository.listTransactions(client, userId, 50) : Promise.resolve([]),
-      includeHistory ? walletRepository.listIncomeTransactions(client, userId, 120) : Promise.resolve([]),
-      includeHistory ? walletRepository.listBtctTransactions(client, userId, 80) : Promise.resolve([])
+      withPerfSpan(`wallet.summary.db.wallet:${userId}`, () => walletRepository.getWallet(client, userId), { thresholdMs: 80 }),
+      withPerfSpan(`wallet.summary.db.binding:${userId}`, () => walletRepository.getWalletBinding(client, userId), { thresholdMs: 80 }),
+      includeHistory
+        ? withPerfSpan(`wallet.summary.db.transactions:${userId}`, () => walletRepository.listTransactions(client, userId, 50), { thresholdMs: 100 })
+        : Promise.resolve([]),
+      includeHistory
+        ? withPerfSpan(`wallet.summary.db.income:${userId}`, () => walletRepository.listIncomeTransactions(client, userId, 120), { thresholdMs: 100 })
+        : Promise.resolve([]),
+      includeHistory
+        ? withPerfSpan(`wallet.summary.db.btct:${userId}`, () => walletRepository.listBtctTransactions(client, userId, 80), { thresholdMs: 100 })
+        : Promise.resolve([])
     ]);
     const wallet = normalizeWalletBalances(walletRow);
 
@@ -869,22 +875,24 @@ async function claimWelcomeSpin(client, userId, options = {}) {
 }
 
 async function getHubHistory(client, userId) {
-  const [deposits, withdrawals, p2pTransfers, orders, btctTransactions] = await Promise.all([
-    walletRepository.listDepositRequests(client, userId, 200),
-    walletRepository.listWithdrawalRequests(client, userId, 200),
-    walletRepository.listP2pTransfers(client, userId, 200),
-    walletRepository.listTransactions(client, userId, 200),
-    walletRepository.listBtctTransactions(client, userId, 200)
-  ]);
+  return withPerfSpan(`wallet.history:${userId}`, async () => {
+    const [deposits, withdrawals, p2pTransfers, orders, btctTransactions] = await Promise.all([
+      walletRepository.listDepositRequests(client, userId, 200),
+      walletRepository.listWithdrawalRequests(client, userId, 200),
+      walletRepository.listP2pTransfers(client, userId, 200),
+      walletRepository.listTransactions(client, userId, 200),
+      walletRepository.listBtctTransactions(client, userId, 200)
+    ]);
 
-  return {
-    deposits,
-    withdrawals,
-    p2pTransfers,
-    transactions: orders,
-    btctTransactions,
-    btctPrice: BTCT_USD_PRICE
-  };
+    return {
+      deposits,
+      withdrawals,
+      p2pTransfers,
+      transactions: orders,
+      btctTransactions,
+      btctPrice: BTCT_USD_PRICE
+    };
+  }, { thresholdMs: 120 });
 }
 
 module.exports = {

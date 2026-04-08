@@ -10,7 +10,7 @@ export function Providers({ children }) {
     new QueryClient({
       defaultOptions: {
         queries: {
-          staleTime: 30000,
+          staleTime: 90_000,
           retry: 1,
           refetchOnWindowFocus: false,
           refetchOnReconnect: false

@@ -5,6 +5,7 @@ const webauthnService = require('./webauthnService');
 const walletService = require('./walletService');
 const { ApiError } = require('../utils/ApiError');
 const { withTransaction } = require('../db/pool');
+const { withPerfSpan } = require('../utils/perf');
 
 function formatTeamNode(row) {
   if (!row) return null;
@@ -27,20 +28,32 @@ function formatTeamNode(row) {
 }
 
 async function buildTeamTreeNode(viewerId, targetId) {
-  const targetNode = await userRepository.getTeamTreeNode(null, targetId);
+  const targetNode = await withPerfSpan(
+    `team.tree.db.node:${targetId}`,
+    () => userRepository.getTeamTreeNode(null, targetId),
+    { thresholdMs: 80 }
+  );
   if (!targetNode) {
     throw new ApiError(404, 'Team node not found');
   }
 
   if (viewerId !== targetId) {
-    const allowed = await userRepository.isNodeInSubtree(null, viewerId, targetId);
+    const allowed = await withPerfSpan(
+      `team.tree.db.scope:${viewerId}->${targetId}`,
+      () => userRepository.isNodeInSubtree(null, viewerId, targetId),
+      { thresholdMs: 80 }
+    );
     if (!allowed) {
       throw new ApiError(403, 'You do not have access to that team node');
     }
   }
 
   const childIds = [targetNode.left_child_id, targetNode.right_child_id].filter(Boolean);
-  const childRows = await userRepository.getTeamTreeNodesByIds(null, childIds);
+  const childRows = await withPerfSpan(
+    `team.tree.db.children:${targetId}`,
+    () => userRepository.getTeamTreeNodesByIds(null, childIds),
+    { thresholdMs: 80 }
+  );
   const byId = new Map(childRows.map((row) => [row.id, row]));
 
   return {
@@ -53,12 +66,14 @@ async function buildTeamTreeNode(viewerId, targetId) {
 }
 
 async function getProfile(userId) {
-  const user = await userRepository.findById(null, userId);
-  if (!user) {
-    throw new ApiError(404, 'User not found');
-  }
+  return withPerfSpan(`user.profile:${userId}`, async () => {
+    const user = await userRepository.findById(null, userId);
+    if (!user) {
+      throw new ApiError(404, 'User not found');
+    }
 
-  return user;
+    return user;
+  }, { thresholdMs: 80 });
 }
 
 async function getChildren(userId) {
@@ -66,53 +81,44 @@ async function getChildren(userId) {
 }
 
 async function getTeamSummary(userId) {
-  const [profile, summary] = await Promise.all([
-    userRepository.findById(null, userId),
-    adminRepository.getTeamSummary(null, userId)
-  ]);
+  return withPerfSpan(`team.summary:${userId}`, async () => {
+    const [profile, summary] = await Promise.all([
+      withPerfSpan(`team.summary.db.profile:${userId}`, () => userRepository.findById(null, userId), { thresholdMs: 80 }),
+      withPerfSpan(`team.summary.db.aggregate:${userId}`, () => adminRepository.getTeamSummary(null, userId), { thresholdMs: 100 })
+    ]);
 
-  if (!profile) {
-    throw new ApiError(404, 'User not found');
-  }
+    if (!profile) {
+      throw new ApiError(404, 'User not found');
+    }
 
-  const leftPv = Number(profile.carry_left_pv || 0);
-  const rightPv = Number(profile.carry_right_pv || 0);
-  const normalized = {
-    total_descendants: Number(summary?.total_descendants || 0),
-    active_count: Number(summary?.active_count || 0),
-    inactive_count: Number(summary?.inactive_count || 0),
-    direct_referral_count: Number(summary?.direct_referral_count || 0),
-    direct_binary_count: Number(summary?.direct_binary_count || 0),
-    left_team_count: Number(summary?.left_team_count || 0),
-    right_team_count: Number(summary?.right_team_count || 0),
-    left_pv: leftPv,
-    right_pv: rightPv,
-    placement_side: profile.placement_side || null,
-    matched_potential: Math.min(leftPv, rightPv)
-  };
-
-  if (process.env.NODE_ENV !== 'production') {
-    console.info('[team.backend] summary-computed', {
-      userId,
-      leftTeamCount: normalized.left_team_count,
-      rightTeamCount: normalized.right_team_count,
-      leftPv: normalized.left_pv,
-      rightPv: normalized.right_pv,
-      totalDescendants: normalized.total_descendants,
-      directReferralCount: normalized.direct_referral_count,
-      directBinaryCount: normalized.direct_binary_count
-    });
-  }
-
-  return normalized;
+    const leftPv = Number(profile.carry_left_pv || 0);
+    const rightPv = Number(profile.carry_right_pv || 0);
+    return {
+      total_descendants: Number(summary?.total_descendants || 0),
+      active_count: Number(summary?.active_count || 0),
+      inactive_count: Number(summary?.inactive_count || 0),
+      direct_referral_count: Number(summary?.direct_referral_count || 0),
+      direct_binary_count: Number(summary?.direct_binary_count || 0),
+      left_team_count: Number(summary?.left_team_count || 0),
+      right_team_count: Number(summary?.right_team_count || 0),
+      left_pv: leftPv,
+      right_pv: rightPv,
+      placement_side: profile.placement_side || null,
+      matched_potential: Math.min(leftPv, rightPv)
+    };
+  }, { thresholdMs: 120 });
 }
 
 async function getTeamTreeRoot(userId) {
-  return buildTeamTreeNode(userId, userId);
+  return withPerfSpan(`team.tree.root:${userId}`, () => buildTeamTreeNode(userId, userId), {
+    thresholdMs: 120
+  });
 }
 
 async function getTeamTreeNode(userId, nodeId) {
-  return buildTeamTreeNode(userId, nodeId);
+  return withPerfSpan(`team.tree.node:${userId}->${nodeId}`, () => buildTeamTreeNode(userId, nodeId), {
+    thresholdMs: 120
+  });
 }
 
 function mapAddress(address) {

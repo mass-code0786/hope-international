@@ -8,13 +8,12 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { TeamSkeleton } from '@/components/ui/PageSkeletons';
 import { getTeamSummary, getTeamTreeRoot } from '@/lib/services/teamService';
-import { getMe } from '@/lib/services/authService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { TeamSummaryPanel } from '@/components/team/TeamSummaryPanel';
 import { BinaryTreeExplorer } from '@/components/team/BinaryTreeExplorer';
 
 export default function TeamPage() {
-  const meQuery = useQuery({ queryKey: queryKeys.me, queryFn: getMe });
+  const meQuery = useQuery({ queryKey: queryKeys.me });
   const teamSummaryQuery = useQuery({ queryKey: queryKeys.teamSummary, queryFn: getTeamSummary });
   const treeRootQuery = useQuery({ queryKey: queryKeys.teamTreeRoot, queryFn: getTeamTreeRoot });
 
@@ -22,16 +21,6 @@ export default function TeamPage() {
   const teamSummary = teamSummaryQuery.data || {};
   const root = treeRootQuery.data || null;
   const directChildren = useMemo(() => [root?.children?.left, root?.children?.right].filter(Boolean), [root]);
-
-  if (process.env.NODE_ENV !== 'production') {
-    console.info('[team.frontend] team-page-data', {
-      teamSummary,
-      rootChildren: {
-        left: root?.children?.left?.username || null,
-        right: root?.children?.right?.username || null
-      }
-    });
-  }
 
   if (meQuery.isLoading || teamSummaryQuery.isLoading || treeRootQuery.isLoading) return <TeamSkeleton />;
   if (meQuery.isError || teamSummaryQuery.isError || treeRootQuery.isError) {

@@ -44,6 +44,7 @@ export function useAuthMutations() {
       queryClient.invalidateQueries({ queryKey: queryKeys.webauthn }),
       queryClient.invalidateQueries({ queryKey: queryKeys.welcomeSpinStatus }),
       queryClient.invalidateQueries({ queryKey: queryKeys.sellerMe }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.sellerAccess }),
       queryClient.invalidateQueries({ queryKey: queryKeys.wallet }),
       queryClient.invalidateQueries({ queryKey: queryKeys.orders }),
       queryClient.invalidateQueries({ queryKey: queryKeys.weeklyCompensationRoot }),
