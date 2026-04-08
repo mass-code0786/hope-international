@@ -27,8 +27,8 @@ export function TeamSummaryPanel({ me, teamSummary = {}, children = [] }) {
   const isBalanced = sideGap === 0;
 
   return (
-    <div className="space-y-3.5">
-      <div className="grid grid-cols-2 gap-3">
+    <div className="space-y-2.5">
+      <div className="grid grid-cols-2 gap-2.5">
         <PrimaryCard
           label="Total Team"
           value={number(totalTeam)}
@@ -47,7 +47,7 @@ export function TeamSummaryPanel({ me, teamSummary = {}, children = [] }) {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2.5">
         <SecondaryCard
           label="Direct Referrals"
           value={number(totalDirects)}
@@ -81,8 +81,8 @@ export function TeamSummaryPanel({ me, teamSummary = {}, children = [] }) {
 
 function GlowIcon({ icon: Icon, className = '' }) {
   return (
-    <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-[linear-gradient(135deg,rgba(157,78,221,0.34),rgba(16,185,129,0.25))] text-white shadow-[0_10px_24px_rgba(124,58,237,0.35)] ${className}`}>
-      <Icon size={16} />
+    <span className={`inline-flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[1rem] border border-white/10 bg-[linear-gradient(135deg,rgba(157,78,221,0.22),rgba(16,185,129,0.16))] text-white shadow-[0_8px_18px_rgba(124,58,237,0.2)] ${className}`}>
+      <Icon size={14} />
     </span>
   );
 }
@@ -93,16 +93,16 @@ function PrimaryCard({ label, value, subtext, icon, tint, glow }) {
       whileHover={{ scale: 1.015 }}
       whileTap={{ scale: 0.99 }}
       transition={{ duration: 0.2 }}
-      className={`group relative overflow-hidden rounded-3xl border border-white/10 bg-[rgba(16,18,26,0.76)] p-4 backdrop-blur-xl ${glow}`}
+      className={`group relative overflow-hidden rounded-[1.35rem] border border-white/10 bg-[rgba(16,18,26,0.76)] px-3.5 py-3 backdrop-blur-xl ${glow}`}
     >
       <div className={`pointer-events-none absolute inset-0 bg-[linear-gradient(145deg,rgba(255,255,255,0.05),rgba(255,255,255,0))]`} />
-      <div className={`pointer-events-none absolute -right-12 -top-12 h-28 w-28 rounded-full bg-gradient-to-br ${tint} opacity-35 blur-2xl`} />
+      <div className={`pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full bg-gradient-to-br ${tint} opacity-30 blur-2xl`} />
       <div className="relative flex items-start justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">{label}</p>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/58">{label}</p>
         <GlowIcon icon={icon} />
       </div>
-      <p className="relative mt-3 text-[1.95rem] font-semibold tracking-[-0.06em] text-white">{value}</p>
-      <p className="relative mt-1 text-[11px] text-white/65">{subtext}</p>
+      <p className="relative mt-2 text-[1.65rem] font-semibold tracking-[-0.055em] text-white">{value}</p>
+      <p className="relative mt-0.5 text-[10px] text-white/58">{subtext}</p>
     </motion.article>
   );
 }
@@ -113,14 +113,14 @@ function SecondaryCard({ label, value, icon, tone }) {
       whileHover={{ y: -2 }}
       whileTap={{ scale: 0.99 }}
       transition={{ duration: 0.2 }}
-      className="relative overflow-hidden rounded-3xl border border-white/10 bg-[rgba(16,18,26,0.72)] p-4 backdrop-blur-xl"
+      className="relative overflow-hidden rounded-[1.35rem] border border-white/10 bg-[rgba(16,18,26,0.72)] px-3.5 py-3 backdrop-blur-xl"
     >
       <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${tone} opacity-40`} />
       <div className="relative flex items-start justify-between gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/55">{label}</p>
-        <GlowIcon icon={icon} className="h-9 w-9 rounded-xl" />
+        <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-white/52">{label}</p>
+        <GlowIcon icon={icon} className="h-8 w-8 rounded-[0.9rem]" />
       </div>
-      <p className="relative mt-3 break-words text-lg font-semibold tracking-[-0.04em] text-white">{value}</p>
+      <p className="relative mt-2 break-words text-[0.98rem] font-semibold tracking-[-0.03em] text-white">{value}</p>
     </motion.article>
   );
 }
@@ -130,20 +130,20 @@ function SponsorCard({ sponsor, hasSponsor }) {
     <motion.article
       whileHover={{ y: -2 }}
       transition={{ duration: 0.2 }}
-      className="relative overflow-hidden rounded-3xl border border-white/10 bg-[rgba(16,18,26,0.72)] p-4 backdrop-blur-xl"
+      className="relative overflow-hidden rounded-[1.35rem] border border-white/10 bg-[rgba(16,18,26,0.72)] px-3.5 py-3 backdrop-blur-xl"
     >
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(145deg,rgba(124,58,237,0.16),rgba(16,185,129,0.08))]" />
-      <div className={`relative flex ${hasSponsor ? 'items-start justify-between' : 'flex-col items-center justify-center text-center'} gap-3`}>
+      <div className={`relative flex ${hasSponsor ? 'items-center justify-between' : 'flex-col items-center justify-center text-center'} gap-2.5`}>
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/60">Sponsor</p>
+          <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-white/56">Sponsor</p>
           {hasSponsor ? (
-            <p className="mt-2 text-lg font-semibold tracking-[-0.04em] text-white break-words">{sponsor}</p>
+            <p className="mt-1.5 text-[0.98rem] font-semibold tracking-[-0.03em] text-white break-words">{sponsor}</p>
           ) : (
-            <p className="mt-2 text-sm font-semibold text-white/85">No sponsor assigned</p>
+            <p className="mt-1.5 text-[13px] font-semibold text-white/82">No sponsor assigned</p>
           )}
         </div>
-        <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 ${hasSponsor ? 'bg-[linear-gradient(135deg,rgba(124,58,237,0.3),rgba(16,185,129,0.26))] shadow-[0_10px_26px_rgba(124,58,237,0.3)]' : 'bg-[rgba(255,255,255,0.06)] text-white/70'}`}>
-          <Crown size={16} />
+        <span className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-[1rem] border border-white/10 ${hasSponsor ? 'bg-[linear-gradient(135deg,rgba(124,58,237,0.22),rgba(16,185,129,0.18))] shadow-[0_8px_18px_rgba(124,58,237,0.2)]' : 'bg-[rgba(255,255,255,0.05)] text-white/70'}`}>
+          <Crown size={14} />
         </span>
       </div>
     </motion.article>
@@ -165,26 +165,26 @@ function BinaryComparisonCard({
     <motion.section
       whileHover={{ y: -2 }}
       transition={{ duration: 0.2 }}
-      className="relative overflow-hidden rounded-3xl border border-white/10 bg-[rgba(14,16,24,0.78)] p-4 shadow-[0_20px_45px_rgba(0,0,0,0.34)] backdrop-blur-xl"
+      className="relative overflow-hidden rounded-[1.35rem] border border-white/10 bg-[rgba(14,16,24,0.78)] px-3.5 py-3 shadow-[0_20px_45px_rgba(0,0,0,0.34)] backdrop-blur-xl"
     >
-      <div className="pointer-events-none absolute -left-16 top-8 h-28 w-28 rounded-full bg-[radial-gradient(circle,rgba(124,58,237,0.32),transparent_70%)]" />
-      <div className="pointer-events-none absolute -right-14 bottom-4 h-28 w-28 rounded-full bg-[radial-gradient(circle,rgba(16,185,129,0.26),transparent_70%)]" />
+      <div className="pointer-events-none absolute -left-16 top-6 h-24 w-24 rounded-full bg-[radial-gradient(circle,rgba(124,58,237,0.28),transparent_70%)]" />
+      <div className="pointer-events-none absolute -right-14 bottom-3 h-24 w-24 rounded-full bg-[radial-gradient(circle,rgba(16,185,129,0.22),transparent_70%)]" />
 
       <div className="relative flex items-start justify-between gap-3">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/55">Binary Balance</p>
-          <p className="mt-1 text-base font-semibold tracking-[-0.03em] text-white">Left vs Right Performance</p>
+          <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-white/52">Binary Balance</p>
+          <p className="mt-0.5 text-[0.95rem] font-semibold tracking-[-0.025em] text-white">Left vs Right Performance</p>
         </div>
         <GlowIcon icon={ArrowLeftRight} />
       </div>
 
-      <div className="relative mt-4 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.03)] p-3">
-        <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.16em] text-white/65">
+      <div className="relative mt-3 rounded-[1rem] border border-white/10 bg-[rgba(255,255,255,0.03)] px-3 py-2.5">
+        <div className="flex items-center justify-between text-[9px] font-semibold uppercase tracking-[0.14em] text-white/62">
           <span>Left {number(leftTeam)}</span>
           <span>Right {number(rightTeam)}</span>
         </div>
 
-        <div className="mt-3 relative h-4 overflow-hidden rounded-full bg-[rgba(255,255,255,0.08)]">
+        <div className="relative mt-2.5 h-3 overflow-hidden rounded-full bg-[rgba(255,255,255,0.08)]">
           <div className="flex h-full">
             <div
               className="h-full bg-[linear-gradient(90deg,#a855f7,#7c3aed)]"
@@ -195,29 +195,29 @@ function BinaryComparisonCard({
               style={{ width: `${rightShare}%` }}
             />
           </div>
-          <div className="absolute left-1/2 top-[-2px] h-5 w-[2px] -translate-x-1/2 rounded-full bg-white/70" />
+          <div className="absolute left-1/2 top-[-1px] h-4 w-[2px] -translate-x-1/2 rounded-full bg-white/65" />
         </div>
 
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-purple-300/20 bg-[rgba(124,58,237,0.16)] p-3">
-            <p className="text-[10px] uppercase tracking-[0.16em] text-white/65">Left PV</p>
-            <p className="mt-1 text-xl font-semibold tracking-[-0.04em] text-white">{number(leftPv)}</p>
+        <div className="mt-2.5 grid grid-cols-2 gap-2.5">
+          <div className="rounded-[1rem] border border-purple-300/20 bg-[rgba(124,58,237,0.16)] px-3 py-2.5">
+            <p className="text-[9px] uppercase tracking-[0.14em] text-white/62">Left PV</p>
+            <p className="mt-0.5 text-[1.05rem] font-semibold tracking-[-0.03em] text-white">{number(leftPv)}</p>
           </div>
-          <div className="rounded-2xl border border-emerald-300/20 bg-[rgba(16,185,129,0.14)] p-3 text-right">
-            <p className="text-[10px] uppercase tracking-[0.16em] text-white/65">Right PV</p>
-            <p className="mt-1 text-xl font-semibold tracking-[-0.04em] text-white">{number(rightPv)}</p>
+          <div className="rounded-[1rem] border border-emerald-300/20 bg-[rgba(16,185,129,0.14)] px-3 py-2.5 text-right">
+            <p className="text-[9px] uppercase tracking-[0.14em] text-white/62">Right PV</p>
+            <p className="mt-0.5 text-[1.05rem] font-semibold tracking-[-0.03em] text-white">{number(rightPv)}</p>
           </div>
         </div>
       </div>
 
-      <div className="relative mt-3 grid grid-cols-2 gap-3">
-        <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.04)] p-3">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-white/55">Matched Potential</p>
-          <p className="mt-1 text-xl font-semibold tracking-[-0.04em] text-white">{number(matchedPotential)}</p>
+      <div className="relative mt-2.5 grid grid-cols-2 gap-2.5">
+        <div className="rounded-[1rem] border border-white/10 bg-[rgba(255,255,255,0.04)] px-3 py-2.5">
+          <p className="text-[9px] uppercase tracking-[0.14em] text-white/52">Matched Potential</p>
+          <p className="mt-0.5 text-[1.05rem] font-semibold tracking-[-0.03em] text-white">{number(matchedPotential)}</p>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.04)] p-3 text-right">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-white/55">Balance Gap</p>
-          <p className={`mt-1 text-xl font-semibold tracking-[-0.04em] ${isBalanced ? 'text-emerald-300' : 'text-white'}`}>
+        <div className="rounded-[1rem] border border-white/10 bg-[rgba(255,255,255,0.04)] px-3 py-2.5 text-right">
+          <p className="text-[9px] uppercase tracking-[0.14em] text-white/52">Balance Gap</p>
+          <p className={`mt-0.5 text-[1.05rem] font-semibold tracking-[-0.03em] ${isBalanced ? 'text-emerald-300' : 'text-white'}`}>
             {number(sideGap)}
           </p>
         </div>

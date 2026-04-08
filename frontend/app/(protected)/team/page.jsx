@@ -28,27 +28,27 @@ export default function TeamPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div>
         <h1 className="text-2xl font-semibold tracking-[-0.04em] text-text">Team Overview</h1>
       </div>
 
       <TeamSummaryPanel me={me} teamSummary={teamSummary} children={directChildren} />
 
-      <section className="overflow-hidden rounded-[20px] border border-[rgba(255,255,255,0.05)] bg-[linear-gradient(145deg,#1a1d24,#0f1115)] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.6),inset_0_0_40px_rgba(124,58,237,0.08)]">
-        <div className="flex items-center gap-2 border-b border-[var(--hope-border)] pb-4">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-[var(--hope-accent-soft)] text-accent">
+      <section className="overflow-hidden rounded-[20px] border border-[rgba(255,255,255,0.05)] bg-[linear-gradient(145deg,#1a1d24,#0f1115)] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.6),inset_0_0_40px_rgba(124,58,237,0.08)]">
+        <div className="flex items-center gap-2 border-b border-[var(--hope-border)] pb-3">
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-[1rem] bg-[var(--hope-accent-soft)] text-accent">
             <GitBranchPlus size={16} />
           </span>
           <h2 className="text-lg font-semibold tracking-[-0.03em] text-text">Binary Team</h2>
         </div>
 
         {root ? (
-          <div className="mt-5 rounded-[16px] border border-[rgba(255,255,255,0.05)] bg-[radial-gradient(circle_at_top,rgba(124,58,237,0.15),transparent_60%),radial-gradient(circle_at_bottom,rgba(34,197,94,0.12),transparent_60%),#0f1115] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.6),inset_0_0_40px_rgba(124,58,237,0.08)] sm:p-6">
+          <div className="mt-3.5 rounded-[16px] border border-[rgba(255,255,255,0.05)] bg-[radial-gradient(circle_at_top,rgba(124,58,237,0.15),transparent_60%),radial-gradient(circle_at_bottom,rgba(34,197,94,0.12),transparent_60%),#0f1115] p-3.5 shadow-[0_10px_30px_rgba(0,0,0,0.6),inset_0_0_40px_rgba(124,58,237,0.08)] sm:p-5">
             <BinaryTreeExplorer root={root} />
           </div>
         ) : (
-          <div className="mt-5">
+          <div className="mt-3.5">
             <EmptyState title="No team yet" description="Start referring users to build your binary tree." action={<Link href="/profile" className="hope-button">Start referring users</Link>} />
           </div>
         )}
