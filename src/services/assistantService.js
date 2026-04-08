@@ -20,6 +20,7 @@ const STATUS_TEXT = {
 };
 
 const INTENT_KEYWORDS = {
+  business_plan: ['business plan', 'hope international plan', 'income plan', 'earning system', 'how hope works', 'how does hope international work', 'mlm plan', 'binary plan', 'binary system', 'what is binary system', 'how binary works', 'compensation plan', 'business model', 'plan samjhao', 'income kaise milta hai', 'earning ka system', 'hope international ka plan kya hai', 'binary plan kya hai', 'binary system kya hai', 'business plan samjhao', 'compensation', 'reward plan', 'pv system', 'direct income', 'matching income'],
   platform_intro: ['what is hope international', 'hope international kya hai', 'platform kya hai', 'platform kya karta hai', 'what does hope international do', 'what is this platform', 'about hope international', 'hope international kya karta hai'],
   user_identity: ['my username', 'username', 'my id', 'user id', 'account id', 'मेरी आईडी', 'यूजरनेम', 'میرا آئی ڈی', 'میرا یوزرنیم', 'اسم المستخدم', 'معرفي', 'আমার আইডি', 'আমার ইউজারনেম', 'زما آی ډي', 'زما کارن نوم'],
   sponsor_info: ['sponsor', 'upline', 'referrer', 'स्पॉन्सर', 'प्रायोजक', 'اسپانسر', 'sponsor', 'الراعي', 'স্পন্সর', 'স্পনসর', 'سپانسر'],
@@ -688,6 +689,57 @@ const PLATFORM_COPY = {
   ps: 'Hope International یوه growth-focused platform ده چې earning opportunities د team building سره نښلوي. پکې binary او level income models، auction، digital products، او wallet system شامل دي څو activity او rewards manage شي. دا helping people، donation، او positive social impact ته هم ارزښت ورکوي، نو growth د community contribution سره تړلې وي.'
 };
 
+const BUSINESS_PLAN_COPY = {
+  en: {
+    intro: 'A. Introduction\nHope International is an e-commerce and direct selling platform. It combines product activity, team building, and a structured income system, so growth depends on real purchases, active teams, and balanced development.',
+    income: 'B. Income Types\n1. Direct Income: You can earn 5% on qualifying purchases made by your direct referrals.\n2. Binary Matching Income: The system works with a left team and a right team. Matching PV is usually based on the lower side, and matching income is calculated as 20% of matched PV.\n3. Level Income: If your account and plan qualify, extra income can come from deeper active levels in your team.\n4. Rewards / Bonus: Product-based targets and team milestones may unlock rewards or bonus opportunities over time.',
+    pv: 'C. PV System\nPV means Point Value. In this plan, PV is 30% of the product price, and that PV helps measure team volume for matching.',
+    example: 'D. Example\nIf left PV is 100 and right PV is 80, the matched PV is 80 because the smaller side is used. 20% of 80 is 16, so the binary matching income in this example is 16.',
+    growth: 'E. Growth Strategy\nBuild both left and right teams, keep both sides balanced, and focus on active users instead of only signups. Stable activity usually matters more than fast but weak growth.',
+    close: 'F. Conclusion\nThis is an opportunity-based plan, not a fixed-income promise. If you work with product movement, active referrals, and balanced team growth, the plan becomes much easier to understand and improve.'
+  },
+  hi: {
+    intro: 'A. Introduction\nHope International ek e-commerce aur direct selling platform hai. Isme product activity, team building, aur structured income system saath kaam karte hain. Yahan growth real purchase, active team, aur balanced development par depend karti hai.',
+    income: 'B. Income Types\n1. Direct Income: Aap apne direct referral ki qualifying purchase par 5% kama sakte hain.\n2. Binary Matching Income: System left aur right team par chalta hai. Matching PV aam taur par chhoti side ke hisaab se liya jata hai, aur matching income matched PV ka 20% hota hai.\n3. Level Income: Agar aapka account aur plan eligible ho, to team ki deeper active levels se extra income aa sakti hai.\n4. Rewards / Bonus: Product-based targets aur team milestones ke saath rewards ya bonus opportunities mil sakti hain.',
+    pv: 'C. PV System\nPV ka matlab Point Value hai. Is plan mein PV product price ka 30% hota hai, aur isi PV se team volume aur matching ko measure kiya jata hai.',
+    example: 'D. Example\nAgar left PV 100 ho aur right PV 80 ho, to matched PV 80 hoga kyunki chhoti side count hoti hai. 80 ka 20% = 16, isliye is example mein binary matching income 16 hogi.',
+    growth: 'E. Growth Strategy\nLeft aur right dono side build kijiye, dono ko balanced rakhiye, aur sirf signup nahi balki active users par focus kijiye. Stable activity, weak fast growth se zyada important hoti hai.',
+    close: 'F. Conclusion\nYeh fixed income promise nahi hai, balki opportunity-based plan hai. Agar aap product movement, active referrals, aur balanced team growth par kaam karte hain, to result ko samajhna aur improve karna aasaan hota hai.'
+  },
+  ur: {
+    intro: 'A. Introduction\nHope International ek e-commerce aur direct selling platform hai. Is mein product activity, team building, aur structured income system mil kar kaam karte hain. Yahan growth real purchase, active team, aur balanced development par depend karti hai.',
+    income: 'B. Income Types\n1. Direct Income: Aap apne direct referral ki qualifying purchase par 5% kama sakte hain.\n2. Binary Matching Income: System left aur right team par chalta hai. Matching PV aam tor par chhoti side ke mutabiq liya jata hai, aur matching income matched PV ka 20% hota hai.\n3. Level Income: Agar aap ka account aur plan eligible ho to team ki deeper active levels se extra income aa sakti hai.\n4. Rewards / Bonus: Product-based targets aur team milestones ke zariye rewards ya bonus opportunities mil sakti hain.',
+    pv: 'C. PV System\nPV ka matlab Point Value hai. Is plan mein PV product price ka 30% hota hai, aur isi se team volume aur matching ko measure kiya jata hai.',
+    example: 'D. Example\nAgar left PV 100 ho aur right PV 80 ho to matched PV 80 hoga kyun ke chhoti side count hoti hai. 80 ka 20% = 16, is liye is example mein binary matching income 16 hogi.',
+    growth: 'E. Growth Strategy\nLeft aur right dono side build karein, dono ko balanced rakhein, aur sirf signup ke bajaye active users par focus karein. Stable activity, kamzor fast growth se zyada important hoti hai.',
+    close: 'F. Conclusion\nYeh fixed income promise nahi hai balki opportunity-based plan hai. Agar aap product movement, active referrals, aur balanced team growth par kaam karein to is plan ko samajhna aur improve karna zyada aasaan ho jata hai.'
+  },
+  ar: {
+    intro: 'A. Introduction\nHope International هي منصة تجمع بين التجارة الإلكترونية والبيع المباشر. الفكرة الأساسية فيها هي نشاط المنتجات وبناء الفريق ونظام دخل منظم، لذلك يعتمد النمو على الشراء الحقيقي والنشاط الفعلي والتوازن في الفريق.',
+    income: 'B. Income Types\n1. Direct Income: يمكنك كسب 5% من مشتريات الإحالات المباشرة المؤهلة.\n2. Binary Matching Income: يعمل النظام من خلال جهة يسرى وجهة يمنى. ويتم احتساب Matching PV عادةً من الجهة الأضعف، ويكون دخل المطابقة 20% من الـ matched PV.\n3. Level Income: إذا كانت حالة حسابك وخطتك مؤهلة، فقد يأتي دخل إضافي من المستويات النشطة الأعمق في فريقك.\n4. Rewards / Bonus: قد توجد مكافآت أو حوافز مرتبطة بأهداف المنتجات ومراحل نمو الفريق.',
+    pv: 'C. PV System\nPV يعني Point Value. وفي هذه الخطة يساوي PV نسبة 30% من سعر المنتج، وهو ما يُستخدم لقياس حجم الفريق والمطابقة.',
+    example: 'D. Example\nإذا كان Left PV = 100 وRight PV = 80 فإن matched PV يكون 80 لأن الجهة الأصغر هي التي تُحتسب. و20% من 80 يساوي 16، لذلك يكون دخل المطابقة في هذا المثال هو 16.',
+    growth: 'E. Growth Strategy\nابنِ الجهتين اليسرى واليمنى معًا، وحافظ على التوازن بينهما، وركز على الأعضاء النشطين لا على التسجيلات فقط. النشاط المستقر أهم عادةً من التوسع السريع غير القوي.',
+    close: 'F. Conclusion\nهذه ليست وعودًا بدخل ثابت، بل خطة قائمة على الفرصة والنشاط الحقيقي. وكلما كان عندك تحرك منتجات وإحالات نشطة وتوازن أفضل في الفريق، أصبحت النتائج أوضح وأسهل في التطوير.'
+  },
+  bn: {
+    intro: 'A. Introduction\nHope International একটি e-commerce এবং direct selling platform। এখানে product activity, team building, এবং structured income system একসাথে কাজ করে। তাই growth মূলত real purchase, active team, এবং balanced development-এর উপর নির্ভর করে।',
+    income: 'B. Income Types\n1. Direct Income: আপনার direct referral-এর qualifying purchase-এর উপর 5% income আসতে পারে।\n2. Binary Matching Income: সিস্টেমটি left ও right team-এর উপর চলে। Matching PV সাধারণত ছোট side থেকে ধরা হয়, এবং matching income matched PV-এর 20% হয়।\n3. Level Income: আপনার account ও plan eligible হলে team-এর deeper active levels থেকেও extra income আসতে পারে।\n4. Rewards / Bonus: Product-based targets এবং team milestones পূরণ হলে reward বা bonus opportunity পাওয়া যেতে পারে।',
+    pv: 'C. PV System\nPV মানে Point Value। এই plan-এ PV হলো product price-এর 30%, এবং এই PV দিয়েই team volume ও matching measure করা হয়।',
+    example: 'D. Example\nযদি left PV 100 হয় এবং right PV 80 হয়, তাহলে matched PV হবে 80, কারণ ছোট side ধরা হয়। 80-এর 20% = 16, তাই এই example-এ binary matching income হবে 16।',
+    growth: 'E. Growth Strategy\nLeft ও right দুই side-ই build করুন, balance বজায় রাখুন, এবং শুধু signup নয়, active users-এর উপর focus করুন। Stable activity সাধারণত দুর্বল fast growth-এর চেয়ে বেশি গুরুত্বপূর্ণ।',
+    close: 'F. Conclusion\nএটি fixed income promise নয়, বরং opportunity-based plan। Product movement, active referrals, এবং balanced team growth থাকলে plan বোঝা এবং improve করা অনেক সহজ হয়।'
+  },
+  ps: {
+    intro: 'A. Introduction\nHope International يو e-commerce او direct selling platform دی. دلته product activity، team building، او structured income system يو ځای کار کوي. نو وده د real purchase، active team، او balanced development پورې تړلې وي.',
+    income: 'B. Income Types\n1. Direct Income: تاسو د خپل direct referral د qualifying purchase پر بنسټ 5% عاید ترلاسه کولی شئ.\n2. Binary Matching Income: system په left او right team چلېږي. Matching PV عموماً د کمزورې غاړې له مخې حسابېږي، او matching income د matched PV 20% وي.\n3. Level Income: که ستاسو account او plan eligible وي، نو د team له deeper active levels څخه هم extra income راتلای شي.\n4. Rewards / Bonus: Product-based targets او team milestones د rewards يا bonus opportunities لامل کېدای شي.',
+    pv: 'C. PV System\nPV د Point Value معنا لري. په دې plan کې PV د product price 30% وي، او همدا PV د team volume او matching د اندازه کولو لپاره کارېږي.',
+    example: 'D. Example\nکه left PV 100 وي او right PV 80 وي، نو matched PV به 80 وي ځکه هماغه کوچنۍ غاړه حسابېږي. د 80 شل سلنه 16 کېږي، نو په دې example کې binary matching income 16 ده.',
+    growth: 'E. Growth Strategy\nLeft او right دواړه خواوې جوړې کړئ، balance وساتئ، او يوازې signup ته نه بلکې active users ته پام وکړئ. Stable activity عموماً له کمزورې fast growth څخه مهمه وي.',
+    close: 'F. Conclusion\nدا fixed income promise نه دی، بلکې opportunity-based plan دی. که تاسو product movement، active referrals، او balanced team growth باندې کار وکړئ، نو د plan پوهه او پرمختګ اسانه کېږي.'
+  }
+};
+
 function safeLanguage(language) { return SUPPORTED_LANGUAGES.has(language) ? language : 'en'; }
 function getCopy(language) { return COPY[safeLanguage(language)] || COPY.en; }
 function getReliabilityCopy(language) { return RELIABILITY_COPY[safeLanguage(language)] || RELIABILITY_COPY.en; }
@@ -753,6 +805,10 @@ function growthKeywords(text) {
   return includesAny(text, ['earn more', 'earn ', 'income kaise', 'income badh', 'zyaada income', 'zyada income', 'grow my income', 'increase my income', 'more income', 'kamana', 'monthly income', 'per month', 'mahina', 'month', 'chahiye', 'income chahiye', 'how can i grow faster', 'hope international se income', 'zyada kamana']);
 }
 
+function businessPlanKeywords(text) {
+  return includesAny(text, INTENT_KEYWORDS.business_plan || []);
+}
+
 function teamGrowthKeywords(text) {
   return includesAny(text, ['team kaise', 'team grow', 'team build', 'direct kaise', 'direct badh', 'left right', 'left and right', 'balance my team', 'balance leg', 'unlock more levels', 'level open', 'level unlock', 'binary build', 'binary grow']);
 }
@@ -773,6 +829,9 @@ function detectAssistantIntent(message) {
   if (normalized.includes('show my suggestions') || normalized.includes('my suggestions') || normalized.includes('next best action') || normalized.includes('what should i improve') || normalized.includes('improve my account') || normalized === 'suggestions') {
     return { intent: 'smart_suggestions', normalizedMessage: normalized, targetAmount: null };
   }
+  if (businessPlanKeywords(normalized)) {
+    return { intent: 'business_plan', normalizedMessage: normalized, targetAmount: null, recommendationType: 'business_plan' };
+  }
   if (includesAny(normalized, INTENT_KEYWORDS.platform_intro || [])) {
     return { intent: 'platform_intro', normalizedMessage: normalized, targetAmount: null, recommendationType: 'intro' };
   }
@@ -790,10 +849,11 @@ function detectAssistantIntent(message) {
     return { intent: 'earning_strategy', normalizedMessage: normalized, targetAmount, recommendationType: targetAmount ? 'custom_monthly_goal' : 'growth_guidance' };
   }
 
-  const ordered = ['user_identity', 'sponsor_info', 'rank_info', 'direct_referral_summary', 'team_activity_summary', 'pv_summary', 'placement_summary', 'income_wallet_summary', 'deposit_wallet_summary', 'withdrawal_wallet_summary', 'btct_wallet_summary', 'total_income_summary', 'level_income', 'deposit_status', 'withdrawal_info', 'binary_status', 'team_summary', 'income_summary', 'wallet_info', 'auction_summary', 'seller_status', 'earning_strategy'];
+  const ordered = ['business_plan', 'user_identity', 'sponsor_info', 'rank_info', 'direct_referral_summary', 'team_activity_summary', 'pv_summary', 'placement_summary', 'income_wallet_summary', 'deposit_wallet_summary', 'withdrawal_wallet_summary', 'btct_wallet_summary', 'total_income_summary', 'level_income', 'deposit_status', 'withdrawal_info', 'binary_status', 'team_summary', 'income_summary', 'wallet_info', 'auction_summary', 'seller_status', 'earning_strategy'];
   for (const matchedIntent of ordered) {
     if ((INTENT_KEYWORDS[matchedIntent] || []).some((keyword) => normalized.includes(keyword))) {
       const intentMap = {
+        business_plan: 'business_plan',
         user_identity: 'user_identity',
         sponsor_info: 'sponsor_info',
         rank_info: 'rank_info',
@@ -966,6 +1026,35 @@ function formatCharityResponse(language, data = {}) {
   return lines.join(' ');
 }
 
+function formatBusinessPlanResponse(language, data = {}) {
+  const copy = BUSINESS_PLAN_COPY[safeLanguage(language)] || BUSINESS_PLAN_COPY.en;
+  const personalization = [];
+
+  if (Number(data.totalTeam || 0) > 0) {
+    if (safeLanguage(language) === 'hi') personalization.push(`Aapki current team size ${data.totalTeam} hai.`);
+    else if (safeLanguage(language) === 'ur') personalization.push(`Aap ki current team size ${data.totalTeam} hai.`);
+    else if (safeLanguage(language) === 'ar') personalization.push(`حجم فريقك الحالي هو ${data.totalTeam}.`);
+    else if (safeLanguage(language) === 'bn') personalization.push(`আপনার current team size হলো ${data.totalTeam}।`);
+    else if (safeLanguage(language) === 'ps') personalization.push(`ستاسو current team size ${data.totalTeam} ده.`);
+    else personalization.push(`Your current team size is ${data.totalTeam}.`);
+  }
+
+  if (data.totalIncome && data.totalIncome !== '$0.00') {
+    if (safeLanguage(language) === 'hi') personalization.push(`Ab tak aapki credited income ${data.totalIncome} hai.`);
+    else if (safeLanguage(language) === 'ur') personalization.push(`Ab tak aap ki credited income ${data.totalIncome} hai.`);
+    else if (safeLanguage(language) === 'ar') personalization.push(`إجمالي الدخل المضاف لديك حتى الآن هو ${data.totalIncome}.`);
+    else if (safeLanguage(language) === 'bn') personalization.push(`এখন পর্যন্ত আপনার credited income ${data.totalIncome}।`);
+    else if (safeLanguage(language) === 'ps') personalization.push(`تر اوسه ستاسو credited income ${data.totalIncome} ده.`);
+    else personalization.push(`Your credited income so far is ${data.totalIncome}.`);
+  }
+
+  if (data.nextStep) personalization.push(data.nextStep);
+
+  return [copy.intro, copy.income, copy.pv, copy.example, copy.growth, personalization.join(' '), copy.close]
+    .filter(Boolean)
+    .join('\n\n');
+}
+
 function formatStrategyResponse(language, data) {
   const copy = STRATEGY_COPY[safeLanguage(language)] || STRATEGY_COPY.en;
   const lines = [
@@ -980,6 +1069,7 @@ function formatStrategyResponse(language, data) {
 function buildSuggestions(language, intent) {
   const labels = getCopy(language).suggestions;
   const map = {
+    business_plan: [labels.binary, labels.team, labels.income],
     platform_intro: [labels.wallet, labels.team, labels.plan500],
     user_identity: [labels.wallet, labels.team, labels.income],
     sponsor_info: [labels.team, labels.wallet, labels.plan100],
@@ -1123,6 +1213,47 @@ function buildAssistantData(intentResult, context, language) {
   const leftPv = number(weekly.left_carry_pv ?? weekly.left_pv ?? profile.carry_left_pv ?? 0);
   const rightPv = number(weekly.right_carry_pv ?? weekly.right_pv ?? profile.carry_right_pv ?? 0);
   const btctAvailable = wallet.btct_available_balance !== null && wallet.btct_available_balance !== undefined;
+  const directReferrals = Number(context.directReferrals || 0);
+  const activeTeam = Number(team.active_count || 0);
+  const totalTeam = Number(team.total_descendants || 0);
+
+  if (intent === 'business_plan') {
+    let nextStep = '';
+    if (directReferrals < 2) nextStep = safeLanguage(language) === 'hi'
+      ? 'Next step: kam se kam 2 active direct referrals build kijiye.'
+      : safeLanguage(language) === 'ur'
+        ? 'Next step: kam az kam 2 active direct referrals build karein.'
+        : safeLanguage(language) === 'ar'
+          ? 'الخطوة التالية: ابنِ على الأقل إحالتين مباشرتين نشطتين.'
+          : safeLanguage(language) === 'bn'
+            ? 'Next step: কমপক্ষে 2 জন active direct referral তৈরি করুন।'
+            : safeLanguage(language) === 'ps'
+              ? 'Next step: لږ تر لږه 2 active direct referrals جوړ کړئ.'
+              : 'Next step: build at least 2 active direct referrals.';
+    else if (Math.abs(toMoney(weekly.left_carry_pv ?? weekly.left_pv ?? 0) - toMoney(weekly.right_carry_pv ?? weekly.right_pv ?? 0)) >= 100) nextStep = safeLanguage(language) === 'hi'
+      ? `Next step: ${weakerLeg(weekly)} side ko strengthen karke balance improve kijiye.`
+      : safeLanguage(language) === 'ur'
+        ? `Next step: ${weakerLeg(weekly)} side ko strong karke balance behtar karein.`
+        : safeLanguage(language) === 'ar'
+          ? `الخطوة التالية: قوِّ جهة ${weakerLeg(weekly)} لتحسين التوازن.`
+          : safeLanguage(language) === 'bn'
+            ? `Next step: ${weakerLeg(weekly)} side শক্তিশালী করে balance উন্নত করুন।`
+            : safeLanguage(language) === 'ps'
+              ? `Next step: د ${weakerLeg(weekly)} اړخ په پیاوړي کولو balance ښه کړئ.`
+              : `Next step: strengthen your ${weakerLeg(weekly)} side to improve balance.`;
+    else if (activeTeam > 0 && activeTeam < Math.max(2, Math.ceil(totalTeam * 0.4))) nextStep = safeLanguage(language) === 'hi'
+      ? 'Next step: current team me activity aur repeat purchase par focus kijiye.'
+      : safeLanguage(language) === 'ur'
+        ? 'Next step: current team mein activity aur repeat purchase par focus karein.'
+        : safeLanguage(language) === 'ar'
+          ? 'الخطوة التالية: ركّز على نشاط الفريق الحالي وإعادة الشراء.'
+          : safeLanguage(language) === 'bn'
+            ? 'Next step: current team-এর activity এবং repeat purchase-এর উপর focus করুন।'
+            : safeLanguage(language) === 'ps'
+              ? 'Next step: د اوسني ټیم activity او repeat purchase ته پام وکړئ.'
+              : 'Next step: focus on current team activity and repeat purchases.';
+    return { intent, data: { name, totalTeam, totalIncome: money(income.total), directReferrals, nextStep } };
+  }
 
   if (intent === 'user_identity') return { intent, data: { name, username: profile.username || 'Unknown', userId: profile.id || 'Unknown' } };
   if (intent === 'sponsor_info') return { intent, data: { name, sponsorName } };
@@ -1225,6 +1356,7 @@ function formatAssistantResponse(result, language) {
   const accountCopy = ACCOUNT_COPY[safeLanguage(language)] || ACCOUNT_COPY.en;
   const reliability = getReliabilityCopy(language);
   const templateKeyByIntent = {
+    business_plan: 'fallback',
     user_identity: 'user_identity',
     sponsor_info: 'sponsor_info',
     rank_info: 'rank_info',
@@ -1255,6 +1387,7 @@ function formatAssistantResponse(result, language) {
     unknown_fallback: 'fallback'
   };
   const templateKey = templateKeyByIntent[result.intent] || 'fallback';
+  if (result.intent === 'business_plan') return formatBusinessPlanResponse(language, result.data);
   if (result.intent === 'earning_strategy') return formatRoadmapResponse(language, 'earning_strategy', result.data);
   if (result.intent === 'team_growth_strategy') return formatRoadmapResponse(language, 'team_growth_strategy', result.data);
   if (result.intent === 'auction_strategy') return formatRoadmapResponse(language, 'auction_strategy', result.data);
@@ -1286,6 +1419,28 @@ async function chat(userId, message, language = 'en') {
   const lang = safeLanguage(language);
   const reliability = getReliabilityCopy(lang);
   try {
+    const detectedIntent = detectAssistantIntent(message);
+    if (detectedIntent.intent === 'business_plan') {
+      const context = await loadContext(userId);
+      const structured = buildAssistantData(detectedIntent, context, lang);
+      return {
+        intent: structured.intent,
+        type: structured.intent,
+        language: lang,
+        direction: RTL_LANGUAGES.has(lang) ? 'rtl' : 'ltr',
+        reply: formatAssistantResponse(structured, lang) || reliability.unknown,
+        suggestions: buildSuggestions(lang, structured.intent),
+        smartSuggestions: formatSmartSuggestions(lang, buildSmartSuggestionItems(context)),
+        summary: {
+          wallet_balance: toMoney(context.wallet?.balance),
+          income_balance: toMoney(context.wallet?.income_balance),
+          withdrawal_balance: toMoney(context.wallet?.income_balance),
+          total_income: toMoney(context.incomeStats?.total),
+          team_size: Number(context.teamSummary?.total_descendants || 0),
+          partial_data: Array.isArray(context.contextErrors) && context.contextErrors.length > 0
+        }
+      };
+    }
     const faqMatch = findFaqMatch(message);
     if (faqMatch) {
       return {
@@ -1304,7 +1459,6 @@ async function chat(userId, message, language = 'en') {
       };
     }
     const context = await loadContext(userId);
-    const detectedIntent = detectAssistantIntent(message);
     const structured = buildAssistantData(detectedIntent, context, lang);
     const smartSuggestionItems = buildSmartSuggestionItems(context);
     const reply = formatAssistantResponse(structured, lang) || reliability.unknown;
