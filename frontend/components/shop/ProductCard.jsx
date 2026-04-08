@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { ArrowRight, ImageOff, Plus, ShoppingCart, Star } from 'lucide-react';
+import { ArrowRight, ImageOff, Plus, Star } from 'lucide-react';
 import { currency } from '@/lib/utils/format';
 import { addToCart } from '@/lib/utils/cart';
 import { getOfferPercent, getProductPricing } from '@/lib/utils/pricing';
@@ -52,7 +52,6 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
   const category = getCategory(safeProduct);
   const imageTheme = buildImageTheme(safeProduct.id || safeProduct.name);
   const cover = getProductCover(safeProduct);
-  const buttonLabel = 'Add to Cart';
   const buyNowLabel = disableBuying ? buyLabel : isBuying ? '...' : buyLabel;
 
   return (
@@ -88,22 +87,7 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
             </div>
           </div>
 
-          <div className="grid grid-cols-[1fr_auto_auto] gap-1">
-            <button
-              type="button"
-              onClick={() => {
-                const nextCount = addToCart(safeProduct, 1);
-                if (!nextCount) {
-                  toast.error('Unable to add this product to cart');
-                  return;
-                }
-                toast.success(`Added to cart (${nextCount})`);
-              }}
-              className="inline-flex h-6 min-w-[4.5rem] items-center justify-center gap-1 rounded-[10px] bg-slate-900 px-2 text-[9px] font-semibold text-white"
-            >
-              {buttonLabel}
-              <ShoppingCart size={9} />
-            </button>
+          <div className="grid grid-cols-[auto_auto] gap-1">
             {onBuy ? (
               <button
                 type="button"
