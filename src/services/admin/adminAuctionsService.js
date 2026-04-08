@@ -247,6 +247,8 @@ async function createAuction(adminUserId, payload) {
       updatedBy: adminUserId
     });
 
+    await auctionRepository.replaceAuctionRankPrizes(client, created.id, sanitized.rankPrizes || []);
+
     await safeAdminAuditLog(client, {
       adminUserId,
       actionType: 'auction.create',
@@ -298,6 +300,8 @@ async function updateAuction(adminUserId, auctionId, payload) {
       productId: source.productId,
       updatedBy: adminUserId
     });
+
+    await auctionRepository.replaceAuctionRankPrizes(client, auctionId, merged.rankPrizes || []);
 
     await safeAdminAuditLog(client, {
       adminUserId,

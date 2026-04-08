@@ -69,9 +69,12 @@ function normalizeRewardDistribution(entry) {
   return {
     ...entry,
     amount_spent: toNumber(entry.amount_spent),
+    cash_awarded: toNumber(entry.cash_awarded),
     btct_awarded: toNumber(entry.btct_awarded),
     total_entries: toNumber(entry.total_entries),
-    total_bids: toNumber(entry.total_bids)
+    total_bids: toNumber(entry.total_bids),
+    wallet_transaction_id: entry.wallet_transaction_id || null,
+    credited_wallet_type: entry.credited_wallet_type || null
   };
 }
 
@@ -114,6 +117,11 @@ function normalizeAuction(auction) {
         winning_entry_count: toNumber(winner.winning_entry_count),
         allocation_ratio: toNumber(winner.allocation_ratio),
         allocation_quantity: toNumber(winner.allocation_quantity),
+        prize_type: winner.prize_type || 'product',
+        prize_amount: winner.prize_amount === null || winner.prize_amount === undefined ? null : toNumber(winner.prize_amount),
+        credited_wallet_type: winner.credited_wallet_type || null,
+        credited_at: winner.credited_at || null,
+        wallet_transaction_id: winner.wallet_transaction_id || null,
         selection_metadata: winner.selection_metadata || {}
       }))
     : [];
@@ -139,6 +147,17 @@ function normalizeAuction(auction) {
     capacityPercent: toNumber(auction.capacityPercent),
     total_entries: toNumber(auction.total_entries),
     total_bids: toNumber(auction.total_bids),
+    auction_type: auction.auction_type || 'product',
+    prize_amount: auction.prize_amount === null || auction.prize_amount === undefined ? null : toNumber(auction.prize_amount),
+    prize_distribution_type: auction.prize_distribution_type || 'per_winner',
+    each_winner_amount: auction.each_winner_amount === null || auction.each_winner_amount === undefined ? null : toNumber(auction.each_winner_amount),
+    rank_prizes: Array.isArray(auction.rank_prizes)
+      ? auction.rank_prizes.map((entry) => ({
+          ...entry,
+          winner_rank: toNumber(entry.winner_rank || entry.winnerRank),
+          prize_amount: toNumber(entry.prize_amount || entry.prizeAmount)
+        }))
+      : [],
     winner_count: toNumber(auction.winner_count, 1),
     actualWinnerCount: toNumber(auction.actualWinnerCount),
     participantCount: toNumber(auction.participantCount),

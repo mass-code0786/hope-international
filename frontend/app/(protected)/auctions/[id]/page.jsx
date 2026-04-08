@@ -45,7 +45,9 @@ function CompactMetric({ label, value, icon: Icon, accent = false }) {
 function HeroCard({ auction, status, entryPrice, participantCount, latestBidder, topParticipant }) {
   const images = getAuctionImages(auction);
   const cover = images[0] || 'https://placehold.co/900x900/e2e8f0/334155?text=Auction';
-  const prizeLabel = auction?.reward_mode === 'split'
+  const prizeLabel = auction?.auction_type === 'cash_amount'
+    ? `${formatAuctionMoney(auction?.each_winner_amount || auction?.prize_amount || 0)} cash`
+    : auction?.reward_mode === 'split'
     ? `${formatAuctionMoney(auction?.reward_value || 0)} reward`
     : `${number(auction?.stock_quantity || 1)} prize`;
   const liveCenterTitle = status === 'live'
@@ -285,6 +287,7 @@ export default function AuctionDetailPage() {
   const aboutTitle = auction?.product_name || auction?.title || 'Auction item';
   const aboutSource = auction?.seller_name || auction?.store_name || auction?.category || 'Hope Marketplace';
   const aboutDescription = auction?.short_description || auction?.description || 'Join this auction for a chance to win with compact entry pricing and live leaderboard updates.';
+  const isCashAuction = auction?.auction_type === 'cash_amount';
 
   if (detailQuery.isLoading) {
     return <div className="rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#1A1D2E] p-4 text-sm text-[#B0B3C6]">Loading auction...</div>;
@@ -409,7 +412,7 @@ export default function AuctionDetailPage() {
               <span className="truncate text-white">
                 {rewardDistribution
                   ? rewardDistribution.result_type === 'winner'
-                    ? 'Winning result confirmed for this auction.'
+                    ? (rewardDistribution.cash_awarded ? `${formatAuctionMoney(rewardDistribution.cash_awarded)} credited to your withdrawal wallet.` : 'Winning result confirmed for this auction.')
                     : `BTCT reward ${number(rewardDistribution.btct_awarded)} available on settled loss.`
                   : latestBidder
                     ? `${latestBidder.username} is the latest bidder right now.`
@@ -438,7 +441,17 @@ export default function AuctionDetailPage() {
                   {rewardDistribution ? (
                     rewardDistribution.result_type === 'winner' ? (
                       <div className="rounded-[18px] border border-emerald-500/20 bg-[rgba(34,197,94,0.12)] px-3 py-3 text-[12px] text-[#FFFFFF]">
-                        You won this auction item. No BTCT compensation is issued on a winning result.
+                        {rewardDistribution.cash_awarded
+                          ? (
+                            <>
+                              <p className="font-semibold">Cash auction win confirmed</p>
+                              <p className="mt-1 text-[11px] text-emerald-100">Won {formatAuctionMoney(rewardDistribution.cash_awarded)} and credited to your withdrawal wallet.</p>
+                              {rewardDistribution.metadata?.selectionRank ? <p className="mt-1 text-[11px] text-emerald-100">Winning rank: #{rewardDistribution.metadata.selectionRank}</p> : null}
+                              <p className="mt-1 text-[11px] text-emerald-100">Reference: {auction.id}</p>
+                              <p className="mt-1 text-[11px] text-emerald-100">{rewardDistribution.distributed_at ? new Date(rewardDistribution.distributed_at).toLocaleString() : 'Settlement completed'}</p>
+                            </>
+                          )
+                          : 'You won this auction item. No BTCT compensation is issued on a winning result.'}
                       </div>
                     ) : (
                       <div className="rounded-[18px] border border-[rgba(255,255,255,0.08)] bg-[#14182D] px-3 py-3 text-[12px] text-[#B0B3C6]">
@@ -451,6 +464,11 @@ export default function AuctionDetailPage() {
                       Final outcome will appear here once settlement records are available.
                     </div>
                   )}
+                  {isCashAuction && !rewardDistribution ? (
+                    <div className="mt-3 rounded-[18px] border border-[rgba(255,255,255,0.08)] bg-[#14182D] px-3 py-3 text-[12px] text-[#B0B3C6]">
+                      Cash auction winnings are credited to the withdrawal wallet after result processing.
+                    </div>
+                  ) : null}
                 </div>
               </section>
             </>

@@ -229,6 +229,11 @@ function AuctionHistoryHubContent() {
                             {item.winners.map((winner) => winnerModeLabel(winner.winner_mode)).join(', ')}
                           </p>
                         ) : null}
+                        {item.rewardDistribution?.cash_awarded ? (
+                          <p className="mt-1 text-[11px] text-emerald-700">
+                            Won {currency(item.rewardDistribution.cash_awarded)} credited to withdrawal wallet{item.rewardDistribution.metadata?.selectionRank ? ` | Rank #${item.rewardDistribution.metadata.selectionRank}` : ''}
+                          </p>
+                        ) : null}
                       </div>
                       <span className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-semibold text-emerald-700">Winner</span>
                     </div>

@@ -63,10 +63,12 @@ export default function AdminAuctionDetailPage() {
   const sourceMode = auction.product_id ? 'Existing catalog product' : 'Standalone auction item';
   const rewardDistributions = Array.isArray(auction.rewardDistributions) ? auction.rewardDistributions : [];
   const winnerModes = Array.isArray(auction.winner_modes) ? auction.winner_modes : ['highest'];
+  const isCashAuction = auction.auction_type === 'cash_amount';
+  const perWinnerAmount = Number(auction.each_winner_amount || auction.prize_amount || 0);
 
   return (
     <div className="space-y-5">
-      <AdminSectionHeader title={auction.title} subtitle="Review entry purchases, configured winner rules, resolved winners, and BTCT compensation." action={<button onClick={() => router.push('/admin/auctions')} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-muted">Back</button>} />
+      <AdminSectionHeader title={auction.title} subtitle="Review entry purchases, configured winner rules, resolved winners, and reward settlement." action={<button onClick={() => router.push('/admin/auctions')} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-muted">Back</button>} />
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         <AuctionAdminForm products={products} initialValues={initialValues} onSubmit={(payload) => updateMutation.mutate(payload)} isSaving={updateMutation.isPending} submitLabel="Update Auction" />
@@ -88,8 +90,16 @@ export default function AdminAuctionDetailPage() {
             <div className="mt-2 flex items-center justify-between"><span>Winner target</span><strong className="text-text">{Number(auction.winner_count || 1)}</strong></div>
             <div className="mt-2 flex items-center justify-between"><span>Winner modes</span><strong className="text-right text-text">{winnerModes.join(' -> ')}</strong></div>
             <div className="mt-2 flex items-center justify-between"><span>Actual winners</span><strong className="text-text">{Number(auction.actualWinnerCount || auction.winners?.length || 0)}</strong></div>
+            <div className="mt-2 flex items-center justify-between"><span>Prize type</span><strong className="text-text">{isCashAuction ? 'Cash amount' : 'Product'}</strong></div>
+            {isCashAuction ? (
+              <>
+                <div className="mt-2 flex items-center justify-between"><span>Prize amount</span><strong className="text-text">{formatAuctionMoney(auction.prize_amount || 0)}</strong></div>
+                <div className="mt-2 flex items-center justify-between"><span>Distribution</span><strong className="text-text">{auction.prize_distribution_type === 'shared_pool' ? 'Shared pool' : 'Per winner'}</strong></div>
+                <div className="mt-2 flex items-center justify-between"><span>Each winner</span><strong className="text-text">{formatAuctionMoney(perWinnerAmount)}</strong></div>
+              </>
+            ) : null}
             <div className="mt-2 flex items-center justify-between"><span>Tie state</span><strong className="text-text">{auction.has_tie ? 'Yes' : 'No'}</strong></div>
-            <div className="mt-2 flex items-center justify-between"><span>Reward mode</span><strong className="text-text">{auction.reward_mode === 'split' ? `Split ${formatAuctionMoney(auction.reward_value || 0)}` : `${auction.stock_quantity || 1} stock`}</strong></div>
+            {!isCashAuction ? <div className="mt-2 flex items-center justify-between"><span>Reward mode</span><strong className="text-text">{auction.reward_mode === 'split' ? `Split ${formatAuctionMoney(auction.reward_value || 0)}` : `${auction.stock_quantity || 1} stock`}</strong></div> : null}
             <div className="mt-2 flex items-center justify-between"><span>BTCT price</span><strong className="text-text">{formatAuctionMoney(auction.btctPrice || 0.1)} / BTCT</strong></div>
             <div className="mt-2 flex items-center justify-between"><span>Window</span><strong className="text-right text-text">{new Date(auction.start_at).toLocaleString()} to {new Date(auction.end_at).toLocaleString()}</strong></div>
             {auction.shipping_details ? <p className="mt-3 text-xs leading-5 text-muted">Shipping: {auction.shipping_details}</p> : null}
@@ -109,11 +119,13 @@ export default function AdminAuctionDetailPage() {
                 <div key={winner.user_id} className="flex items-center justify-between rounded-2xl border border-white/10 bg-cardSoft px-3 py-2 text-xs text-muted">
                   <div>
                     <p className="font-semibold text-text">{winner.username}</p>
-                    <p>{winner.winner_mode} winner • rank {winner.selection_rank || '-'}</p>
-                    <p>{winner.total_entries_snapshot || winner.winning_entry_count} entries • {winner.total_bids_snapshot || 0} bids</p>
+                    <p>{winner.winner_mode} winner | rank {winner.selection_rank || '-'}</p>
+                    <p>{winner.total_entries_snapshot || winner.winning_entry_count} entries | {winner.total_bids_snapshot || 0} bids</p>
+                    {winner.prize_type === 'cash_amount' ? <p>{formatAuctionMoney(winner.prize_amount || 0)} credited to withdrawal wallet</p> : null}
+                    {winner.credited_at ? <p>Credited {new Date(winner.credited_at).toLocaleString()}</p> : null}
                     {winner.sequence_position ? <p>Sequence position {winner.sequence_position}</p> : null}
                   </div>
-                  <strong className="text-sm text-text">{winner.allocation_quantity ?? winner.allocation_ratio}</strong>
+                  <strong className="text-sm text-text">{winner.prize_type === 'cash_amount' ? formatAuctionMoney(winner.prize_amount || 0) : (winner.allocation_quantity ?? winner.allocation_ratio)}</strong>
                 </div>
               ))}
               {!(auction.winners || []).length ? <p className="text-xs text-muted">No winners yet.</p> : null}
@@ -145,7 +157,11 @@ export default function AdminAuctionDetailPage() {
                 <div key={entry.user_id} className="rounded-2xl border border-white/10 bg-cardSoft px-3 py-2 text-xs text-muted">
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-semibold text-text">{entry.username}</p>
-                    <strong className="text-sm text-text">{entry.result_type === 'winner' ? 'Winner' : `${number(entry.btct_awarded || 0)} BTCT`}</strong>
+                    <strong className="text-sm text-text">
+                      {entry.result_type === 'winner'
+                        ? (entry.cash_awarded ? `${formatAuctionMoney(entry.cash_awarded)} cash` : 'Winner')
+                        : `${number(entry.btct_awarded || 0)} BTCT`}
+                    </strong>
                   </div>
                   <div className="mt-1 flex items-center justify-between gap-2">
                     <span>Spent {formatAuctionMoney(entry.amount_spent || 0)}</span>
@@ -154,6 +170,7 @@ export default function AdminAuctionDetailPage() {
                   {entry.result_type === 'winner' && Array.isArray(entry.metadata?.winnerModes) && entry.metadata.winnerModes.length ? (
                     <p className="mt-1">{entry.metadata.winnerModes.join(', ')} winner</p>
                   ) : null}
+                  {entry.cash_awarded ? <p className="mt-1">Wallet credit: {entry.credited_wallet_type || 'withdrawal_wallet'} {entry.wallet_transaction_id ? 'processed' : 'pending'}</p> : null}
                 </div>
               ))}
               {!rewardDistributions.length ? <p className="text-xs text-muted">No distribution records yet.</p> : null}

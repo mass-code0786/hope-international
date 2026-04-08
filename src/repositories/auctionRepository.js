@@ -145,6 +145,30 @@ async function attachWinnerRows(client, auctions) {
   }));
 }
 
+async function attachRankPrizeRows(client, auctions) {
+  if (!auctions.length) return auctions;
+  const ids = auctions.map((auction) => auction.id);
+  const { rows } = await q(client).query(
+    `SELECT *
+     FROM auction_rank_prizes
+     WHERE auction_id = ANY($1::uuid[])
+     ORDER BY winner_rank ASC, created_at ASC`,
+    [ids]
+  );
+
+  const grouped = new Map();
+  rows.forEach((row) => {
+    const current = grouped.get(row.auction_id) || [];
+    current.push(row);
+    grouped.set(row.auction_id, current);
+  });
+
+  return auctions.map((auction) => ({
+    ...auction,
+    rank_prizes: grouped.get(auction.id) || []
+  }));
+}
+
 function buildCompatStatusCase(columns, nowPlaceholder) {
   const endedByCapacity = columns.has('hidden_capacity') && (columns.has('total_entries') || columns.has('total_bids'))
     ? `COALESCE(a.${columns.has('total_entries') ? 'total_entries' : 'total_bids'}, 0) >= COALESCE(a.hidden_capacity, 2147483647)`
@@ -325,7 +349,7 @@ async function listAuctions(client, filters = {}, pagination = {}) {
     const countResult = await q(client).query(countSql, values);
 
     return {
-      items: await attachWinnerRows(client, rows.map(normalizeAuctionRow)),
+      items: await attachRankPrizeRows(client, await attachWinnerRows(client, rows.map(normalizeAuctionRow))),
       total: Number(countResult.rows[0]?.count || 0)
     };
   } catch (error) {
@@ -351,7 +375,8 @@ async function getAuctionById(client, auctionId, options = {}) {
   if (!auction) return null;
 
   const withWinners = await attachWinnerRows(client, [auction]);
-  return withWinners[0] || null;
+  const withRankPrizes = await attachRankPrizeRows(client, withWinners);
+  return withRankPrizes[0] || null;
 }
 
 async function getAuctionForUpdate(client, auctionId) {
@@ -359,7 +384,10 @@ async function getAuctionForUpdate(client, auctionId) {
     `SELECT * FROM auctions WHERE id = $1 FOR UPDATE`,
     [auctionId]
   );
-  return normalizeAuctionRow(rows[0] || null);
+  const auction = normalizeAuctionRow(rows[0] || null);
+  if (!auction) return null;
+  const withRankPrizes = await attachRankPrizeRows(client, [auction]);
+  return withRankPrizes[0] || null;
 }
 
 async function createAuction(client, payload) {
@@ -389,6 +417,10 @@ async function createAuction(client, payload) {
   addField('entry_price', payload.entryPrice);
   addField('hidden_capacity', payload.hiddenCapacity);
   addField('stock_quantity', payload.stockQuantity);
+  addField('auction_type', payload.auctionType || 'product');
+  addField('prize_amount', payload.prizeAmount || null);
+  addField('prize_distribution_type', payload.prizeDistributionType || 'per_winner');
+  addField('each_winner_amount', payload.eachWinnerAmount || null);
   addField('reward_mode', payload.rewardMode);
   addField('reward_value', payload.rewardValue || null);
   addField('total_entries', payload.totalEntries || 0);
@@ -410,7 +442,8 @@ async function createAuction(client, payload) {
 
   return {
     ...normalizeAuctionRow(rows[0]),
-    winners: []
+    winners: [],
+    rank_prizes: []
   };
 }
 
@@ -433,23 +466,27 @@ async function updateAuction(client, auctionId, payload) {
          entry_price = $15,
          hidden_capacity = $16,
          stock_quantity = $17,
-         reward_mode = $18,
-         reward_value = $19,
-         total_entries = $20,
-         has_tie = $21,
-         winner_count = $22,
-         winner_modes = $23,
-         start_at = $24,
-         end_at = $25,
-         status = $26,
-         is_active = $27,
-         cancelled_at = $28,
-         closed_at = $29,
-         close_reason = $30,
-         winner_user_id = $31,
-         winning_bid_id = $32,
-         total_bids = $33,
-         updated_by = $34
+         auction_type = $18,
+         prize_amount = $19,
+         prize_distribution_type = $20,
+         each_winner_amount = $21,
+         reward_mode = $22,
+         reward_value = $23,
+         total_entries = $24,
+         has_tie = $25,
+         winner_count = $26,
+         winner_modes = $27,
+         start_at = $28,
+         end_at = $29,
+         status = $30,
+         is_active = $31,
+         cancelled_at = $32,
+         closed_at = $33,
+         close_reason = $34,
+         winner_user_id = $35,
+         winning_bid_id = $36,
+         total_bids = $37,
+         updated_by = $38
      WHERE id = $1
      RETURNING *`,
     [
@@ -470,6 +507,10 @@ async function updateAuction(client, auctionId, payload) {
       payload.entryPrice,
       payload.hiddenCapacity,
       payload.stockQuantity,
+      payload.auctionType || 'product',
+      payload.prizeAmount || null,
+      payload.prizeDistributionType || 'per_winner',
+      payload.eachWinnerAmount || null,
       payload.rewardMode,
       payload.rewardValue || null,
       payload.totalEntries || 0,
@@ -493,7 +534,33 @@ async function updateAuction(client, auctionId, payload) {
   const auction = normalizeAuctionRow(rows[0] || null);
   if (!auction) return null;
   const withWinners = await attachWinnerRows(client, [auction]);
-  return withWinners[0] || null;
+  const withRankPrizes = await attachRankPrizeRows(client, withWinners);
+  return withRankPrizes[0] || null;
+}
+
+async function replaceAuctionRankPrizes(client, auctionId, rankPrizes = []) {
+  await q(client).query('DELETE FROM auction_rank_prizes WHERE auction_id = $1', [auctionId]);
+  if (!rankPrizes.length) return [];
+
+  const inserted = [];
+  for (const rankPrize of rankPrizes) {
+    const { rows } = await q(client).query(
+      `INSERT INTO auction_rank_prizes (
+         auction_id,
+         winner_rank,
+         prize_amount
+       )
+       VALUES ($1, $2, $3)
+       RETURNING *`,
+      [
+        auctionId,
+        rankPrize.winnerRank,
+        rankPrize.prizeAmount
+      ]
+    );
+    inserted.push(rows[0]);
+  }
+  return inserted;
 }
 
 async function createBid(client, payload) {
@@ -611,15 +678,20 @@ async function replaceAuctionWinners(client, auctionId, winners) {
          winning_entry_count,
          allocation_ratio,
          allocation_quantity,
+         prize_type,
+         prize_amount,
          reward_mode,
          winner_mode,
          selection_rank,
          sequence_position,
          total_bids_snapshot,
          total_entries_snapshot,
-         selection_metadata
+         selection_metadata,
+         credited_wallet_type,
+         credited_at,
+         wallet_transaction_id
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
        RETURNING *`,
       [
         auctionId,
@@ -627,18 +699,43 @@ async function replaceAuctionWinners(client, auctionId, winners) {
         winner.winningEntryCount,
         winner.allocationRatio,
         winner.allocationQuantity || null,
+        winner.prizeType || 'product',
+        winner.prizeAmount || null,
         winner.rewardMode,
         winner.winnerMode || 'highest',
         winner.selectionRank || 1,
         winner.sequencePosition || null,
         winner.totalBidsSnapshot || 0,
         winner.totalEntriesSnapshot || 0,
-        winner.selectionMetadata || {}
+        winner.selectionMetadata || {},
+        winner.creditedWalletType || null,
+        winner.creditedAt || null,
+        winner.walletTransactionId || null
       ]
     );
     inserted.push(rows[0]);
   }
   return inserted;
+}
+
+async function updateAuctionWinnerCredit(client, auctionId, userId, payload = {}) {
+  const { rows } = await q(client).query(
+    `UPDATE auction_winners
+     SET credited_wallet_type = COALESCE($3, credited_wallet_type),
+         credited_at = COALESCE($4, credited_at),
+         wallet_transaction_id = COALESCE($5, wallet_transaction_id)
+     WHERE auction_id = $1
+       AND user_id = $2
+     RETURNING *`,
+    [
+      auctionId,
+      userId,
+      payload.creditedWalletType || null,
+      payload.creditedAt || null,
+      payload.walletTransactionId || null
+    ]
+  );
+  return rows[0] || null;
 }
 
 async function listAuctionWinners(client, auctionId) {
@@ -709,11 +806,14 @@ async function upsertAuctionRewardDistribution(client, payload) {
        total_entries,
        total_bids,
        btct_awarded,
+       cash_awarded,
        btct_transaction_id,
+       wallet_transaction_id,
+       credited_wallet_type,
        metadata,
        distributed_at
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
      ON CONFLICT (auction_id, user_id)
      DO UPDATE SET
        result_type = EXCLUDED.result_type,
@@ -721,7 +821,10 @@ async function upsertAuctionRewardDistribution(client, payload) {
        total_entries = EXCLUDED.total_entries,
        total_bids = EXCLUDED.total_bids,
        btct_awarded = EXCLUDED.btct_awarded,
+       cash_awarded = EXCLUDED.cash_awarded,
        btct_transaction_id = COALESCE(EXCLUDED.btct_transaction_id, auction_reward_distributions.btct_transaction_id),
+       wallet_transaction_id = COALESCE(EXCLUDED.wallet_transaction_id, auction_reward_distributions.wallet_transaction_id),
+       credited_wallet_type = COALESCE(EXCLUDED.credited_wallet_type, auction_reward_distributions.credited_wallet_type),
        metadata = COALESCE(auction_reward_distributions.metadata, '{}'::jsonb) || EXCLUDED.metadata,
        distributed_at = COALESCE(EXCLUDED.distributed_at, auction_reward_distributions.distributed_at),
        updated_at = NOW()
@@ -734,7 +837,10 @@ async function upsertAuctionRewardDistribution(client, payload) {
       payload.totalEntries || 0,
       payload.totalBids || 0,
       payload.btctAwarded || 0,
+      payload.cashAwarded || 0,
       payload.btctTransactionId || null,
+      payload.walletTransactionId || null,
+      payload.creditedWalletType || null,
       payload.metadata || {},
       payload.distributedAt || null
     ]
@@ -1050,7 +1156,7 @@ async function listUserAuctionHistory(client, userId, filters = {}, pagination =
   const countResult = await q(client).query(countSql, countValues);
 
   return {
-    items: await attachWinnerRows(client, rows.map(normalizeAuctionRow)),
+    items: await attachRankPrizeRows(client, await attachWinnerRows(client, rows.map(normalizeAuctionRow))),
     total: Number(countResult.rows[0]?.count || 0)
   };
 }
@@ -1070,7 +1176,9 @@ module.exports = {
   listAuctionLeaderboard,
   getHighestBid,
   getTopParticipants,
+  replaceAuctionRankPrizes,
   replaceAuctionWinners,
+  updateAuctionWinnerCredit,
   listAuctionWinners,
   getAuctionRewardDistribution,
   upsertAuctionRewardDistribution,

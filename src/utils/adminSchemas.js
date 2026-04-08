@@ -223,12 +223,19 @@ const adminSellerApplicationReviewSchema = z.object({ body: z.object({ status: z
 
 const adminAuctionStatuses = ['upcoming', 'live', 'ended', 'cancelled'];
 const adminAuctionWinnerModes = ['highest', 'middle', 'last'];
+const adminAuctionTypes = ['product', 'cash_amount'];
+const adminAuctionPrizeDistributionTypes = ['per_winner', 'shared_pool', 'rank_wise'];
+const adminAuctionRankPrizeSchema = z.object({
+  winnerRank: z.number().int().positive(),
+  prizeAmount: z.number().min(0)
+});
 const adminAuctionSpecsSchema = z.array(z.object({ label: z.string().min(1).max(100), value: z.string().min(1).max(300) })).optional();
 const adminAuctionGallerySchema = z.array(z.string().min(3).max(1000000)).optional();
 const adminAuctionSourceModes = ['existing', 'standalone'];
 const adminAuctionModeSchema = z.enum(adminAuctionSourceModes).optional();
 const adminAuctionBaseBody = z.object({
   sourceMode: adminAuctionModeSchema,
+  auctionType: z.enum(adminAuctionTypes).optional(),
   productId: uuid.optional(),
   title: z.string().min(2).max(255).optional(),
   shortDescription: z.string().max(400).optional(),
@@ -243,6 +250,9 @@ const adminAuctionBaseBody = z.object({
   hiddenCapacity: z.number().int().positive(),
   winnerCount: z.number().int().positive(),
   winnerModes: z.array(z.enum(adminAuctionWinnerModes)).min(1).max(3),
+  prizeAmount: z.number().positive().optional(),
+  prizeDistributionType: z.enum(adminAuctionPrizeDistributionTypes).optional(),
+  rankPrizes: z.array(adminAuctionRankPrizeSchema).optional(),
   stockQuantity: z.number().int().positive().optional(),
   rewardMode: z.enum(['stock', 'split']).optional(),
   rewardValue: z.number().positive().optional(),
@@ -253,6 +263,7 @@ const adminAuctionBaseBody = z.object({
 
 function validateAuctionCreateMode(body, ctx) {
   const mode = body.sourceMode || (body.productId ? 'existing' : 'standalone');
+  const auctionType = body.auctionType || 'product';
 
   if (mode === 'existing') {
     if (!body.productId) {
@@ -282,11 +293,51 @@ function validateAuctionCreateMode(body, ctx) {
   if (Array.isArray(body.winnerModes) && new Set(body.winnerModes).size !== body.winnerModes.length) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['winnerModes'], message: 'winnerModes must not contain duplicates' });
   }
+
+  if (auctionType === 'cash_amount') {
+    if (!(Number(body.prizeAmount) > 0)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['prizeAmount'], message: 'prizeAmount is required for cash auctions' });
+    }
+    if (!body.prizeDistributionType) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['prizeDistributionType'], message: 'prizeDistributionType is required for cash auctions' });
+    }
+    if (body.prizeDistributionType === 'shared_pool' && Number.isFinite(Number(body.prizeAmount)) && Number.isInteger(Number(body.winnerCount)) && Number(body.winnerCount) > 0) {
+      const cents = Math.round(Number(body.prizeAmount) * 100);
+      if (cents % Number(body.winnerCount) !== 0) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['prizeAmount'], message: 'Shared pool prizeAmount must divide evenly across winners to the cent' });
+      }
+    }
+    if (body.prizeDistributionType === 'rank_wise') {
+      if (!Array.isArray(body.rankPrizes) || body.rankPrizes.length !== Number(body.winnerCount || 0)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rankPrizes'], message: 'rankPrizes must match winnerCount for rank-wise cash auctions' });
+      } else {
+        const seenRanks = new Set();
+        let positiveCount = 0;
+        for (const entry of body.rankPrizes) {
+          if (seenRanks.has(entry.winnerRank)) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rankPrizes'], message: 'rankPrizes must not contain duplicate ranks' });
+            break;
+          }
+          seenRanks.add(entry.winnerRank);
+          if (entry.prizeAmount > 0) positiveCount += 1;
+        }
+        if (positiveCount <= 0) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rankPrizes'], message: 'At least one rank prize amount must be greater than zero' });
+        }
+      }
+    }
+  }
 }
 
 const adminAuctionsQuerySchema = z.object({ body: z.object({}), params: z.object({}), query: pagingQuery.extend({ search: z.string().optional(), status: z.enum(adminAuctionStatuses).optional() }) });
 const adminAuctionCreateSchema = z.object({ body: adminAuctionBaseBody.superRefine(validateAuctionCreateMode), params: z.object({}), query: z.object({}) });
-const adminAuctionUpdateSchema = z.object({ body: adminAuctionBaseBody.partial().refine((body) => Object.keys(body).length > 0, { message: 'At least one field is required for update' }), params: z.object({ id: uuid }), query: z.object({}) });
+const adminAuctionUpdateSchema = z.object({
+  body: adminAuctionBaseBody.partial()
+    .refine((body) => Object.keys(body).length > 0, { message: 'At least one field is required for update' })
+    .superRefine(validateAuctionCreateMode),
+  params: z.object({ id: uuid }),
+  query: z.object({})
+});
 const adminAuctionIdParamSchema = z.object({ body: z.object({}), params: z.object({ id: uuid }), query: z.object({}) });
 const adminAuctionActionSchema = z.object({ body: z.object({ action: z.enum(['close', 'cancel', 'activate', 'deactivate']), reason: z.string().max(255).optional() }), params: z.object({ id: uuid }), query: z.object({}) });
 

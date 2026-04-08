@@ -2,6 +2,7 @@ const { withTransaction } = require('../db/pool');
 const { normalizePagination, buildPagination } = require('../utils/pagination');
 const { ApiError } = require('../utils/ApiError');
 const auctionRepository = require('../repositories/auctionRepository');
+const walletRepository = require('../repositories/walletRepository');
 const walletService = require('./walletService');
 const notificationService = require('./notificationService');
 
@@ -10,6 +11,9 @@ const MIN_REWARD_VALUE = 0.01;
 const BTCT_USD_PRICE = 0.10;
 const AUCTION_SCHEMA_ERROR_CODES = ['42P01', '42703', '42883', '42804'];
 const AUCTION_WINNER_MODES = ['highest', 'middle', 'last'];
+const AUCTION_TYPES = ['product', 'cash_amount'];
+const AUCTION_PRIZE_DISTRIBUTION_TYPES = ['per_winner', 'shared_pool', 'rank_wise'];
+const CASH_AUCTION_CREDIT_WALLET = 'withdrawal_wallet';
 
 function isAuctionSchemaError(error) {
   return AUCTION_SCHEMA_ERROR_CODES.includes(error?.code);
@@ -67,6 +71,109 @@ function validateRewardValue(value) {
   return amount;
 }
 
+function normalizeAuctionType(value, fallback = 'product') {
+  const normalized = String(value || fallback).trim().toLowerCase();
+  return AUCTION_TYPES.includes(normalized) ? normalized : fallback;
+}
+
+function normalizePrizeDistributionType(value, fallback = 'per_winner') {
+  const normalized = String(value || fallback).trim().toLowerCase();
+  return AUCTION_PRIZE_DISTRIBUTION_TYPES.includes(normalized) ? normalized : fallback;
+}
+
+function validatePositiveMoney(value, label) {
+  const amount = roundMoney(value);
+  if (Number.isNaN(amount) || amount <= 0) {
+    throw new ApiError(400, `${label} must be greater than $0.00`);
+  }
+  return amount;
+}
+
+function validateCashAuctionConfig({ auctionType, prizeAmount, prizeDistributionType, winnerCount }) {
+  if (auctionType !== 'cash_amount') {
+    return {
+      prizeAmount: null,
+      prizeDistributionType: 'per_winner',
+      eachWinnerAmount: null
+    };
+  }
+
+  const safePrizeAmount = validatePositiveMoney(prizeAmount, 'Prize amount');
+  const safeWinnerCount = Number(winnerCount || 0);
+  if (!Number.isInteger(safeWinnerCount) || safeWinnerCount <= 0) {
+    throw new ApiError(400, 'Winner count must be a positive whole number');
+  }
+
+  const safeDistributionType = normalizePrizeDistributionType(prizeDistributionType, 'per_winner');
+  if (safeDistributionType === 'rank_wise') {
+    return {
+      prizeAmount: safePrizeAmount,
+      prizeDistributionType: safeDistributionType,
+      eachWinnerAmount: null
+    };
+  }
+
+  if (safeDistributionType === 'shared_pool') {
+    const cents = Math.round(safePrizeAmount * 100);
+    if (cents % safeWinnerCount !== 0) {
+      throw new ApiError(400, 'Shared pool amount must divide evenly across winners to the cent');
+    }
+  }
+
+  const eachWinnerAmount = safeDistributionType === 'shared_pool'
+    ? roundMoney(safePrizeAmount / safeWinnerCount)
+    : safePrizeAmount;
+
+  return {
+    prizeAmount: safePrizeAmount,
+    prizeDistributionType: safeDistributionType,
+    eachWinnerAmount
+  };
+}
+
+function normalizeRankPrizeEntries(value) {
+  const entries = Array.isArray(value) ? value : [];
+  return entries
+    .map((entry, index) => ({
+      winnerRank: Number(entry?.winnerRank ?? entry?.winner_rank ?? index + 1),
+      prizeAmount: roundMoney(entry?.prizeAmount ?? entry?.prize_amount ?? 0)
+    }))
+    .filter((entry) => Number.isInteger(entry.winnerRank) && entry.winnerRank > 0 && !Number.isNaN(entry.prizeAmount));
+}
+
+function validateRankPrizeEntries(rankPrizes, winnerCount) {
+  const safeWinnerCount = Number(winnerCount || 0);
+  const normalized = normalizeRankPrizeEntries(rankPrizes)
+    .sort((left, right) => left.winnerRank - right.winnerRank);
+
+  if (normalized.length !== safeWinnerCount) {
+    throw new ApiError(400, 'Rank prize rows must match the configured winner count');
+  }
+
+  const expectedRanks = new Set(Array.from({ length: safeWinnerCount }, (_, index) => index + 1));
+  let positiveCount = 0;
+  for (const entry of normalized) {
+    if (!expectedRanks.has(entry.winnerRank)) {
+      throw new ApiError(400, 'Rank prize rows must cover each winner rank exactly once');
+    }
+    expectedRanks.delete(entry.winnerRank);
+    if (entry.prizeAmount < 0) {
+      throw new ApiError(400, 'Rank prize amounts must be zero or greater');
+    }
+    if (entry.prizeAmount > 0) positiveCount += 1;
+  }
+
+  if (expectedRanks.size > 0) {
+    throw new ApiError(400, 'Rank prize rows must cover each winner rank exactly once');
+  }
+
+  if (positiveCount <= 0) {
+    throw new ApiError(400, 'At least one rank prize amount must be greater than zero');
+  }
+
+  return normalized;
+}
+
 function deriveAuctionStatus({ status, isActive, startAt, endAt, cancelledAt, closedAt, totalEntries = 0, hiddenCapacity = Number.MAX_SAFE_INTEGER, now = new Date() }) {
   if (status === 'cancelled' || cancelledAt) return 'cancelled';
   if (status === 'ended' || closedAt || Number(totalEntries) >= Number(hiddenCapacity)) return 'ended';
@@ -110,6 +217,20 @@ function sanitizeAuctionPayload(payload, before = null) {
   const totalEntries = Number(payload.totalEntries ?? before?.total_entries ?? 0);
   const winnerCount = Number(payload.winnerCount ?? before?.winner_count ?? 1);
   const winnerModes = normalizeWinnerModes(payload.winnerModes ?? before?.winner_modes ?? ['highest']);
+  const auctionType = normalizeAuctionType(payload.auctionType ?? before?.auction_type ?? 'product');
+  const winnerCountValue = Number.isInteger(winnerCount) && winnerCount > 0 ? winnerCount : 1;
+  const cashConfig = validateCashAuctionConfig({
+    auctionType,
+    prizeAmount: payload.prizeAmount ?? before?.prize_amount ?? null,
+    prizeDistributionType: payload.prizeDistributionType ?? before?.prize_distribution_type ?? 'per_winner',
+    winnerCount: winnerCountValue
+  });
+  const rankPrizes = auctionType === 'cash_amount' && cashConfig.prizeDistributionType === 'rank_wise'
+    ? validateRankPrizeEntries(payload.rankPrizes ?? before?.rank_prizes ?? [], winnerCountValue)
+    : [];
+  const effectivePrizeAmount = auctionType === 'cash_amount' && cashConfig.prizeDistributionType === 'rank_wise'
+    ? roundMoney(rankPrizes.reduce((sum, entry) => sum + Number(entry.prizeAmount || 0), 0))
+    : cashConfig.prizeAmount;
 
   return {
     productId: payload.productId ?? before?.product_id ?? null,
@@ -128,12 +249,17 @@ function sanitizeAuctionPayload(payload, before = null) {
     entryPrice,
     hiddenCapacity,
     stockQuantity,
+    auctionType,
+    prizeAmount: effectivePrizeAmount,
+    prizeDistributionType: cashConfig.prizeDistributionType,
+    eachWinnerAmount: cashConfig.eachWinnerAmount,
     rewardMode,
     rewardValue,
     totalEntries,
     hasTie: Boolean(payload.hasTie ?? before?.has_tie ?? false),
-    winnerCount: Number.isInteger(winnerCount) && winnerCount > 0 ? winnerCount : 1,
+    winnerCount: winnerCountValue,
     winnerModes,
+    rankPrizes,
     startAt,
     endAt,
     status: payload.status || deriveAuctionStatus({
@@ -310,28 +436,50 @@ function buildWinnerAllocations(auction, participants, bids) {
   const allocationRatio = Number((1 / actualWinnerCount).toFixed(6));
   const stockQuantity = Number(auction.stock_quantity || 1);
   const rewardValue = Number(auction.reward_value || 0);
+  const isCashAuction = normalizeAuctionType(auction.auction_type, 'product') === 'cash_amount';
+  const eachWinnerAmount = isCashAuction ? roundMoney(auction.each_winner_amount || 0) : null;
+  const rankPrizeMap = new Map(
+    normalizeRankPrizeEntries(auction.rank_prizes || []).map((entry) => [entry.winnerRank, entry.prizeAmount])
+  );
   const allocationQuantity = auction.reward_mode === 'split'
     ? Number((rewardValue / actualWinnerCount).toFixed(2))
     : Number((stockQuantity / actualWinnerCount).toFixed(2));
 
-  return selected.map((winner, index) => ({
-    userId: winner.userId,
-    winningEntryCount: winner.winningEntryCount,
-    allocationRatio,
-    allocationQuantity,
-    rewardMode: auction.reward_mode || 'stock',
-    winnerMode: winner.winnerMode,
-    selectionRank: index + 1,
-    sequencePosition: winner.sequencePosition,
-    totalBidsSnapshot: winner.totalBidsSnapshot,
-    totalEntriesSnapshot: winner.totalEntriesSnapshot,
-    selectionMetadata: {
-      ...winner.selectionMetadata,
-      modeRank: winner.modeRank,
-      configuredWinnerCount: desiredWinnerCount,
-      configuredWinnerModes: winnerModes
-    }
-  }));
+  return selected.map((winner, index) => {
+    const selectionRank = index + 1;
+    const prizeAmount = isCashAuction
+      ? (
+        normalizePrizeDistributionType(auction.prize_distribution_type, 'per_winner') === 'rank_wise'
+          ? roundMoney(rankPrizeMap.get(selectionRank) || 0)
+          : eachWinnerAmount
+      )
+      : null;
+
+    return {
+      userId: winner.userId,
+      winningEntryCount: winner.winningEntryCount,
+      allocationRatio,
+      allocationQuantity,
+      prizeType: isCashAuction ? 'cash_amount' : 'product',
+      prizeAmount,
+      creditedWalletType: isCashAuction ? CASH_AUCTION_CREDIT_WALLET : null,
+      rewardMode: auction.reward_mode || 'stock',
+      winnerMode: winner.winnerMode,
+      selectionRank,
+      sequencePosition: winner.sequencePosition,
+      totalBidsSnapshot: winner.totalBidsSnapshot,
+      totalEntriesSnapshot: winner.totalEntriesSnapshot,
+      selectionMetadata: {
+        ...winner.selectionMetadata,
+        modeRank: winner.modeRank,
+        configuredWinnerCount: desiredWinnerCount,
+        configuredWinnerModes: winnerModes,
+        prizeType: isCashAuction ? 'cash_amount' : 'product',
+        prizeAmount,
+        creditedWalletType: isCashAuction ? CASH_AUCTION_CREDIT_WALLET : null
+      }
+    };
+  });
 }
 
 function sanitizePublicLeaderboardEntry(participant, currentUserId = null) {
@@ -357,6 +505,9 @@ function sanitizeRewardDistribution(distribution) {
     total_entries: Number(distribution.total_entries || 0),
     total_bids: Number(distribution.total_bids || 0),
     btct_awarded: roundBtct(distribution.btct_awarded || 0),
+    cash_awarded: roundMoney(distribution.cash_awarded || 0),
+    wallet_transaction_id: distribution.wallet_transaction_id || null,
+    credited_wallet_type: distribution.credited_wallet_type || null,
     distributed_at: distribution.distributed_at,
     metadata: distribution.metadata || {}
   };
@@ -375,16 +526,59 @@ async function settleAuctionRewards(client, auction, winners) {
   if (!leaderboard.length) return [];
 
   const winnerIds = new Set(winners.map((winner) => String(winner.userId)));
+  const winnersByUserId = new Map(winners.map((winner) => [String(winner.userId), winner]));
+  const isCashAuction = normalizeAuctionType(auction.auction_type, 'product') === 'cash_amount';
   const distributions = [];
 
   for (const participant of leaderboard) {
     const amountSpent = roundMoney(participant.total_spent || 0);
     const isWinner = winnerIds.has(String(participant.user_id));
+    const winnerRecord = winnersByUserId.get(String(participant.user_id)) || null;
     const btctAwarded = isWinner ? 0 : roundBtct(amountSpent / BTCT_USD_PRICE);
     const existing = await auctionRepository.getAuctionRewardDistribution(client, auction.id, participant.user_id);
 
     let btctTransactionId = existing?.btct_transaction_id || null;
+    let walletTransactionId = existing?.wallet_transaction_id || null;
+    let creditedWalletType = existing?.credited_wallet_type || (isWinner && isCashAuction ? CASH_AUCTION_CREDIT_WALLET : null);
+    let cashAwarded = isWinner && isCashAuction
+      ? roundMoney(winnerRecord?.prizeAmount || auction.each_winner_amount || 0)
+      : 0;
     let distributedAt = existing?.distributed_at || new Date().toISOString();
+
+    if (isWinner && isCashAuction && cashAwarded > 0) {
+      if (!walletTransactionId) {
+        const existingWalletTransaction = await walletRepository.getTransactionBySourceAndReference(
+          client,
+          participant.user_id,
+          'auction_win_cash',
+          auction.id
+        );
+
+        if (existingWalletTransaction) {
+          walletTransactionId = existingWalletTransaction.id;
+          distributedAt = existingWalletTransaction.created_at || distributedAt;
+        } else {
+          const reward = await walletService.creditWithTransaction(client, participant.user_id, cashAwarded, 'auction_win_cash', auction.id, {
+            walletType: CASH_AUCTION_CREDIT_WALLET,
+            auctionId: auction.id,
+            auctionTitle: auction.title,
+            prizeType: 'cash_amount',
+            prizeAmount: cashAwarded,
+            winnerMode: winnerRecord?.winnerMode || null,
+            selectionRank: winnerRecord?.selectionRank || null,
+            configuredWinnerCount: Number(auction.winner_count || winners.length || 1)
+          });
+          walletTransactionId = reward.transaction.id;
+          distributedAt = reward.transaction.created_at || distributedAt;
+        }
+      }
+
+      await auctionRepository.updateAuctionWinnerCredit(client, auction.id, participant.user_id, {
+        creditedWalletType,
+        creditedAt: distributedAt,
+        walletTransactionId
+      });
+    }
 
     if (!isWinner && btctAwarded > 0 && !btctTransactionId) {
       const reward = await walletService.creditBtct(client, participant.user_id, btctAwarded, 'auction_loss_compensation', auction.id, {
@@ -408,14 +602,21 @@ async function settleAuctionRewards(client, auction, winners) {
       totalEntries: Number(participant.total_entries || 0),
       totalBids: Number(participant.total_bids || 0),
       btctAwarded,
+      cashAwarded,
       btctTransactionId,
+      walletTransactionId,
+      creditedWalletType,
       distributedAt,
       metadata: {
         btctPrice: BTCT_USD_PRICE,
         auctionTitle: auction.title,
         isWinner,
         winnerCount: winners.length,
-        winnerModes: winners.filter((winner) => String(winner.userId) === String(participant.user_id)).map((winner) => winner.winnerMode)
+        winnerModes: winnerRecord ? [winnerRecord.winnerMode] : [],
+        selectionRank: winnerRecord?.selectionRank || null,
+        prizeType: winnerRecord?.prizeType || normalizeAuctionType(auction.auction_type, 'product'),
+        prizeAmount: cashAwarded || null,
+        creditedWalletType: creditedWalletType || null
       }
     });
 
@@ -464,7 +665,12 @@ function stripPrivateFields(auction) {
         total_entries_snapshot: Number(winner.total_entries_snapshot || 0),
         allocation_ratio: winner.allocation_ratio,
         allocation_quantity: winner.allocation_quantity,
+        prize_type: winner.prize_type || 'product',
+        prize_amount: winner.prize_amount === null || winner.prize_amount === undefined ? null : roundMoney(winner.prize_amount),
         reward_mode: winner.reward_mode,
+        credited_wallet_type: winner.credited_wallet_type || null,
+        credited_at: winner.credited_at || null,
+        wallet_transaction_id: winner.wallet_transaction_id || null,
         selection_metadata: winner.selection_metadata || {},
         created_at: winner.created_at
       }))

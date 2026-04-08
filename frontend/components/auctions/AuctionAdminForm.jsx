@@ -6,6 +6,7 @@ import { compressImageFile, compressImageFiles } from '@/lib/utils/imageUpload';
 
 const EMPTY_FORM = {
   sourceMode: 'existing',
+  auctionType: 'product',
   productId: '',
   title: '',
   shortDescription: '',
@@ -20,6 +21,9 @@ const EMPTY_FORM = {
   hiddenCapacity: '100',
   winnerCount: '1',
   winnerModes: ['highest'],
+  prizeAmount: '',
+  prizeDistributionType: 'per_winner',
+  rankPrizes: [{ winnerRank: 1, prizeAmount: '0.00' }],
   stockQuantity: '1',
   rewardMode: 'stock',
   rewardValue: '',
@@ -63,6 +67,7 @@ export function toAuctionFormValues(auction) {
   if (!auction) return EMPTY_FORM;
   return {
     sourceMode: auction.product_id ? 'existing' : 'standalone',
+    auctionType: auction.auction_type || 'product',
     productId: String(auction.product_id || ''),
     title: auction.title || '',
     shortDescription: auction.short_description || '',
@@ -77,6 +82,17 @@ export function toAuctionFormValues(auction) {
     hiddenCapacity: String(Number(auction.hidden_capacity || 100)),
     winnerCount: String(Number(auction.winner_count || 1)),
     winnerModes: Array.isArray(auction.winner_modes) && auction.winner_modes.length ? auction.winner_modes : ['highest'],
+    prizeAmount: auction.prize_amount ? String(Number(auction.prize_amount).toFixed(2)) : '',
+    prizeDistributionType: auction.prize_distribution_type || 'per_winner',
+    rankPrizes: Array.isArray(auction.rank_prizes) && auction.rank_prizes.length
+      ? auction.rank_prizes.map((entry, index) => ({
+          winnerRank: Number(entry.winner_rank || entry.winnerRank || index + 1),
+          prizeAmount: String(Number(entry.prize_amount || entry.prizeAmount || 0).toFixed(2))
+        }))
+      : Array.from({ length: Number(auction.winner_count || 1) }, (_, index) => ({
+          winnerRank: index + 1,
+          prizeAmount: '0.00'
+        })),
     stockQuantity: String(Number(auction.stock_quantity || 1)),
     rewardMode: auction.reward_mode || 'stock',
     rewardValue: auction.reward_value ? String(Number(auction.reward_value).toFixed(2)) : '',
@@ -91,13 +107,28 @@ function PreviewImage({ src, alt }) {
   return <img src={src} alt={alt} className="h-24 w-full rounded-2xl border border-white/10 object-cover" />;
 }
 
+function syncRankPrizes(rankPrizes, winnerCount) {
+  const safeWinnerCount = Math.max(1, Number(winnerCount || 1));
+  return Array.from({ length: safeWinnerCount }, (_, index) => {
+    const current = Array.isArray(rankPrizes) ? rankPrizes[index] : null;
+    return {
+      winnerRank: index + 1,
+      prizeAmount: current?.prizeAmount ?? '0.00'
+    };
+  });
+}
+
 export function AuctionAdminForm({ initialValues, onSubmit, isSaving = false, submitLabel = 'Save Auction', products = [] }) {
   const [form, setForm] = useState(initialValues || EMPTY_FORM);
   const [isUploadingMain, setIsUploadingMain] = useState(false);
   const [isUploadingGallery, setIsUploadingGallery] = useState(false);
 
   useEffect(() => {
-    setForm(initialValues || EMPTY_FORM);
+    const base = initialValues || EMPTY_FORM;
+    setForm({
+      ...base,
+      rankPrizes: syncRankPrizes(base.rankPrizes, base.winnerCount)
+    });
   }, [initialValues]);
 
   const normalizedProducts = useMemo(() => (
@@ -110,6 +141,25 @@ export function AuctionAdminForm({ initialValues, onSubmit, isSaving = false, su
   const hasValidProductId = isUuid(selectedProduct?.id || form.productId);
   const productFallback = selectedProduct?.image_url || selectedProduct?.gallery?.[0] || '';
   const isStandalone = form.sourceMode === 'standalone';
+  const isCashAuction = form.auctionType === 'cash_amount';
+  const previewWinnerCount = Math.max(1, Number(form.winnerCount || 1));
+  const previewPrizeAmount = Number(form.prizeAmount || 0);
+  const isRankWise = isCashAuction && form.prizeDistributionType === 'rank_wise';
+  const previewEachWinnerAmount = isCashAuction && previewPrizeAmount > 0
+    ? (form.prizeDistributionType === 'shared_pool' ? previewPrizeAmount / previewWinnerCount : previewPrizeAmount)
+    : 0;
+  const totalRankPrizeAmount = useMemo(
+    () => (Array.isArray(form.rankPrizes) ? form.rankPrizes.reduce((sum, entry) => sum + Number(entry?.prizeAmount || 0), 0) : 0),
+    [form.rankPrizes]
+  );
+
+  useEffect(() => {
+    setForm((prev) => {
+      const nextRankPrizes = syncRankPrizes(prev.rankPrizes, prev.winnerCount);
+      const hasChanged = JSON.stringify(nextRankPrizes) !== JSON.stringify(prev.rankPrizes || []);
+      return hasChanged ? { ...prev, rankPrizes: nextRankPrizes } : prev;
+    });
+  }, [form.winnerCount]);
 
   function toggleWinnerMode(mode) {
     setForm((prev) => {
@@ -158,6 +208,7 @@ export function AuctionAdminForm({ initialValues, onSubmit, isSaving = false, su
 
     onSubmit({
       sourceMode: form.sourceMode,
+      auctionType: form.auctionType,
       productId: isStandalone ? undefined : resolvedProductId,
       title: isStandalone ? form.title : undefined,
       shortDescription: isStandalone ? form.shortDescription : undefined,
@@ -172,6 +223,14 @@ export function AuctionAdminForm({ initialValues, onSubmit, isSaving = false, su
       hiddenCapacity: Number(form.hiddenCapacity || 1),
       winnerCount: Number(form.winnerCount || 1),
       winnerModes: Array.isArray(form.winnerModes) && form.winnerModes.length ? form.winnerModes : ['highest'],
+      prizeAmount: isCashAuction ? Number((isRankWise ? totalRankPrizeAmount : form.prizeAmount) || 0) : undefined,
+      prizeDistributionType: isCashAuction ? form.prizeDistributionType : undefined,
+      rankPrizes: isRankWise
+        ? form.rankPrizes.map((entry, index) => ({
+            winnerRank: Number(entry.winnerRank || index + 1),
+            prizeAmount: Number(entry.prizeAmount || 0)
+          }))
+        : undefined,
       stockQuantity: Number(form.stockQuantity || 1),
       rewardMode: form.rewardMode,
       rewardValue: form.rewardMode === 'split' ? Number(form.rewardValue || 0.01) : undefined,
@@ -184,13 +243,24 @@ export function AuctionAdminForm({ initialValues, onSubmit, isSaving = false, su
   return (
     <div className="space-y-4 rounded-3xl border border-white/10 bg-card p-5">
       <div className="grid gap-2 md:grid-cols-2">
+        <button onClick={() => setForm((prev) => ({ ...prev, auctionType: 'product' }))} className={`rounded-2xl border px-4 py-3 text-left ${!isCashAuction ? 'border-accent bg-accent/10 text-text' : 'border-white/10 bg-cardSoft text-muted'}`}>
+          <p className="text-sm font-semibold">Product Prize</p>
+          <p className="mt-1 text-xs">Winners receive the configured product reward flow used today.</p>
+        </button>
+        <button onClick={() => setForm((prev) => ({ ...prev, auctionType: 'cash_amount' }))} className={`rounded-2xl border px-4 py-3 text-left ${isCashAuction ? 'border-accent bg-accent/10 text-text' : 'border-white/10 bg-cardSoft text-muted'}`}>
+          <p className="text-sm font-semibold">Cash Prize</p>
+          <p className="mt-1 text-xs">Winners receive cash credited to the withdrawal wallet after result processing.</p>
+        </button>
+      </div>
+
+      <div className="grid gap-2 md:grid-cols-2">
         <button onClick={() => setForm((prev) => ({ ...prev, sourceMode: 'existing' }))} className={`rounded-2xl border px-4 py-3 text-left ${!isStandalone ? 'border-accent bg-accent/10 text-text' : 'border-white/10 bg-cardSoft text-muted'}`}>
           <p className="text-sm font-semibold">Existing Product</p>
-          <p className="mt-1 text-xs">Link this auction to a product that already exists in the platform catalog.</p>
+          <p className="mt-1 text-xs">{isCashAuction ? 'Use a catalog product only as the auction display card source.' : 'Link this auction to a product that already exists in the platform catalog.'}</p>
         </button>
         <button onClick={() => setForm((prev) => ({ ...prev, sourceMode: 'standalone', productId: '' }))} className={`rounded-2xl border px-4 py-3 text-left ${isStandalone ? 'border-accent bg-accent/10 text-text' : 'border-white/10 bg-cardSoft text-muted'}`}>
-          <p className="text-sm font-semibold">New Auction Product</p>
-          <p className="mt-1 text-xs">Create a standalone auction item used only inside the auctions module.</p>
+          <p className="text-sm font-semibold">{isCashAuction ? 'Cash Auction Details' : 'New Auction Product'}</p>
+          <p className="mt-1 text-xs">{isCashAuction ? 'Create auction-only title, image, and description for a cash prize campaign.' : 'Create a standalone auction item used only inside the auctions module.'}</p>
         </button>
       </div>
 
@@ -288,17 +358,44 @@ export function AuctionAdminForm({ initialValues, onSubmit, isSaving = false, su
           <span>Winner count</span>
           <input type="number" min="1" step="1" value={form.winnerCount} onChange={(e) => setForm((prev) => ({ ...prev, winnerCount: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-cardSoft px-3 py-2.5 text-sm text-text" />
         </label>
-        <label className="space-y-2 text-sm text-muted">
-          <span>Stock quantity</span>
-          <input type="number" min="1" step="1" value={form.stockQuantity} onChange={(e) => setForm((prev) => ({ ...prev, stockQuantity: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-cardSoft px-3 py-2.5 text-sm text-text" />
-        </label>
-        <label className="space-y-2 text-sm text-muted">
-          <span>Reward mode</span>
-          <select value={form.rewardMode} onChange={(e) => setForm((prev) => ({ ...prev, rewardMode: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-cardSoft px-3 py-2.5 text-sm text-text">
-            <option value="stock">Stock quantity</option>
-            <option value="split">Split reward</option>
-          </select>
-        </label>
+        {isCashAuction ? (
+          <>
+            <label className="space-y-2 text-sm text-muted">
+              <span>Prize distribution</span>
+              <select value={form.prizeDistributionType} onChange={(e) => setForm((prev) => ({ ...prev, prizeDistributionType: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-cardSoft px-3 py-2.5 text-sm text-text">
+                <option value="per_winner">Per winner</option>
+                <option value="shared_pool">Shared pool</option>
+                <option value="rank_wise">Rank wise</option>
+              </select>
+            </label>
+            <label className="space-y-2 text-sm text-muted">
+              <span>{isRankWise ? 'Total prize liability' : 'Prize amount'}</span>
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={isRankWise ? totalRankPrizeAmount.toFixed(2) : form.prizeAmount}
+                onChange={(e) => setForm((prev) => ({ ...prev, prizeAmount: e.target.value }))}
+                disabled={isRankWise}
+                className="w-full rounded-2xl border border-white/10 bg-cardSoft px-3 py-2.5 text-sm text-text disabled:opacity-70"
+              />
+            </label>
+          </>
+        ) : (
+          <>
+            <label className="space-y-2 text-sm text-muted">
+              <span>Stock quantity</span>
+              <input type="number" min="1" step="1" value={form.stockQuantity} onChange={(e) => setForm((prev) => ({ ...prev, stockQuantity: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-cardSoft px-3 py-2.5 text-sm text-text" />
+            </label>
+            <label className="space-y-2 text-sm text-muted">
+              <span>Reward mode</span>
+              <select value={form.rewardMode} onChange={(e) => setForm((prev) => ({ ...prev, rewardMode: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-cardSoft px-3 py-2.5 text-sm text-text">
+                <option value="stock">Stock quantity</option>
+                <option value="split">Split reward</option>
+              </select>
+            </label>
+          </>
+        )}
       </div>
 
       <div className="space-y-2 text-sm text-muted">
@@ -326,7 +423,37 @@ export function AuctionAdminForm({ initialValues, onSubmit, isSaving = false, su
         <p className="text-xs text-muted">Winner pools are merged in the selected order, duplicates are skipped, and selection continues until the configured winner count is reached.</p>
       </div>
 
-      {form.rewardMode === 'split' ? (
+      {isCashAuction ? (
+        <div className="rounded-2xl border border-white/10 bg-cardSoft p-3 text-xs text-muted">
+          <p>Configured winners: {previewWinnerCount}</p>
+          <p className="mt-1">Distribution: {form.prizeDistributionType === 'shared_pool' ? 'Shared pool' : form.prizeDistributionType === 'rank_wise' ? 'Rank wise' : 'Per winner'}</p>
+          {isRankWise ? (
+            <>
+              <p className="mt-1">Total payout liability: {formatAuctionMoney(totalRankPrizeAmount || 0)}</p>
+              <div className="mt-3 grid gap-2">
+                {form.rankPrizes.map((entry, index) => (
+                  <label key={entry.winnerRank} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-card px-3 py-2">
+                    <span className="w-20 text-xs font-semibold text-text">Rank #{entry.winnerRank}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={entry.prizeAmount}
+                      onChange={(e) => setForm((prev) => ({
+                        ...prev,
+                        rankPrizes: prev.rankPrizes.map((item, itemIndex) => itemIndex === index ? { ...item, prizeAmount: e.target.value } : item)
+                      }))}
+                      className="w-full rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm text-text"
+                    />
+                  </label>
+                ))}
+              </div>
+            </>
+          ) : <p className="mt-1">Each winner receives: {formatAuctionMoney(previewEachWinnerAmount || 0)}</p>}
+          {form.prizeDistributionType === 'shared_pool' ? <p className="mt-1">Shared pool amounts must divide evenly to the cent across all winners.</p> : null}
+          {isRankWise ? <p className="mt-1">Each winner rank receives its configured amount and the total liability is summed automatically.</p> : null}
+        </div>
+      ) : form.rewardMode === 'split' ? (
         <label className="space-y-2 text-sm text-muted">
           <span>Total reward value</span>
           <input type="number" min="0.01" step="0.01" value={form.rewardValue} onChange={(e) => setForm((prev) => ({ ...prev, rewardValue: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-cardSoft px-3 py-2.5 text-sm text-text" />
@@ -351,9 +478,11 @@ export function AuctionAdminForm({ initialValues, onSubmit, isSaving = false, su
 
       <div className="rounded-2xl border border-white/10 bg-cardSoft p-3 text-xs text-muted">
         <p>Entry price must be at least $0.10</p>
-        {form.rewardMode === 'split' ? <p className="mt-1">Reward value must be greater than $0.00</p> : null}
+        {isCashAuction ? <p className="mt-1">Cash prize amount must be greater than $0.00 and credits go to the withdrawal wallet.</p> : null}
+        {!isCashAuction && form.rewardMode === 'split' ? <p className="mt-1">Reward value must be greater than $0.00</p> : null}
         <p className="mt-1">Hidden capacity is admin-only and never shown to users.</p>
         <p className="mt-1">Winner count controls the total number of winners to select on close.</p>
+        <p className="mt-1">Prize type: {isCashAuction ? 'Cash amount' : 'Product reward'}</p>
         <p className="mt-1">Mode: {isStandalone ? 'Standalone auction-only item' : 'Existing catalog product'}</p>
       </div>
 
