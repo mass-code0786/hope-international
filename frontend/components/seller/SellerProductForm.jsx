@@ -19,7 +19,7 @@ const DEFAULT_FORM = {
 
 function toPv(bv) {
   const value = Number(bv || 0);
-  return Number.isFinite(value) ? (value * 0.4).toFixed(2) : '0.00';
+  return Number.isFinite(value) ? (value * 0.3).toFixed(2) : '0.00';
 }
 
 function parseGallery(text) {
@@ -188,7 +188,7 @@ export function SellerProductForm({
         </label>
 
         <div className="rounded-xl border border-accent/20 bg-accent/10 p-3 text-sm md:col-span-2">
-          <p className="text-muted">PV is auto-calculated from BV at 40%.</p>
+          <p className="text-muted">PV is auto-calculated from BV at 30%.</p>
           <p className="mt-1 text-base font-semibold text-accentSoft">Calculated PV: {number(pv)}</p>
         </div>
 

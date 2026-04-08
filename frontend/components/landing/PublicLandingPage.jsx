@@ -363,7 +363,7 @@ export default function PublicLandingPage() {
     {
       icon: Network,
       title: 'Matching Income',
-      value: '10%',
+      value: '20%',
       description: 'Benefit from matching structure performance as both legs of your team continue to grow.'
     },
     {

@@ -17,9 +17,9 @@ export default function AdminSettingsPage() {
   const queryClient = useQueryClient();
   const settingsQuery = useQuery({ queryKey: queryKeys.adminSettings, queryFn: getAdminSettings });
   const [form, setForm] = useState({
-    matchPercentage: 10,
+    matchPercentage: 20,
     directPercentage: 5,
-    pvBvRatio: 0.4,
+    pvBvRatio: 0.3,
     carryForward: false
   });
 
@@ -27,9 +27,9 @@ export default function AdminSettingsPage() {
     const settings = settingsQuery.data?.data || {};
     const compensation = settings.compensationSettings || {};
     setForm({
-      matchPercentage: compensation.matchPercentage ?? 10,
+      matchPercentage: compensation.matchPercentage ?? 20,
       directPercentage: compensation.directPercentage ?? 5,
-      pvBvRatio: compensation.pvBvRatio ?? 0.4,
+      pvBvRatio: compensation.pvBvRatio ?? 0.3,
       carryForward: compensation.carryForward ?? false
     });
   }, [settingsQuery.data]);

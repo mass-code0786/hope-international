@@ -1,4 +1,5 @@
-import { ArrowLeftRight, Network, UsersRound } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ArrowLeftRight, Crown, Network, Sparkles, UsersRound } from 'lucide-react';
 import { number } from '@/lib/utils/format';
 
 export function TeamSummaryPanel({ me, teamSummary = {}, children = [] }) {
@@ -11,84 +12,216 @@ export function TeamSummaryPanel({ me, teamSummary = {}, children = [] }) {
   const activeTeam = Number(teamSummary?.active_count || activeDirects || 0);
   const leftTeam = Number(teamSummary?.left_team_count ?? teamSummary?.left_count ?? 0);
   const rightTeam = Number(teamSummary?.right_team_count ?? teamSummary?.right_count ?? 0);
-  const sponsor = [me?.sponsor_first_name, me?.sponsor_last_name].filter(Boolean).join(' ').trim() || me?.sponsor_username || 'No sponsor assigned';
+  const sponsorName = [me?.sponsor_first_name, me?.sponsor_last_name].filter(Boolean).join(' ').trim();
+  const sponsor = sponsorName || me?.sponsor_username || 'No sponsor assigned';
+  const hasSponsor = sponsor !== 'No sponsor assigned';
   const placementSource = teamSummary?.placement_side ?? me?.placement_side;
-  const placement = placementSource ? `${String(placementSource).charAt(0).toUpperCase()}${String(placementSource).slice(1)} leg` : 'Pending placement';
-  const balance = leftPv + rightPv > 0 ? Math.min(100, Math.round((leftPv / Math.max(leftPv + rightPv, 1)) * 100)) : 50;
+  const placement = placementSource
+    ? `${String(placementSource).charAt(0).toUpperCase()}${String(placementSource).slice(1)} leg`
+    : 'Pending placement';
 
-  if (process.env.NODE_ENV !== 'production') {
-    console.info('[team.frontend] mapped-summary-values', {
-      leftPv,
-      rightPv,
-      leftTeam,
-      rightTeam,
-      matchedPotential,
-      totalTeam,
-      activeTeam,
-      totalDirects
-    });
-  }
+  const totalPv = leftPv + rightPv;
+  const leftShare = totalPv > 0 ? Math.min(95, Math.max(5, Math.round((leftPv / totalPv) * 100))) : 50;
+  const rightShare = 100 - leftShare;
+  const sideGap = Math.abs(leftPv - rightPv);
+  const isBalanced = sideGap === 0;
 
   return (
-    <>
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <Card label="Total Team" value={number(totalTeam)} icon={UsersRound} />
-        <Card label="Active Team" value={number(activeTeam)} icon={UsersRound} />
-        <Card label="Direct Referrals" value={number(totalDirects)} icon={Network} />
-        <Card label="Sponsor" value={sponsor} />
-        <Card label="Left Team" value={number(leftTeam)} icon={UsersRound} />
-        <Card label="Right Team" value={number(rightTeam)} icon={UsersRound} />
-        <Card label="Left PV" value={number(leftPv)} icon={ArrowLeftRight} />
-        <Card label="Right PV" value={number(rightPv)} icon={ArrowLeftRight} />
-        <Card label="Placement Side" value={placement} />
-        <Card label="Matched Potential" value={number(matchedPotential)} icon={Network} />
+    <div className="space-y-3.5">
+      <div className="grid grid-cols-2 gap-3">
+        <PrimaryCard
+          label="Total Team"
+          value={number(totalTeam)}
+          subtext={`${number(totalDirects)} direct referrals`}
+          icon={UsersRound}
+          tint="from-[#9f5dff] via-[#7c3aed] to-[#34d399]"
+          glow="shadow-[0_18px_36px_rgba(124,58,237,0.28)]"
+        />
+        <PrimaryCard
+          label="Active Team"
+          value={number(activeTeam)}
+          subtext={`${number(Math.max(totalTeam - activeTeam, 0))} inactive`}
+          icon={Sparkles}
+          tint="from-[#34d399] via-[#10b981] to-[#7c3aed]"
+          glow="shadow-[0_18px_36px_rgba(16,185,129,0.24)]"
+        />
       </div>
 
-      <div className="card-surface p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <h3 className="text-xl font-semibold tracking-[-0.04em] text-text">Binary balance</h3>
-          <div className="rounded-[24px] border border-[var(--hope-border)] bg-cardSoft px-4 py-3 text-right">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Matched Potential</p>
-            <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-text">{number(matchedPotential)}</p>
-          </div>
-        </div>
-        <div className="mt-5 rounded-[28px] border border-[var(--hope-border)] bg-cardSoft p-4">
-          <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.16em] text-muted">
-            <span>Left</span>
-            <span>Right</span>
-          </div>
-          <div className="mt-4 h-4 overflow-hidden rounded-full bg-white/60 dark:bg-white/5">
-            <div className="flex h-full">
-              <div className="bg-[linear-gradient(90deg,var(--hope-accent),#14b8a6)]" style={{ width: `${balance}%` }} />
-              <div className="bg-[linear-gradient(90deg,#f59e0b,#f97316)]" style={{ width: `${100 - balance}%` }} />
-            </div>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-            <div className="rounded-[22px] bg-card px-4 py-3">
-              <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Left PV</p>
-              <p className="mt-2 text-xl font-semibold text-text">{number(leftPv)}</p>
-              <p className="mt-1 text-xs text-muted">Team: {number(leftTeam)}</p>
-            </div>
-            <div className="rounded-[22px] bg-card px-4 py-3 text-right">
-              <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Right PV</p>
-              <p className="mt-2 text-xl font-semibold text-text">{number(rightPv)}</p>
-              <p className="mt-1 text-xs text-muted">Team: {number(rightTeam)}</p>
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 gap-3">
+        <SecondaryCard
+          label="Direct Referrals"
+          value={number(totalDirects)}
+          icon={Network}
+          tone="from-[rgba(124,58,237,0.24)] to-[rgba(56,189,248,0.12)]"
+        />
+        <SecondaryCard
+          label="Placement Side"
+          value={placement}
+          icon={ArrowLeftRight}
+          tone="from-[rgba(16,185,129,0.2)] to-[rgba(139,92,246,0.12)]"
+        />
       </div>
-    </>
+
+      <SponsorCard sponsor={sponsor} hasSponsor={hasSponsor} />
+
+      <BinaryComparisonCard
+        leftTeam={leftTeam}
+        rightTeam={rightTeam}
+        leftPv={leftPv}
+        rightPv={rightPv}
+        leftShare={leftShare}
+        rightShare={rightShare}
+        matchedPotential={matchedPotential}
+        sideGap={sideGap}
+        isBalanced={isBalanced}
+      />
+    </div>
   );
 }
 
-function Card({ label, value, icon: Icon }) {
+function GlowIcon({ icon: Icon, className = '' }) {
   return (
-    <div className="hope-grid-card flex flex-col items-start justify-start gap-2 rounded-[24px] p-4">
-      <div className="flex items-start gap-2">
-        {Icon ? <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--hope-accent-soft)] text-accent"><Icon size={16} /></div> : null}
-        <p className="pt-1 text-[13px] tracking-[-0.01em] text-muted opacity-75">{label}</p>
+    <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-[linear-gradient(135deg,rgba(157,78,221,0.34),rgba(16,185,129,0.25))] text-white shadow-[0_10px_24px_rgba(124,58,237,0.35)] ${className}`}>
+      <Icon size={16} />
+    </span>
+  );
+}
+
+function PrimaryCard({ label, value, subtext, icon, tint, glow }) {
+  return (
+    <motion.article
+      whileHover={{ scale: 1.015 }}
+      whileTap={{ scale: 0.99 }}
+      transition={{ duration: 0.2 }}
+      className={`group relative overflow-hidden rounded-3xl border border-white/10 bg-[rgba(16,18,26,0.76)] p-4 backdrop-blur-xl ${glow}`}
+    >
+      <div className={`pointer-events-none absolute inset-0 bg-[linear-gradient(145deg,rgba(255,255,255,0.05),rgba(255,255,255,0))]`} />
+      <div className={`pointer-events-none absolute -right-12 -top-12 h-28 w-28 rounded-full bg-gradient-to-br ${tint} opacity-35 blur-2xl`} />
+      <div className="relative flex items-start justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">{label}</p>
+        <GlowIcon icon={icon} />
       </div>
-      <p className="pt-1 text-[22px] font-semibold tracking-[-0.04em] text-text break-words">{value}</p>
-    </div>
+      <p className="relative mt-3 text-[1.95rem] font-semibold tracking-[-0.06em] text-white">{value}</p>
+      <p className="relative mt-1 text-[11px] text-white/65">{subtext}</p>
+    </motion.article>
+  );
+}
+
+function SecondaryCard({ label, value, icon, tone }) {
+  return (
+    <motion.article
+      whileHover={{ y: -2 }}
+      whileTap={{ scale: 0.99 }}
+      transition={{ duration: 0.2 }}
+      className="relative overflow-hidden rounded-3xl border border-white/10 bg-[rgba(16,18,26,0.72)] p-4 backdrop-blur-xl"
+    >
+      <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${tone} opacity-40`} />
+      <div className="relative flex items-start justify-between gap-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/55">{label}</p>
+        <GlowIcon icon={icon} className="h-9 w-9 rounded-xl" />
+      </div>
+      <p className="relative mt-3 break-words text-lg font-semibold tracking-[-0.04em] text-white">{value}</p>
+    </motion.article>
+  );
+}
+
+function SponsorCard({ sponsor, hasSponsor }) {
+  return (
+    <motion.article
+      whileHover={{ y: -2 }}
+      transition={{ duration: 0.2 }}
+      className="relative overflow-hidden rounded-3xl border border-white/10 bg-[rgba(16,18,26,0.72)] p-4 backdrop-blur-xl"
+    >
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(145deg,rgba(124,58,237,0.16),rgba(16,185,129,0.08))]" />
+      <div className={`relative flex ${hasSponsor ? 'items-start justify-between' : 'flex-col items-center justify-center text-center'} gap-3`}>
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/60">Sponsor</p>
+          {hasSponsor ? (
+            <p className="mt-2 text-lg font-semibold tracking-[-0.04em] text-white break-words">{sponsor}</p>
+          ) : (
+            <p className="mt-2 text-sm font-semibold text-white/85">No sponsor assigned</p>
+          )}
+        </div>
+        <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 ${hasSponsor ? 'bg-[linear-gradient(135deg,rgba(124,58,237,0.3),rgba(16,185,129,0.26))] shadow-[0_10px_26px_rgba(124,58,237,0.3)]' : 'bg-[rgba(255,255,255,0.06)] text-white/70'}`}>
+          <Crown size={16} />
+        </span>
+      </div>
+    </motion.article>
+  );
+}
+
+function BinaryComparisonCard({
+  leftTeam,
+  rightTeam,
+  leftPv,
+  rightPv,
+  leftShare,
+  rightShare,
+  matchedPotential,
+  sideGap,
+  isBalanced
+}) {
+  return (
+    <motion.section
+      whileHover={{ y: -2 }}
+      transition={{ duration: 0.2 }}
+      className="relative overflow-hidden rounded-3xl border border-white/10 bg-[rgba(14,16,24,0.78)] p-4 shadow-[0_20px_45px_rgba(0,0,0,0.34)] backdrop-blur-xl"
+    >
+      <div className="pointer-events-none absolute -left-16 top-8 h-28 w-28 rounded-full bg-[radial-gradient(circle,rgba(124,58,237,0.32),transparent_70%)]" />
+      <div className="pointer-events-none absolute -right-14 bottom-4 h-28 w-28 rounded-full bg-[radial-gradient(circle,rgba(16,185,129,0.26),transparent_70%)]" />
+
+      <div className="relative flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/55">Binary Balance</p>
+          <p className="mt-1 text-base font-semibold tracking-[-0.03em] text-white">Left vs Right Performance</p>
+        </div>
+        <GlowIcon icon={ArrowLeftRight} />
+      </div>
+
+      <div className="relative mt-4 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.03)] p-3">
+        <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.16em] text-white/65">
+          <span>Left {number(leftTeam)}</span>
+          <span>Right {number(rightTeam)}</span>
+        </div>
+
+        <div className="mt-3 relative h-4 overflow-hidden rounded-full bg-[rgba(255,255,255,0.08)]">
+          <div className="flex h-full">
+            <div
+              className="h-full bg-[linear-gradient(90deg,#a855f7,#7c3aed)]"
+              style={{ width: `${leftShare}%` }}
+            />
+            <div
+              className="h-full bg-[linear-gradient(90deg,#22c55e,#10b981)]"
+              style={{ width: `${rightShare}%` }}
+            />
+          </div>
+          <div className="absolute left-1/2 top-[-2px] h-5 w-[2px] -translate-x-1/2 rounded-full bg-white/70" />
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <div className="rounded-2xl border border-purple-300/20 bg-[rgba(124,58,237,0.16)] p-3">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-white/65">Left PV</p>
+            <p className="mt-1 text-xl font-semibold tracking-[-0.04em] text-white">{number(leftPv)}</p>
+          </div>
+          <div className="rounded-2xl border border-emerald-300/20 bg-[rgba(16,185,129,0.14)] p-3 text-right">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-white/65">Right PV</p>
+            <p className="mt-1 text-xl font-semibold tracking-[-0.04em] text-white">{number(rightPv)}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="relative mt-3 grid grid-cols-2 gap-3">
+        <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.04)] p-3">
+          <p className="text-[10px] uppercase tracking-[0.16em] text-white/55">Matched Potential</p>
+          <p className="mt-1 text-xl font-semibold tracking-[-0.04em] text-white">{number(matchedPotential)}</p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.04)] p-3 text-right">
+          <p className="text-[10px] uppercase tracking-[0.16em] text-white/55">Balance Gap</p>
+          <p className={`mt-1 text-xl font-semibold tracking-[-0.04em] ${isBalanced ? 'text-emerald-300' : 'text-white'}`}>
+            {number(sideGap)}
+          </p>
+        </div>
+      </div>
+    </motion.section>
   );
 }

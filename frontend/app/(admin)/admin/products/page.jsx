@@ -68,7 +68,7 @@ export default function AdminProductsPage() {
         gallery,
         price: Number(form.price || 0),
         bv,
-        pv: Number((bv * 0.4).toFixed(2)),
+        pv: Number((bv * 0.3).toFixed(2)),
         isQualifying: Boolean(form.isQualifying)
       };
       if (editingId) {
@@ -218,7 +218,7 @@ export default function AdminProductsPage() {
           </div>
         </div>
 
-        <ActionPanel title={editingId ? 'Edit Product' : 'Create Product'} description="PV is auto-derived as 40% of BV.">
+        <ActionPanel title={editingId ? 'Edit Product' : 'Create Product'} description="PV is auto-derived as 30% of BV.">
           <div className="space-y-2">
             <input value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="Name" className="w-full rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm" />
             <input value={form.sku} onChange={(e) => setForm((p) => ({ ...p, sku: e.target.value }))} placeholder="SKU" className="w-full rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm" />
@@ -238,7 +238,7 @@ export default function AdminProductsPage() {
 
             <input value={form.price} onChange={(e) => setForm((p) => ({ ...p, price: e.target.value }))} placeholder="Price" type="number" className="w-full rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm" />
             <input value={form.bv} onChange={(e) => setForm((p) => ({ ...p, bv: e.target.value }))} placeholder="BV" type="number" className="w-full rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm" />
-            <p className="text-xs text-muted">Computed PV: {number(Number(form.bv || 0) * 0.4)}</p>
+            <p className="text-xs text-muted">Computed PV: {number(Number(form.bv || 0) * 0.3)}</p>
             <label className="flex items-center gap-2 text-sm text-muted"><input type="checkbox" checked={form.isQualifying} onChange={(e) => setForm((p) => ({ ...p, isQualifying: e.target.checked }))} /> Qualifying product</label>
             {editingId ? (
               <>

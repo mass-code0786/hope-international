@@ -1,8 +1,8 @@
 module.exports = {
-  PV_TO_BV_RATIO: 0.4,
+  PV_TO_BV_RATIO: 0.3,
   SELLER_APPLICATION_FEE_USD: 70,
   DIRECT_INCOME_PERCENTAGE: 0.05,
-  MATCH_PERCENTAGE: 0.10,
+  MATCH_PERCENTAGE: 0.20,
   BASE_MATCH_CAP_MULTIPLIER: 3,
   DEFAULT_RANKS: [
     { name: 'No Rank', minBv: 0, capMultiplier: 3 },
