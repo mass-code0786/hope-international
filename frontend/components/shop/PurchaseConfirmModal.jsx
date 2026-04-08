@@ -6,6 +6,7 @@ import { currency } from '@/lib/utils/format';
 export function PurchaseConfirmModal({
   open,
   product,
+  deliveryAddress = null,
   paymentSourceLabel = 'Spendable Wallet',
   availableBalance = 0,
   payableAmount = 0,
@@ -66,6 +67,19 @@ export function PurchaseConfirmModal({
                 <p className="mt-2 text-[15px] font-semibold text-white">{currency(availableBalance)}</p>
               </div>
             </div>
+
+            {deliveryAddress ? (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Delivery Address</p>
+                <p className="mt-2 text-[15px] font-semibold text-white">{deliveryAddress.fullName}</p>
+                <p className="mt-1 text-[12px] text-slate-400">{deliveryAddress.mobile}</p>
+                <p className="mt-2 text-[12px] leading-5 text-slate-300">
+                  {[deliveryAddress.addressLine, deliveryAddress.area, [deliveryAddress.city, deliveryAddress.state, deliveryAddress.postalCode].filter(Boolean).join(', '), deliveryAddress.country]
+                    .filter(Boolean)
+                    .join(', ')}
+                </p>
+              </div>
+            ) : null}
 
             <div className="rounded-2xl border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-3">
               <div className="flex items-center justify-between gap-3">

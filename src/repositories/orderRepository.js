@@ -10,11 +10,13 @@ async function createOrder(client, payload) {
       total_amount,
       total_pv,
       total_bv,
+      delivery_address_id,
+      delivery_address_snapshot,
       replacement_window_ends_at,
       settlement_status,
       settlement_notes
     )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      RETURNING *`,
     [
       payload.userId,
@@ -22,6 +24,8 @@ async function createOrder(client, payload) {
       payload.totalAmount,
       payload.totalPv,
       payload.totalBv,
+      payload.deliveryAddressId || null,
+      payload.deliveryAddressSnapshot || null,
       payload.replacementWindowEndsAt || null,
       payload.settlementStatus || 'pending',
       payload.settlementNotes || null

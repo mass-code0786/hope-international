@@ -7,6 +7,14 @@ async function getByUserId(client, userId) {
   return rows[0] || null;
 }
 
+async function getByIdAndUserId(client, addressId, userId) {
+  const { rows } = await q(client).query(
+    'SELECT * FROM user_addresses WHERE id = $1 AND user_id = $2',
+    [addressId, userId]
+  );
+  return rows[0] || null;
+}
+
 async function create(client, userId, payload) {
   const { rows } = await q(client).query(
     `INSERT INTO user_addresses (
@@ -76,6 +84,7 @@ async function update(client, userId, payload) {
 
 module.exports = {
   getByUserId,
+  getByIdAndUserId,
   create,
   update
 };

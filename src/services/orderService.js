@@ -2,6 +2,7 @@ const { withTransaction } = require('../db/pool');
 const orderRepository = require('../repositories/orderRepository');
 const productRepository = require('../repositories/productRepository');
 const userRepository = require('../repositories/userRepository');
+const userAddressRepository = require('../repositories/userAddressRepository');
 const sellerRepository = require('../repositories/sellerRepository');
 const walletService = require('./walletService');
 const notificationService = require('./notificationService');
@@ -10,6 +11,26 @@ const { PV_TO_BV_RATIO } = require('../config/constants');
 
 function toMoney(value) {
   return Number(Number(value).toFixed(2));
+}
+
+function buildDeliveryAddressSnapshot(address) {
+  if (!address) return null;
+
+  return {
+    id: address.id,
+    fullName: address.full_name,
+    mobile: address.mobile,
+    alternateMobile: address.alternate_mobile || '',
+    country: address.country,
+    state: address.state,
+    city: address.city,
+    area: address.area,
+    addressLine: address.address_line,
+    postalCode: address.postal_code,
+    deliveryNote: address.delivery_note || '',
+    isDefault: Boolean(address.is_default),
+    capturedAt: new Date().toISOString()
+  };
 }
 
 async function createOrder(userId, payload) {
@@ -25,6 +46,15 @@ async function createOrder(userId, payload) {
     const user = await userRepository.getBinaryNode(client, userId);
     if (!user) {
       throw new ApiError(404, 'User not found');
+    }
+
+    if (!payload.addressId) {
+      throw new ApiError(400, 'Delivery address is required');
+    }
+
+    const deliveryAddress = await userAddressRepository.getByIdAndUserId(client, payload.addressId, userId);
+    if (!deliveryAddress) {
+      throw new ApiError(400, 'Selected delivery address is invalid');
     }
 
     const enrichedItems = [];
@@ -83,6 +113,8 @@ async function createOrder(userId, payload) {
       totalAmount,
       totalPv,
       totalBv,
+      deliveryAddressId: deliveryAddress.id,
+      deliveryAddressSnapshot: buildDeliveryAddressSnapshot(deliveryAddress),
       replacementWindowEndsAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
       settlementStatus: 'pending',
       settlementNotes: 'Awaiting replacement window settlement'

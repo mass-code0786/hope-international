@@ -3,12 +3,13 @@
 import Link from 'next/link';
 import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { AlertCircle, CheckCircle2, CreditCard, MapPin, ShieldCheck, TicketPercent, Truck, Wallet } from 'lucide-react';
 import { useProducts } from '@/hooks/useProducts';
 import { useWallet } from '@/hooks/useWallet';
 import { createOrder } from '@/lib/services/ordersService';
+import { getUserAddress } from '@/lib/services/userAddressService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { clearCart, getCartItems } from '@/lib/utils/cart';
 import { currency } from '@/lib/utils/format';
@@ -42,12 +43,10 @@ export default function CheckoutPage() {
   const queryClient = useQueryClient();
   const { data } = useProducts();
   const walletQuery = useWallet();
+  const addressQuery = useQuery({ queryKey: queryKeys.userAddress, queryFn: getUserAddress });
   const products = Array.isArray(data) ? data : [];
 
   const [items, setItems] = useState([]);
-  const [address, setAddress] = useState('');
-  const [city, setCity] = useState('');
-  const [postalCode, setPostalCode] = useState('');
   const [coupon, setCoupon] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('wallet');
 
@@ -66,6 +65,7 @@ export default function CheckoutPage() {
   const walletBalance = getAvailableWalletBalance(walletQuery.data);
   const hasFunds = hasSufficientWalletBalance(walletQuery.data, summary.total);
   const walletReady = !walletQuery.isLoading && !walletQuery.isError;
+  const savedAddress = addressQuery.data?.data?.address || null;
 
   const orderMutation = useMutation({
     mutationFn: async () => {
@@ -75,8 +75,12 @@ export default function CheckoutPage() {
       if (!hasFunds) {
         throw new Error('Insufficient wallet balance');
       }
+      if (!savedAddress?.id) {
+        throw new Error('Add a delivery address before placing the order');
+      }
 
       const payload = {
+        addressId: savedAddress.id,
         chargeWallet: true,
         items: items.map((item) => ({ productId: item.productId, quantity: item.quantity }))
       };
@@ -109,7 +113,7 @@ export default function CheckoutPage() {
     );
   }
 
-  const cannotPlaceOrder = orderMutation.isPending || paymentMethod !== 'wallet' || (walletReady && !hasFunds);
+  const cannotPlaceOrder = orderMutation.isPending || paymentMethod !== 'wallet' || (walletReady && !hasFunds) || !savedAddress?.id;
 
   return (
     <div className="space-y-3 bg-[#f8fafc] pb-24">
@@ -120,28 +124,20 @@ export default function CheckoutPage() {
 
       <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
         <h2 className="inline-flex items-center gap-1 text-[13px] font-semibold text-slate-900"><MapPin size={13} /> Delivery Address</h2>
-        <div className="mt-2 space-y-2">
-          <input
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder="Street address"
-            className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] text-slate-700 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
-          />
-          <div className="grid grid-cols-2 gap-2">
-            <input
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="City"
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] text-slate-700 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
-            />
-            <input
-              value={postalCode}
-              onChange={(e) => setPostalCode(e.target.value)}
-              placeholder="Postal code"
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] text-slate-700 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
-            />
+        {savedAddress ? (
+          <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[12px] text-slate-700">
+            <p className="font-semibold text-slate-900">{savedAddress.fullName}</p>
+            <p className="mt-1">{savedAddress.mobile}</p>
+            <p className="mt-1">{[savedAddress.addressLine, savedAddress.area, [savedAddress.city, savedAddress.state, savedAddress.postalCode].filter(Boolean).join(', '), savedAddress.country].filter(Boolean).join(', ')}</p>
+            <Link href="/profile/address" className="mt-2 inline-flex text-[11px] font-semibold text-sky-700">Change address</Link>
           </div>
-        </div>
+        ) : (
+          <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11px] text-amber-800">
+            <p className="font-semibold">Delivery address required</p>
+            <p className="mt-1">Add a saved address before placing the order.</p>
+            <Link href="/profile/address" className="mt-2 inline-flex font-semibold text-amber-900">Add address</Link>
+          </div>
+        )}
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_4px_12px_rgba(0,0,0,0.05)]">

@@ -246,7 +246,11 @@ export default function DashboardPage() {
       if (!hasSufficientWalletBalance(walletQuery.data, total)) {
         throw new Error('Insufficient wallet balance');
       }
+      if (!address?.id) {
+        throw new Error('Add a delivery address before payment');
+      }
       return createOrder({
+        addressId: address.id,
         chargeWallet: true,
         paymentSource: 'deposit_wallet',
         items: [{ productId: product.id, quantity: 1 }]
@@ -548,7 +552,14 @@ export default function DashboardPage() {
                   <ProductTile
                     key={product.id}
                     product={product}
-                    onBuy={(item) => setPendingPurchase(item)}
+                    onBuy={(item) => {
+                      if (!address?.id) {
+                        toast.error('Add a delivery address before payment');
+                        router.push('/profile/address');
+                        return;
+                      }
+                      setPendingPurchase(item);
+                    }}
                     isBuying={buyMutation.isPending && buyingProductId === product.id}
                     lowBalance={lowBalance}
                   />
@@ -596,6 +607,7 @@ export default function DashboardPage() {
       <PurchaseConfirmModal
         open={Boolean(pendingPurchase)}
         product={pendingPurchase}
+        deliveryAddress={address}
         paymentSourceLabel="Deposit Wallet"
         availableBalance={availableWalletBalance}
         payableAmount={pendingPayableAmount}

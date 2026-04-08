@@ -26,6 +26,7 @@ import {
 import toast from 'react-hot-toast';
 import { ProductFilters } from '@/components/shop/ProductFilters';
 import { ProductCard } from '@/components/shop/ProductCard';
+import { PurchaseAddressModal } from '@/components/shop/PurchaseAddressModal';
 import { PurchaseConfirmModal } from '@/components/shop/PurchaseConfirmModal';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
@@ -215,6 +216,8 @@ export default function ShopPage() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [buyingProductId, setBuyingProductId] = useState('');
   const [pendingPurchase, setPendingPurchase] = useState(null);
+  const [addressStepProduct, setAddressStepProduct] = useState(null);
+  const [selectedPurchaseAddress, setSelectedPurchaseAddress] = useState(null);
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const bannerTrackRef = useRef(null);
@@ -236,7 +239,11 @@ export default function ShopPage() {
       if (!hasSufficientWalletBalance(walletQuery.data, total)) {
         throw new Error('Insufficient wallet balance');
       }
+      if (!selectedPurchaseAddress?.id) {
+        throw new Error('Delivery address is required');
+      }
       return createOrder({
+        addressId: selectedPurchaseAddress.id,
         chargeWallet: true,
         paymentSource: 'deposit_wallet',
         items: [{ productId: product.id, quantity: 1 }]
@@ -248,6 +255,7 @@ export default function ShopPage() {
     onSuccess: async () => {
       toast.success('Order placed successfully. Dashboard is updating.');
       setPendingPurchase(null);
+      setSelectedPurchaseAddress(null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.orders }),
         queryClient.invalidateQueries({ queryKey: queryKeys.wallet }),
@@ -449,7 +457,7 @@ export default function ShopPage() {
                 <ProductCard
                   key={`deal-${product.id}`}
                   product={product}
-                  onBuy={(p) => setPendingPurchase(p)}
+                  onBuy={(p) => setAddressStepProduct(p)}
                   isBuying={buyMutation.isPending && buyingProductId === product.id}
                   disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
                   buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy Now'}
@@ -465,7 +473,7 @@ export default function ShopPage() {
                 <ProductCard
                   key={`recommended-${product.id}`}
                   product={product}
-                  onBuy={(p) => setPendingPurchase(p)}
+                  onBuy={(p) => setAddressStepProduct(p)}
                   isBuying={buyMutation.isPending && buyingProductId === product.id}
                   disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
                   buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy Now'}
@@ -481,7 +489,7 @@ export default function ShopPage() {
                 <ProductCard
                   key={`new-${product.id}`}
                   product={product}
-                  onBuy={(p) => setPendingPurchase(p)}
+                  onBuy={(p) => setAddressStepProduct(p)}
                   isBuying={buyMutation.isPending && buyingProductId === product.id}
                   disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
                   buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy Now'}
@@ -497,7 +505,7 @@ export default function ShopPage() {
                 <ProductCard
                   key={`trending-${product.id}`}
                   product={product}
-                  onBuy={(p) => setPendingPurchase(p)}
+                  onBuy={(p) => setAddressStepProduct(p)}
                   isBuying={buyMutation.isPending && buyingProductId === product.id}
                   disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
                   buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy Now'}
@@ -574,20 +582,36 @@ export default function ShopPage() {
       ) : null}
       </div>
 
-      <PurchaseConfirmModal
+        <PurchaseConfirmModal
         open={Boolean(pendingPurchase)}
         product={pendingPurchase}
+        deliveryAddress={selectedPurchaseAddress}
         paymentSourceLabel="Deposit Wallet"
         availableBalance={walletBalance}
         payableAmount={pendingPayableAmount}
         canAfford={pendingCanAfford}
         loading={buyMutation.isPending}
         onClose={() => {
-          if (!buyMutation.isPending) setPendingPurchase(null);
+          if (!buyMutation.isPending) {
+            setPendingPurchase(null);
+            setSelectedPurchaseAddress(null);
+          }
         }}
         onConfirm={() => {
           if (!pendingPurchase || buyMutation.isPending) return;
           buyMutation.mutate(pendingPurchase);
+        }}
+      />
+      <PurchaseAddressModal
+        open={Boolean(addressStepProduct)}
+        product={addressStepProduct}
+        onClose={() => {
+          setAddressStepProduct(null);
+        }}
+        onContinue={(address) => {
+          setSelectedPurchaseAddress(address);
+          setPendingPurchase(addressStepProduct);
+          setAddressStepProduct(null);
         }}
       />
     </>

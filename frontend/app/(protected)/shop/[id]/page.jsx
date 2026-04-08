@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
   ArrowLeft,
@@ -26,6 +26,7 @@ import { useProducts } from '@/hooks/useProducts';
 import { useWallet } from '@/hooks/useWallet';
 import { currency, number } from '@/lib/utils/format';
 import { createOrder } from '@/lib/services/ordersService';
+import { getUserAddress } from '@/lib/services/userAddressService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { addToCart } from '@/lib/utils/cart';
 import { getOfferPercent, getProductPricing } from '@/lib/utils/pricing';
@@ -63,6 +64,7 @@ export default function ProductDetailPage() {
   const id = String(params?.id || '');
   const { data, isLoading, isError, refetch } = useProducts();
   const walletQuery = useWallet();
+  const addressQuery = useQuery({ queryKey: queryKeys.userAddress, queryFn: getUserAddress });
   const [isBuying, setIsBuying] = useState(false);
   const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -80,6 +82,7 @@ export default function ProductDetailPage() {
   }, [products, product, id]);
 
   const pricing = getProductPricing(product, 1);
+  const address = addressQuery.data?.data?.address || null;
   const walletBalance = getAvailableWalletBalance(walletQuery.data);
   const canAfford = hasSufficientWalletBalance(walletQuery.data, pricing.lineFinalTotal);
   const walletReady = !walletQuery.isLoading && !walletQuery.isError;
@@ -90,7 +93,11 @@ export default function ProductDetailPage() {
       if (!hasSufficientWalletBalance(walletQuery.data, total)) {
         throw new Error('Insufficient wallet balance');
       }
+      if (!address?.id) {
+        throw new Error('Add a delivery address before payment');
+      }
       return createOrder({
+        addressId: address.id,
         chargeWallet: true,
         paymentSource: 'deposit_wallet',
         items: [{ productId: selected.id, quantity: 1 }]
@@ -198,13 +205,20 @@ export default function ProductDetailPage() {
       <section className="fixed bottom-12 left-0 right-0 z-30 border-t border-slate-200 bg-white p-2 md:hidden">
         <div className="mx-auto grid max-w-3xl grid-cols-2 gap-2">
           <button onClick={() => { const nextCount = addToCart(product, 1); if (!nextCount) { toast.error('Unable to add this product to cart'); return; } toast.success(`Added to cart (${nextCount})`); }} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[12px] font-semibold text-slate-700">Add to Cart</button>
-          <button onClick={() => setPurchaseModalOpen(true)} disabled={isBuying || (walletReady && !canAfford)} className="rounded-lg bg-[#0ea5e9] px-3 py-2 text-[12px] font-semibold text-white disabled:bg-slate-300 disabled:opacity-100">{isBuying ? 'Processing...' : walletReady && !canAfford ? 'Low Balance' : 'Buy Now'}</button>
+          <button onClick={() => {
+            if (!address?.id) {
+              toast.error('Add a delivery address before payment');
+              return;
+            }
+            setPurchaseModalOpen(true);
+          }} disabled={isBuying || (walletReady && !canAfford)} className="rounded-lg bg-[#0ea5e9] px-3 py-2 text-[12px] font-semibold text-white disabled:bg-slate-300 disabled:opacity-100">{isBuying ? 'Processing...' : walletReady && !canAfford ? 'Low Balance' : 'Buy Now'}</button>
         </div>
       </section>
 
       <PurchaseConfirmModal
         open={purchaseModalOpen}
         product={product}
+        deliveryAddress={address}
         paymentSourceLabel="Deposit Wallet"
         availableBalance={walletBalance}
         payableAmount={pricing.lineFinalTotal}
