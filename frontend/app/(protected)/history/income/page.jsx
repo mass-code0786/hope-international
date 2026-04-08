@@ -8,7 +8,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Badge } from '@/components/ui/Badge';
 import { queryKeys } from '@/lib/query/queryKeys';
-import { getWallet } from '@/lib/services/walletService';
+import { getWalletWithHistory } from '@/lib/services/walletService';
 import { currency, dateTime, incomeSourceLabel, statusVariant } from '@/lib/utils/format';
 
 const filters = [
@@ -29,7 +29,12 @@ function matchesFilter(item, filter) {
 }
 
 export default function IncomeHistoryPage() {
-  const walletQuery = useQuery({ queryKey: queryKeys.wallet, queryFn: getWallet });
+  const walletQuery = useQuery({
+    queryKey: [...queryKeys.wallet, 'history'],
+    queryFn: getWalletWithHistory,
+    staleTime: 20_000,
+    refetchOnWindowFocus: false
+  });
   const [filter, setFilter] = useState('all');
 
   if (walletQuery.isError) {

@@ -7,6 +7,9 @@ import { queryKeys } from '@/lib/query/queryKeys';
 export function useProducts() {
   return useQuery({
     queryKey: queryKeys.products,
-    queryFn: getProducts
+    queryFn: getProducts,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false
   });
 }

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Clock3, Search, SlidersHorizontal, Sparkles, Trophy, X } from 'lucide-react';
 import { AuctionCard } from '@/components/auctions/AuctionUi';
@@ -189,10 +189,13 @@ export default function AuctionsPage() {
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [draftFilters, setDraftFilters] = useState(EMPTY_FILTERS);
   const requestStatus = status === 'all' ? undefined : status;
+  const deferredSearch = useDeferredValue(search);
 
   const auctionsQuery = useQuery({
-    queryKey: [...queryKeys.auctions, requestStatus || 'all', search],
-    queryFn: () => getAuctions({ status: requestStatus, search, page: 1, limit: 100 })
+    queryKey: [...queryKeys.auctions, requestStatus || 'all', deferredSearch],
+    queryFn: () => getAuctions({ status: requestStatus, search: deferredSearch, page: 1, limit: 100 }),
+    staleTime: 20_000,
+    refetchOnWindowFocus: false
   });
 
   const envelope = auctionsQuery.data || {};

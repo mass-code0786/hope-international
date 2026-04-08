@@ -7,14 +7,21 @@ import { IncomeList } from '@/components/income/IncomeList';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { IncomeSkeleton } from '@/components/ui/PageSkeletons';
-import { useWallet } from '@/hooks/useWallet';
+import { useQuery } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/query/queryKeys';
+import { getWalletWithHistory } from '@/lib/services/walletService';
 import { incomeSourceLabel } from '@/lib/utils/format';
 import { IncomeSummaryStrip } from '@/components/income/IncomeSummaryStrip';
 
 const filters = ['all', 'direct_income', 'direct_deposit_income', 'level_deposit_income', 'matching_income', 'reward_qualification', 'cap_overflow'];
 
 export default function IncomePage() {
-  const { data, isLoading, isError, refetch } = useWallet();
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: [...queryKeys.wallet, 'history'],
+    queryFn: getWalletWithHistory,
+    staleTime: 20_000,
+    refetchOnWindowFocus: false
+  });
   const [filter, setFilter] = useState('all');
   const transactions = Array.isArray(data?.incomeTransactions) ? data.incomeTransactions : [];
 

@@ -26,7 +26,23 @@ async function createProduct(client, payload) {
 
 async function listProducts(client, onlyActive = false) {
   const { rows } = await q(client).query(
-    `SELECT *
+    `SELECT
+       id,
+       sku,
+       name,
+       description,
+       category,
+       price,
+       pv,
+       bv,
+       is_active,
+       is_qualifying,
+       image_url,
+       gallery,
+       seller_profile_id,
+       moderation_status,
+       created_at,
+       updated_at
      FROM products
      WHERE ($1::boolean = false OR is_active = true)
      ORDER BY created_at DESC`,

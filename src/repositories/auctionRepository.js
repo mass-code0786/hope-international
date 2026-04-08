@@ -2,18 +2,23 @@ function q(client) {
   return client || require('../db/pool').pool;
 }
 
+const { getCacheEntry, setCacheEntry } = require('../utils/runtimeCache');
+
 function coerceJsonArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
 async function getTableColumns(client, tableName) {
+  const cacheKey = `auction-repo:columns:${tableName}`;
+  const cached = getCacheEntry(cacheKey);
+  if (cached) return cached;
   const { rows } = await q(client).query(
     `SELECT column_name
      FROM information_schema.columns
      WHERE table_schema = 'public' AND table_name = $1`,
     [tableName]
   );
-  return new Set(rows.map((row) => row.column_name));
+  return setCacheEntry(cacheKey, new Set(rows.map((row) => row.column_name)), 10 * 60 * 1000);
 }
 
 function normalizeAuctionRow(row) {
@@ -104,12 +109,12 @@ function hasRequiredColumns(columns, requiredColumns) {
 }
 
 function shouldLogAllAuctionQuery(filters = {}) {
-  return !filters.status || filters.status === 'all';
+  return process.env.DEBUG_AUCTION_QUERIES === 'true' && (!filters.status || filters.status === 'all');
 }
 
 function logAuctionQuery(label, sql, values, filters) {
   if (!shouldLogAllAuctionQuery(filters)) return;
-  console.log(label, {
+  console.info(label, {
     sql,
     values
   });
@@ -803,7 +808,7 @@ async function getUserBidStats(client, userId) {
       ${participantColumns.size > 0 ? `COALESCE((SELECT COUNT(*) FROM auction_participants WHERE user_id = $1), 0)::int` : '0::int'} AS auctions_joined,
       ${winnerColumns.size > 0 ? `COALESCE((SELECT COUNT(*) FROM auction_winners WHERE user_id = $1), 0)::int` : '0::int'} AS won_auctions,
       COALESCE((SELECT COUNT(*) FROM auctions a WHERE EXISTS (SELECT 1 FROM auction_bids b WHERE b.auction_id = a.id AND b.user_id = $1) AND ${statusCase} IN ('ended', 'cancelled')), 0)::int AS auction_history`;
-  console.log('[auction.history.summary.sql]', {
+  if (process.env.DEBUG_AUCTION_QUERIES === 'true') console.info('[auction.history.summary.sql]', {
     sql: summarySql,
     values: summaryValues,
     userId
@@ -927,7 +932,7 @@ async function listUserAuctionHistoryCompat(client, userId, filters = {}, pagina
   const countSql = `SELECT COUNT(*)
      FROM auctions a
      ${countWhereSql}`;
-  console.log('[auction.history.compat.sql]', {
+  if (process.env.DEBUG_AUCTION_QUERIES === 'true') console.info('[auction.history.compat.sql]', {
     countSql,
     countValues,
     listSql,
@@ -1031,7 +1036,7 @@ async function listUserAuctionHistory(client, userId, filters = {}, pagination =
   const countSql = `SELECT COUNT(*)
      FROM auctions a
      ${countWhereSql}`;
-  console.log('[auction.history.sql]', {
+  if (process.env.DEBUG_AUCTION_QUERIES === 'true') console.info('[auction.history.sql]', {
     countSql,
     countValues,
     listSql,

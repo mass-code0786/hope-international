@@ -8,7 +8,7 @@ import { AuctionCard } from '@/components/auctions/AuctionUi';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { getMyAuctionHistory } from '@/lib/services/auctionsService';
-import { getBtctStakingSummary, getWallet } from '@/lib/services/walletService';
+import { getBtctStakingSummary, getWalletWithHistory } from '@/lib/services/walletService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { currency, dateTime, incomeSourceLabel, number } from '@/lib/utils/format';
 
@@ -125,7 +125,7 @@ function AuctionHistoryHubContent() {
       { queryKey: queryKeys.auctionHistory('wins'), queryFn: () => getMyAuctionHistory({ kind: 'wins', page: 1, limit: 100 }) },
       { queryKey: queryKeys.auctionHistory('history'), queryFn: () => getMyAuctionHistory({ kind: 'history', page: 1, limit: 100 }) },
       { queryKey: queryKeys.auctionHistory('joined'), queryFn: () => getMyAuctionHistory({ kind: 'joined', page: 1, limit: 100 }) },
-      { queryKey: queryKeys.wallet, queryFn: getWallet },
+      { queryKey: [...queryKeys.wallet, 'history'], queryFn: getWalletWithHistory, staleTime: 20_000, refetchOnWindowFocus: false },
       { queryKey: queryKeys.walletStaking, queryFn: getBtctStakingSummary }
     ]
   });

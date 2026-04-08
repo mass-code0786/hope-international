@@ -7,6 +7,8 @@ import { queryKeys } from '@/lib/query/queryKeys';
 export function useOrders() {
   return useQuery({
     queryKey: queryKeys.orders,
-    queryFn: getOrders
+    queryFn: getOrders,
+    staleTime: 20_000,
+    refetchOnWindowFocus: false
   });
 }

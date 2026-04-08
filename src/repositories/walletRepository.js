@@ -2,14 +2,19 @@ function q(client) {
   return client || require('../db/pool').pool;
 }
 
+const { getCacheEntry, setCacheEntry } = require('../utils/runtimeCache');
+
 async function getTableColumns(client, tableName) {
+  const cacheKey = `wallet-repo:columns:${tableName}`;
+  const cached = getCacheEntry(cacheKey);
+  if (cached) return cached;
   const { rows } = await q(client).query(
     `SELECT column_name
      FROM information_schema.columns
      WHERE table_schema = 'public' AND table_name = $1`,
     [tableName]
   );
-  return new Set(rows.map((row) => row.column_name));
+  return setCacheEntry(cacheKey, new Set(rows.map((row) => row.column_name)), 10 * 60 * 1000);
 }
 
 async function getWalletTransferColumns(client) {

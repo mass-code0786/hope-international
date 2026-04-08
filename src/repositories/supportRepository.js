@@ -2,7 +2,12 @@ function q(client) {
   return client || require('../db/pool').pool;
 }
 
+const { getCacheEntry, setCacheEntry } = require('../utils/runtimeCache');
+
 async function tableExists(client, tableName) {
+  const cacheKey = `support-repo:exists:${tableName}`;
+  const cached = getCacheEntry(cacheKey);
+  if (cached !== null) return cached;
   const { rows } = await q(client).query(
     `SELECT EXISTS (
        SELECT 1
@@ -11,17 +16,20 @@ async function tableExists(client, tableName) {
      ) AS exists`,
     [tableName]
   );
-  return Boolean(rows[0]?.exists);
+  return setCacheEntry(cacheKey, Boolean(rows[0]?.exists), 10 * 60 * 1000);
 }
 
 async function getTableColumns(client, tableName) {
+  const cacheKey = `support-repo:columns:${tableName}`;
+  const cached = getCacheEntry(cacheKey);
+  if (cached) return cached;
   const { rows } = await q(client).query(
     `SELECT column_name
      FROM information_schema.columns
      WHERE table_schema = 'public' AND table_name = $1`,
     [tableName]
   );
-  return new Set(rows.map((row) => row.column_name));
+  return setCacheEntry(cacheKey, new Set(rows.map((row) => row.column_name)), 10 * 60 * 1000);
 }
 
 function buildUserSelect(alias, columns, outputPrefix = '') {
@@ -82,13 +90,6 @@ function buildFilters(filters = {}, values = [], options = {}) {
 }
 
 async function listThreads(client, filters = {}, pagination = {}, options = {}) {
-  console.info('[admin.support.threads] db query start', {
-    page: pagination.page,
-    limit: pagination.limit,
-    offset: pagination.offset,
-    filters
-  });
-
   const [hasSupportThreads, hasSupportMessages, hasUsers] = await Promise.all([
     tableExists(client, 'support_threads'),
     tableExists(client, 'support_messages'),
@@ -310,8 +311,6 @@ async function listUserAdminReplies(client, userId, limit = 100) {
 }
 
 async function getThreadSummary(client, options = {}) {
-  console.info('[admin.support.threads] summary query start', options);
-
   if (!(await tableExists(client, 'support_threads'))) {
     return { total_threads: 0, open_threads: 0, replied_threads: 0, closed_threads: 0 };
   }

@@ -3,6 +3,7 @@ const userRepository = require('../repositories/userRepository');
 const adminRepository = require('../repositories/adminRepository');
 const notificationService = require('./notificationService');
 const { ApiError } = require('../utils/ApiError');
+const { withPerfSpan } = require('../utils/perf');
 
 const MIN_WITHDRAWAL_AMOUNT = 10;
 const MIN_DEPOSIT_AMOUNT = 1;
@@ -365,25 +366,28 @@ async function creditBtct(client, userId, amount, source, referenceId = null, me
   };
 }
 
-async function getWalletSummary(client, userId) {
-  await walletRepository.createWallet(client, userId);
-  const [walletRow, transactions, incomeTransactions, btctTransactions, walletBinding] = await Promise.all([
-    walletRepository.getWallet(client, userId),
-    walletRepository.listTransactions(client, userId, 100),
-    walletRepository.listIncomeTransactions(client, userId, 200),
-    walletRepository.listBtctTransactions(client, userId, 100),
-    walletRepository.getWalletBinding(client, userId)
-  ]);
-  const wallet = normalizeWalletBalances(walletRow);
+async function getWalletSummary(client, userId, options = {}) {
+  return withPerfSpan(`wallet.summary:${userId}`, async () => {
+    await walletRepository.createWallet(client, userId);
+    const includeHistory = options.includeHistory === true;
+    const [walletRow, walletBinding, transactions, incomeTransactions, btctTransactions] = await Promise.all([
+      walletRepository.getWallet(client, userId),
+      walletRepository.getWalletBinding(client, userId),
+      includeHistory ? walletRepository.listTransactions(client, userId, 50) : Promise.resolve([]),
+      includeHistory ? walletRepository.listIncomeTransactions(client, userId, 120) : Promise.resolve([]),
+      includeHistory ? walletRepository.listBtctTransactions(client, userId, 80) : Promise.resolve([])
+    ]);
+    const wallet = normalizeWalletBalances(walletRow);
 
-  return {
-    wallet,
-    walletBinding,
-    transactions,
-    incomeTransactions,
-    btctTransactions,
-    btctPrice: BTCT_USD_PRICE
-  };
+    return {
+      wallet,
+      walletBinding,
+      transactions,
+      incomeTransactions,
+      btctTransactions,
+      btctPrice: BTCT_USD_PRICE
+    };
+  }, { thresholdMs: 120, meta: { includeHistory: Boolean(options.includeHistory) } });
 }
 
 async function bindWalletAddress(client, userId, payload) {

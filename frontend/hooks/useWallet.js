@@ -7,6 +7,9 @@ import { queryKeys } from '@/lib/query/queryKeys';
 export function useWallet() {
   return useQuery({
     queryKey: queryKeys.wallet,
-    queryFn: getWallet
+    queryFn: getWallet,
+    staleTime: 45_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false
   });
 }

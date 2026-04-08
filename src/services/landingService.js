@@ -1,6 +1,12 @@
 const crypto = require('crypto');
 const { withTransaction } = require('../db/pool');
 const landingRepository = require('../repositories/landingRepository');
+const { getCacheEntry, setCacheEntry } = require('../utils/runtimeCache');
+const { withPerfSpan } = require('../utils/perf');
+
+const PUBLIC_LANDING_CACHE_KEY = 'landing:public-page';
+const PUBLIC_LANDING_CACHE_TTL_MS = 30 * 1000;
+const LANDING_STATS_CACHE_TTL_MS = 30 * 1000;
 
 function mapMediaSlot(slot, definition) {
   return {
@@ -91,65 +97,77 @@ function buildDisplayStats(statsRow, actualMembers, actualReviews) {
 }
 
 async function getPublicLandingPage() {
-  await landingRepository.ensureSingletonRows();
+  const cached = getCacheEntry(PUBLIC_LANDING_CACHE_KEY);
+  if (cached) return cached;
 
-  const [settings, statsRow, featuredItems, contentBlocks, testimonials, countries, actualMembers, actualReviews, mediaSlots] = await Promise.all([
-    landingRepository.getSettings(),
-    landingRepository.getStats(),
-    landingRepository.listFeaturedItems(null, { onlyActive: true }),
-    landingRepository.listContentBlocks(null, { onlyActive: true }),
-    landingRepository.listTestimonials(null, { onlyActive: true }),
-    landingRepository.listCountries(null, { onlyActive: true }),
-    landingRepository.countRegisteredMembers(),
-    landingRepository.countActiveTestimonials(),
-    landingRepository.listMediaSlots()
-  ]);
+  return withPerfSpan('landing.public-page', async () => {
+    await landingRepository.ensureSingletonRows();
 
-  const visibility = settings?.section_visibility || landingRepository.DEFAULT_SECTION_VISIBILITY;
-  const order = Array.isArray(settings?.section_order) ? settings.section_order : landingRepository.DEFAULT_SECTION_ORDER;
-  const mediaSlotMap = new Map(mediaSlots.map((slot) => [slot.slot_key, slot]));
-  const media = landingRepository.LANDING_MEDIA_SLOT_DEFINITIONS.reduce((accumulator, definition) => {
-    accumulator[definition.slotKey] = mapMediaSlot(mediaSlotMap.get(definition.slotKey), definition);
-    return accumulator;
-  }, {});
+    const [settings, statsRow, featuredItems, contentBlocks, testimonials, countries, actualMembers, mediaSlots] = await Promise.all([
+      landingRepository.getSettings(),
+      landingRepository.getStats(),
+      landingRepository.listFeaturedItems(null, { onlyActive: true }),
+      landingRepository.listContentBlocks(null, { onlyActive: true }),
+      landingRepository.listTestimonials(null, { onlyActive: true }),
+      landingRepository.listCountries(null, { onlyActive: true }),
+      landingRepository.countRegisteredMembers(),
+      landingRepository.listMediaSlots()
+    ]);
 
-  return {
-    settings: {
-      heroBadge: settings?.hero_badge || 'Hope International',
-      heroHeadline: settings?.hero_headline || 'Products, offers, and updates in one place.',
-      heroSubheadline: settings?.hero_subheadline || 'Browse featured products, see what Hope International offers, and create an account when you are ready.',
-      heroPrimaryCtaText: settings?.hero_primary_cta_text || 'Create account',
-      heroSecondaryCtaText: settings?.hero_secondary_cta_text || 'Login',
-      heroImageUrl: settings?.hero_image_url || '',
-      heroBackgroundNote: settings?.hero_background_note || 'Available across multiple countries',
-      featuredSectionTitle: settings?.featured_section_title || 'Featured products',
-      benefitsSectionTitle: settings?.benefits_section_title || 'Why choose Hope',
-      detailsSectionTitle: settings?.details_section_title || 'More to explore',
-      testimonialsSectionTitle: settings?.testimonials_section_title || 'What members say',
-      statsSectionTitle: settings?.stats_section_title || 'At a glance',
-      countriesSectionTitle: settings?.countries_section_title || 'Serving members globally',
-      footerSupportText: settings?.footer_support_text || 'Need help getting started? Contact the Hope International support team.',
-      footerContactEmail: settings?.footer_contact_email || 'support@hopeinternational.local',
-      sectionOrder: order,
-      sectionVisibility: visibility
-    },
-    featuredItems: featuredItems.map(mapFeaturedItem),
-    benefits: contentBlocks.filter((item) => item.section_key === 'benefits').map(mapContentBlock),
-    details: contentBlocks.filter((item) => item.section_key === 'details').map(mapContentBlock),
-    testimonials: testimonials.map(mapTestimonial),
-    countries: countries.map(mapCountry),
-    stats: buildDisplayStats(statsRow, actualMembers, actualReviews),
-    media
-  };
+    const visibility = settings?.section_visibility || landingRepository.DEFAULT_SECTION_VISIBILITY;
+    const order = Array.isArray(settings?.section_order) ? settings.section_order : landingRepository.DEFAULT_SECTION_ORDER;
+    const mediaSlotMap = new Map(mediaSlots.map((slot) => [slot.slot_key, slot]));
+    const media = landingRepository.LANDING_MEDIA_SLOT_DEFINITIONS.reduce((accumulator, definition) => {
+      accumulator[definition.slotKey] = mapMediaSlot(mediaSlotMap.get(definition.slotKey), definition);
+      return accumulator;
+    }, {});
+
+    return setCacheEntry(PUBLIC_LANDING_CACHE_KEY, {
+      settings: {
+        heroBadge: settings?.hero_badge || 'Hope International',
+        heroHeadline: settings?.hero_headline || 'Products, offers, and updates in one place.',
+        heroSubheadline: settings?.hero_subheadline || 'Browse featured products, see what Hope International offers, and create an account when you are ready.',
+        heroPrimaryCtaText: settings?.hero_primary_cta_text || 'Create account',
+        heroSecondaryCtaText: settings?.hero_secondary_cta_text || 'Login',
+        heroImageUrl: settings?.hero_image_url || '',
+        heroBackgroundNote: settings?.hero_background_note || 'Available across multiple countries',
+        featuredSectionTitle: settings?.featured_section_title || 'Featured products',
+        benefitsSectionTitle: settings?.benefits_section_title || 'Why choose Hope',
+        detailsSectionTitle: settings?.details_section_title || 'More to explore',
+        testimonialsSectionTitle: settings?.testimonials_section_title || 'What members say',
+        statsSectionTitle: settings?.stats_section_title || 'At a glance',
+        countriesSectionTitle: settings?.countries_section_title || 'Serving members globally',
+        footerSupportText: settings?.footer_support_text || 'Need help getting started? Contact the Hope International support team.',
+        footerContactEmail: settings?.footer_contact_email || 'support@hopeinternational.local',
+        sectionOrder: order,
+        sectionVisibility: visibility
+      },
+      featuredItems: featuredItems.map(mapFeaturedItem),
+      benefits: contentBlocks.filter((item) => item.section_key === 'benefits').map(mapContentBlock),
+      details: contentBlocks.filter((item) => item.section_key === 'details').map(mapContentBlock),
+      testimonials: testimonials.map(mapTestimonial),
+      countries: countries.map(mapCountry),
+      stats: buildDisplayStats(statsRow, actualMembers, testimonials.length),
+      media
+    }, PUBLIC_LANDING_CACHE_TTL_MS);
+  }, { thresholdMs: 120 });
 }
 
 async function trackLandingVisit(visitorToken) {
   const normalized = String(visitorToken || '').trim();
   if (!normalized || normalized.length < 12 || normalized.length > 200) {
-    const statsRow = await landingRepository.getStats();
-    const actualMembers = await landingRepository.countRegisteredMembers();
-    const actualReviews = await landingRepository.countActiveTestimonials();
-    return buildDisplayStats(statsRow, actualMembers, actualReviews);
+    const statsCacheKey = 'landing:stats-only';
+    const cachedStats = getCacheEntry(statsCacheKey);
+    if (cachedStats) return cachedStats;
+    const stats = await withPerfSpan('landing.stats-only', async () => {
+      const [statsRow, actualMembers, actualReviews] = await Promise.all([
+        landingRepository.getStats(),
+        landingRepository.countRegisteredMembers(),
+        landingRepository.countActiveTestimonials()
+      ]);
+      return buildDisplayStats(statsRow, actualMembers, actualReviews);
+    }, { thresholdMs: 120 });
+    return setCacheEntry(statsCacheKey, stats, LANDING_STATS_CACHE_TTL_MS);
   }
 
   const visitorTokenHash = crypto.createHash('sha256').update(normalized).digest('hex');

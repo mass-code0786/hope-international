@@ -7,6 +7,7 @@ const path = require('path');
 
 const routes = require('./routes');
 const errorHandler = require('./middleware/errorHandler');
+const { nowMs } = require('./utils/perf');
 
 const app = express();
 
@@ -24,6 +25,22 @@ app.use(cors({
 
 app.use(express.json({ limit: '5mb' }));
 app.use(morgan('combined'));
+app.use((req, res, next) => {
+  const startedAt = nowMs();
+  res.on('finish', () => {
+    const durationMs = Number((nowMs() - startedAt).toFixed(1));
+    const thresholdMs = 250;
+    if (durationMs >= thresholdMs) {
+      console.warn('[perf.request]', {
+        method: req.method,
+        path: req.originalUrl,
+        statusCode: res.statusCode,
+        durationMs
+      });
+    }
+  });
+  next();
+});
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,

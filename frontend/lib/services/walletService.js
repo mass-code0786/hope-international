@@ -32,8 +32,9 @@ function normalizeBtctTransactions(items = []) {
     : [];
 }
 
-export async function getWallet() {
-  const envelope = toEnvelope(await apiFetch('/wallet'));
+export async function getWallet(options = {}) {
+  const query = options.includeHistory ? '?includeHistory=true' : '';
+  const envelope = toEnvelope(await apiFetch(`/wallet${query}`));
   const data = envelope.data || {};
   const normalized = data.wallet ? data : Array.isArray(data.transactions)
     ? { wallet: data.wallet || {}, walletBinding: data.walletBinding || null, transactions: data.transactions, incomeTransactions: data.incomeTransactions || [] }
@@ -76,8 +77,12 @@ export async function getWallet() {
 }
 
 export async function getWalletTransactions() {
-  const data = await getWallet();
+  const data = await getWallet({ includeHistory: true });
   return data.transactions || [];
+}
+
+export async function getWalletWithHistory() {
+  return getWallet({ includeHistory: true });
 }
 
 export async function bindWalletAddress(payload) {

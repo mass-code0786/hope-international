@@ -4,6 +4,7 @@ const landingService = require('../services/landingService');
 
 const getPublicPage = asyncHandler(async (_req, res) => {
   const data = await landingService.getPublicLandingPage();
+  res.setHeader('Cache-Control', 'public, max-age=30, s-maxage=30');
   return success(res, {
     data,
     message: 'Landing page content fetched successfully'

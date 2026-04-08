@@ -11,7 +11,9 @@ export function Providers({ children }) {
       defaultOptions: {
         queries: {
           staleTime: 30000,
-          retry: 1
+          retry: 1,
+          refetchOnWindowFocus: false,
+          refetchOnReconnect: false
         }
       }
     })

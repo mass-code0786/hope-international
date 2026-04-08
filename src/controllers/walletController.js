@@ -27,7 +27,8 @@ function normalizeDepositRecord(item) {
 }
 
 const summary = asyncHandler(async (req, res) => {
-  const data = await walletService.getWalletSummary(null, req.user.sub);
+  const includeHistory = String(req.query.includeHistory || '').toLowerCase() === 'true';
+  const data = await walletService.getWalletSummary(null, req.user.sub, { includeHistory });
   return success(res, {
     data,
     message: 'Wallet summary fetched successfully'
