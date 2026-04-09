@@ -74,8 +74,7 @@ function getWritableMediaRoot() {
   if (configured) return configured;
   const railwayRoot = getRailwayMediaRoot();
   if (railwayRoot) return railwayRoot;
-  if (env.nodeEnv !== 'production') return LEGACY_MEDIA_ROOT;
-  return '';
+  return LEGACY_MEDIA_ROOT;
 }
 
 function getPublicPrefix() {
@@ -116,25 +115,35 @@ function getProductionStorageHelpText() {
   ].join(' ');
 }
 
-function assertPersistentStorageConfiguration() {
-  const writableRoot = getWritableMediaRoot();
-  if (!writableRoot) {
-    throw new Error(`No persistent media volume was available at runtime. MEDIA_STORAGE_ROOT is unset and Railway did not provide RAILWAY_VOLUME_MOUNT_PATH. On Railway, attach a persistent volume to this backend service and set its mount path to /app/data. Once attached, Railway will inject RAILWAY_VOLUME_MOUNT_PATH automatically and the app will store media under /app/data/hope-international/media without a manual MEDIA_STORAGE_ROOT. ${getProductionStorageHelpText()}`);
+function getMediaStorageMode() {
+  const configured = getConfiguredMediaRoot();
+  if (configured) {
+    return {
+      root: configured,
+      mode: 'persistent-explicit',
+      warning: ''
+    };
   }
 
-  if (env.nodeEnv === 'production' && path.resolve(writableRoot) === path.resolve(LEGACY_MEDIA_ROOT)) {
-    throw new Error(`MEDIA_STORAGE_ROOT points to the repo storage folder (${LEGACY_MEDIA_ROOT}), which is ephemeral in production. ${getProductionStorageHelpText()}`);
+  const railwayRoot = getRailwayMediaRoot();
+  if (railwayRoot) {
+    return {
+      root: railwayRoot,
+      mode: 'persistent-railway',
+      warning: ''
+    };
   }
 
-  if (env.nodeEnv === 'production' && isPathInside(APP_ROOT, writableRoot)) {
-    throw new Error(`MEDIA_STORAGE_ROOT must point outside the deployed app directory. Received: ${writableRoot}. ${getProductionStorageHelpText()}`);
-  }
+  return {
+    root: LEGACY_MEDIA_ROOT,
+    mode: 'local-fallback',
+    warning: `Persistent media storage is not configured. Falling back to local filesystem storage at ${LEGACY_MEDIA_ROOT}. Uploaded files will work for testing, but may disappear after deploy, restart, or container rebuild. ${getProductionStorageHelpText()}`
+  };
 }
 
 async function ensureMediaStorageReady() {
-  assertPersistentStorageConfiguration();
-
-  const writableRoot = getWritableMediaRoot();
+  const storage = getMediaStorageMode();
+  const writableRoot = storage.root;
   await fs.mkdir(writableRoot, { recursive: true });
   await Promise.all(
     MEDIA_SUBDIRECTORIES.map((directoryName) => fs.mkdir(path.join(writableRoot, directoryName), { recursive: true }))
@@ -142,6 +151,8 @@ async function ensureMediaStorageReady() {
 
   return {
     root: writableRoot,
+    mode: storage.mode,
+    warning: storage.warning,
     publicPrefix: getPublicPrefix(),
     publicBaseUrl: getPublicBaseUrl(),
     directories: MEDIA_SUBDIRECTORIES.slice()
@@ -332,10 +343,10 @@ module.exports = {
   LEGACY_MEDIA_ROOT,
   MAX_IMAGE_BYTES,
   MEDIA_SUBDIRECTORIES,
-  assertPersistentStorageConfiguration,
   ensureMediaStorageReady,
   extractManagedRelativePath,
   getManagedMediaStatus,
+  getMediaStorageMode,
   getPublicPrefix,
   getStaticRoots,
   resolveRenderableMediaUrl,

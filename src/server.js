@@ -7,8 +7,16 @@ async function startServer() {
     const mediaStorage = await landingMediaStorageService.ensureMediaStorageReady();
     app.listen(env.port, () => {
       console.log(`Server running on port ${env.port}`);
+      if (mediaStorage.warning) {
+        console.warn('[startup.media-storage.warning]', {
+          mode: mediaStorage.mode,
+          root: mediaStorage.root,
+          message: mediaStorage.warning
+        });
+      }
       console.log('[startup.media-storage]', {
         root: mediaStorage.root,
+        mode: mediaStorage.mode,
         publicPrefix: mediaStorage.publicPrefix,
         publicBaseUrl: mediaStorage.publicBaseUrl || null,
         directories: mediaStorage.directories
