@@ -12,8 +12,6 @@ const landingMediaStorageService = require('./services/landingMediaStorageServic
 
 const app = express();
 
-landingMediaStorageService.assertPersistentStorageConfiguration();
-
 app.use(helmet());
 app.use(cors({
   origin: [

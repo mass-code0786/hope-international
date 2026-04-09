@@ -7,6 +7,7 @@ const { ApiError } = require('../utils/ApiError');
 
 const APP_ROOT = path.resolve(__dirname, '../..');
 const LEGACY_MEDIA_ROOT = path.join(APP_ROOT, 'storage');
+const MEDIA_SUBDIRECTORIES = ['landing', 'gallery'];
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 const MIME_TO_EXTENSION = {
   'image/jpeg': 'jpg',
@@ -53,7 +54,10 @@ function isPathWithinRoot(rootPath, targetPath) {
 function getConfiguredMediaRoot() {
   const configured = String(env.mediaStorageRoot || '').trim();
   if (!configured) return '';
-  return path.resolve(configured);
+  if (!path.isAbsolute(configured)) {
+    throw new Error(`MEDIA_STORAGE_ROOT must be an absolute path. Received: ${configured}`);
+  }
+  return path.normalize(configured);
 }
 
 function getWritableMediaRoot() {
@@ -88,19 +92,46 @@ function getStaticRoots() {
   return roots;
 }
 
+function getProductionStorageHelpText() {
+  const renderExample = '/var/data/hope-international/media';
+  return [
+    'Persistent media storage is required in production.',
+    'Set MEDIA_STORAGE_ROOT to the absolute mount path of your persistent disk or server volume.',
+    `Example for Render with a disk mounted at /var/data: MEDIA_STORAGE_ROOT=${renderExample}`,
+    `Configured media directories will be created automatically under MEDIA_STORAGE_ROOT: ${MEDIA_SUBDIRECTORIES.join(', ')}`
+  ].join(' ');
+}
+
 function assertPersistentStorageConfiguration() {
   const writableRoot = getWritableMediaRoot();
   if (!writableRoot) {
-    throw new Error('MEDIA_STORAGE_ROOT must be set to a persistent server volume before starting production');
+    throw new Error(`MEDIA_STORAGE_ROOT is missing. ${getProductionStorageHelpText()}`);
   }
 
   if (env.nodeEnv === 'production' && path.resolve(writableRoot) === path.resolve(LEGACY_MEDIA_ROOT)) {
-    throw new Error('MEDIA_STORAGE_ROOT must point outside the app directory in production; the repo storage folder is ephemeral');
+    throw new Error(`MEDIA_STORAGE_ROOT points to the repo storage folder (${LEGACY_MEDIA_ROOT}), which is ephemeral in production. ${getProductionStorageHelpText()}`);
   }
 
   if (env.nodeEnv === 'production' && isPathInside(APP_ROOT, writableRoot)) {
-    throw new Error('MEDIA_STORAGE_ROOT must point to a mounted persistent volume outside the deployed app directory');
+    throw new Error(`MEDIA_STORAGE_ROOT must point outside the deployed app directory. Received: ${writableRoot}. ${getProductionStorageHelpText()}`);
   }
+}
+
+async function ensureMediaStorageReady() {
+  assertPersistentStorageConfiguration();
+
+  const writableRoot = getWritableMediaRoot();
+  await fs.mkdir(writableRoot, { recursive: true });
+  await Promise.all(
+    MEDIA_SUBDIRECTORIES.map((directoryName) => fs.mkdir(path.join(writableRoot, directoryName), { recursive: true }))
+  );
+
+  return {
+    root: writableRoot,
+    publicPrefix: getPublicPrefix(),
+    publicBaseUrl: getPublicBaseUrl(),
+    directories: MEDIA_SUBDIRECTORIES.slice()
+  };
 }
 
 function parseImageDataUrl(dataUrl) {
@@ -286,7 +317,9 @@ async function removeManagedMedia(publicUrl) {
 module.exports = {
   LEGACY_MEDIA_ROOT,
   MAX_IMAGE_BYTES,
+  MEDIA_SUBDIRECTORIES,
   assertPersistentStorageConfiguration,
+  ensureMediaStorageReady,
   extractManagedRelativePath,
   getManagedMediaStatus,
   getPublicPrefix,

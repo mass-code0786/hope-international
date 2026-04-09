@@ -48,11 +48,25 @@ Node.js + Express + PostgreSQL backend for binary MLM compensation with modular 
 2. Configure:
    - `DATABASE_URL`
    - `JWT_SECRET`
+   - Production only: `MEDIA_STORAGE_ROOT` must be set to the absolute path of a mounted persistent volume, for example `MEDIA_STORAGE_ROOT=/var/data/hope-international/media` when a Render persistent disk is mounted at `/var/data`
 3. Run:
    - `npm install`
    - `npm run migrate`
    - `npm run seed`
    - `npm run dev`
+
+## Persistent Media Storage
+- Admin-uploaded landing and gallery images are stored under `MEDIA_STORAGE_ROOT`.
+- `MEDIA_STORAGE_ROOT` must be an absolute path.
+- In production, `MEDIA_STORAGE_ROOT` must point outside the deployed app directory to a real persistent mounted volume.
+- The app automatically creates these directories under `MEDIA_STORAGE_ROOT` on startup:
+  - `landing`
+  - `gallery`
+- Recommended Render setup:
+  - Attach a persistent disk to the backend service.
+  - Set the disk mount path to `/var/data`.
+  - Set `MEDIA_STORAGE_ROOT=/var/data/hope-international/media`.
+- If `MEDIA_STORAGE_ROOT` is missing or points into the app directory in production, startup fails with a deployment-specific error message instead of silently writing uploads to ephemeral storage.
 
 ## Developer Testing & QA
 ### Dev Seed Accounts
