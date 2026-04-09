@@ -10,9 +10,9 @@ export default function AuthLayout({ children }) {
         <div className="grid gap-6 md:grid-cols-[1.05fr,minmax(0,480px)] md:items-center">
           <div className="hidden md:block">
             <div className="max-w-xl">
-              <span className="hope-kicker mb-5">Hope International</span>
+              <span className="hope-kicker mb-5">Member access</span>
               <h1 className="text-5xl font-semibold tracking-[-0.06em] text-text">Premium commerce, referral growth, and member operations in one platform.</h1>
-              <p className="mt-6 text-base leading-8 text-muted">The refreshed Hope interface is built around faster actions, cleaner data hierarchy, and a more polished member experience across mobile and desktop.</p>
+              <p className="mt-6 text-base leading-8 text-muted">The refreshed interface is built around faster actions, cleaner data hierarchy, and a more polished member experience across mobile and desktop.</p>
             </div>
           </div>
           <div className="relative mx-auto w-full max-w-md">{children}</div>

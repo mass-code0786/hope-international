@@ -89,9 +89,8 @@ export default function LoginPage() {
           </span>
         </div>
 
-        <div className="mb-6 flex flex-col items-center text-center">
-          <Logo size={72} className="mb-4" />
-          <h1 className="text-[1.9rem] font-semibold tracking-[-0.05em] text-text">Hope International</h1>
+        <div className="mb-7 flex flex-col items-center text-center">
+          <Logo size={128} className="mb-1" />
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
@@ -145,7 +144,7 @@ export default function LoginPage() {
           {error ? <p className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-danger dark:border-red-500/20 dark:bg-red-500/10">{error}</p> : null}
 
           <button disabled={loginMutation.isPending} className="hope-button w-full disabled:cursor-not-allowed disabled:opacity-70">
-            {loginMutation.isPending ? 'Signing in...' : 'Continue to Hope'}
+            {loginMutation.isPending ? 'Signing in...' : 'Continue'}
             {!loginMutation.isPending ? <ArrowRight size={16} /> : null}
           </button>
 
@@ -173,7 +172,7 @@ export default function LoginPage() {
         </div>
 
         <p className="mt-4 text-center text-sm text-muted">
-          Create your profile to access the Hope marketplace.{' '}
+          Create your profile to access the marketplace.{' '}
           <Link href="/register" className="font-semibold text-accent underline decoration-[var(--hope-accent-soft)] underline-offset-4 transition hover:opacity-80">
             Create account
           </Link>
