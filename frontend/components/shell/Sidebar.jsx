@@ -77,9 +77,7 @@ export function Sidebar({ user, sellerActive = false }) {
     <aside className="hidden w-80 border-r border-[var(--hope-border)] bg-[linear-gradient(180deg,#1e1f25,#23242b)] p-6 text-white md:block">
       <div className="mb-6 rounded-[30px] border border-white/10 bg-white/5 p-5 shadow-[0_24px_64px_rgba(0,0,0,0.28)] backdrop-blur">
         <div className="flex items-center gap-3">
-          <div className="rounded-[22px] bg-white/95 p-2.5 shadow-sm">
-            <Logo size={52} />
-          </div>
+          <Logo size={60} className="shrink-0" />
           <div>
             <p className="text-xs uppercase tracking-[0.24em] text-white/55">Hope International</p>
             <h2 className="mt-1 text-lg font-semibold tracking-[-0.04em]">Member Console</h2>

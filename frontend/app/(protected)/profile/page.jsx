@@ -310,10 +310,9 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <ProfileInfoCard label="Username" value={user.username || '-'} subtitle={`ID: ${user.id || '-'}`} />
         <ProfileInfoCard label="Rank" value={rankLabel(user.rank_name)} subtitle={`Sponsor: ${user.sponsor_username || user.sponsor_id || 'N/A'}`} />
-        <ProfileInfoCard label="Status" value={user.is_active === false ? 'Inactive' : 'Active'} statusTone={user.is_active === false ? 'text-[#f87171]' : 'text-[#4ade80]'} />
         <ProfileInfoCard label="Email" value={user.email || '-'} />
       </div>
 

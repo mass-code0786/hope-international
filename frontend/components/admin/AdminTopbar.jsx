@@ -17,9 +17,7 @@ export function AdminTopbar({ user, onLogout, onOpenMenu }) {
             >
               <Menu size={20} />
             </button>
-            <div className="inline-flex rounded-[20px] bg-slate-950 p-2.5 shadow-sm dark:bg-white">
-              <Logo size={40} />
-            </div>
+            <Logo size={48} className="shrink-0" />
             <span className="hope-kicker hidden sm:inline-flex"><ShieldCheck size={12} /> Operations</span>
           </div>
           <p className="text-xs uppercase tracking-[0.24em] text-muted">Administrator</p>

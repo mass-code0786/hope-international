@@ -128,9 +128,7 @@ function RegisterPageContent() {
     <div className="card-surface overflow-hidden p-5 md:p-7">
       <div className="mb-5 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="rounded-[22px] bg-white p-2.5 shadow-sm dark:bg-slate-950">
-            <Logo size={44} />
-          </div>
+          <Logo size={52} className="shrink-0" />
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-muted">Create member account</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-[-0.05em] text-text">Join Hope International</h1>

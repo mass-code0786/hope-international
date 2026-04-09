@@ -76,9 +76,7 @@ function SidebarContent({ onNavigate, mobile = false, onClose }) {
     <div className="h-full overflow-y-auto p-6 text-white">
       <div className="mb-8 rounded-[30px] border border-white/10 bg-white/5 p-5 shadow-[0_24px_64px_rgba(2,8,23,0.28)] backdrop-blur">
         <div className="flex w-full items-center justify-between lg:justify-start lg:gap-3">
-          <div className="rounded-[22px] bg-white/95 p-2.5 shadow-sm">
-            <Logo size={mobile ? 46 : 54} />
-          </div>
+          <Logo size={mobile ? 54 : 62} className="shrink-0" />
           {mobile ? (
             <button
               onClick={onClose}

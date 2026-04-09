@@ -90,9 +90,7 @@ export default function LoginPage() {
         </div>
 
         <div className="mb-6 flex flex-col items-center text-center">
-          <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-[24px] border border-[var(--hope-border)] bg-white shadow-[0_18px_32px_rgba(148,163,184,0.18)] dark:bg-slate-950">
-            <Logo size={58} />
-          </div>
+          <Logo size={72} className="mb-4" />
           <h1 className="text-[1.9rem] font-semibold tracking-[-0.05em] text-text">Hope International</h1>
         </div>
 

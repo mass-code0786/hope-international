@@ -119,7 +119,7 @@ function getProductionStorageHelpText() {
 function assertPersistentStorageConfiguration() {
   const writableRoot = getWritableMediaRoot();
   if (!writableRoot) {
-    throw new Error(`MEDIA_STORAGE_ROOT is missing. ${getProductionStorageHelpText()}`);
+    throw new Error(`No persistent media volume was available at runtime. MEDIA_STORAGE_ROOT is unset and Railway did not provide RAILWAY_VOLUME_MOUNT_PATH. On Railway, attach a persistent volume to this backend service and set its mount path to /app/data. Once attached, Railway will inject RAILWAY_VOLUME_MOUNT_PATH automatically and the app will store media under /app/data/hope-international/media without a manual MEDIA_STORAGE_ROOT. ${getProductionStorageHelpText()}`);
   }
 
   if (env.nodeEnv === 'production' && path.resolve(writableRoot) === path.resolve(LEGACY_MEDIA_ROOT)) {

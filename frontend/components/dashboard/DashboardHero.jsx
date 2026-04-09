@@ -21,9 +21,7 @@ export function DashboardHero({ user, referralCode, sponsorLabel, placementLabel
             <Badge variant={statusVariant(user?.is_active)}>Account {user?.is_active === false ? 'Inactive' : 'Active'}</Badge>
           </div>
           <div className="mt-5 flex items-start gap-4">
-            <div className="hidden rounded-[24px] bg-white/90 p-3 shadow-sm dark:bg-slate-950/80 sm:block">
-              <Logo size={48} />
-            </div>
+            <Logo size={56} className="hidden shrink-0 sm:block" />
             <div>
               <p className="text-sm text-muted">Welcome back</p>
               <h1 className="mt-1 text-3xl font-semibold tracking-[-0.06em] text-text sm:text-4xl">{fullName}</h1>

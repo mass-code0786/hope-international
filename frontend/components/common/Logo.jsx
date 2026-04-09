@@ -7,7 +7,7 @@ export default function Logo({
   alt = 'Hope International'
 }) {
   const frameStyle = { width: size, height: size };
-  const imageSize = Math.max(Math.round(size * 0.82), 16);
+  const imageSize = Math.max(Math.round(size * 0.94), 16);
 
   return (
     <div

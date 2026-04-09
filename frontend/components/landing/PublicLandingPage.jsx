@@ -479,9 +479,7 @@ export default function PublicLandingPage() {
         <header className="sticky top-3 z-30 rounded-[22px] border border-white/10 bg-[rgba(12,17,29,0.88)] px-4 py-3 shadow-[0_16px_40px_rgba(0,0,0,0.32)] backdrop-blur-xl">
           <div className="flex items-center justify-between gap-3">
             <Link href="/" className="flex min-w-0 items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-[16px] border border-white/10 bg-[#151c2d]">
-                <Logo size={30} />
-              </div>
+              <Logo size={38} className="shrink-0" />
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#a78bfa]">Hope</p>
                 <p className="truncate text-sm font-semibold text-white">International</p>
