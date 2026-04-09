@@ -7,7 +7,7 @@ const { ApiError } = require('../utils/ApiError');
 
 const APP_ROOT = path.resolve(__dirname, '../..');
 const LEGACY_MEDIA_ROOT = path.join(APP_ROOT, 'storage');
-const MEDIA_SUBDIRECTORIES = ['landing', 'gallery'];
+const MEDIA_SUBDIRECTORIES = ['landing', 'gallery', 'uploads'];
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 const MIME_TO_EXTENSION = {
   'image/jpeg': 'jpg',
@@ -60,9 +60,20 @@ function getConfiguredMediaRoot() {
   return path.normalize(configured);
 }
 
+function getRailwayMediaRoot() {
+  const configured = String(env.railwayVolumeMountPath || '').trim();
+  if (!configured) return '';
+  if (!path.isAbsolute(configured)) {
+    throw new Error(`RAILWAY_VOLUME_MOUNT_PATH must be an absolute path. Received: ${configured}`);
+  }
+  return path.join(path.normalize(configured), 'hope-international', 'media');
+}
+
 function getWritableMediaRoot() {
   const configured = getConfiguredMediaRoot();
   if (configured) return configured;
+  const railwayRoot = getRailwayMediaRoot();
+  if (railwayRoot) return railwayRoot;
   if (env.nodeEnv !== 'production') return LEGACY_MEDIA_ROOT;
   return '';
 }
@@ -93,12 +104,15 @@ function getStaticRoots() {
 }
 
 function getProductionStorageHelpText() {
+  const railwayExample = '/app/data';
   const renderExample = '/var/data/hope-international/media';
   return [
     'Persistent media storage is required in production.',
-    'Set MEDIA_STORAGE_ROOT to the absolute mount path of your persistent disk or server volume.',
+    'Storage root resolution order is MEDIA_STORAGE_ROOT, then RAILWAY_VOLUME_MOUNT_PATH, then a dev-only local fallback.',
+    `On Railway, attach a volume and the app will automatically use RAILWAY_VOLUME_MOUNT_PATH=${railwayExample} to store media under hope-international/media.`,
+    'If you are not on Railway, set MEDIA_STORAGE_ROOT to the absolute mount path of your persistent disk or server volume.',
     `Example for Render with a disk mounted at /var/data: MEDIA_STORAGE_ROOT=${renderExample}`,
-    `Configured media directories will be created automatically under MEDIA_STORAGE_ROOT: ${MEDIA_SUBDIRECTORIES.join(', ')}`
+    `Configured media directories will be created automatically under the resolved storage root: ${MEDIA_SUBDIRECTORIES.join(', ')}`
   ].join(' ');
 }
 

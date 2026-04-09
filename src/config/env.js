@@ -22,6 +22,7 @@ module.exports = {
   webAuthnOrigin: process.env.WEBAUTHN_ORIGIN || '',
   appBaseUrl: process.env.APP_BASE_URL || '',
   mediaStorageRoot: process.env.MEDIA_STORAGE_ROOT || '',
+  railwayVolumeMountPath: process.env.RAILWAY_VOLUME_MOUNT_PATH || '',
   mediaPublicPath: process.env.MEDIA_PUBLIC_PATH || '/media',
   mediaPublicBaseUrl: process.env.MEDIA_PUBLIC_BASE_URL || '',
   nowPaymentsApiBaseUrl: process.env.NOWPAYMENTS_API_BASE_URL || 'https://api.nowpayments.io/v1',

@@ -18,6 +18,7 @@ async function startServer() {
     console.error('[startup.media-storage]', {
       nodeEnv: env.nodeEnv,
       mediaStorageRoot: env.mediaStorageRoot || null,
+      railwayVolumeMountPath: env.railwayVolumeMountPath || null,
       message: error.message
     });
     process.exit(1);

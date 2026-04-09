@@ -48,7 +48,9 @@ Node.js + Express + PostgreSQL backend for binary MLM compensation with modular 
 2. Configure:
    - `DATABASE_URL`
    - `JWT_SECRET`
-   - Production only: `MEDIA_STORAGE_ROOT` must be set to the absolute path of a mounted persistent volume, for example `MEDIA_STORAGE_ROOT=/var/data/hope-international/media` when a Render persistent disk is mounted at `/var/data`
+   - Production only: persistent media storage is required
+   - Railway with attached volume: no manual media env var is required because the app auto-uses `RAILWAY_VOLUME_MOUNT_PATH`
+   - Other hosts: set `MEDIA_STORAGE_ROOT` to the absolute path of a mounted persistent volume, for example `MEDIA_STORAGE_ROOT=/var/data/hope-international/media` when a Render persistent disk is mounted at `/var/data`
 3. Run:
    - `npm install`
    - `npm run migrate`
@@ -56,17 +58,26 @@ Node.js + Express + PostgreSQL backend for binary MLM compensation with modular 
    - `npm run dev`
 
 ## Persistent Media Storage
-- Admin-uploaded landing and gallery images are stored under `MEDIA_STORAGE_ROOT`.
-- `MEDIA_STORAGE_ROOT` must be an absolute path.
-- In production, `MEDIA_STORAGE_ROOT` must point outside the deployed app directory to a real persistent mounted volume.
-- The app automatically creates these directories under `MEDIA_STORAGE_ROOT` on startup:
+- Admin-uploaded landing and gallery images are stored under the resolved persistent storage root.
+- Storage root resolution order is:
+  - `MEDIA_STORAGE_ROOT`
+  - `RAILWAY_VOLUME_MOUNT_PATH` with app-managed subpath `hope-international/media`
+  - local repo storage fallback in non-production only
+- `MEDIA_STORAGE_ROOT` must be an absolute path when used.
+- In production, the resolved storage root must point outside the deployed app directory to a real persistent mounted volume.
+- The app automatically creates these directories under the resolved storage root on startup:
   - `landing`
   - `gallery`
+- `uploads`
+- Railway setup:
+  - Attach a persistent volume to the backend service.
+  - No manual `MEDIA_STORAGE_ROOT` env var is required.
+  - The app will automatically store media under `<RAILWAY_VOLUME_MOUNT_PATH>/hope-international/media`.
 - Recommended Render setup:
   - Attach a persistent disk to the backend service.
   - Set the disk mount path to `/var/data`.
   - Set `MEDIA_STORAGE_ROOT=/var/data/hope-international/media`.
-- If `MEDIA_STORAGE_ROOT` is missing or points into the app directory in production, startup fails with a deployment-specific error message instead of silently writing uploads to ephemeral storage.
+- If production has neither `MEDIA_STORAGE_ROOT` nor `RAILWAY_VOLUME_MOUNT_PATH`, startup fails with a deployment-specific error message instead of silently writing uploads to ephemeral storage.
 
 ## Developer Testing & QA
 ### Dev Seed Accounts
