@@ -15,7 +15,7 @@ export default function Logo({
       style={frameStyle}
     >
       <Image
-        src="/logo.png"
+        src="/logo.svg"
         alt={alt}
         width={imageSize}
         height={imageSize}
