@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { withTransaction } = require('../db/pool');
 const landingRepository = require('../repositories/landingRepository');
+const landingMediaStorageService = require('./landingMediaStorageService');
 const { getCacheEntry, setCacheEntry } = require('../utils/runtimeCache');
 const { withPerfSpan } = require('../utils/perf');
 
@@ -8,13 +9,14 @@ const PUBLIC_LANDING_CACHE_KEY = 'landing:public-page';
 const PUBLIC_LANDING_CACHE_TTL_MS = 30 * 1000;
 const LANDING_STATS_CACHE_TTL_MS = 30 * 1000;
 
-function mapMediaSlot(slot, definition) {
+async function mapMediaSlot(slot, definition) {
+  const imageUrl = await landingMediaStorageService.resolveRenderableMediaUrl(slot?.image_url || '');
   return {
     slotKey: definition.slotKey,
     title: definition.title,
     sectionKey: definition.sectionKey,
     description: definition.description,
-    imageUrl: slot?.image_url || '',
+    imageUrl,
     altText: slot?.alt_text || ''
   };
 }
@@ -117,10 +119,13 @@ async function getPublicLandingPage() {
     const visibility = settings?.section_visibility || landingRepository.DEFAULT_SECTION_VISIBILITY;
     const order = Array.isArray(settings?.section_order) ? settings.section_order : landingRepository.DEFAULT_SECTION_ORDER;
     const mediaSlotMap = new Map(mediaSlots.map((slot) => [slot.slot_key, slot]));
-    const media = landingRepository.LANDING_MEDIA_SLOT_DEFINITIONS.reduce((accumulator, definition) => {
-      accumulator[definition.slotKey] = mapMediaSlot(mediaSlotMap.get(definition.slotKey), definition);
-      return accumulator;
-    }, {});
+    const mediaEntries = await Promise.all(
+      landingRepository.LANDING_MEDIA_SLOT_DEFINITIONS.map(async (definition) => ([
+        definition.slotKey,
+        await mapMediaSlot(mediaSlotMap.get(definition.slotKey), definition)
+      ]))
+    );
+    const media = Object.fromEntries(mediaEntries);
 
     return setCacheEntry(PUBLIC_LANDING_CACHE_KEY, {
       settings: {

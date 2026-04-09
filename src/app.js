@@ -3,14 +3,16 @@ const helmet = require('helmet');
 const cors = require('cors');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
-const path = require('path');
 
 const routes = require('./routes');
 const paymentsRoutes = require('./routes/paymentsRoutes');
 const errorHandler = require('./middleware/errorHandler');
 const { nowMs } = require('./utils/perf');
+const landingMediaStorageService = require('./services/landingMediaStorageService');
 
 const app = express();
+
+landingMediaStorageService.assertPersistentStorageConfiguration();
 
 app.use(helmet());
 app.use(cors({
@@ -65,13 +67,13 @@ app.get('/health', (_req, res) => {
 });
 
 app.use(
-  '/media',
+  landingMediaStorageService.getPublicPrefix(),
   (_req, res, next) => {
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.setHeader('Access-Control-Allow-Origin', '*');
     next();
   },
-  express.static(path.resolve(__dirname, '../storage'))
+  ...landingMediaStorageService.getStaticRoots().map((root) => express.static(root))
 );
 
 app.use('/', routes);

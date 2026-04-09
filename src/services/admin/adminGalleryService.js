@@ -7,7 +7,7 @@ const landingMediaStorageService = require('../landingMediaStorageService');
 
 async function listAdminGalleryItems() {
   const items = await galleryRepository.listGalleryItems();
-  return items.map(galleryService.mapGalleryItem);
+  return Promise.all(items.map(galleryService.mapGalleryItem));
 }
 
 async function createGalleryItem(adminUserId, payload) {

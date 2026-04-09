@@ -1,21 +1,24 @@
+const landingMediaStorageService = require('./landingMediaStorageService');
 const galleryRepository = require('../repositories/galleryRepository');
 
-function mapGalleryItem(item) {
+async function mapGalleryItem(item) {
+  const imageUrl = await landingMediaStorageService.resolveRenderableMediaUrl(item.image_url || '');
   return {
     id: item.id,
     title: item.title || '',
     caption: item.caption || '',
-    imageUrl: item.image_url,
+    imageUrl,
     isVisible: Boolean(item.is_visible),
     sortOrder: Number(item.sort_order || 0),
     createdAt: item.created_at,
-    updatedAt: item.updated_at
+    updatedAt: item.updated_at,
+    imageMissing: Boolean((item.image_url || '') && !imageUrl)
   };
 }
 
 async function listVisibleGalleryItems() {
   const items = await galleryRepository.listGalleryItems(null, { onlyVisible: true });
-  return items.map(mapGalleryItem);
+  return Promise.all(items.map(mapGalleryItem));
 }
 
 module.exports = {

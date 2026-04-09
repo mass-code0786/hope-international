@@ -49,16 +49,19 @@ function mapAggregate(settings, stats, featuredItems, contentBlocks, testimonial
   };
 }
 
-function mapMediaSlot(slot, definition) {
+async function mapMediaSlot(slot, definition) {
+  const mediaStatus = await landingMediaStorageService.getManagedMediaStatus(slot?.image_url || '');
   return {
     slotKey: definition.slotKey,
     title: definition.title,
     sectionKey: definition.sectionKey,
     description: definition.description,
-    imageUrl: slot?.image_url || '',
+    imageUrl: mediaStatus.renderUrl,
     altText: slot?.alt_text || '',
     updatedAt: slot?.updated_at || null,
-    updatedBy: slot?.updated_by || null
+    updatedBy: slot?.updated_by || null,
+    imageMissing: Boolean((slot?.image_url || '') && !mediaStatus.exists),
+    isPersistent: !mediaStatus.storageRoot || mediaStatus.storageRoot !== landingMediaStorageService.LEGACY_MEDIA_ROOT
   };
 }
 
@@ -77,9 +80,12 @@ async function getLandingAdminState() {
   ]);
 
   const slotMap = new Map(mediaSlots.map((slot) => [slot.slot_key, slot]));
+  const resolvedMediaSlots = await Promise.all(
+    landingRepository.LANDING_MEDIA_SLOT_DEFINITIONS.map((definition) => mapMediaSlot(slotMap.get(definition.slotKey), definition))
+  );
   return {
     ...mapAggregate(settings, stats, featuredItems, contentBlocks, testimonials, countries, actualMembers, actualReviews),
-    mediaSlots: landingRepository.LANDING_MEDIA_SLOT_DEFINITIONS.map((definition) => mapMediaSlot(slotMap.get(definition.slotKey), definition))
+    mediaSlots: resolvedMediaSlots
   };
 }
 
