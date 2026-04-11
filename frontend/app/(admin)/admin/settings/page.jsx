@@ -98,7 +98,7 @@ export default function AdminSettingsPage() {
           { label: formatLabel('Wallet'), value: depositWallet.walletAddress || '-' }
         ]} />
         <SummaryPanel title="Rank Multipliers" items={rankMultipliers.map((r) => ({ label: r.name, value: `${r.capMultiplier}x` }))} />
-        <SummaryPanel title="Reward Slabs" items={rewardSlabs.map((r) => ({ label: `${r.thresholdBv} BV`, value: r.rewardLabel || r.label }))} />
+        <SummaryPanel title="Reward Slabs" items={rewardSlabs.map((r) => ({ label: `${r.thresholdBv} Matching BV`, value: r.rewardLabel || r.label }))} />
       </div>
     </div>
   );

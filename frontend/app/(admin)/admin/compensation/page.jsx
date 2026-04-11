@@ -137,7 +137,7 @@ export default function AdminCompensationPage() {
           </div>
         </ActionPanel>
 
-        <ActionPanel title="Run Monthly Rewards" description="Calculates monthly reward qualification and payouts.">
+        <ActionPanel title="Run Monthly Rewards" description="Calculates monthly reward qualification and payouts using matching BV only.">
           <div className="grid gap-2 md:grid-cols-2">
             <input type="date" value={monthlyForm.monthStart} onChange={(e) => setMonthlyForm((p) => ({ ...p, monthStart: e.target.value }))} className="rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm" />
             <input type="date" value={monthlyForm.monthEnd} onChange={(e) => setMonthlyForm((p) => ({ ...p, monthEnd: e.target.value }))} className="rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm" />
@@ -188,7 +188,7 @@ export default function AdminCompensationPage() {
           title="Monthly Cycle Detail"
           items={[
             { label: 'Users', value: number(monthlyDetailQuery.data?.data?.users?.length) },
-            { label: 'Monthly BV', value: number(monthlyDetailQuery.data?.data?.summary?.total_monthly_bv) },
+            { label: 'Matching BV', value: number(monthlyDetailQuery.data?.data?.summary?.total_matching_bv) },
             { label: 'Monthly PV', value: number(monthlyDetailQuery.data?.data?.summary?.total_monthly_pv) },
             { label: 'Reward Amount', value: number(monthlyDetailQuery.data?.data?.summary?.total_reward_amount) }
           ]}

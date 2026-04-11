@@ -32,6 +32,16 @@ function resolveRewardExtra(rewardLabel) {
   return rewardLabel.split('+').slice(1).join('+').trim() || null;
 }
 
+function buildRewardExtra(rewardLabel, monthlyLeftBv, monthlyRightBv, matchingBv) {
+  const extraLabel = resolveRewardExtra(rewardLabel);
+  return JSON.stringify({
+    extraLabel,
+    leftBv: toMoney(monthlyLeftBv),
+    rightBv: toMoney(monthlyRightBv),
+    matchingBv: toMoney(matchingBv)
+  });
+}
+
 async function runMonthlyRewards(monthStart, monthEnd, notes = null) {
   assertValidCycle(monthStart, monthEnd, 'Month');
 
@@ -54,7 +64,10 @@ async function runMonthlyRewards(monthStart, monthEnd, notes = null) {
     const results = [];
 
     for (const user of users) {
-      const monthlyBv = toMoney(await compensationRepository.aggregateMonthlyBv(client, user.id, monthStart, monthEnd));
+      const { leftBv, rightBv } = await compensationRepository.aggregateMonthlyLegBv(client, user.id, monthStart, monthEnd);
+      const monthlyLeftBv = toMoney(leftBv);
+      const monthlyRightBv = toMoney(rightBv);
+      const monthlyMatchingBv = toMoney(Math.min(monthlyLeftBv, monthlyRightBv));
       const monthlyPv = toMoney(await compensationRepository.aggregateMonthlyPv(client, user.id, monthStart, monthEnd));
       const directIncome = toMoney(
         await compensationRepository.aggregateMonthlyIncomeBySource(client, user.id, monthStart, monthEnd, 'direct_income')
@@ -63,25 +76,27 @@ async function runMonthlyRewards(monthStart, monthEnd, notes = null) {
         await compensationRepository.aggregateMonthlyIncomeBySource(client, user.id, monthStart, monthEnd, 'matching_income')
       );
 
-      const reward = resolveReward(monthlyBv);
+      const reward = resolveReward(monthlyMatchingBv);
       const rewardAmount = reward ? toMoney(reward.rewardAmount) : 0;
       const rewardLabel = reward ? reward.rewardLabel : null;
       const rewardLevel = reward ? `${reward.thresholdBv}_BV` : null;
-      const rewardExtra = resolveRewardExtra(rewardLabel);
+      const rewardExtra = reward ? buildRewardExtra(rewardLabel, monthlyLeftBv, monthlyRightBv, monthlyMatchingBv) : null;
       const qualified = Boolean(reward);
 
       if (qualified && rewardAmount > 0) {
         await walletService.credit(client, user.id, rewardAmount, 'reward_qualification', cycle.id, {
           monthStart,
           monthEnd,
-          monthlyBv,
+          matchingBv: monthlyMatchingBv,
+          leftBv: monthlyLeftBv,
+          rightBv: monthlyRightBv,
           rewardLabel
         });
 
         await compensationRepository.upsertMonthlyRewardQualification(client, {
           cycleId: cycle.id,
           userId: user.id,
-          monthlyBv,
+          monthlyBv: monthlyMatchingBv,
           thresholdBv: reward.thresholdBv,
           rewardAmount,
           rewardLabel,
@@ -94,7 +109,7 @@ async function runMonthlyRewards(monthStart, monthEnd, notes = null) {
       const summary = await compensationRepository.upsertMonthlySummary(client, {
         cycleId: cycle.id,
         userId: user.id,
-        monthlyBv,
+        monthlyBv: monthlyMatchingBv,
         monthlyPv,
         directIncome,
         matchingIncome,

@@ -720,7 +720,7 @@ async function getWeeklyCycleById(client, cycleId) {
 async function listMonthlyCycles(client, pagination) {
   const { rows } = await q(client).query(
     `SELECT mc.*,
-      COALESCE(SUM(mus.monthly_bv), 0)::numeric(14,2) AS total_monthly_bv,
+      COALESCE(SUM(mus.monthly_bv), 0)::numeric(14,2) AS total_matching_bv,
       COALESCE(SUM(mus.monthly_pv), 0)::numeric(14,2) AS total_monthly_pv,
       COALESCE(SUM(mus.reward_amount), 0)::numeric(14,2) AS total_reward_amount,
       COALESCE(COUNT(mrq.id) FILTER (WHERE mrq.status IN ('qualified', 'processed')), 0)::int AS qualified_users
@@ -752,7 +752,7 @@ async function getMonthlyCycleById(client, cycleId) {
 
   const summaryResult = await q(client).query(
     `SELECT
-      COALESCE(SUM(monthly_bv), 0)::numeric(14,2) AS total_monthly_bv,
+      COALESCE(SUM(monthly_bv), 0)::numeric(14,2) AS total_matching_bv,
       COALESCE(SUM(monthly_pv), 0)::numeric(14,2) AS total_monthly_pv,
       COALESCE(SUM(reward_amount), 0)::numeric(14,2) AS total_reward_amount,
       COALESCE(COUNT(*) FILTER (WHERE qualified = true), 0)::int AS qualified_users
@@ -779,6 +779,17 @@ async function getMonthlyCycleById(client, cycleId) {
 
 async function listRewardQualifications(client, filters, pagination) {
   const baseSql = `SELECT mrq.*, u.username, u.email, mc.month_start, mc.month_end
+                   , CASE
+                       WHEN COALESCE(mrq.reward_extra, '') LIKE '{%'
+                         THEN COALESCE((mrq.reward_extra::jsonb ->> 'leftBv')::numeric, 0)
+                       ELSE 0
+                     END::numeric(14,2) AS left_bv
+                   , CASE
+                       WHEN COALESCE(mrq.reward_extra, '') LIKE '{%'
+                         THEN COALESCE((mrq.reward_extra::jsonb ->> 'rightBv')::numeric, 0)
+                       ELSE 0
+                     END::numeric(14,2) AS right_bv
+                   , mrq.monthly_bv AS matching_bv
                    FROM monthly_reward_qualifications mrq
                    JOIN users u ON u.id = mrq.user_id
                    JOIN monthly_cycles mc ON mc.id = mrq.cycle_id`;

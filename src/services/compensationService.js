@@ -72,12 +72,20 @@ async function getMonthlyStatus(userId, monthStart, monthEnd) {
   }
 
   const existing = await compensationRepository.getMonthlyStatus(null, userId, monthStart, monthEnd);
+  const monthlyLegBv = await compensationRepository.aggregateMonthlyLegBv(null, userId, monthStart, monthEnd);
+  const leftBv = toMoney(monthlyLegBv.leftBv || 0);
+  const rightBv = toMoney(monthlyLegBv.rightBv || 0);
+  const matchingBv = toMoney(Math.min(leftBv, rightBv));
+
   if (existing) {
     return {
       monthStart,
       monthEnd,
       currentRank: user.rank_name,
-      monthlyBv: Number(existing.monthly_bv || 0),
+      monthlyBv: Number(existing.monthly_bv || matchingBv || 0),
+      matchingBv: Number(existing.monthly_bv || matchingBv || 0),
+      leftBv,
+      rightBv,
       monthlyPv: Number(existing.monthly_pv || 0),
       rewardQualified: Boolean(existing.qualified),
       rewardAmount: Number(existing.reward_amount || 0),
@@ -86,15 +94,17 @@ async function getMonthlyStatus(userId, monthStart, monthEnd) {
     };
   }
 
-  const monthlyBv = toMoney(await compensationRepository.aggregateMonthlyBv(null, userId, monthStart, monthEnd));
   const monthlyPv = toMoney(await compensationRepository.aggregateMonthlyPv(null, userId, monthStart, monthEnd));
-  const reward = rewardService.resolveReward(monthlyBv);
+  const reward = rewardService.resolveReward(matchingBv);
 
   return {
     monthStart,
     monthEnd,
     currentRank: user.rank_name,
-    monthlyBv,
+    monthlyBv: matchingBv,
+    matchingBv,
+    leftBv,
+    rightBv,
     monthlyPv,
     rewardQualified: Boolean(reward),
     rewardAmount: reward ? reward.rewardAmount : 0,

@@ -58,7 +58,7 @@ export default function AdminRewardsPage() {
     <div className="space-y-5">
       <AdminSectionHeader
         title="Rewards Management"
-        subtitle="Track monthly milestones and qualified users"
+        subtitle="Track monthly matching-BV milestones and qualified users"
         action={
           <div className="flex gap-2">
             <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm" />
@@ -77,7 +77,7 @@ export default function AdminRewardsPage() {
         {REWARD_SLABS.map((slab) => (
           <div key={slab.thresholdBv} className="card-surface border border-accent/20 p-4">
             <p className="text-xs uppercase tracking-[0.2em] text-muted">Milestone</p>
-            <p className="mt-1 text-lg font-semibold text-text">{number(slab.thresholdBv)} BV</p>
+            <p className="mt-1 text-lg font-semibold text-text">{number(slab.thresholdBv)} Matching BV</p>
             <p className="text-sm text-accentSoft">{slab.label}</p>
             <p className="mt-2 text-xs text-muted">Cash: {currency(slab.rewardAmount)}</p>
           </div>
@@ -93,7 +93,7 @@ export default function AdminRewardsPage() {
       <DataTable
         columns={[
           { key: 'username', title: 'User', className: 'col-span-3', render: (r) => r.username || `#${String(r.user_id || '').slice(0, 8)}` },
-          { key: 'monthly_bv', title: 'Monthly BV', className: 'col-span-2', render: (r) => number(r.monthly_bv || r.total_bv) },
+          { key: 'matching_bv', title: 'Matching BV', className: 'col-span-2', render: (r) => number(r.matching_bv || r.monthly_bv || r.total_bv) },
           { key: 'reward_label', title: 'Reward', className: 'col-span-4', render: (r) => r.reward_label || r.reward_level || 'Pending' },
           { key: 'status', title: 'Status', className: 'col-span-2', render: (r) => <StatusBadge status={r.status || 'pending'} /> },
           {

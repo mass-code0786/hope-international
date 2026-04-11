@@ -19,12 +19,12 @@ export const RANKS = [
 ];
 
 export const REWARD_SLABS = [
-  { thresholdBv: 2000, rewardAmount: 100, label: '100 Reward' },
-  { thresholdBv: 5000, rewardAmount: 250, label: '250 Reward' },
-  { thresholdBv: 10000, rewardAmount: 500, label: '500 Reward' },
-  { thresholdBv: 50000, rewardAmount: 1000, label: '1000 + iPhone' },
-  { thresholdBv: 100000, rewardAmount: 2000, label: '2000 + Four Wheeler' },
-  { thresholdBv: 500000, rewardAmount: 5000, label: '5000 + Bungalow' }
+  { thresholdBv: 2000, rewardAmount: 100, label: '100 Cash Reward' },
+  { thresholdBv: 5000, rewardAmount: 250, label: '250 Cash Reward' },
+  { thresholdBv: 10000, rewardAmount: 500, label: '500 Cash Reward' },
+  { thresholdBv: 50000, rewardAmount: 1000, label: '1000 Cash + iPhone' },
+  { thresholdBv: 100000, rewardAmount: 2000, label: '2000 Cash + Four Wheeler' },
+  { thresholdBv: 500000, rewardAmount: 5000, label: '5000 Cash + Bungalow' }
 ];
 
 export const NAV_ITEMS = [

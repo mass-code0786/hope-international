@@ -193,6 +193,23 @@ async function aggregateMonthlyBv(client, userId, monthStart, monthEnd) {
   return Number(rows[0]?.monthly_bv || 0);
 }
 
+async function aggregateMonthlyLegBv(client, userId, monthStart, monthEnd) {
+  const { rows } = await q(client).query(
+    `SELECT
+       COALESCE(SUM(bvl.bv) FILTER (WHERE bvl.leg = 'left'), 0)::numeric(14,2) AS left_bv,
+       COALESCE(SUM(bvl.bv) FILTER (WHERE bvl.leg = 'right'), 0)::numeric(14,2) AS right_bv
+     FROM binary_volume_ledger bvl
+     WHERE bvl.ancestor_user_id = $1
+       AND bvl.created_at >= $2::date
+       AND bvl.created_at < ($3::date + INTERVAL '1 day')`,
+    [userId, monthStart, monthEnd]
+  );
+  return {
+    leftBv: Number(rows[0]?.left_bv || 0),
+    rightBv: Number(rows[0]?.right_bv || 0)
+  };
+}
+
 async function aggregateMonthlyPv(client, userId, monthStart, monthEnd) {
   const { rows } = await q(client).query(
     `WITH own_pv AS (
@@ -351,6 +368,7 @@ module.exports = {
   createMonthlyCycle,
   listMonthlyCycles,
   aggregateMonthlyBv,
+  aggregateMonthlyLegBv,
   aggregateMonthlyPv,
   aggregateMonthlyIncomeBySource,
   upsertMonthlySummary,

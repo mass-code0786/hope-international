@@ -14,7 +14,7 @@ export function RewardProgressCard({ monthlyBv, rewardLabel }) {
     <div className="card-surface border border-white/[0.12] p-5">
       <StatCard
         title="Monthly Rewards"
-        value={`${number(currentBv)} BV`}
+        value={`${number(currentBv)} Matching BV`}
         subtitle={rewardLabel || achieved?.label || (next ? `Next target: ${next.label}` : 'All milestones completed')}
         right={<div className="w-24"><ProgressBar value={progress} color="bg-accent" /></div>}
         className="border-none bg-transparent p-0 shadow-none"
@@ -24,13 +24,13 @@ export function RewardProgressCard({ monthlyBv, rewardLabel }) {
         <div className="rounded-xl border border-success/[0.22] bg-success/[0.08] p-3">
           <p className="text-[11px] uppercase tracking-wider text-success">Achieved</p>
           <p className="mt-1 text-sm font-semibold text-text">{achieved ? achieved.label : 'No milestone yet'}</p>
-          <p className="text-xs text-muted">{achieved ? `${number(achieved.thresholdBv)} BV` : 'Start shopping to unlock rewards'}</p>
+          <p className="text-xs text-muted">{achieved ? `${number(achieved.thresholdBv)} Matching BV` : 'Build balanced monthly matching BV to unlock rewards'}</p>
         </div>
         <div className="rounded-xl border border-accent/[0.20] bg-accent/[0.08] p-3">
           <p className="text-[11px] uppercase tracking-wider text-accentSoft">Next Milestone</p>
           <p className="mt-1 text-sm font-semibold text-text">{next ? next.label : 'Highest milestone reached'}</p>
           <p className="text-xs text-muted">
-            {next ? `${number(next.thresholdBv)} BV | ${currency(next.rewardAmount)}` : 'No further target'}
+            {next ? `${number(next.thresholdBv)} Matching BV | ${currency(next.rewardAmount)}` : 'No further target'}
           </p>
         </div>
       </div>
