@@ -1,5 +1,7 @@
 'use client';
 
+import { clearWelcomeVoiceState } from '@/lib/utils/welcomeVoice';
+
 const TOKEN_KEY = 'hope_token';
 const REMEMBER_ME_KEY = 'hope_remember_me';
 const REMEMBERED_USERNAME_KEY = 'hope_login_username';
@@ -43,6 +45,7 @@ export function clearStoredToken() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(REMEMBER_ME_KEY);
   sessionStorage.removeItem(TOKEN_KEY);
+  clearWelcomeVoiceState();
   clearCookie('hope_token');
   clearCookie('hope_remember_me');
 }

@@ -12,6 +12,7 @@ import { getWebauthnLoginOptions, verifyWebauthnLogin } from '@/lib/services/aut
 import { getPostLoginRoute } from '@/lib/utils/postLoginRedirect';
 import { getWebAuthnAssertion, supportsWebAuthn } from '@/lib/utils/webauthn';
 import { getRememberedLoginPreference, getRememberedUsername } from '@/lib/utils/tokenStorage';
+import { markWelcomeVoicePending } from '@/lib/utils/welcomeVoice';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -39,6 +40,7 @@ export default function LoginPage() {
       const data = await loginMutation.mutateAsync(form);
       const user = data?.user || null;
       setRememberPreference(Boolean(form.rememberMe), form.username);
+      markWelcomeVoicePending();
       toast.success('Logged in successfully');
       router.push(getPostLoginRoute(user));
     } catch (err) {
@@ -65,6 +67,7 @@ export default function LoginPage() {
       setSession({ token: data.token, user: data.user, rememberMe: Boolean(form.rememberMe), username: form.username.trim() });
       setRememberPreference(Boolean(form.rememberMe), form.username);
       await refreshCoreQueries(data.user);
+      markWelcomeVoicePending();
       toast.success('Biometric login successful');
       router.push(getPostLoginRoute(data.user));
     } catch (err) {
