@@ -124,7 +124,7 @@ function RegisterPageContent() {
         <div className="flex items-center gap-3">
           <Logo size={52} className="shrink-0" />
           <div>
-            <h1 className="mt-1 bg-gradient-to-r from-[#a855f7] to-[#22c55e] bg-clip-text text-[30px] font-extrabold tracking-[1px] text-transparent antialiased">Hope International</h1>
+            <h1 className="mt-1 mb-3 bg-gradient-to-r from-[#a855f7] to-[#22c55e] bg-clip-text text-[22px] font-extrabold leading-[1.2] tracking-[1px] text-transparent antialiased md:text-[26px]">Hope International</h1>
           </div>
         </div>
       </div>
