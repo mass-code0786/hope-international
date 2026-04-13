@@ -87,11 +87,19 @@ async function resolvePlacementBySponsor(client, sponsorId, preferredLeg, strict
   }
 
   for (const leg of legs) {
-    const slot = await userRepository.findFirstAvailableParentByLeg(client, sponsorId, leg);
+    const directChildId = leg === 'left' ? sponsor.left_child_id : sponsor.right_child_id;
+    if (!directChildId) {
+      return {
+        parentId: sponsor.id,
+        placementSide: leg
+      };
+    }
+
+    const slot = await userRepository.findFirstAvailablePlacementInSubtree(client, sponsorId, leg);
     if (slot) {
       return {
         parentId: slot.parent_id,
-        placementSide: leg
+        placementSide: slot.placement_side
       };
     }
   }
@@ -116,15 +124,14 @@ async function previewReferral(referralCode, side) {
   }
 
   const sponsorProfile = await userRepository.findById(null, sponsor.id);
-  const binaryNode = await userRepository.getBinaryNode(null, sponsor.id);
-  const occupied = normalizedSide
-    ? Boolean(normalizedSide === 'left' ? binaryNode?.left_child_id : binaryNode?.right_child_id)
+  const placementPreview = normalizedSide
+    ? await resolvePlacementBySponsor(null, sponsor.id, normalizedSide, false)
     : null;
 
   return {
     sponsor: sponsorProfile,
     requestedSide: normalizedSide,
-    sideAvailable: normalizedSide ? !occupied : null
+    sideAvailable: normalizedSide ? Boolean(placementPreview?.parentId && placementPreview?.placementSide) : null
   };
 }
 

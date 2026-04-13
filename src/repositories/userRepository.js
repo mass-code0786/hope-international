@@ -146,12 +146,21 @@ async function setChild(client, parentId, side, childId) {
   return rowCount === 1;
 }
 
-async function findFirstAvailableParentByLeg(client, rootUserId, leg) {
+async function findFirstAvailablePlacementInSubtree(client, rootUserId, rootLeg) {
   const { rows } = await q(client).query(
-    `WITH RECURSIVE tree AS (
-       SELECT id, left_child_id, right_child_id, created_at, 0 AS depth
+    `WITH sponsor AS (
+       SELECT id, left_child_id, right_child_id
        FROM users
        WHERE id = $1
+     ),
+     subtree_root AS (
+       SELECT CASE WHEN $2 = 'left' THEN left_child_id ELSE right_child_id END AS id
+       FROM sponsor
+     ),
+     tree AS (
+       SELECT u.id, u.left_child_id, u.right_child_id, u.created_at, 0 AS depth
+       FROM users u
+       JOIN subtree_root sr ON sr.id = u.id
 
        UNION ALL
 
@@ -161,12 +170,17 @@ async function findFirstAvailableParentByLeg(client, rootUserId, leg) {
          ON v.child_id IS NOT NULL
        JOIN users child ON child.id = v.child_id
      )
-     SELECT id AS parent_id
+     SELECT
+       id AS parent_id,
+       CASE
+         WHEN left_child_id IS NULL THEN 'left'::placement_side
+         ELSE 'right'::placement_side
+       END AS placement_side
      FROM tree
-     WHERE CASE WHEN $2 = 'left' THEN left_child_id IS NULL ELSE right_child_id IS NULL END
-     ORDER BY depth ASC, created_at ASC
+     WHERE left_child_id IS NULL OR right_child_id IS NULL
+     ORDER BY depth ASC, created_at ASC, id ASC
      LIMIT 1`,
-    [rootUserId, leg]
+    [rootUserId, rootLeg]
   );
 
   return rows[0] || null;
@@ -437,7 +451,7 @@ module.exports = {
   getWelcomeSpinState,
   markWelcomeSpinClaimed,
   setChild,
-  findFirstAvailableParentByLeg,
+  findFirstAvailablePlacementInSubtree,
   getBinaryNode,
   getTeamTreeNode,
   getTeamTreeNodesByIds,

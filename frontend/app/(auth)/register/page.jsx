@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AlertCircle, ArrowRight, CheckCircle2, CreditCard, ShieldCheck, Sparkles, UserPlus } from 'lucide-react';
+import { ArrowRight, CheckCircle2, CreditCard, ShieldCheck, Sparkles, UserPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthMutations } from '@/hooks/useAuthMutations';
 import Logo from '@/components/common/Logo';
@@ -45,7 +45,6 @@ function RegisterPageContent() {
 
   const sponsorLocked = Boolean(referralPrefill);
   const sideLocked = Boolean(referralPrefill && requestedSide);
-  const strictPlacementBlocked = sideLocked && referralPreview?.sideAvailable === false;
 
   useEffect(() => {
     if (!referralPrefill) return;
@@ -98,11 +97,6 @@ function RegisterPageContent() {
       return;
     }
 
-    if (strictPlacementBlocked) {
-      toast.error(`Sponsor ${requestedSide} side is already occupied`);
-      return;
-    }
-
     const payload = {
       firstName: form.firstName.trim(),
       lastName: form.lastName.trim(),
@@ -112,7 +106,7 @@ function RegisterPageContent() {
       email: form.email.trim(),
       password: form.password,
       ...(form.referralCode.trim() ? { referralCode: form.referralCode.trim() } : {}),
-      ...(sideLocked ? { preferredLeg: requestedSide, strictPlacement: true } : {})
+      ...(sideLocked ? { preferredLeg: requestedSide } : {})
     };
 
     try {
@@ -164,8 +158,7 @@ function RegisterPageContent() {
               <p className="mt-1 text-sm text-muted">@{referralPreview?.sponsor?.username || referralPrefill}</p>
             </div>
             {previewLoading ? <span className="inline-flex items-center gap-1 rounded-full border border-[var(--hope-border)] bg-background px-3 py-1 text-xs font-semibold text-muted">Checking...</span> : null}
-            {!previewLoading && !previewError && !strictPlacementBlocked ? <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"><CheckCircle2 size={12} /> {formatSideLabel(requestedSide)}</span> : null}
-            {!previewLoading && strictPlacementBlocked ? <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"><AlertCircle size={12} /> Side occupied</span> : null}
+            {!previewLoading && !previewError ? <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"><CheckCircle2 size={12} /> {formatSideLabel(requestedSide)}</span> : null}
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-[var(--hope-border)] bg-background px-3 py-3">
@@ -178,7 +171,6 @@ function RegisterPageContent() {
             </div>
           </div>
           {previewError ? <p className="mt-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-danger dark:border-red-500/20 dark:bg-red-500/10">{previewError}</p> : null}
-          {strictPlacementBlocked ? <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">This referral link points to an occupied {requestedSide} slot. Use the other side link or ask the sponsor for a new placement.</p> : null}
         </div>
       ) : null}
 
@@ -265,7 +257,7 @@ function RegisterPageContent() {
         </div>
 
         {error ? <p className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-danger dark:border-red-500/20 dark:bg-red-500/10">{error}</p> : null}
-        <button disabled={registerMutation.isPending || previewLoading || Boolean(previewError) || strictPlacementBlocked} className="hope-button w-full disabled:cursor-not-allowed disabled:opacity-70">
+        <button disabled={registerMutation.isPending || previewLoading || Boolean(previewError)} className="hope-button w-full disabled:cursor-not-allowed disabled:opacity-70">
           {registerMutation.isPending ? 'Creating account...' : 'Create Hope account'}
           {!registerMutation.isPending ? <ArrowRight size={16} /> : null}
         </button>
