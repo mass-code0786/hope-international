@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowRight, CheckCircle2, CreditCard, ShieldCheck, Sparkles, UserPlus } from 'lucide-react';
+import { ArrowRight, CheckCircle2, CreditCard, ShieldCheck, UserPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthMutations } from '@/hooks/useAuthMutations';
 import Logo from '@/components/common/Logo';
@@ -124,11 +124,9 @@ function RegisterPageContent() {
         <div className="flex items-center gap-3">
           <Logo size={52} className="shrink-0" />
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-muted">Create member account</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-[-0.05em] text-text">Join Hope International</h1>
+            <h1 className="mt-1 bg-gradient-to-r from-[#a855f7] to-[#22c55e] bg-clip-text text-[30px] font-extrabold tracking-[1px] text-transparent antialiased">Hope International</h1>
           </div>
         </div>
-        <span className="hope-kicker hidden sm:inline-flex"><Sparkles size={12} /> New member</span>
       </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
