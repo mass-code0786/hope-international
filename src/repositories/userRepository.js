@@ -148,7 +148,7 @@ async function setChild(client, parentId, side, childId) {
 
 async function findFirstAvailablePlacementInSubtree(client, rootUserId, rootLeg) {
   const { rows } = await q(client).query(
-    `WITH sponsor AS (
+    `WITH RECURSIVE sponsor AS (
        SELECT id, left_child_id, right_child_id
        FROM users
        WHERE id = $1
