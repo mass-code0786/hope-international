@@ -1,6 +1,9 @@
 import { getStoredToken } from '@/lib/utils/tokenStorage';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  'http://localhost:4000';
 
 function extractApiErrorMessage(data) {
   const formError = data?.details?.formErrors?.find((msg) => typeof msg === 'string' && msg.trim());

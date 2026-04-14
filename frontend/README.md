@@ -24,6 +24,7 @@ Premium mobile-first Next.js frontend for binary MLM + e-commerce.
    - `npm run start`
 
 ## Environment
+- `NEXT_PUBLIC_API_URL=http://localhost:4000`
 - `NEXT_PUBLIC_API_BASE_URL=http://localhost:4000`
 - `NEXT_PUBLIC_APP_URL=http://localhost:3000`
 
