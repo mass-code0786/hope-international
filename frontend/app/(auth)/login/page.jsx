@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Eye, EyeOff, Fingerprint, LoaderCircle, LockKeyhole, ShieldCheck, Sparkles, User2 } from 'lucide-react';
 import { useAuthMutations } from '@/hooks/useAuthMutations';
@@ -175,10 +174,7 @@ export default function LoginPage() {
         </div>
 
         <p className="mt-4 text-center text-sm text-muted">
-          Create your profile to access the marketplace.{' '}
-          <Link href="/register" className="font-semibold text-accent underline decoration-[var(--hope-accent-soft)] underline-offset-4 transition hover:opacity-80">
-            Create account
-          </Link>
+          Registration is available only through a referral link from an existing member.
         </p>
       </div>
     </div>

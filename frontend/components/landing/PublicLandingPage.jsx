@@ -35,7 +35,7 @@ import { getPostLoginRoute } from '@/lib/utils/postLoginRedirect';
 
 const faqItems = [
   { question: 'What is Hope International?', answer: 'Hope International is a hybrid platform that combines network growth, ecommerce participation, auction activity, and wallet tools in one mobile-first experience.' },
-  { question: 'How do I start earning?', answer: 'Create an account, complete your setup, choose your placement, and begin building activity through products, referrals, and platform participation.' },
+  { question: 'How do I start earning?', answer: 'Join through a valid referral link, complete your setup, choose your placement, and begin building activity through products, referrals, and platform participation.' },
   { question: 'What is the binary system?', answer: 'The binary system organizes your team into left and right legs so volume and team growth can contribute to matching and binary-based earning opportunities.' },
   { question: 'Do I need to buy products to use the platform?', answer: 'You can explore the platform freely, but product and activity participation can unlock more of the available earning and engagement flows.' },
   { question: 'How does direct income work?', answer: 'Direct income is paid when personally referred users complete qualifying activity, based on the current compensation rules configured in the platform.' },
@@ -53,7 +53,7 @@ const faqItems = [
   { question: 'Do I need technical knowledge?', answer: 'No. The experience is designed to be straightforward for everyday users, with guided flows across registration, wallet actions, and participation.' },
   { question: 'Can I use the platform on mobile?', answer: 'Yes. The landing page and core user flows are designed mobile-first so the main experience stays usable on phones and tablets.' },
   { question: 'How do rewards work after auctions?', answer: 'Auction outcomes and related reward logic depend on the configured backend rules for winners, participation, and any compensation flow tied to the auction.' },
-  { question: 'How do I register today?', answer: 'Use the Register button from the hero or CTA section to create your account and begin onboarding into the platform.' }
+  { question: 'How do I register today?', answer: 'Ask an existing member for a valid referral link to begin onboarding into the platform.' }
 ];
 
 function PrimaryButton({ href, children }) {
@@ -327,7 +327,7 @@ export default function PublicLandingPage() {
       step: 1,
       icon: Users,
       title: 'Register Account',
-      description: 'Create your Hope International account in minutes and unlock access to products, teams, and wallet tools.',
+      description: 'Join through a valid referral link from an existing member, then unlock access to products, teams, and wallet tools.',
       imageUrl: getMedia('step_image_1').imageUrl
     },
     {
@@ -526,12 +526,12 @@ export default function PublicLandingPage() {
                   {!token ? (
                     <>
                       <Link
-                        href="/register"
+                        href="/login"
                         className="flex w-full items-center justify-between rounded-[14px] px-3 py-3 text-sm text-white transition hover:bg-white/8"
                         onClick={() => setMoreMenuOpen(false)}
                       >
-                        <span>Start Now</span>
-                        <span className="text-xs text-[#9ca3af]">Join</span>
+                        <span>Login</span>
+                        <span className="text-xs text-[#9ca3af]">Members</span>
                       </Link>
                       <Link
                         href="/login"
@@ -572,7 +572,7 @@ export default function PublicLandingPage() {
 
             <div className="hidden items-center gap-3 md:flex">
               <SecondaryButton href="#features">Explore Platform</SecondaryButton>
-              <PrimaryButton href="/register">Start Now</PrimaryButton>
+              <PrimaryButton href="/login">Member Login</PrimaryButton>
             </div>
           </div>
         </header>
@@ -606,8 +606,8 @@ export default function PublicLandingPage() {
               </p>
 
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                <PrimaryButton href="/register">
-                  <span>Start Now</span>
+                <PrimaryButton href="/login">
+                  <span>Member Login</span>
                   <ArrowRight size={15} />
                 </PrimaryButton>
                 <SecondaryButton href="#features">
@@ -762,7 +762,7 @@ export default function PublicLandingPage() {
                 <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-white">Start Your Income Journey Today</h2>
                 <p className="mt-3 text-sm leading-7 text-[#d1d5db]">Join Hope International and step into a premium mobile-first ecosystem for earnings, shopping, and network growth.</p>
               </div>
-              <PrimaryButton href="/register">Register Now</PrimaryButton>
+              <PrimaryButton href="/login">Member Login</PrimaryButton>
             </div>
           </div>
         </section>

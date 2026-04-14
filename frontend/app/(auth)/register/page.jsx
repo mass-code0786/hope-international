@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowRight, CheckCircle2, CreditCard, ShieldCheck, UserPlus } from 'lucide-react';
+import { ArrowRight, Ban, CheckCircle2, CreditCard, ShieldCheck, UserPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthMutations } from '@/hooks/useAuthMutations';
 import Logo from '@/components/common/Logo';
@@ -45,6 +45,7 @@ function RegisterPageContent() {
 
   const sponsorLocked = Boolean(referralPrefill);
   const sideLocked = Boolean(referralPrefill && requestedSide);
+  const registrationBlocked = !referralPrefill;
 
   useEffect(() => {
     if (!referralPrefill) return;
@@ -91,6 +92,13 @@ function RegisterPageContent() {
   async function onSubmit(e) {
     e.preventDefault();
     setError('');
+
+    if (registrationBlocked) {
+      const message = 'Registration is available only through a referral link.';
+      setError(message);
+      toast.error(message);
+      return;
+    }
 
     if (previewError) {
       toast.error(previewError);
@@ -145,7 +153,27 @@ function RegisterPageContent() {
             <p className="mt-3 text-sm font-semibold text-text">Referral-ready profile</p>
             <p className="mt-1 text-xs leading-5 text-muted">Referral entry and placement context are preserved during signup.</p>
           </div>
+      </div>
+
+      {registrationBlocked ? (
+        <div className="mt-5 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-amber-900 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-100">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white/80 text-amber-700 dark:bg-white/10 dark:text-amber-200">
+              <Ban size={18} />
+            </span>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-80">Referral Required</p>
+              <h2 className="mt-2 text-lg font-semibold">Registration is available only through a referral link.</h2>
+              <p className="mt-2 text-sm leading-6 opacity-90">
+                Ask your sponsor for a valid link in the format <span className="font-semibold">/register?ref=&lt;referralCode&gt;&amp;side=left</span> or <span className="font-semibold">/register?ref=&lt;referralCode&gt;&amp;side=right</span>.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Link href="/login" className="hope-button-secondary">Back to login</Link>
+              </div>
+            </div>
+          </div>
         </div>
+      ) : null}
 
       {referralPrefill ? (
         <div className="mt-5 rounded-3xl border border-[var(--hope-border)] bg-cardSoft p-4">
@@ -172,7 +200,7 @@ function RegisterPageContent() {
         </div>
       ) : null}
 
-      <form onSubmit={onSubmit} className="mt-6 space-y-5">
+      <form onSubmit={onSubmit} className={`mt-6 space-y-5 ${registrationBlocked ? 'pointer-events-none opacity-50' : ''}`}>
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Profile details</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -244,7 +272,7 @@ function RegisterPageContent() {
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Referral details</p>
           <label className="mt-3 block space-y-2">
             <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">Referral Link / Referral Code</span>
-            <input className="hope-input" placeholder="username or referral link" value={form.referralCode} readOnly={sponsorLocked} onChange={(e) => setForm((p) => ({ ...p, referralCode: e.target.value }))} />
+            <input className="hope-input" placeholder="username or referral link" required value={form.referralCode} readOnly={sponsorLocked} onChange={(e) => setForm((p) => ({ ...p, referralCode: e.target.value }))} />
           </label>
           {sideLocked ? (
             <div className="mt-3 rounded-2xl border border-[var(--hope-border)] bg-cardSoft px-3 py-3">
@@ -255,7 +283,7 @@ function RegisterPageContent() {
         </div>
 
         {error ? <p className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-danger dark:border-red-500/20 dark:bg-red-500/10">{error}</p> : null}
-        <button disabled={registerMutation.isPending || previewLoading || Boolean(previewError)} className="hope-button w-full disabled:cursor-not-allowed disabled:opacity-70">
+        <button disabled={registrationBlocked || registerMutation.isPending || previewLoading || Boolean(previewError)} className="hope-button w-full disabled:cursor-not-allowed disabled:opacity-70">
           {registerMutation.isPending ? 'Creating account...' : 'Create Hope account'}
           {!registerMutation.isPending ? <ArrowRight size={16} /> : null}
         </button>

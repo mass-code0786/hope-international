@@ -14,31 +14,15 @@ const registerSchema = z.object({
       countryCode: z.string().min(1).max(12),
       email: z.string().email(),
       password: z.string().min(8).max(128),
-      referralCode: z.string().min(1).max(500).optional(),
-      referralUsername: z.string().min(1).max(120).optional(),
-      sponsorId: uuid.optional(),
-      sponsorCode: z.string().min(1).max(500).optional(),
-      parentId: uuid.optional(),
-      placementSide: z.enum(['left', 'right']).optional(),
-      preferredLeg: z.enum(['left', 'right']).optional(),
-      strictPlacement: z.boolean().optional()
+      referralCode: z.preprocess(
+        (value) => (value === undefined || value === null ? '' : value),
+        z.string().trim().min(1, 'Referral code is required').max(500)
+      ),
+      preferredLeg: z.enum(['left', 'right']).optional()
     })
     .superRefine((val, ctx) => {
-      if ((val.parentId && !val.placementSide) || (!val.parentId && val.placementSide)) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'parentId and placementSide must be provided together' });
-      }
-      const referralInputs = [val.sponsorId, val.sponsorCode, val.referralCode, val.referralUsername].filter(Boolean);
-      if (referralInputs.length > 1) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Use only one referral field' });
-      }
-      if (!val.sponsorId && !val.sponsorCode && !val.referralCode && !val.referralUsername && val.preferredLeg) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'preferredLeg requires referral details' });
-      }
-      if (val.strictPlacement && !val.preferredLeg) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'strictPlacement requires preferredLeg' });
-      }
-      if (val.parentId && (val.sponsorId || val.sponsorCode || val.referralCode || val.referralUsername)) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Use either direct parent placement or sponsor leg placement, not both' });
+      if (!String(val.referralCode || '').trim()) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Referral code is required', path: ['referralCode'] });
       }
     }),
   params: z.object({}),

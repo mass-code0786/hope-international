@@ -42,7 +42,7 @@ function mapFeaturedItem(item) {
     priceLabel: resolvedPriceLabel,
     promoText: item.promo_text || item.product_category || 'Featured',
     ctaText: item.cta_text || 'Explore',
-    targetLink: item.target_link || '/register',
+    targetLink: item.target_link || '/login',
     sortOrder: item.sort_order || 0,
     isActive: Boolean(item.is_active)
   };
@@ -131,8 +131,8 @@ async function getPublicLandingPage() {
       settings: {
         heroBadge: settings?.hero_badge || 'Hope International',
         heroHeadline: settings?.hero_headline || 'Products, offers, and updates in one place.',
-        heroSubheadline: settings?.hero_subheadline || 'Browse featured products, see what Hope International offers, and create an account when you are ready.',
-        heroPrimaryCtaText: settings?.hero_primary_cta_text || 'Create account',
+        heroSubheadline: settings?.hero_subheadline || 'Browse featured products, see what Hope International offers, and connect with a sponsor when you are ready to join.',
+        heroPrimaryCtaText: settings?.hero_primary_cta_text || 'Member login',
         heroSecondaryCtaText: settings?.hero_secondary_cta_text || 'Login',
         heroImageUrl: settings?.hero_image_url || '',
         heroBackgroundNote: settings?.hero_background_note || 'Available across multiple countries',
