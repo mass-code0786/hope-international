@@ -45,8 +45,9 @@ function CompactMetric({ label, value, icon: Icon, accent = false }) {
 function HeroCard({ auction, status, entryPrice, participantCount, latestBidder, topParticipant }) {
   const images = getAuctionImages(auction);
   const cover = images[0] || 'https://placehold.co/900x900/e2e8f0/334155?text=Auction';
-  const prizeLabel = auction?.auction_type === 'cash_amount'
-    ? `${formatAuctionMoney(auction?.each_winner_amount || auction?.prize_amount || 0)} cash`
+  const isCashAuction = auction?.reward_mode === 'cash' || auction?.auction_type === 'cash_amount';
+  const prizeLabel = isCashAuction
+    ? `${formatAuctionMoney(auction?.cash_prize || auction?.each_winner_amount || auction?.prize_amount || 0)} cash`
     : auction?.reward_mode === 'split'
     ? `${formatAuctionMoney(auction?.reward_value || 0)} reward`
     : `${number(auction?.stock_quantity || 1)} prize`;
@@ -287,7 +288,7 @@ export default function AuctionDetailPage() {
   const aboutTitle = auction?.product_name || auction?.title || 'Auction item';
   const aboutSource = auction?.seller_name || auction?.store_name || auction?.category || 'Hope Marketplace';
   const aboutDescription = auction?.short_description || auction?.description || 'Join this auction for a chance to win with compact entry pricing and live leaderboard updates.';
-  const isCashAuction = auction?.auction_type === 'cash_amount';
+  const isCashAuction = auction?.reward_mode === 'cash' || auction?.auction_type === 'cash_amount';
 
   if (detailQuery.isLoading) {
     return <div className="rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#1A1D2E] p-4 text-sm text-[#B0B3C6]">Loading auction...</div>;

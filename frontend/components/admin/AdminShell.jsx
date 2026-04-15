@@ -14,12 +14,13 @@ import { canAccessAdminArea } from '@/lib/constants/access';
 import { useAuthStore } from '@/lib/store/authStore';
 import { clearStoredToken } from '@/lib/utils/tokenStorage';
 import { LoginWelcomeVoice } from '@/components/shell/LoginWelcomeVoice';
+import { clearProtectedQueries } from '@/lib/utils/logout';
 
 export function AdminShell({ children }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { token, hydrated, hydrate, user, setUser, clearSession } = useAuthStore();
+  const { token, hydrated, hydrate, user, setUser, clearSession, isLoggingOut } = useAuthStore();
 
   useEffect(() => {
     if (!hydrated) hydrate();
@@ -68,9 +69,9 @@ export function AdminShell({ children }) {
 
   async function onLogout() {
     clearStoredToken();
-    clearSession();
+    clearSession({ loggingOut: true });
     setMobileMenuOpen(false);
-    await queryClient.clear();
+    await clearProtectedQueries(queryClient);
     toast.success('Logged out successfully');
     router.replace('/login');
   }
@@ -78,6 +79,7 @@ export function AdminShell({ children }) {
   const isHydrating = !hydrated;
   const isAuthBootstrapping = hydrated && Boolean(token) && meQuery.isPending && !resolvedUser;
 
+  if (isLoggingOut) return null;
   if (isHydrating || isAuthBootstrapping) return <ProfileSkeleton />;
   if (!token) return <ProfileSkeleton />;
   if (token && meQuery.isError && !resolvedUser) return <ErrorState message="Unable to verify admin access." onRetry={meQuery.refetch} />;

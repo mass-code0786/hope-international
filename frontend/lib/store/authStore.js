@@ -26,12 +26,13 @@ export const useAuthStore = create((set) => ({
   token: null,
   user: null,
   hydrated: false,
+  isLoggingOut: false,
   registrationSummary: null,
   rememberMe: false,
   setSession: ({ token, user, rememberMe = false, username = '' }) => {
     if (token) setStoredToken(token, { rememberMe });
     setRememberedUsername(username || user?.username || '', true);
-    set({ token, user, rememberMe });
+    set({ token, user, rememberMe, isLoggingOut: false });
   },
   setRememberPreference: (rememberMe, username = '') => {
     setRememberedUsername(username, rememberMe);
@@ -46,12 +47,19 @@ export const useAuthStore = create((set) => ({
     writeRegistrationSummary(null);
     set({ registrationSummary: null });
   },
-  clearSession: () => {
+  clearSession: ({ loggingOut = false } = {}) => {
     clearStoredToken();
-    set({ token: null, user: null, rememberMe: false });
+    set({ token: null, user: null, rememberMe: false, isLoggingOut: Boolean(loggingOut) });
   },
   hydrate: () => {
     const token = getStoredToken();
-    set({ token, user: null, hydrated: true, registrationSummary: readRegistrationSummary(), rememberMe: getRememberedLoginPreference() });
+    set({
+      token,
+      user: null,
+      hydrated: true,
+      isLoggingOut: false,
+      registrationSummary: readRegistrationSummary(),
+      rememberMe: getRememberedLoginPreference()
+    });
   }
 }));

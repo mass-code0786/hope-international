@@ -418,6 +418,7 @@ async function createAuction(client, payload) {
   addField('hidden_capacity', payload.hiddenCapacity);
   addField('stock_quantity', payload.stockQuantity);
   addField('auction_type', payload.auctionType || 'product');
+  addField('cash_prize', payload.cashPrize || null);
   addField('prize_amount', payload.prizeAmount || null);
   addField('prize_distribution_type', payload.prizeDistributionType || 'per_winner');
   addField('each_winner_amount', payload.eachWinnerAmount || null);
@@ -467,26 +468,27 @@ async function updateAuction(client, auctionId, payload) {
          hidden_capacity = $16,
          stock_quantity = $17,
          auction_type = $18,
-         prize_amount = $19,
-         prize_distribution_type = $20,
-         each_winner_amount = $21,
-         reward_mode = $22,
-         reward_value = $23,
-         total_entries = $24,
-         has_tie = $25,
-         winner_count = $26,
-         winner_modes = $27,
-         start_at = $28,
-         end_at = $29,
-         status = $30,
-         is_active = $31,
-         cancelled_at = $32,
-         closed_at = $33,
-         close_reason = $34,
-         winner_user_id = $35,
-         winning_bid_id = $36,
-         total_bids = $37,
-         updated_by = $38
+         cash_prize = $19,
+         prize_amount = $20,
+         prize_distribution_type = $21,
+         each_winner_amount = $22,
+         reward_mode = $23,
+         reward_value = $24,
+         total_entries = $25,
+         has_tie = $26,
+         winner_count = $27,
+         winner_modes = $28,
+         start_at = $29,
+         end_at = $30,
+         status = $31,
+         is_active = $32,
+         cancelled_at = $33,
+         closed_at = $34,
+         close_reason = $35,
+         winner_user_id = $36,
+         winning_bid_id = $37,
+         total_bids = $38,
+         updated_by = $39
      WHERE id = $1
      RETURNING *`,
     [
@@ -508,6 +510,7 @@ async function updateAuction(client, auctionId, payload) {
       payload.hiddenCapacity,
       payload.stockQuantity,
       payload.auctionType || 'product',
+      payload.cashPrize || null,
       payload.prizeAmount || null,
       payload.prizeDistributionType || 'per_winner',
       payload.eachWinnerAmount || null,

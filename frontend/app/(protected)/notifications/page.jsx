@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Bell, CheckCheck, ChevronRight, Sparkles } from 'lucide-react';
+import { CheckCheck, ChevronRight, Sparkles } from 'lucide-react';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
@@ -87,7 +87,6 @@ export default function NotificationsPage() {
   const pagination = envelope.pagination || {};
   const summary = envelope.summary || {};
   const unreadCount = Number(summary.unread_count || 0);
-  const totalCount = Number(summary.total_count || notifications.length || 0);
 
   async function handleOpenNotification(item) {
     if (!item) return;
@@ -104,9 +103,7 @@ export default function NotificationsPage() {
   return (
     <div className="space-y-4">
       <SectionHeader
-        eyebrow="Inbox"
         title="Notifications"
-        subtitle="Deposit reviews, wallet credits, auction results, order updates, support replies, and broadcasts appear here."
         action={(
           <button
             type="button"
@@ -119,33 +116,6 @@ export default function NotificationsPage() {
           </button>
         )}
       />
-
-      <section className="relative overflow-hidden rounded-[32px] border border-white/10 bg-[linear-gradient(135deg,rgba(27,30,38,0.98),rgba(17,18,24,0.98))] p-5 text-white shadow-[0_24px_70px_rgba(0,0,0,0.35)]">
-        <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-[rgba(56,189,248,0.14)] blur-3xl" />
-        <div className="absolute bottom-0 left-0 h-24 w-24 rounded-full bg-[rgba(245,158,11,0.12)] blur-3xl" />
-        <div className="relative flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-[#f8fafc]">
-              <Bell size={20} />
-            </span>
-            <div>
-              <p className="text-xs uppercase tracking-[0.24em] text-white/55">Notification Center</p>
-              <p className="mt-1 text-lg font-semibold tracking-[-0.04em] text-white">Stay on top of account activity</p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">Unread</p>
-              <p className="mt-1 text-2xl font-semibold">{unreadCount}</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">Total</p>
-              <p className="mt-1 text-2xl font-semibold">{totalCount}</p>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {!notifications.length ? (
         <EmptyState title="No notifications yet" description="Approved deposits, income credits, auction results, order updates, and support replies will appear here." />

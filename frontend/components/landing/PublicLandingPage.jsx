@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowRight,
   Calendar,
@@ -32,6 +32,7 @@ import { useAuthStore } from '@/lib/store/authStore';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { resolveMediaUrl } from '@/lib/utils/media';
 import { getPostLoginRoute } from '@/lib/utils/postLoginRedirect';
+import { clearProtectedQueries } from '@/lib/utils/logout';
 
 const faqItems = [
   { question: 'What is Hope International?', answer: 'Hope International is a hybrid platform that combines network growth, ecommerce participation, auction activity, and wallet tools in one mobile-first experience.' },
@@ -230,6 +231,7 @@ function FaqItem({ item, open, onToggle }) {
 
 export default function PublicLandingPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { token, hydrated, hydrate, clearSession } = useAuthStore();
   const visitorTrackedRef = useRef(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
@@ -554,10 +556,11 @@ export default function PublicLandingPage() {
                       </Link>
                       <button
                         type="button"
-                        onClick={() => {
-                          clearSession();
+                        onClick={async () => {
+                          clearSession({ loggingOut: true });
+                          await clearProtectedQueries(queryClient);
                           setMoreMenuOpen(false);
-                          router.push('/login');
+                          router.replace('/login');
                         }}
                         className="flex w-full items-center justify-between rounded-[14px] px-3 py-3 text-left text-sm text-white transition hover:bg-white/8"
                       >

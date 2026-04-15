@@ -148,6 +148,7 @@ function normalizeAuction(auction) {
     total_entries: toNumber(auction.total_entries),
     total_bids: toNumber(auction.total_bids),
     auction_type: auction.auction_type || 'product',
+    cash_prize: auction.cash_prize === null || auction.cash_prize === undefined ? null : toNumber(auction.cash_prize),
     prize_amount: auction.prize_amount === null || auction.prize_amount === undefined ? null : toNumber(auction.prize_amount),
     prize_distribution_type: auction.prize_distribution_type || 'per_winner',
     each_winner_amount: auction.each_winner_amount === null || auction.each_winner_amount === undefined ? null : toNumber(auction.each_winner_amount),

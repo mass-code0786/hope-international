@@ -22,7 +22,7 @@ const LazyHopeAssistant = dynamic(
 
 export function AppShell({ children }) {
   const router = useRouter();
-  const { token, hydrated, hydrate, setUser, clearSession, user } = useAuthStore();
+  const { token, hydrated, hydrate, setUser, clearSession, user, isLoggingOut } = useAuthStore();
 
   useEffect(() => {
     if (!hydrated) hydrate();
@@ -68,6 +68,10 @@ export function AppShell({ children }) {
 
   const isAuthBootstrapping = !hydrated || (Boolean(token) && meQuery.isPending && !resolvedUser);
   const sellerActive = sellerRoleAccess || Boolean(sellerAccessQuery.data?.canAccessDashboard);
+
+  if (isLoggingOut) {
+    return null;
+  }
 
   if (isAuthBootstrapping) {
     return (

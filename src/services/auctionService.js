@@ -12,6 +12,7 @@ const BTCT_USD_PRICE = 0.10;
 const AUCTION_SCHEMA_ERROR_CODES = ['42P01', '42703', '42883', '42804'];
 const AUCTION_WINNER_MODES = ['highest', 'middle', 'last'];
 const AUCTION_TYPES = ['product', 'cash_amount'];
+const AUCTION_REWARD_MODES = ['stock', 'split', 'cash'];
 const AUCTION_PRIZE_DISTRIBUTION_TYPES = ['per_winner', 'shared_pool', 'rank_wise'];
 const CASH_AUCTION_CREDIT_WALLET = 'withdrawal_wallet';
 
@@ -71,6 +72,11 @@ function validateRewardValue(value) {
   return amount;
 }
 
+function normalizeRewardMode(value, fallback = 'stock') {
+  const normalized = String(value || fallback).trim().toLowerCase();
+  return AUCTION_REWARD_MODES.includes(normalized) ? normalized : fallback;
+}
+
 function normalizeAuctionType(value, fallback = 'product') {
   const normalized = String(value || fallback).trim().toLowerCase();
   return AUCTION_TYPES.includes(normalized) ? normalized : fallback;
@@ -89,16 +95,20 @@ function validatePositiveMoney(value, label) {
   return amount;
 }
 
-function validateCashAuctionConfig({ auctionType, prizeAmount, prizeDistributionType, winnerCount }) {
-  if (auctionType !== 'cash_amount') {
+function validateCashAuctionConfig({ rewardMode, auctionType, cashPrize, prizeAmount, prizeDistributionType, eachWinnerAmount: existingEachWinnerAmount, winnerCount }) {
+  const safeRewardMode = normalizeRewardMode(rewardMode, auctionType === 'cash_amount' ? 'cash' : 'stock');
+  if (safeRewardMode !== 'cash') {
     return {
+      cashPrize: null,
+      rewardMode: safeRewardMode,
+      auctionType: 'product',
       prizeAmount: null,
       prizeDistributionType: 'per_winner',
       eachWinnerAmount: null
     };
   }
 
-  const safePrizeAmount = validatePositiveMoney(prizeAmount, 'Prize amount');
+  const safePrizeAmount = validatePositiveMoney(cashPrize ?? existingEachWinnerAmount ?? prizeAmount, 'Cash prize');
   const safeWinnerCount = Number(winnerCount || 0);
   if (!Number.isInteger(safeWinnerCount) || safeWinnerCount <= 0) {
     throw new ApiError(400, 'Winner count must be a positive whole number');
@@ -107,6 +117,9 @@ function validateCashAuctionConfig({ auctionType, prizeAmount, prizeDistribution
   const safeDistributionType = normalizePrizeDistributionType(prizeDistributionType, 'per_winner');
   if (safeDistributionType === 'rank_wise') {
     return {
+      cashPrize: safePrizeAmount,
+      rewardMode: 'cash',
+      auctionType: 'cash_amount',
       prizeAmount: safePrizeAmount,
       prizeDistributionType: safeDistributionType,
       eachWinnerAmount: null
@@ -125,6 +138,9 @@ function validateCashAuctionConfig({ auctionType, prizeAmount, prizeDistribution
     : safePrizeAmount;
 
   return {
+    cashPrize: safePrizeAmount,
+    rewardMode: 'cash',
+    auctionType: 'cash_amount',
     prizeAmount: safePrizeAmount,
     prizeDistributionType: safeDistributionType,
     eachWinnerAmount
@@ -201,15 +217,19 @@ function sanitizeAuctionPayload(payload, before = null) {
     throw new ApiError(400, 'Stock quantity must be a positive whole number');
   }
 
-  const rewardMode = String(payload.rewardMode ?? before?.reward_mode ?? 'stock').trim().toLowerCase();
-  if (!['stock', 'split'].includes(rewardMode)) {
-    throw new ApiError(400, 'Reward mode must be stock or split');
+  const rewardMode = normalizeRewardMode(
+    payload.rewardMode
+      ?? before?.reward_mode
+      ?? (payload.auctionType === 'cash_amount' || before?.auction_type === 'cash_amount' ? 'cash' : 'stock')
+  );
+  if (!AUCTION_REWARD_MODES.includes(rewardMode)) {
+    throw new ApiError(400, 'Reward mode must be stock, split, or cash');
   }
 
   const rewardValueRaw = payload.rewardValue ?? before?.reward_value;
-  const rewardValue = rewardValueRaw === null || rewardValueRaw === undefined || rewardValueRaw === ''
-    ? null
-    : validateRewardValue(rewardValueRaw);
+  const rewardValue = rewardMode === 'split'
+    ? validateRewardValue(rewardValueRaw)
+    : null;
 
   const isActive = payload.isActive ?? before?.is_active ?? true;
   const cancelledAt = payload.cancelledAt ?? before?.cancelled_at ?? null;
@@ -217,18 +237,25 @@ function sanitizeAuctionPayload(payload, before = null) {
   const totalEntries = Number(payload.totalEntries ?? before?.total_entries ?? 0);
   const winnerCount = Number(payload.winnerCount ?? before?.winner_count ?? 1);
   const winnerModes = normalizeWinnerModes(payload.winnerModes ?? before?.winner_modes ?? ['highest']);
-  const auctionType = normalizeAuctionType(payload.auctionType ?? before?.auction_type ?? 'product');
+  const auctionType = normalizeAuctionType(
+    rewardMode === 'cash'
+      ? 'cash_amount'
+      : (payload.auctionType ?? before?.auction_type ?? 'product')
+  );
   const winnerCountValue = Number.isInteger(winnerCount) && winnerCount > 0 ? winnerCount : 1;
   const cashConfig = validateCashAuctionConfig({
+    rewardMode,
     auctionType,
+    cashPrize: payload.cashPrize ?? before?.cash_prize ?? null,
     prizeAmount: payload.prizeAmount ?? before?.prize_amount ?? null,
     prizeDistributionType: payload.prizeDistributionType ?? before?.prize_distribution_type ?? 'per_winner',
+    eachWinnerAmount: payload.eachWinnerAmount ?? before?.each_winner_amount ?? null,
     winnerCount: winnerCountValue
   });
-  const rankPrizes = auctionType === 'cash_amount' && cashConfig.prizeDistributionType === 'rank_wise'
+  const rankPrizes = cashConfig.auctionType === 'cash_amount' && cashConfig.prizeDistributionType === 'rank_wise'
     ? validateRankPrizeEntries(payload.rankPrizes ?? before?.rank_prizes ?? [], winnerCountValue)
     : [];
-  const effectivePrizeAmount = auctionType === 'cash_amount' && cashConfig.prizeDistributionType === 'rank_wise'
+  const effectivePrizeAmount = cashConfig.auctionType === 'cash_amount' && cashConfig.prizeDistributionType === 'rank_wise'
     ? roundMoney(rankPrizes.reduce((sum, entry) => sum + Number(entry.prizeAmount || 0), 0))
     : cashConfig.prizeAmount;
 
@@ -249,7 +276,8 @@ function sanitizeAuctionPayload(payload, before = null) {
     entryPrice,
     hiddenCapacity,
     stockQuantity,
-    auctionType,
+    auctionType: cashConfig.auctionType,
+    cashPrize: cashConfig.cashPrize,
     prizeAmount: effectivePrizeAmount,
     prizeDistributionType: cashConfig.prizeDistributionType,
     eachWinnerAmount: cashConfig.eachWinnerAmount,
@@ -436,14 +464,20 @@ function buildWinnerAllocations(auction, participants, bids) {
   const allocationRatio = Number((1 / actualWinnerCount).toFixed(6));
   const stockQuantity = Number(auction.stock_quantity || 1);
   const rewardValue = Number(auction.reward_value || 0);
-  const isCashAuction = normalizeAuctionType(auction.auction_type, 'product') === 'cash_amount';
-  const eachWinnerAmount = isCashAuction ? roundMoney(auction.each_winner_amount || 0) : null;
+  const normalizedRewardMode = normalizeRewardMode(
+    auction.reward_mode,
+    normalizeAuctionType(auction.auction_type, 'product') === 'cash_amount' ? 'cash' : 'stock'
+  );
+  const isCashAuction = normalizedRewardMode === 'cash';
+  const cashPrize = isCashAuction ? roundMoney(auction.cash_prize || auction.each_winner_amount || auction.prize_amount || 0) : null;
   const rankPrizeMap = new Map(
     normalizeRankPrizeEntries(auction.rank_prizes || []).map((entry) => [entry.winnerRank, entry.prizeAmount])
   );
-  const allocationQuantity = auction.reward_mode === 'split'
+  const allocationQuantity = normalizedRewardMode === 'split'
     ? Number((rewardValue / actualWinnerCount).toFixed(2))
-    : Number((stockQuantity / actualWinnerCount).toFixed(2));
+    : normalizedRewardMode === 'cash'
+      ? null
+      : Number((stockQuantity / actualWinnerCount).toFixed(2));
 
   return selected.map((winner, index) => {
     const selectionRank = index + 1;
@@ -451,7 +485,7 @@ function buildWinnerAllocations(auction, participants, bids) {
       ? (
         normalizePrizeDistributionType(auction.prize_distribution_type, 'per_winner') === 'rank_wise'
           ? roundMoney(rankPrizeMap.get(selectionRank) || 0)
-          : eachWinnerAmount
+          : cashPrize
       )
       : null;
 
@@ -527,7 +561,10 @@ async function settleAuctionRewards(client, auction, winners) {
 
   const winnerIds = new Set(winners.map((winner) => String(winner.userId)));
   const winnersByUserId = new Map(winners.map((winner) => [String(winner.userId), winner]));
-  const isCashAuction = normalizeAuctionType(auction.auction_type, 'product') === 'cash_amount';
+  const isCashAuction = normalizeRewardMode(
+    auction.reward_mode,
+    normalizeAuctionType(auction.auction_type, 'product') === 'cash_amount' ? 'cash' : 'stock'
+  ) === 'cash';
   const distributions = [];
 
   for (const participant of leaderboard) {
@@ -541,7 +578,7 @@ async function settleAuctionRewards(client, auction, winners) {
     let walletTransactionId = existing?.wallet_transaction_id || null;
     let creditedWalletType = existing?.credited_wallet_type || (isWinner && isCashAuction ? CASH_AUCTION_CREDIT_WALLET : null);
     let cashAwarded = isWinner && isCashAuction
-      ? roundMoney(winnerRecord?.prizeAmount || auction.each_winner_amount || 0)
+      ? roundMoney(winnerRecord?.prizeAmount || auction.cash_prize || auction.each_winner_amount || auction.prize_amount || 0)
       : 0;
     let distributedAt = existing?.distributed_at || new Date().toISOString();
 

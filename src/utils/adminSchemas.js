@@ -254,8 +254,9 @@ const adminAuctionBaseBody = z.object({
   prizeDistributionType: z.enum(adminAuctionPrizeDistributionTypes).optional(),
   rankPrizes: z.array(adminAuctionRankPrizeSchema).optional(),
   stockQuantity: z.number().int().positive().optional(),
-  rewardMode: z.enum(['stock', 'split']).optional(),
+  rewardMode: z.enum(['stock', 'split', 'cash']).optional(),
   rewardValue: z.number().positive().optional(),
+  cashPrize: z.number().positive().optional(),
   startAt: z.string().datetime(),
   endAt: z.string().datetime(),
   isActive: z.boolean().optional()
@@ -264,6 +265,7 @@ const adminAuctionBaseBody = z.object({
 function validateAuctionCreateMode(body, ctx) {
   const mode = body.sourceMode || (body.productId ? 'existing' : 'standalone');
   const auctionType = body.auctionType || 'product';
+  const rewardMode = body.rewardMode || (auctionType === 'cash_amount' ? 'cash' : 'stock');
 
   if (mode === 'existing') {
     if (!body.productId) {
@@ -286,15 +288,41 @@ function validateAuctionCreateMode(body, ctx) {
     }
   }
 
-  if ((body.rewardMode || 'stock') === 'split' && body.rewardValue === undefined) {
+  if (rewardMode === 'split' && body.rewardValue === undefined) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rewardValue'], message: 'rewardValue is required when rewardMode is split' });
+  }
+
+  if (rewardMode === 'cash' && !(Number(body.cashPrize ?? body.prizeAmount) > 0)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['cashPrize'], message: 'cashPrize is required when rewardMode is cash' });
   }
 
   if (Array.isArray(body.winnerModes) && new Set(body.winnerModes).size !== body.winnerModes.length) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['winnerModes'], message: 'winnerModes must not contain duplicates' });
   }
 
-  if (auctionType === 'cash_amount') {
+  if (auctionType === 'cash_amount' && rewardMode !== 'cash') {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rewardMode'], message: 'rewardMode must be cash when auctionType is cash_amount' });
+  }
+
+  if (auctionType === 'cash_amount' && rewardMode === 'cash' && body.prizeDistributionType === 'rank_wise') {
+    if (!Array.isArray(body.rankPrizes) || body.rankPrizes.length !== Number(body.winnerCount || 0)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rankPrizes'], message: 'rankPrizes must match winnerCount for rank-wise cash auctions' });
+    } else {
+      const seenRanks = new Set();
+      let positiveCount = 0;
+      for (const entry of body.rankPrizes) {
+        if (seenRanks.has(entry.winnerRank)) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rankPrizes'], message: 'rankPrizes must not contain duplicate ranks' });
+          break;
+        }
+        seenRanks.add(entry.winnerRank);
+        if (entry.prizeAmount > 0) positiveCount += 1;
+      }
+      if (positiveCount <= 0) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rankPrizes'], message: 'At least one rank prize amount must be greater than zero' });
+      }
+    }
+  } else if (auctionType === 'cash_amount') {
     if (!(Number(body.prizeAmount) > 0)) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['prizeAmount'], message: 'prizeAmount is required for cash auctions' });
     }
@@ -305,25 +333,6 @@ function validateAuctionCreateMode(body, ctx) {
       const cents = Math.round(Number(body.prizeAmount) * 100);
       if (cents % Number(body.winnerCount) !== 0) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['prizeAmount'], message: 'Shared pool prizeAmount must divide evenly across winners to the cent' });
-      }
-    }
-    if (body.prizeDistributionType === 'rank_wise') {
-      if (!Array.isArray(body.rankPrizes) || body.rankPrizes.length !== Number(body.winnerCount || 0)) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rankPrizes'], message: 'rankPrizes must match winnerCount for rank-wise cash auctions' });
-      } else {
-        const seenRanks = new Set();
-        let positiveCount = 0;
-        for (const entry of body.rankPrizes) {
-          if (seenRanks.has(entry.winnerRank)) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rankPrizes'], message: 'rankPrizes must not contain duplicate ranks' });
-            break;
-          }
-          seenRanks.add(entry.winnerRank);
-          if (entry.prizeAmount > 0) positiveCount += 1;
-        }
-        if (positiveCount <= 0) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rankPrizes'], message: 'At least one rank prize amount must be greater than zero' });
-        }
       }
     }
   }

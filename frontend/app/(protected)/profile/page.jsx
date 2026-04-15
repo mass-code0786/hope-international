@@ -20,6 +20,7 @@ import { clearStoredToken } from '@/lib/utils/tokenStorage';
 import { currency, formatLabel, number, rankLabel } from '@/lib/utils/format';
 import { isSeller } from '@/lib/constants/access';
 import { createWebAuthnCredential, supportsWebAuthn } from '@/lib/utils/webauthn';
+import { clearProtectedQueries } from '@/lib/utils/logout';
 
 function ProfileInfoCard({ label, value, subtitle = null, className = '', statusTone = '' }) {
   return (
@@ -285,10 +286,10 @@ export default function ProfilePage() {
 
   async function onLogout() {
     clearStoredToken();
-    clearSession();
-    await queryClient.clear();
+    clearSession({ loggingOut: true });
+    await clearProtectedQueries(queryClient);
     toast.success('Logged out successfully');
-    router.push('/login');
+    router.replace('/login');
   }
 
   if (!hydrated || (token && meQuery.isPending && !user)) return <ProfileSkeleton />;

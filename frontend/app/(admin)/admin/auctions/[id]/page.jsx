@@ -63,8 +63,8 @@ export default function AdminAuctionDetailPage() {
   const sourceMode = auction.product_id ? 'Existing catalog product' : 'Standalone auction item';
   const rewardDistributions = Array.isArray(auction.rewardDistributions) ? auction.rewardDistributions : [];
   const winnerModes = Array.isArray(auction.winner_modes) ? auction.winner_modes : ['highest'];
-  const isCashAuction = auction.auction_type === 'cash_amount';
-  const perWinnerAmount = Number(auction.each_winner_amount || auction.prize_amount || 0);
+  const isCashAuction = auction.reward_mode === 'cash' || auction.auction_type === 'cash_amount';
+  const perWinnerAmount = Number(auction.cash_prize || auction.each_winner_amount || auction.prize_amount || 0);
 
   return (
     <div className="space-y-5">
@@ -93,8 +93,7 @@ export default function AdminAuctionDetailPage() {
             <div className="mt-2 flex items-center justify-between"><span>Prize type</span><strong className="text-text">{isCashAuction ? 'Cash amount' : 'Product'}</strong></div>
             {isCashAuction ? (
               <>
-                <div className="mt-2 flex items-center justify-between"><span>Prize amount</span><strong className="text-text">{formatAuctionMoney(auction.prize_amount || 0)}</strong></div>
-                <div className="mt-2 flex items-center justify-between"><span>Distribution</span><strong className="text-text">{auction.prize_distribution_type === 'shared_pool' ? 'Shared pool' : 'Per winner'}</strong></div>
+                <div className="mt-2 flex items-center justify-between"><span>Cash prize</span><strong className="text-text">{formatAuctionMoney(auction.cash_prize || 0)}</strong></div>
                 <div className="mt-2 flex items-center justify-between"><span>Each winner</span><strong className="text-text">{formatAuctionMoney(perWinnerAmount)}</strong></div>
               </>
             ) : null}

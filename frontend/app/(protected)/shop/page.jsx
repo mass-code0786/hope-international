@@ -41,6 +41,7 @@ import { queryKeys } from '@/lib/query/queryKeys';
 import { useAuthStore } from '@/lib/store/authStore';
 import { subscribeCart } from '@/lib/utils/cart';
 import { clearStoredToken } from '@/lib/utils/tokenStorage';
+import { clearProtectedQueries } from '@/lib/utils/logout';
 import { getAvailableWalletBalance, hasSufficientWalletBalance } from '@/lib/utils/wallet';
 import { getProductPricing } from '@/lib/utils/pricing';
 
@@ -574,10 +575,11 @@ export default function ShopPage() {
             <button
               onClick={async () => {
                 clearStoredToken();
-                clearSession();
-                await queryClient.clear();
+                clearSession({ loggingOut: true });
+                await clearProtectedQueries(queryClient);
                 setMenuOpen(false);
                 toast.success('Logged out');
+                router.replace('/login');
               }}
               className="mb-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-semibold text-rose-600"
             >
