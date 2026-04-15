@@ -2,12 +2,18 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { ArrowRight, Eye, EyeOff, Fingerprint, LoaderCircle, LockKeyhole, ShieldCheck, Sparkles, User2 } from 'lucide-react';
 import { useAuthMutations } from '@/hooks/useAuthMutations';
 import toast from 'react-hot-toast';
 import Logo from '@/components/common/Logo';
 import { useAuthStore } from '@/lib/store/authStore';
 import { getWebauthnLoginOptions, verifyWebauthnLogin } from '@/lib/services/authService';
+import { getHomepageBanners } from '@/lib/services/bannersService';
+import { getProducts } from '@/lib/services/productsService';
+import { getTeamSummary, getTeamTreeRoot } from '@/lib/services/teamService';
+import { getWallet } from '@/lib/services/walletService';
+import { queryKeys } from '@/lib/query/queryKeys';
 import { getPostLoginRoute } from '@/lib/utils/postLoginRedirect';
 import { getWebAuthnAssertion, supportsWebAuthn } from '@/lib/utils/webauthn';
 import { getRememberedLoginPreference, getRememberedUsername } from '@/lib/utils/tokenStorage';
@@ -15,6 +21,7 @@ import { markWelcomeVoicePending } from '@/lib/utils/welcomeVoice';
 
 export default function LoginPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const setSession = useAuthStore((s) => s.setSession);
   const setRememberPreference = useAuthStore((s) => s.setRememberPreference);
   const { loginMutation, refreshCoreQueries, error, setError } = useAuthMutations();
@@ -32,6 +39,30 @@ export default function LoginPage() {
     }));
   }, []);
 
+  async function warmPostLoginRoute(route) {
+    if (route === '/admin') return;
+
+    const tasks = [
+      queryClient.prefetchQuery({ queryKey: queryKeys.wallet, queryFn: getWallet })
+    ];
+
+    if (route === '/dashboard' || route === '/shop' || route === '/seller') {
+      tasks.push(
+        queryClient.prefetchQuery({ queryKey: queryKeys.products, queryFn: getProducts }),
+        queryClient.prefetchQuery({ queryKey: queryKeys.homepageBanners, queryFn: getHomepageBanners })
+      );
+    }
+
+    if (route === '/team') {
+      tasks.push(
+        queryClient.prefetchQuery({ queryKey: queryKeys.teamSummary, queryFn: getTeamSummary }),
+        queryClient.prefetchQuery({ queryKey: queryKeys.teamTreeRoot, queryFn: getTeamTreeRoot })
+      );
+    }
+
+    await Promise.allSettled(tasks);
+  }
+
   async function onSubmit(e) {
     e.preventDefault();
     setError('');
@@ -40,8 +71,11 @@ export default function LoginPage() {
       const user = data?.user || null;
       setRememberPreference(Boolean(form.rememberMe), form.username);
       markWelcomeVoicePending();
+      const nextRoute = getPostLoginRoute(user);
+      router.prefetch(nextRoute);
+      await warmPostLoginRoute(nextRoute);
       toast.success('Logged in successfully');
-      router.push(getPostLoginRoute(user));
+      router.replace(nextRoute);
     } catch (err) {
       toast.error(err.message || 'Login failed');
     }
@@ -67,8 +101,11 @@ export default function LoginPage() {
       setRememberPreference(Boolean(form.rememberMe), form.username);
       await refreshCoreQueries(data.user);
       markWelcomeVoicePending();
+      const nextRoute = getPostLoginRoute(data.user);
+      router.prefetch(nextRoute);
+      await warmPostLoginRoute(nextRoute);
       toast.success('Biometric login successful');
-      router.push(getPostLoginRoute(data.user));
+      router.replace(nextRoute);
     } catch (err) {
       const message = err?.message || 'Biometric login failed';
       setError(message);

@@ -32,8 +32,8 @@ export default function WalletPage() {
     toWallet: 'deposit_wallet',
     amount: ''
   });
-  const walletQuery = useQuery({ queryKey: queryKeys.wallet, queryFn: getWallet });
-  const stakingQuery = useQuery({ queryKey: queryKeys.walletStaking, queryFn: getBtctStakingSummary });
+  const walletQuery = useQuery({ queryKey: queryKeys.wallet, queryFn: getWallet, placeholderData: (previousData) => previousData });
+  const stakingQuery = useQuery({ queryKey: queryKeys.walletStaking, queryFn: getBtctStakingSummary, placeholderData: (previousData) => previousData });
 
   const startStakingMutation = useMutation({
     mutationFn: (payload) => startBtctStaking(payload),
@@ -65,8 +65,8 @@ export default function WalletPage() {
     onError: (error) => toast.error(error.message || 'Unable to transfer funds')
   });
 
-  if (walletQuery.isError) return <ErrorState message="Wallet data could not be loaded." onRetry={walletQuery.refetch} />;
-  if (stakingQuery.isError) return <ErrorState message="BTCT staking data could not be loaded." onRetry={stakingQuery.refetch} />;
+  if (walletQuery.isError && !walletQuery.data) return <ErrorState message="Wallet data could not be loaded." onRetry={walletQuery.refetch} />;
+  if (stakingQuery.isError && !stakingQuery.data) return <ErrorState message="BTCT staking data could not be loaded." onRetry={stakingQuery.refetch} />;
 
   const data = walletQuery.data || {};
   const wallet = data.wallet || {};

@@ -28,15 +28,11 @@ export function AdminShell({ children }) {
   const meQuery = useQuery({
     queryKey: queryKeys.me,
     queryFn: getMe,
-    enabled: hydrated && Boolean(token),
+    enabled: hydrated && Boolean(token) && !user,
     retry: false,
     initialData: user || undefined,
-    staleTime: 30_000,
-    onError: () => {
-      clearStoredToken();
-      clearSession();
-      router.replace('/login');
-    }
+    initialDataUpdatedAt: user ? Date.now() : undefined,
+    staleTime: 30_000
   });
 
   const resolvedUser = meQuery.data ?? user ?? null;
@@ -61,6 +57,15 @@ export function AdminShell({ children }) {
     };
   }, [mobileMenuOpen]);
 
+  useEffect(() => {
+    if (!meQuery.isError || resolvedUser) return;
+    if (meQuery.error?.status === 401 || meQuery.error?.status === 403) {
+      clearStoredToken();
+      clearSession();
+      router.replace('/login');
+    }
+  }, [clearSession, meQuery.error, meQuery.isError, resolvedUser, router]);
+
   async function onLogout() {
     clearStoredToken();
     clearSession();
@@ -71,7 +76,7 @@ export function AdminShell({ children }) {
   }
 
   const isHydrating = !hydrated;
-  const isAuthBootstrapping = hydrated && Boolean(token) && meQuery.isLoading && !resolvedUser;
+  const isAuthBootstrapping = hydrated && Boolean(token) && meQuery.isPending && !resolvedUser;
 
   if (isHydrating || isAuthBootstrapping) return <ProfileSkeleton />;
   if (!token) return <ProfileSkeleton />;

@@ -14,16 +14,18 @@ import { BinaryTreeExplorer } from '@/components/team/BinaryTreeExplorer';
 
 export default function TeamPage() {
   const meQuery = useQuery({ queryKey: queryKeys.me });
-  const teamSummaryQuery = useQuery({ queryKey: queryKeys.teamSummary, queryFn: getTeamSummary });
-  const treeRootQuery = useQuery({ queryKey: queryKeys.teamTreeRoot, queryFn: getTeamTreeRoot });
+  const teamSummaryQuery = useQuery({ queryKey: queryKeys.teamSummary, queryFn: getTeamSummary, placeholderData: (previousData) => previousData });
+  const treeRootQuery = useQuery({ queryKey: queryKeys.teamTreeRoot, queryFn: getTeamTreeRoot, placeholderData: (previousData) => previousData });
 
   const me = meQuery.data || {};
   const teamSummary = teamSummaryQuery.data || {};
   const root = treeRootQuery.data || null;
   const directChildren = useMemo(() => [root?.children?.left, root?.children?.right].filter(Boolean), [root]);
 
-  if (meQuery.isLoading || teamSummaryQuery.isLoading || treeRootQuery.isLoading) return <TeamSkeleton />;
-  if (meQuery.isError || teamSummaryQuery.isError || treeRootQuery.isError) {
+  const showSkeleton = (meQuery.isPending && !meQuery.data) || (teamSummaryQuery.isPending && !teamSummaryQuery.data) || (treeRootQuery.isPending && !treeRootQuery.data);
+
+  if (showSkeleton) return <TeamSkeleton />;
+  if ((meQuery.isError && !meQuery.data) || (teamSummaryQuery.isError && !teamSummaryQuery.data) || (treeRootQuery.isError && !treeRootQuery.data)) {
     return <ErrorState message="Team tree is temporarily unavailable." onRetry={() => { meQuery.refetch(); teamSummaryQuery.refetch(); treeRootQuery.refetch(); }} />;
   }
 

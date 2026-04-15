@@ -194,6 +194,7 @@ export default function AuctionsPage() {
   const auctionsQuery = useQuery({
     queryKey: [...queryKeys.auctions, requestStatus || 'all', deferredSearch],
     queryFn: () => getAuctions({ status: requestStatus, search: deferredSearch, page: 1, limit: 100 }),
+    placeholderData: (previousData) => previousData,
     staleTime: 20_000,
     refetchOnWindowFocus: false
   });
@@ -243,7 +244,8 @@ export default function AuctionsPage() {
     return count;
   }, [filters]);
 
-  const isEmpty = !auctionsQuery.isLoading && !auctionsQuery.isError && filteredAuctions.length === 0;
+  const showSkeleton = auctionsQuery.isPending && !auctionsQuery.data;
+  const isEmpty = !showSkeleton && !auctionsQuery.isError && filteredAuctions.length === 0;
 
   const applyFilters = () => {
     setFilters(draftFilters);
@@ -337,13 +339,13 @@ export default function AuctionsPage() {
             </div>
           </section>
 
-          {auctionsQuery.isLoading ? <AuctionGridSkeleton /> : null}
-          {!auctionsQuery.isLoading && auctionsQuery.isError ? (
+          {showSkeleton ? <AuctionGridSkeleton /> : null}
+          {!showSkeleton && auctionsQuery.isError ? (
             <ErrorState message="Auction list could not be loaded." onRetry={auctionsQuery.refetch} />
           ) : null}
-          {!auctionsQuery.isLoading && isEmpty ? <EmptyAuctionState /> : null}
+          {!showSkeleton && isEmpty ? <EmptyAuctionState /> : null}
 
-          {!auctionsQuery.isLoading && !auctionsQuery.isError && filteredAuctions.length > 0 ? (
+          {!showSkeleton && !auctionsQuery.isError && filteredAuctions.length > 0 ? (
             <div className="grid grid-cols-2 gap-3">
               {filteredAuctions.map((auction) => <AuctionCard key={auction.id} auction={auction} />)}
             </div>

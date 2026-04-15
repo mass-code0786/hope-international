@@ -8,6 +8,7 @@ export function useWallet() {
   return useQuery({
     queryKey: queryKeys.wallet,
     queryFn: getWallet,
+    placeholderData: (previousData) => previousData,
     staleTime: 45_000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false

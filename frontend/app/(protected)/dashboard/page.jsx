@@ -220,9 +220,9 @@ function CartPill() {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { data: productData, isLoading: productsLoading, isError: productsError, refetch: refetchProducts } = useProducts();
-  const bannersQuery = useQuery({ queryKey: queryKeys.homepageBanners, queryFn: getHomepageBanners });
-  const addressQuery = useQuery({ queryKey: queryKeys.userAddress, queryFn: getUserAddress });
+  const { data: productData, isPending: productsPending, isError: productsError, refetch: refetchProducts } = useProducts();
+  const bannersQuery = useQuery({ queryKey: queryKeys.homepageBanners, queryFn: getHomepageBanners, placeholderData: (previousData) => previousData });
+  const addressQuery = useQuery({ queryKey: queryKeys.userAddress, queryFn: getUserAddress, placeholderData: (previousData) => previousData });
   const notificationsCountQuery = useQuery({
     queryKey: queryKeys.notificationsUnreadCount,
     queryFn: getUnreadNotificationCount,
@@ -230,7 +230,8 @@ export default function DashboardPage() {
   });
   const walletQuery = useQuery({
     queryKey: queryKeys.wallet,
-    queryFn: getWallet
+    queryFn: getWallet,
+    placeholderData: (previousData) => previousData
   });
   const queryClient = useQueryClient();
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
@@ -240,7 +241,8 @@ export default function DashboardPage() {
   const [welcomeSpinOpen, setWelcomeSpinOpen] = useState(false);
   const welcomeSpinQuery = useQuery({
     queryKey: queryKeys.welcomeSpinStatus,
-    queryFn: getWelcomeSpinStatus
+    queryFn: getWelcomeSpinStatus,
+    placeholderData: (previousData) => previousData
   });
 
   const buyMutation = useMutation({
@@ -314,8 +316,8 @@ export default function DashboardPage() {
     onError: (error) => toast.error(error.message || 'Unable to claim welcome reward')
   });
 
-  const isLoading = productsLoading || walletQuery.isLoading;
-  const hasFatalError = walletQuery.isError;
+  const showInitialPageSkeleton = productsPending && !productData && walletQuery.isPending && !walletQuery.data;
+  const hasFatalError = walletQuery.isError && !walletQuery.data;
   const address = addressQuery.data?.data?.address || null;
   const products = Array.isArray(productData) ? productData : [];
   const homepageBanners = Array.isArray(bannersQuery.data) ? bannersQuery.data : [];
@@ -382,7 +384,7 @@ export default function DashboardPage() {
     return () => window.clearInterval(timer);
   }, [slides.length]);
 
-  if (isLoading) return <DashboardSkeleton />;
+  if (showInitialPageSkeleton) return <DashboardSkeleton />;
 
   if (hasFatalError) {
     return (
@@ -414,7 +416,7 @@ export default function DashboardPage() {
                 <h1 className="truncate text-[15px] font-semibold tracking-[-0.03em] text-slate-900">{buildLocationLabel(address)}</h1>
                 <ChevronRight size={13} className="shrink-0 text-slate-400" />
               </div>
-              <p className="mt-0.5 truncate text-[10px] text-slate-500">{buildLocationDetail(address)}</p>
+              <p className="mt-0.5 truncate text-[10px] text-slate-500">{addressQuery.isError && !address ? 'Unable to load address' : buildLocationDetail(address)}</p>
             </button>
 
             <div className="flex items-center gap-2">
@@ -448,7 +450,7 @@ export default function DashboardPage() {
           </label>
         </section>
 
-        <section className="-mx-4 space-y-0.5 sm:mx-0">
+        <section className="space-y-0.5">
           <div
             ref={bannerTrackRef}
             onScroll={(event) => {
@@ -545,11 +547,13 @@ export default function DashboardPage() {
             <ErrorState message="Products could not be loaded." onRetry={refetchProducts} />
           ) : null}
 
-          {!productsError && !popularProducts.length ? (
+          {productsPending && !productData ? <DashboardSkeleton /> : null}
+
+          {!productsPending && !productsError && !popularProducts.length ? (
             <EmptyState title="No products yet" description="Products will appear here as soon as they are available." />
           ) : null}
 
-          {!productsError && popularProducts.length ? (
+          {!productsPending && !productsError && popularProducts.length ? (
             <div className="grid grid-cols-2 gap-3">
               {popularProducts.map((product) => {
                 const lineTotal = getProductPricing(product, 1).lineFinalTotal;

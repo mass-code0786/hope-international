@@ -207,8 +207,8 @@ function ShopCartButton() {
 }
 
 export default function ShopPage() {
-  const { data, isLoading, isError, refetch } = useProducts();
-  const bannersQuery = useQuery({ queryKey: queryKeys.homepageBanners, queryFn: getHomepageBanners });
+  const { data, isPending, isError, refetch } = useProducts();
+  const bannersQuery = useQuery({ queryKey: queryKeys.homepageBanners, queryFn: getHomepageBanners, placeholderData: (previousData) => previousData });
   const meQuery = useQuery({ queryKey: queryKeys.me });
   const walletQuery = useWallet();
   const clearSession = useAuthStore((state) => state.clearSession);
@@ -325,7 +325,8 @@ export default function ShopPage() {
   const newArrivals = useMemo(() => [...filtered].slice(-12).reverse(), [filtered]);
   const trending = useMemo(() => [...filtered].sort((a, b) => Number(b.price || 0) - Number(a.price || 0)).slice(0, 12), [filtered]);
 
-  const hasProducts = !isLoading && !isError && filtered.length > 0;
+  const showProductsSkeleton = isPending && !data;
+  const hasProducts = !showProductsSkeleton && !isError && filtered.length > 0;
   const user = meQuery.data || {};
   const walletBalance = getAvailableWalletBalance(walletQuery.data);
   const walletReady = !walletQuery.isLoading && !walletQuery.isError;
@@ -447,10 +448,10 @@ export default function ShopPage() {
         })}
       </section>
 
-      {isLoading ? <ShopSkeleton /> : null}
+      {showProductsSkeleton ? <ShopSkeleton /> : null}
       {isError ? <ErrorState message="Products could not be loaded. Please check your connection and retry." onRetry={refetch} /> : null}
 
-      {!isLoading && !isError && filtered.length === 0 ? (
+      {!showProductsSkeleton && !isError && filtered.length === 0 ? (
         <EmptyState title="No matching products" description="Try different keywords or switch categories to discover more offers." />
       ) : null}
 

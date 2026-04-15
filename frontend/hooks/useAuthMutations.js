@@ -38,19 +38,19 @@ export function useAuthMutations() {
   const [error, setError] = useState('');
 
   async function refreshCoreQueries(user) {
+    queryClient.removeQueries({ queryKey: queryKeys.me });
+    queryClient.removeQueries({ queryKey: queryKeys.webauthn });
+    queryClient.removeQueries({ queryKey: queryKeys.welcomeSpinStatus });
+    queryClient.removeQueries({ queryKey: queryKeys.sellerMe });
+    queryClient.removeQueries({ queryKey: queryKeys.sellerAccess });
+    queryClient.removeQueries({ queryKey: queryKeys.wallet });
+    queryClient.removeQueries({ queryKey: queryKeys.orders });
+    queryClient.removeQueries({ queryKey: queryKeys.weeklyCompensationRoot });
+    queryClient.removeQueries({ queryKey: queryKeys.monthlyCompensationRoot });
+    queryClient.removeQueries({ queryKey: queryKeys.teamChildren });
+    queryClient.removeQueries({ queryKey: queryKeys.teamSummary });
+    queryClient.removeQueries({ queryKey: queryKeys.teamTreeRoot });
     queryClient.setQueryData(queryKeys.me, user);
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: queryKeys.me }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.webauthn }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.welcomeSpinStatus }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.sellerMe }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.sellerAccess }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.wallet }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.orders }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.weeklyCompensationRoot }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.monthlyCompensationRoot }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.teamChildren })
-    ]);
   }
 
   const loginMutation = useMutation({

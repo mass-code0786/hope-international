@@ -11,6 +11,7 @@ import { getMe } from '@/lib/services/authService';
 import { getSellerAccess } from '@/lib/services/sellerService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { ProfileSkeleton } from '@/components/ui/PageSkeletons';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { isSeller } from '@/lib/constants/access';
 import { LoginWelcomeVoice } from '@/components/shell/LoginWelcomeVoice';
 
@@ -30,14 +31,11 @@ export function AppShell({ children }) {
   const meQuery = useQuery({
     queryKey: queryKeys.me,
     queryFn: getMe,
-    enabled: hydrated && Boolean(token),
+    enabled: hydrated && Boolean(token) && !user,
     retry: false,
     initialData: user || undefined,
-    staleTime: 300_000,
-    onError: () => {
-      clearSession();
-      router.replace('/login');
-    }
+    initialDataUpdatedAt: user ? Date.now() : undefined,
+    staleTime: 300_000
   });
 
   const resolvedUser = meQuery.data ?? user ?? null;
@@ -60,13 +58,29 @@ export function AppShell({ children }) {
     if (!token) router.replace('/login');
   }, [hydrated, token, router]);
 
-  const isAuthBootstrapping = !hydrated || (Boolean(token) && meQuery.isLoading && !resolvedUser);
+  useEffect(() => {
+    if (!meQuery.isError || resolvedUser) return;
+    if (meQuery.error?.status === 401 || meQuery.error?.status === 403) {
+      clearSession();
+      router.replace('/login');
+    }
+  }, [clearSession, meQuery.error, meQuery.isError, resolvedUser, router]);
+
+  const isAuthBootstrapping = !hydrated || (Boolean(token) && meQuery.isPending && !resolvedUser);
   const sellerActive = sellerRoleAccess || Boolean(sellerAccessQuery.data?.canAccessDashboard);
 
   if (isAuthBootstrapping) {
     return (
       <div className="min-h-screen bg-bg p-3.5 md:p-5">
         <ProfileSkeleton />
+      </div>
+    );
+  }
+
+  if (token && meQuery.isError && !resolvedUser) {
+    return (
+      <div className="min-h-screen bg-bg p-3.5 md:p-5">
+        <ErrorState message="Unable to load your account." onRetry={meQuery.refetch} />
       </div>
     );
   }

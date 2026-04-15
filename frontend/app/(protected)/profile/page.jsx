@@ -218,6 +218,12 @@ function BiometricAccessCard({ user, queryClient }) {
         <div className="mt-4 h-20 animate-pulse rounded-[20px] border border-[rgba(255,255,255,0.06)] bg-[#171c26] shadow-[0_14px_30px_rgba(0,0,0,0.2)]" />
       ) : null}
 
+      {webauthnQuery.isError ? (
+        <div className="mt-4 rounded-[20px] border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-xs text-rose-200">
+          Unable to load biometric devices right now.
+        </div>
+      ) : null}
+
       {credentials.length ? (
         <div className="mt-4 space-y-3">
           {credentials.map((credential) => (
@@ -253,8 +259,8 @@ export default function ProfilePage() {
   const hydrated = useAuthStore((s) => s.hydrated);
   const sessionUser = useAuthStore((s) => s.user);
 
-  const meQuery = useQuery({ queryKey: queryKeys.me, queryFn: getMe, enabled: hydrated && Boolean(token), retry: false, initialData: sessionUser || undefined });
-  const walletQuery = useQuery({ queryKey: queryKeys.wallet, queryFn: getWallet, enabled: hydrated && Boolean(token) });
+  const meQuery = useQuery({ queryKey: queryKeys.me, queryFn: getMe, enabled: hydrated && Boolean(token) && !sessionUser, retry: false, initialData: sessionUser || undefined, initialDataUpdatedAt: sessionUser ? Date.now() : undefined });
+  const walletQuery = useQuery({ queryKey: queryKeys.wallet, queryFn: getWallet, enabled: hydrated && Boolean(token), placeholderData: (previousData) => previousData });
 
   const user = meQuery.data ?? sessionUser ?? null;
   const sellerHref = isSeller(user) ? '/seller' : '/seller/apply';
@@ -285,7 +291,7 @@ export default function ProfilePage() {
     router.push('/login');
   }
 
-  if (!hydrated || (token && meQuery.isLoading && !user)) return <ProfileSkeleton />;
+  if (!hydrated || (token && meQuery.isPending && !user)) return <ProfileSkeleton />;
   if (token && meQuery.isError && !user) return <ErrorState message="Profile data could not be loaded." onRetry={meQuery.refetch} />;
   if (!user) return <ProfileSkeleton />;
 
