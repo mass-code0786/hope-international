@@ -120,10 +120,13 @@ const depositCreateNowPayments = asyncHandler(async (req, res) => {
   }));
 
   return success(res, {
-    data: normalizeDepositRecord({
-      ...data.depositRequest,
-      payment_record_id: data.payment?.id || null
-    }),
+    data: {
+      depositRequest: normalizeDepositRecord({
+        ...data.depositRequest,
+        payment_record_id: data.payment?.id || null
+      }),
+      payment: data.payment
+    },
     message: 'NOWPayments deposit created successfully',
     statusCode: 201
   });

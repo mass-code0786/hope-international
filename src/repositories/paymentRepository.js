@@ -110,6 +110,18 @@ async function getNowPaymentsPaymentByProviderOrderId(client, providerOrderId, o
   return rows[0] || null;
 }
 
+async function getNowPaymentsPaymentByDepositId(client, depositId, options = {}) {
+  const lockClause = options.forUpdate ? ' FOR UPDATE' : '';
+  const { rows } = await q(client).query(
+    `SELECT np.*, u.username, u.email
+     FROM nowpayments_payments np
+     JOIN users u ON u.id = np.user_id
+     WHERE np.deposit_id = $1${lockClause}`,
+    [depositId]
+  );
+  return rows[0] || null;
+}
+
 async function updateNowPaymentsPayment(client, id, payload = {}) {
   const values = [id];
   const setClauses = ['updated_at = NOW()'];
@@ -209,6 +221,7 @@ module.exports = {
   getNowPaymentsPaymentById,
   getNowPaymentsPaymentByProviderPaymentId,
   getNowPaymentsPaymentByProviderOrderId,
+  getNowPaymentsPaymentByDepositId,
   updateNowPaymentsPayment,
   listNowPaymentsPaymentsAdmin
 };

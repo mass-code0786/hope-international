@@ -9,6 +9,10 @@ const MIN_DEPOSIT_AMOUNT = 1;
 const MAX_DEPOSIT_AMOUNT = 1000;
 const PAYMENT_EXPIRY_MINUTES = 30;
 
+function logNowPayments(event, payload = {}) {
+  console.info(`[nowpayments] ${event}`, payload);
+}
+
 function toMoney(value) {
   return Number(Number(value || 0).toFixed(2));
 }
@@ -51,11 +55,51 @@ function getFriendlyPaymentStatus(status) {
     waiting: 'awaiting_payment',
     partially_paid: 'partially_paid',
     confirming: 'confirming',
-    confirmed: 'completed',
-    finished: 'completed',
+    confirmed: 'confirmed',
+    finished: 'finished',
     failed: 'failed',
     expired: 'expired'
   }[normalized] || 'awaiting_payment';
+}
+
+async function resolveNowPaymentsPaymentRecord(client, lookupId, options = {}) {
+  if (!lookupId) return null;
+
+  const direct = await paymentRepository.getNowPaymentsPaymentById(client, lookupId, options);
+  if (direct) {
+    return direct;
+  }
+
+  const byDepositId = await paymentRepository.getNowPaymentsPaymentByDepositId(client, lookupId, options);
+  if (byDepositId) {
+    return byDepositId;
+  }
+
+  const depositRequest = await walletRepository.getDepositRequestById(client, lookupId, options);
+  if (!depositRequest) {
+    return null;
+  }
+
+  const details = depositRequest.details && typeof depositRequest.details === 'object' && !Array.isArray(depositRequest.details)
+    ? depositRequest.details
+    : {};
+
+  if (details.paymentRecordId) {
+    const byDetailsId = await paymentRepository.getNowPaymentsPaymentById(client, details.paymentRecordId, options);
+    if (byDetailsId) return byDetailsId;
+  }
+
+  if (depositRequest.payment_id) {
+    const byProviderPaymentId = await paymentRepository.getNowPaymentsPaymentByProviderPaymentId(client, String(depositRequest.payment_id), options);
+    if (byProviderPaymentId) return byProviderPaymentId;
+  }
+
+  if (depositRequest.order_id) {
+    const byProviderOrderId = await paymentRepository.getNowPaymentsPaymentByProviderOrderId(client, String(depositRequest.order_id), options);
+    if (byProviderOrderId) return byProviderOrderId;
+  }
+
+  return await paymentRepository.getNowPaymentsPaymentByDepositId(client, depositRequest.id, options);
 }
 
 function normalizePaymentRecord(record, options = {}) {
@@ -115,6 +159,15 @@ async function reconcileSuccessfulDepositCreditWithClient(client, paymentRecord,
     depositRequest.id
   );
 
+  logNowPayments('wallet-credit.reconcile', {
+    paymentRecordId: paymentRecord.id,
+    depositId: depositRequest.id,
+    userId: depositRequest.user_id,
+    providerPaymentId: paymentRecord.provider_payment_id,
+    paymentStatus: options.paymentStatus || paymentRecord.payment_status || null,
+    alreadyCredited: Boolean(existingCredit)
+  });
+
   const creditedAt = paymentRecord.credited_at || depositRequest.processed_at || new Date().toISOString();
   const settled = await walletService.settleDepositRequest(client, depositRequest.id, {
     status: 'approved',
@@ -133,6 +186,15 @@ async function reconcileSuccessfulDepositCreditWithClient(client, paymentRecord,
     isCredited: true,
     creditedAt,
     rawPayload: payload
+  });
+
+  logNowPayments('wallet-credit.applied', {
+    paymentRecordId: paymentRecord.id,
+    depositId: depositRequest.id,
+    userId: depositRequest.user_id,
+    providerPaymentId: paymentRecord.provider_payment_id,
+    creditedAt,
+    alreadyCredited: Boolean(existingCredit || settled?.alreadyProcessed)
   });
 
   return {
@@ -250,6 +312,19 @@ async function createNowPaymentsDepositPaymentWithClient(client, userId, payload
     expectedCurrentStatus: depositRequest.status
   });
 
+  logNowPayments('payment.created', {
+    paymentRecordId: paymentRecord.id,
+    depositId: depositRequest.id,
+    userId,
+    providerPaymentId: paymentRecord.provider_payment_id,
+    providerOrderId,
+    requestedAmount: depositAmount,
+    feeAmount,
+    totalPayableAmount,
+    paymentStatus: paymentRecord.payment_status,
+    expiresAt
+  });
+
   return {
     depositRequest: {
       ...depositRequest,
@@ -277,17 +352,47 @@ async function processNowPaymentsPayloadWithClient(client, payload, options = {}
   if (payload.pay_currency && !['usdt', 'usdtbsc'].includes(String(payload.pay_currency).trim().toLowerCase())) {
     throw new ApiError(400, 'NOWPayments deposits support only USDT on BSC/BEP20');
   }
-  const paymentRecord = providerPaymentId
+  let paymentRecord = providerPaymentId
     ? await paymentRepository.getNowPaymentsPaymentByProviderPaymentId(client, providerPaymentId, { forUpdate: true })
     : await paymentRepository.getNowPaymentsPaymentByProviderOrderId(client, providerOrderId, { forUpdate: true });
 
+  if (!paymentRecord && providerOrderId) {
+    const depositByOrderId = await walletRepository.getDepositRequestByOrderId(client, providerOrderId, { forUpdate: true });
+    if (depositByOrderId) {
+      paymentRecord = await resolveNowPaymentsPaymentRecord(client, depositByOrderId.id, { forUpdate: true });
+    }
+  }
+
+  if (!paymentRecord && providerPaymentId) {
+    const depositByPaymentId = await walletRepository.getDepositRequestByPaymentId(client, providerPaymentId, { forUpdate: true });
+    if (depositByPaymentId) {
+      paymentRecord = await resolveNowPaymentsPaymentRecord(client, depositByPaymentId.id, { forUpdate: true });
+    }
+  }
+
   if (!paymentRecord) {
+    logNowPayments('webhook.lookup-miss', {
+      source: options.source || 'webhook',
+      providerPaymentId,
+      providerOrderId,
+      paymentStatus: payload.payment_status || null
+    });
     throw new ApiError(404, 'NOWPayments payment not found');
   }
 
   const depositRequest = paymentRecord.deposit_id
     ? await walletRepository.getDepositRequestById(client, paymentRecord.deposit_id, { forUpdate: true })
     : null;
+
+  logNowPayments('webhook.received', {
+    source: options.source || 'webhook',
+    paymentRecordId: paymentRecord.id,
+    depositId: paymentRecord.deposit_id || null,
+    userId: paymentRecord.user_id,
+    providerPaymentId: providerPaymentId || paymentRecord.provider_payment_id,
+    providerOrderId: providerOrderId || paymentRecord.provider_order_id,
+    incomingStatus: payload.payment_status || null
+  });
 
   const mappedStatus = nowPaymentsService.mapPaymentStatus(payload.payment_status || paymentRecord.payment_status);
   const expiresAt = resolveExpiresAt(payload.expiration_estimate_date || paymentRecord.expires_at, buildLocalExpiryDate(new Date(paymentRecord.created_at || Date.now())));
@@ -318,6 +423,16 @@ async function processNowPaymentsPayloadWithClient(client, payload, options = {}
     expiresAt,
     statusHistory,
     rawPayload: payload
+  });
+
+  logNowPayments('payment.status-updated', {
+    source: options.source || 'webhook',
+    paymentRecordId: nextPaymentRecord.id,
+    depositId: nextPaymentRecord.deposit_id,
+    userId: nextPaymentRecord.user_id,
+    providerPaymentId: nextPaymentRecord.provider_payment_id,
+    paymentStatus: effectiveMappedStatus,
+    expiresAt
   });
 
   if (depositRequest) {
@@ -383,7 +498,7 @@ async function processNowPaymentsPayload(payload, options = {}) {
 }
 
 async function syncNowPaymentsPaymentWithClient(client, paymentId) {
-  const paymentRecord = await paymentRepository.getNowPaymentsPaymentById(client, paymentId, { forUpdate: true });
+  const paymentRecord = await resolveNowPaymentsPaymentRecord(client, paymentId, { forUpdate: true });
   if (!paymentRecord) {
     throw new ApiError(404, 'Payment not found');
   }
@@ -391,6 +506,13 @@ async function syncNowPaymentsPaymentWithClient(client, paymentId) {
   if (!providerPaymentId) {
     throw new ApiError(400, 'Provider payment id is missing');
   }
+  logNowPayments('payment.sync-requested', {
+    paymentLookupId: paymentId,
+    paymentRecordId: paymentRecord.id,
+    depositId: paymentRecord.deposit_id,
+    userId: paymentRecord.user_id,
+    providerPaymentId
+  });
   const providerPayload = await nowPaymentsService.getPaymentStatus(providerPaymentId);
   return processNowPaymentsPayloadWithClient(client, providerPayload, { source: 'sync' });
 }
@@ -400,16 +522,31 @@ async function syncNowPaymentsPayment(paymentId) {
 }
 
 async function getPaymentForUser(paymentId, userId, options = {}) {
-  const paymentRecord = await paymentRepository.getNowPaymentsPaymentById(null, paymentId);
+  const paymentRecord = await resolveNowPaymentsPaymentRecord(null, paymentId);
   if (!paymentRecord) {
+    logNowPayments('status-page.lookup-miss', { lookupId: paymentId, userId, role: options.role || null });
     throw new ApiError(404, 'Payment not found');
   }
   const role = String(options.role || '').toLowerCase();
   const isSuperAdmin = role === 'super_admin';
   const isOwner = String(paymentRecord.user_id) === String(userId);
   if (!isSuperAdmin && !isOwner) {
+    logNowPayments('status-page.lookup-denied', {
+      lookupId: paymentId,
+      paymentRecordId: paymentRecord.id,
+      paymentUserId: paymentRecord.user_id,
+      userId,
+      role
+    });
     throw new ApiError(404, 'Payment not found');
   }
+  logNowPayments('status-page.lookup-hit', {
+    lookupId: paymentId,
+    paymentRecordId: paymentRecord.id,
+    depositId: paymentRecord.deposit_id,
+    userId: paymentRecord.user_id,
+    paymentStatus: paymentRecord.payment_status
+  });
   return normalizePaymentRecord(paymentRecord, { includeSensitive: isSuperAdmin && !isOwner });
 }
 

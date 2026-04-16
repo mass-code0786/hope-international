@@ -18,6 +18,12 @@ const nowPaymentsWebhook = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Invalid webhook payload');
   }
 
+  console.info('[nowpayments] webhook.received.raw', {
+    providerPaymentId: payload?.payment_id ? String(payload.payment_id) : null,
+    providerOrderId: payload?.order_id ? String(payload.order_id) : null,
+    paymentStatus: payload?.payment_status || null
+  });
+
   await paymentService.processNowPaymentsPayload(payload, { source: 'webhook' });
   res.status(200).json({ success: true });
 });

@@ -16,6 +16,8 @@ import { currency, dateTime } from '@/lib/utils/format';
 
 function statusMeta(status) {
   const normalized = String(status || 'awaiting_payment').trim().toLowerCase();
+  if (normalized === 'finished') return { label: 'Finished', variant: 'success', description: 'Payment finished and wallet credit was applied.' };
+  if (normalized === 'confirmed') return { label: 'Confirmed', variant: 'success', description: 'Payment confirmed and wallet credit was applied.' };
   if (normalized === 'completed') return { label: 'Completed', variant: 'success', description: 'Payment confirmed and wallet credited.' };
   if (normalized === 'confirming') return { label: 'Confirming', variant: 'warning', description: 'Blockchain confirmation is in progress.' };
   if (normalized === 'failed') return { label: 'Failed', variant: 'danger', description: 'Payment failed and no wallet credit was applied.' };

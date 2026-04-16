@@ -71,14 +71,19 @@ export default function DepositPage() {
     mutationFn: createNowPaymentsPayment,
     onSuccess: async (result) => {
       formRef.current?.reset();
-      if (result?.data?.depositRequest) {
-        setActiveGatewayPayment(result.data.depositRequest);
+      const createdDeposit = result?.data?.depositRequest || result?.data || null;
+      const createdPayment = result?.data?.payment || null;
+      if (createdDeposit) {
+        setActiveGatewayPayment({
+          ...createdDeposit,
+          payment_record_id: createdDeposit.payment_record_id || createdPayment?.id || null
+        });
       }
       await queryClient.invalidateQueries({ queryKey: queryKeys.walletDeposits });
       toast.success(result.message || 'Crypto payment created successfully');
-      if (result?.data?.payment?.id) {
+      if (createdPayment?.id) {
         const suffix = returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : '';
-        router.push(`/payments/${result.data.payment.id}${suffix}`);
+        router.push(`/payments/${createdPayment.id}${suffix}`);
       }
     },
     onError: (error) => toast.error(error.message || 'Crypto payment creation failed')
