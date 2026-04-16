@@ -6,6 +6,8 @@ const nowPaymentsService = require('./nowPaymentsService');
 const { ApiError } = require('../utils/ApiError');
 
 const MIN_DEPOSIT_AMOUNT = 1;
+const MAX_DEPOSIT_AMOUNT = 1000;
+const PAYMENT_EXPIRY_MINUTES = 30;
 
 function toMoney(value) {
   return Number(Number(value || 0).toFixed(2));
@@ -17,6 +19,30 @@ function toCryptoAmount(value) {
 
 function buildDepositOrderId(userId) {
   return `DEP_${String(userId).slice(0, 8).toUpperCase()}_${Date.now()}`;
+}
+
+function computeDepositFee(amount) {
+  const normalizedAmount = toMoney(amount);
+  if (normalizedAmount >= 1 && normalizedAmount <= 50) return 0.5;
+  if (normalizedAmount >= 51 && normalizedAmount <= 1000) return 1;
+  throw new ApiError(400, 'Deposit amount must be between 1 and 1000 USD');
+}
+
+function buildLocalExpiryDate(fromDate = new Date()) {
+  return new Date(fromDate.getTime() + PAYMENT_EXPIRY_MINUTES * 60 * 1000);
+}
+
+function resolveExpiresAt(providerValue, fallbackDate) {
+  if (!providerValue) return fallbackDate.toISOString();
+  const providerDate = new Date(providerValue);
+  if (Number.isNaN(providerDate.getTime())) return fallbackDate.toISOString();
+  return providerDate.getTime() < fallbackDate.getTime() ? providerDate.toISOString() : fallbackDate.toISOString();
+}
+
+function isExpiredAt(expiresAt) {
+  if (!expiresAt) return false;
+  const timestamp = new Date(expiresAt).getTime();
+  return Number.isFinite(timestamp) && timestamp <= Date.now();
 }
 
 function getFriendlyPaymentStatus(status) {
@@ -35,11 +61,20 @@ function getFriendlyPaymentStatus(status) {
 function normalizePaymentRecord(record, options = {}) {
   if (!record) return null;
   const includeSensitive = options.includeSensitive === true;
+  const requestedAmount = Number(record.requested_amount || 0);
+  const totalPayableAmount = Number(record.price_amount || 0);
+  const feeAmount = Math.max(0, Number((totalPayableAmount - requestedAmount).toFixed(2)));
+  const locallyExpired = !['confirmed', 'finished', 'failed', 'expired'].includes(String(record.payment_status || '').toLowerCase())
+    && isExpiredAt(record.expires_at);
+  const effectivePaymentStatus = locallyExpired ? 'expired' : record.payment_status;
   const normalized = {
     ...record,
-    requested_amount: Number(record.requested_amount || record.price_amount || 0),
+    requested_amount: requestedAmount,
     expected_amount: record.expected_amount === null || record.expected_amount === undefined ? null : Number(record.expected_amount),
-    price_amount: Number(record.price_amount || 0),
+    price_amount: totalPayableAmount,
+    deposit_amount: requestedAmount,
+    fee_amount: feeAmount,
+    total_payable_amount: totalPayableAmount,
     pay_amount: record.pay_amount === null || record.pay_amount === undefined ? null : Number(record.pay_amount),
     actually_paid: Number(record.actually_paid || 0),
     outcome_amount: record.outcome_amount === null || record.outcome_amount === undefined ? null : Number(record.outcome_amount),
@@ -49,9 +84,11 @@ function normalizePaymentRecord(record, options = {}) {
     status_history: Array.isArray(record.status_history) ? record.status_history : [],
     deposit_id: record.deposit_id || null,
     order_id: record.order_id || null,
-    user_facing_status: getFriendlyPaymentStatus(record.payment_status),
-    is_terminal: ['confirmed', 'finished', 'failed', 'expired'].includes(String(record.payment_status || '').toLowerCase()),
-    is_completed: ['confirmed', 'finished'].includes(String(record.payment_status || '').toLowerCase())
+    payment_status: effectivePaymentStatus,
+    user_facing_status: getFriendlyPaymentStatus(effectivePaymentStatus),
+    is_terminal: ['confirmed', 'finished', 'failed', 'expired'].includes(String(effectivePaymentStatus || '').toLowerCase()),
+    is_completed: ['confirmed', 'finished'].includes(String(effectivePaymentStatus || '').toLowerCase()),
+    is_expired: locallyExpired || String(record.payment_status || '').toLowerCase() === 'expired'
   };
 
   if (!includeSensitive) {
@@ -67,24 +104,32 @@ async function createNowPaymentsDepositPaymentWithClient(client, userId, payload
   if (!Number.isFinite(amount) || amount < MIN_DEPOSIT_AMOUNT) {
     throw new ApiError(400, `Minimum deposit is ${MIN_DEPOSIT_AMOUNT}`);
   }
+  if (amount > MAX_DEPOSIT_AMOUNT) {
+    throw new ApiError(400, `Maximum deposit is ${MAX_DEPOSIT_AMOUNT}`);
+  }
 
+  const depositAmount = toMoney(amount);
+  const feeAmount = computeDepositFee(depositAmount);
+  const totalPayableAmount = toMoney(depositAmount + feeAmount);
   const payCurrency = nowPaymentsService.normalizeCurrency(payload.payCurrency);
   const network = nowPaymentsService.normalizeNetwork(payload.network);
   const providerOrderId = buildDepositOrderId(userId);
   const providerPayment = await nowPaymentsService.createPayment({
-    priceAmount: amount,
+    priceAmount: totalPayableAmount,
     priceCurrency: 'usd',
     payCurrency,
     orderId: providerOrderId,
     orderDescription: `Hope International deposit for user ${userId}`
   });
+  const localExpiresAt = buildLocalExpiryDate();
+  const expiresAt = resolveExpiresAt(providerPayment.expiration_estimate_date, localExpiresAt);
 
   const depositRequest = await walletRepository.createDepositRequest(client, {
     userId,
     asset: 'USDT',
     network,
     walletAddressSnapshot: providerPayment.pay_address || null,
-    amount,
+    amount: depositAmount,
     method: 'nowpayments',
     instructions: 'Waiting for NOWPayments confirmation.',
     paymentProvider: nowPaymentsService.NOWPAYMENTS_PROVIDER,
@@ -99,14 +144,18 @@ async function createNowPaymentsDepositPaymentWithClient(client, userId, payload
     rawWebhookData: providerPayment,
     details: {
       provider: nowPaymentsService.NOWPAYMENTS_PROVIDER,
-      priceAmount: toMoney(amount),
+      depositAmount,
+      feeAmount,
+      totalPayableAmount,
+      priceAmount: totalPayableAmount,
       priceCurrency: 'USD',
       network,
       payCurrency: nowPaymentsService.NOWPAYMENTS_DISPLAY_CURRENCY,
       payAmount: toCryptoAmount(providerPayment.pay_amount || 0),
       payAddress: providerPayment.pay_address || null,
       providerPaymentId: providerPayment.payment_id || null,
-      paymentStatus: nowPaymentsService.mapPaymentStatus(providerPayment.payment_status || 'waiting')
+      paymentStatus: nowPaymentsService.mapPaymentStatus(providerPayment.payment_status || 'waiting'),
+      expiresAt
     },
     status: 'pending'
   });
@@ -117,9 +166,9 @@ async function createNowPaymentsDepositPaymentWithClient(client, userId, payload
     providerPaymentId: String(providerPayment.payment_id || ''),
     providerOrderId,
     network,
-    requestedAmount: toMoney(amount),
+    requestedAmount: depositAmount,
     expectedAmount: toCryptoAmount(providerPayment.pay_amount || 0),
-    priceAmount: toMoney(amount),
+    priceAmount: totalPayableAmount,
     priceCurrency: 'usd',
     payCurrency: nowPaymentsService.NOWPAYMENTS_DISPLAY_CURRENCY,
     payAmount: toCryptoAmount(providerPayment.pay_amount || 0),
@@ -131,7 +180,7 @@ async function createNowPaymentsDepositPaymentWithClient(client, userId, payload
     outcomeCurrency: providerPayment.outcome_currency || null,
     paymentUrl: providerPayment.payment_url || providerPayment.invoice_url || null,
     ipnCallbackUrl: nowPaymentsService.buildWebhookUrl(),
-    expiresAt: providerPayment.expiration_estimate_date || null,
+    expiresAt,
     statusHistory: [{
       status: nowPaymentsService.mapPaymentStatus(providerPayment.payment_status || 'waiting'),
       source: 'create',
@@ -166,7 +215,10 @@ async function createNowPaymentsDepositPaymentWithClient(client, userId, payload
         ...(depositRequest.details || {}),
         paymentRecordId: paymentRecord.id,
         providerOrderId,
-        providerPaymentId: paymentRecord.provider_payment_id
+        providerPaymentId: paymentRecord.provider_payment_id,
+        feeAmount,
+        totalPayableAmount,
+        expiresAt
       }
     },
     payment: normalizePaymentRecord(paymentRecord)
@@ -196,9 +248,13 @@ async function processNowPaymentsPayloadWithClient(client, payload, options = {}
     : null;
 
   const mappedStatus = nowPaymentsService.mapPaymentStatus(payload.payment_status || paymentRecord.payment_status);
+  const expiresAt = resolveExpiresAt(payload.expiration_estimate_date || paymentRecord.expires_at, buildLocalExpiryDate(new Date(paymentRecord.created_at || Date.now())));
+  const effectiveMappedStatus = ['confirmed', 'finished', 'failed', 'expired'].includes(mappedStatus)
+    ? mappedStatus
+    : (isExpiredAt(expiresAt) ? 'expired' : mappedStatus);
   const statusHistory = Array.isArray(paymentRecord.status_history) ? [...paymentRecord.status_history] : [];
   statusHistory.push({
-    status: mappedStatus,
+    status: effectiveMappedStatus,
     source: options.source || 'webhook',
     recordedAt: new Date().toISOString()
   });
@@ -212,26 +268,26 @@ async function processNowPaymentsPayloadWithClient(client, payload, options = {}
     payAmount: payload.pay_amount === undefined ? paymentRecord.pay_amount : toCryptoAmount(payload.pay_amount || 0),
     paymentAddress: payload.pay_address || paymentRecord.payment_address || paymentRecord.pay_address,
     payAddress: payload.pay_address || paymentRecord.pay_address,
-    paymentStatus: mappedStatus,
+    paymentStatus: effectiveMappedStatus,
     actuallyPaid: payload.actually_paid === undefined ? paymentRecord.actually_paid : toCryptoAmount(payload.actually_paid || 0),
     outcomeAmount: payload.outcome_amount === undefined ? paymentRecord.outcome_amount : toCryptoAmount(payload.outcome_amount || 0),
     outcomeCurrency: payload.outcome_currency || paymentRecord.outcome_currency,
     paymentUrl: payload.invoice_url || payload.payment_url || paymentRecord.payment_url,
-    expiresAt: payload.expiration_estimate_date || paymentRecord.expires_at,
+    expiresAt,
     statusHistory,
     rawPayload: payload
   });
 
   if (depositRequest) {
-    const expectedAmount = toMoney(depositRequest.amount || 0);
+    const expectedAmount = toMoney(paymentRecord.price_amount || 0);
     const payloadPriceAmount = payload.price_amount === undefined ? expectedAmount : toMoney(payload.price_amount || 0);
     if (Math.abs(expectedAmount - payloadPriceAmount) > 0.01) {
       throw new ApiError(400, 'NOWPayments amount mismatch');
     }
 
-    const nextDepositStatus = ['failed', 'expired'].includes(mappedStatus)
+    const nextDepositStatus = ['failed', 'expired'].includes(effectiveMappedStatus)
       ? 'failed'
-      : nowPaymentsService.isSuccessfulPaymentStatus(mappedStatus)
+      : nowPaymentsService.isSuccessfulPaymentStatus(effectiveMappedStatus)
         ? 'approved'
         : depositRequest.status;
 
@@ -242,12 +298,15 @@ async function processNowPaymentsPayloadWithClient(client, payload, options = {}
         providerOrderId: nextPaymentRecord.provider_order_id,
         providerPaymentId: nextPaymentRecord.provider_payment_id,
         webhookReceivedAt: new Date().toISOString(),
-        webhookSource: options.source || 'webhook'
+        webhookSource: options.source || 'webhook',
+        feeAmount: Math.max(0, Number((Number(nextPaymentRecord.price_amount || 0) - Number(nextPaymentRecord.requested_amount || 0)).toFixed(2))),
+        totalPayableAmount: Number(nextPaymentRecord.price_amount || 0),
+        expiresAt
       },
       paymentProvider: nowPaymentsService.NOWPAYMENTS_PROVIDER,
       paymentId: nextPaymentRecord.provider_payment_id,
       orderId: nextPaymentRecord.provider_order_id,
-      paymentStatus: mappedStatus,
+      paymentStatus: effectiveMappedStatus,
       payCurrency: nextPaymentRecord.pay_currency,
       payAmount: nextPaymentRecord.pay_amount,
       payAddress: nextPaymentRecord.pay_address,
@@ -256,11 +315,11 @@ async function processNowPaymentsPayloadWithClient(client, payload, options = {}
       expectedCurrentStatus: depositRequest.status
     });
 
-    if (nowPaymentsService.isSuccessfulPaymentStatus(mappedStatus)) {
+    if (nowPaymentsService.isSuccessfulPaymentStatus(effectiveMappedStatus)) {
       await walletService.settleDepositRequest(client, depositRequest, {
         status: 'approved',
         expectedCurrentStatus: nextDepositStatus,
-        paymentStatus: mappedStatus,
+        paymentStatus: effectiveMappedStatus,
         rawWebhookData: payload,
         extraDetails: {
           paymentRecordId: nextPaymentRecord.id,
@@ -341,5 +400,6 @@ module.exports = {
   getPaymentForUser,
   listAdminNowPaymentsPayments,
   getAdminNowPaymentsPayment,
-  normalizePaymentRecord
+  normalizePaymentRecord,
+  PAYMENT_EXPIRY_MINUTES
 };

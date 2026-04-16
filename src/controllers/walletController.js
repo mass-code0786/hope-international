@@ -11,6 +11,15 @@ function normalizeDepositRecord(item) {
   const transactionReference = item.transaction_hash || details.transactionReference || details.txHash || null;
   const walletAddressSnapshot = item.wallet_address_snapshot || details.walletAddressSnapshot || details.walletAddress || null;
   const proofImageUrl = item.proof_image_url || details.proofImageUrl || null;
+  const expiresAt = details.expiresAt || null;
+  const locallyExpired = expiresAt
+    && !item.is_processed
+    && !['confirmed', 'finished', 'failed', 'expired'].includes(String(item.payment_status || '').toLowerCase())
+    && new Date(expiresAt).getTime() <= Date.now();
+  const paymentStatus = locallyExpired ? 'expired' : (item.payment_status || details.paymentStatus || null);
+  const depositAmount = Number(item.amount || details.depositAmount || 0);
+  const feeAmount = Number(details.feeAmount || 0);
+  const totalPayableAmount = Number(details.totalPayableAmount || (depositAmount + feeAmount));
 
   return {
     ...item,
@@ -24,12 +33,16 @@ function normalizeDepositRecord(item) {
     payment_provider: item.payment_provider || details.provider || null,
     payment_record_id: item.payment_record_id || details.paymentRecordId || null,
     payment_id: item.payment_id || details.providerPaymentId || details.paymentId || null,
-    payment_status: item.payment_status || details.paymentStatus || null,
+    payment_status: paymentStatus,
     order_id: item.order_id || null,
     pay_currency: item.pay_currency || details.payCurrency || null,
     pay_amount: item.pay_amount ?? details.payAmount ?? null,
     pay_address: item.pay_address || details.payAddress || walletAddressSnapshot || null,
     payment_url: item.payment_url || details.paymentUrl || null,
+    expires_at: expiresAt,
+    deposit_amount: depositAmount,
+    fee_amount: feeAmount,
+    total_payable_amount: totalPayableAmount,
     is_processed: Boolean(item.is_processed),
     processed_at: item.processed_at || null,
     note: item.instructions || details.note || null,

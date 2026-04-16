@@ -18,11 +18,32 @@ import { currency, dateTime, statusVariant } from '@/lib/utils/format';
 
 const NOWPAYMENTS_PAY_CURRENCY = 'usdt';
 const NOWPAYMENTS_NETWORK = 'BSC/BEP20';
+const COUNTDOWN_INTERVAL_MS = 1000;
 
 function extractLatestActiveGatewayPayment(items = []) {
-  return items.find((item) => item.payment_provider === 'nowpayments' && !item.is_processed)
+  return items.find((item) => item.payment_provider === 'nowpayments' && !item.is_processed && String(item.payment_status || '').toLowerCase() !== 'expired')
     || items.find((item) => item.payment_provider === 'nowpayments' && item.payment_status)
     || null;
+}
+
+function getExpiryState(expiresAt) {
+  if (!expiresAt) {
+    return { expired: false, label: '--:--', remainingMs: null };
+  }
+
+  const remainingMs = new Date(expiresAt).getTime() - Date.now();
+  if (remainingMs <= 0) {
+    return { expired: true, label: '00:00', remainingMs: 0 };
+  }
+
+  const totalSeconds = Math.floor(remainingMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return {
+    expired: false,
+    label: `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`,
+    remainingMs
+  };
 }
 
 export default function DepositPage() {
@@ -32,6 +53,7 @@ export default function DepositPage() {
   const queryClient = useQueryClient();
   const [qrImage, setQrImage] = useState('');
   const [activeGatewayPayment, setActiveGatewayPayment] = useState(null);
+  const [countdownTick, setCountdownTick] = useState(Date.now());
   const returnTo = searchParams.get('returnTo') || '';
   const amountPreset = searchParams.get('amount') || '';
 
@@ -40,7 +62,7 @@ export default function DepositPage() {
     queryFn: getDepositHistory,
     refetchInterval: (query) => {
       const items = Array.isArray(query.state.data?.data) ? query.state.data.data : [];
-      const hasPendingGatewayDeposit = items.some((item) => item.payment_provider === 'nowpayments' && !item.is_processed);
+      const hasPendingGatewayDeposit = items.some((item) => item.payment_provider === 'nowpayments' && !item.is_processed && String(item.payment_status || '').toLowerCase() !== 'expired');
       return hasPendingGatewayDeposit || activeGatewayPayment ? 10000 : false;
     }
   });
@@ -82,7 +104,8 @@ export default function DepositPage() {
 
   useEffect(() => {
     let cancelled = false;
-    const qrTarget = activeGatewayPayment?.pay_address || '';
+    const expiryState = getExpiryState(activeGatewayPayment?.expires_at);
+    const qrTarget = expiryState.expired ? '' : (activeGatewayPayment?.pay_address || '');
     if (!qrTarget) {
       setQrImage('');
       return undefined;
@@ -99,13 +122,28 @@ export default function DepositPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeGatewayPayment?.pay_address]);
+  }, [activeGatewayPayment?.pay_address, activeGatewayPayment?.expires_at]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setCountdownTick(Date.now());
+    }, COUNTDOWN_INTERVAL_MS);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const expiryState = useMemo(() => getExpiryState(activeGatewayPayment?.expires_at), [activeGatewayPayment?.expires_at, countdownTick]);
+  const activePaymentExpired = Boolean(activeGatewayPayment) && expiryState.expired && !activeGatewayPayment?.is_processed;
+  const paymentSummary = {
+    depositAmount: Number(activeGatewayPayment?.deposit_amount ?? activeGatewayPayment?.amount ?? 0),
+    feeAmount: Number(activeGatewayPayment?.fee_amount ?? 0),
+    totalPayableAmount: Number(activeGatewayPayment?.total_payable_amount ?? activeGatewayPayment?.amount ?? 0)
+  };
 
   return (
     <div className="space-y-4">
       <SectionHeader
         title="Crypto Deposit"
-        subtitle="Create an automatic USDT BSC/BEP20 payment through NOWPayments."
         action={(
           <div className="flex items-center gap-2">
             {returnTo ? <Link href={returnTo} className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700">Back</Link> : null}
@@ -118,7 +156,7 @@ export default function DepositPage() {
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="accent">NOWPayments</Badge>
           <Badge variant="success">Automatic Credit</Badge>
-          {activeGatewayPayment?.payment_status ? <Badge variant="warning">{activeGatewayPayment.payment_status}</Badge> : null}
+          {activeGatewayPayment?.payment_status ? <Badge variant={activePaymentExpired ? 'danger' : 'warning'}>{activePaymentExpired ? 'expired' : activeGatewayPayment.payment_status}</Badge> : null}
         </div>
 
         <div className="mt-4 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
@@ -133,13 +171,6 @@ export default function DepositPage() {
           </div>
 
           <div className="space-y-3">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-300">Automatic Flow</p>
-              <p className="mt-2 text-sm leading-6 text-slate-100">
-                Enter your amount, receive a live USDT address on BSC/BEP20, pay it, and wait for NOWPayments confirmation. Wallet crediting and deposit income settlement continue from the existing backend flow.
-              </p>
-            </div>
-
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Coin</p>
@@ -151,17 +182,23 @@ export default function DepositPage() {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Pay Amount</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Deposit Amount</p>
                 <p className="mt-2 text-lg font-semibold text-white">
-                  {activeGatewayPayment?.pay_amount ? `${activeGatewayPayment.pay_amount} USDT` : 'Waiting'}
+                  {paymentSummary.depositAmount ? currency(paymentSummary.depositAmount) : 'Waiting'}
                 </p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Deposit Value</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Fee</p>
                 <p className="mt-2 text-lg font-semibold text-white">
-                  {activeGatewayPayment?.amount ? currency(activeGatewayPayment.amount) : 'USD based'}
+                  {paymentSummary.totalPayableAmount ? currency(paymentSummary.feeAmount) : 'Waiting'}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Total Payable</p>
+                <p className="mt-2 text-lg font-semibold text-white">
+                  {paymentSummary.totalPayableAmount ? currency(paymentSummary.totalPayableAmount) : 'Waiting'}
                 </p>
               </div>
             </div>
@@ -169,9 +206,9 @@ export default function DepositPage() {
             <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Payment Address</p>
               <p className="mt-2 break-all text-sm font-semibold text-white">
-                {activeGatewayPayment?.pay_address || 'Create a NOWPayments deposit to get a crypto address'}
+                {activePaymentExpired ? 'Expired payment address' : (activeGatewayPayment?.pay_address || 'Create a NOWPayments deposit to get a crypto address')}
               </p>
-              {activeGatewayPayment?.pay_address ? (
+              {activeGatewayPayment?.pay_address && !activePaymentExpired ? (
                 <button
                   type="button"
                   onClick={async () => {
@@ -183,7 +220,7 @@ export default function DepositPage() {
                   <Copy size={14} /> Copy Address
                 </button>
               ) : null}
-              {activeGatewayPayment?.payment_record_id ? (
+              {activeGatewayPayment?.payment_record_id && !activePaymentExpired ? (
                 <Link
                   href={`/payments/${activeGatewayPayment.payment_record_id}${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`}
                   className="mt-3 ml-2 inline-flex items-center gap-2 rounded-xl border border-white/15 px-3 py-2 text-xs font-medium text-slate-100"
@@ -194,10 +231,15 @@ export default function DepositPage() {
             </div>
 
             <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200">Status</p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200">Status</p>
+                <p className="text-lg font-semibold text-white">{expiryState.label}</p>
+              </div>
               <p className="mt-2 text-sm text-emerald-50">
                 {activeGatewayPayment
-                  ? activeGatewayPayment.is_processed
+                  ? activePaymentExpired
+                    ? 'This payment has expired. Create a new payment to continue.'
+                    : activeGatewayPayment.is_processed
                     ? 'Payment confirmed and credited to your deposit wallet.'
                     : 'Waiting for payment confirmation. This section refreshes automatically.'
                   : 'No active NOWPayments deposit yet.'}
@@ -224,11 +266,8 @@ export default function DepositPage() {
       >
         <div className="grid gap-3 sm:grid-cols-[1fr_0.9fr]">
           <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">Supported Payment</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">Payment</p>
             <p className="mt-2 text-sm font-semibold text-slate-950">USDT on BSC/BEP20</p>
-            <p className="mt-2 text-sm leading-6 text-slate-700">
-              Deposits are created only through NOWPayments. Manual submission, TXID entry, proof upload, and admin review are no longer available.
-            </p>
           </div>
 
           <div className="space-y-1.5">

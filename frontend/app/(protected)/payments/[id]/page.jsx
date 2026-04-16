@@ -30,19 +30,19 @@ function Countdown({ expiresAt }) {
   useEffect(() => {
     const timer = window.setInterval(() => {
       setNow(Date.now());
-    }, 30000);
+    }, 1000);
 
     return () => window.clearInterval(timer);
   }, []);
 
   const text = (() => {
-    if (!expiresAt) return 'No provider expiry returned';
+    if (!expiresAt) return '--:--';
     const remainingMs = new Date(expiresAt).getTime() - now;
-    if (remainingMs <= 0) return 'Expired';
-    const totalMinutes = Math.floor(remainingMs / 60000);
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    return `${hours}h ${minutes}m remaining`;
+    if (remainingMs <= 0) return '00:00';
+    const totalSeconds = Math.floor(remainingMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   })();
 
   return <span>{text}</span>;
@@ -75,10 +75,11 @@ export default function PaymentStatusPage() {
   });
 
   const payment = paymentQuery.data?.data || null;
+  const paymentExpired = Boolean(payment?.is_expired) || String(payment?.user_facing_status || '').toLowerCase() === 'expired';
 
   useEffect(() => {
     let cancelled = false;
-    if (!payment?.pay_address) {
+    if (!payment?.pay_address || paymentExpired) {
       setQrImage('');
       return undefined;
     }
@@ -94,7 +95,7 @@ export default function PaymentStatusPage() {
     return () => {
       cancelled = true;
     };
-  }, [payment?.pay_address]);
+  }, [payment?.pay_address, paymentExpired]);
 
   if (paymentQuery.isLoading) {
     return <div className="rounded-3xl border border-white/10 bg-card p-5 text-sm text-muted">Loading payment status...</div>;
@@ -125,7 +126,7 @@ export default function PaymentStatusPage() {
             <button
               type="button"
               onClick={() => syncMutation.mutate()}
-              disabled={syncMutation.isPending}
+              disabled={syncMutation.isPending || paymentExpired}
               className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-3 py-2 text-xs font-medium text-white disabled:opacity-60"
             >
               <RefreshCw size={14} className={syncMutation.isPending ? 'animate-spin' : ''} />
@@ -134,7 +135,7 @@ export default function PaymentStatusPage() {
           </div>
 
           <div className="mt-5 flex justify-center rounded-3xl border border-white/10 bg-white p-4">
-            {qrImage ? <img src={qrImage} alt="Payment QR code" className="h-[220px] w-[220px] object-contain" /> : <div className="flex h-[220px] w-[220px] items-center justify-center text-center text-sm text-slate-500">No payment address available</div>}
+            {qrImage ? <img src={qrImage} alt="Payment QR code" className="h-[220px] w-[220px] object-contain" /> : <div className="flex h-[220px] w-[220px] items-center justify-center text-center text-sm text-slate-500">{paymentExpired ? 'Payment expired' : 'No payment address available'}</div>}
           </div>
 
           <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm">
@@ -145,41 +146,25 @@ export default function PaymentStatusPage() {
         </div>
 
         <div className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Deposit Value</p>
-              <p className="mt-2 text-lg font-semibold text-slate-950">{currency(payment?.price_amount || 0)}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Deposit Amount</p>
+              <p className="mt-2 text-lg font-semibold text-slate-950">{currency(payment?.deposit_amount || payment?.requested_amount || 0)}</p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Coin</p>
-              <p className="mt-2 text-lg font-semibold text-slate-950">USDT</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Fee</p>
+              <p className="mt-2 text-lg font-semibold text-slate-950">{currency(payment?.fee_amount || 0)}</p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Network</p>
-              <p className="mt-2 text-lg font-semibold text-slate-950">{payment?.network || 'BSC/BEP20'}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Pay Amount</p>
-              <p className="mt-2 text-lg font-semibold text-slate-950">
-                {payment?.pay_amount ? `${payment.pay_amount} USDT` : 'Waiting for quote'}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Actually Paid</p>
-              <p className="mt-2 text-lg font-semibold text-slate-950">
-                {payment?.actually_paid ? `${payment.actually_paid} USDT` : '0'}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Updated</p>
-              <p className="mt-2 text-sm font-semibold text-slate-950">{payment?.updated_at ? dateTime(payment.updated_at) : '-'}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Total Payable</p>
+              <p className="mt-2 text-lg font-semibold text-slate-950">{currency(payment?.total_payable_amount || payment?.price_amount || 0)}</p>
             </div>
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Payment Address</p>
-            <p className="mt-2 break-all text-sm font-semibold text-slate-950">{payment?.pay_address || 'No payment address available'}</p>
-            {payment?.pay_address ? (
+            <p className="mt-2 break-all text-sm font-semibold text-slate-950">{paymentExpired ? 'Expired payment address' : (payment?.pay_address || 'No payment address available')}</p>
+            {payment?.pay_address && !paymentExpired ? (
               <button
                 type="button"
                 onClick={async () => {
@@ -197,6 +182,7 @@ export default function PaymentStatusPage() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Provider Reference</p>
             <p className="mt-2 break-all text-sm font-semibold text-slate-950">{payment?.provider_payment_id || payment?.id}</p>
             <p className="mt-2 text-xs text-slate-500">Created {payment?.created_at ? dateTime(payment.created_at) : '-'}</p>
+            <p className="mt-2 text-xs text-slate-500">Network {payment?.network || 'BSC/BEP20'} | Coin USDT</p>
           </div>
         </div>
       </section>
