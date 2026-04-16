@@ -7,12 +7,12 @@ import { BottomNav } from '@/components/shell/BottomNav';
 import { Sidebar } from '@/components/shell/Sidebar';
 import { useAuthStore } from '@/lib/store/authStore';
 import { useQuery } from '@tanstack/react-query';
-import { getMe } from '@/lib/services/authService';
 import { getSellerAccess } from '@/lib/services/sellerService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { isSeller } from '@/lib/constants/access';
 import { LoginWelcomeVoice } from '@/components/shell/LoginWelcomeVoice';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 const LazyHopeAssistant = dynamic(
   () => import('@/components/shell/HopeAssistant').then((mod) => mod.HopeAssistant),
@@ -21,22 +21,13 @@ const LazyHopeAssistant = dynamic(
 
 export function AppShell({ children }) {
   const router = useRouter();
-  const { token, hydrated, hydrate, setUser, clearSession, user, isLoggingOut } = useAuthStore();
+  const { token, hydrated, hydrate, clearSession, user, isLoggingOut } = useAuthStore();
 
   useEffect(() => {
     if (!hydrated) hydrate();
   }, [hydrated, hydrate]);
 
-  const meQuery = useQuery({
-    queryKey: queryKeys.me,
-    queryFn: getMe,
-    enabled: hydrated && Boolean(token) && !user,
-    retry: false,
-    initialData: user || undefined,
-    initialDataUpdatedAt: user ? Date.now() : undefined,
-    staleTime: 300_000
-  });
-
+  const meQuery = useCurrentUser();
   const resolvedUser = meQuery.data ?? user ?? null;
   const sellerRoleAccess = isSeller(resolvedUser);
 
@@ -47,10 +38,6 @@ export function AppShell({ children }) {
     retry: false,
     staleTime: 300_000
   });
-
-  useEffect(() => {
-    if (meQuery.data) setUser(meQuery.data);
-  }, [meQuery.data, setUser]);
 
   useEffect(() => {
     if (!hydrated) return;

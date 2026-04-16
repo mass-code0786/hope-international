@@ -2,12 +2,10 @@
 
 import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, Camera, Share2 } from 'lucide-react';
 import { RegistrationSummaryCard } from '@/components/auth/RegistrationSummaryCard';
-import { getMe } from '@/lib/services/authService';
-import { queryKeys } from '@/lib/query/queryKeys';
 import { useAuthStore } from '@/lib/store/authStore';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 function buildFallbackSummary(user) {
   if (!user) return null;
@@ -39,12 +37,7 @@ export default function WelcomePage() {
     if (!hydrated) hydrate();
   }, [hydrated, hydrate]);
 
-  const meQuery = useQuery({
-    queryKey: queryKeys.me,
-    queryFn: getMe,
-    enabled: hydrated && Boolean(token) && !registrationSummary,
-    staleTime: 30_000
-  });
+  const meQuery = useCurrentUser({ enabled: Boolean(token) && !registrationSummary });
 
   const summary = useMemo(() => registrationSummary || buildFallbackSummary(meQuery.data), [registrationSummary, meQuery.data]);
 

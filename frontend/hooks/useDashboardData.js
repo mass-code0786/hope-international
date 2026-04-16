@@ -1,13 +1,13 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { getMe } from '@/lib/services/authService';
 import { getWallet } from '@/lib/services/walletService';
 import { getWeeklyCompensation, getMonthlyCompensation } from '@/lib/services/compensationService';
 import { queryKeys } from '@/lib/query/queryKeys';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export function useDashboardData(cycle, month) {
-  const meQuery = useQuery({ queryKey: queryKeys.me, queryFn: getMe, retry: 1 });
+  const meQuery = useCurrentUser();
   const walletQuery = useQuery({ queryKey: queryKeys.wallet, queryFn: getWallet, retry: 1 });
   const weeklyQuery = useQuery({
     queryKey: queryKeys.weeklyCompensation(cycle.cycleStart, cycle.cycleEnd),

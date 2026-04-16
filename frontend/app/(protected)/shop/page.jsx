@@ -31,6 +31,7 @@ import { PurchaseConfirmModal } from '@/components/shop/PurchaseConfirmModal';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Header } from '@/components/layout/Header';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useInfiniteProducts } from '@/hooks/useProducts';
 import { useWallet } from '@/hooks/useWallet';
 import { createOrder } from '@/lib/services/ordersService';
@@ -217,7 +218,7 @@ export default function ShopPage() {
     isFetchingNextPage
   } = useInfiniteProducts({ limit: 12 });
   const bannersQuery = useQuery({ queryKey: queryKeys.homepageBanners, queryFn: getHomepageBanners, placeholderData: (previousData) => previousData });
-  const meQuery = useQuery({ queryKey: queryKeys.me });
+  const meQuery = useCurrentUser();
   const walletQuery = useWallet();
   const clearSession = useAuthStore((state) => state.clearSession);
   const [search, setSearch] = useState('');

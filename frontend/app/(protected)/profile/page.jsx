@@ -11,7 +11,7 @@ import { ProfileActions } from '@/components/profile/ProfileActions';
 import { BinaryReferralLinks } from '@/components/referral/BinaryReferralLinks';
 import { ErrorState } from '@/components/ui/ErrorState';
 import BtctCoinLogo from '@/components/common/BtctCoinLogo';
-import { getMe, getWebauthnRegisterOptions, getWebauthnStatus, removeWebauthnCredential, verifyWebauthnRegister } from '@/lib/services/authService';
+import { getWebauthnRegisterOptions, getWebauthnStatus, removeWebauthnCredential, verifyWebauthnRegister } from '@/lib/services/authService';
 import { getWallet } from '@/lib/services/walletService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { useAuthStore } from '@/lib/store/authStore';
@@ -20,6 +20,7 @@ import { currency, formatLabel, number, rankLabel } from '@/lib/utils/format';
 import { isSeller } from '@/lib/constants/access';
 import { createWebAuthnCredential, supportsWebAuthn } from '@/lib/utils/webauthn';
 import { clearProtectedQueries } from '@/lib/utils/logout';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 function ProfileInfoCard({ label, value, subtitle = null, className = '', statusTone = '' }) {
   return (
@@ -257,7 +258,7 @@ export default function ProfilePage() {
   const hydrated = useAuthStore((s) => s.hydrated);
   const sessionUser = useAuthStore((s) => s.user);
 
-  const meQuery = useQuery({ queryKey: queryKeys.me, queryFn: getMe, enabled: hydrated && Boolean(token) && !sessionUser, retry: false, initialData: sessionUser || undefined, initialDataUpdatedAt: sessionUser ? Date.now() : undefined });
+  const meQuery = useCurrentUser();
   const walletQuery = useQuery({ queryKey: queryKeys.wallet, queryFn: getWallet, enabled: hydrated && Boolean(token), placeholderData: (previousData) => previousData });
 
   const user = meQuery.data ?? sessionUser ?? null;

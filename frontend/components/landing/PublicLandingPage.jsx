@@ -26,13 +26,13 @@ import {
 } from 'lucide-react';
 import Logo from '@/components/common/Logo';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { getMe } from '@/lib/services/authService';
 import { getPublicGallery, getPublicLandingPage, trackLandingVisit } from '@/lib/services/landingService';
 import { useAuthStore } from '@/lib/store/authStore';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { resolveMediaUrl } from '@/lib/utils/media';
 import { getPostLoginRoute } from '@/lib/utils/postLoginRedirect';
 import { clearProtectedQueries } from '@/lib/utils/logout';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 const faqItems = [
   { question: 'What is Hope International?', answer: 'Hope International is a hybrid platform that combines network growth, ecommerce participation, auction activity, and wallet tools in one mobile-first experience.' },
@@ -248,12 +248,7 @@ export default function PublicLandingPage() {
     queryFn: getPublicLandingPage
   });
 
-  const currentUserQuery = useQuery({
-    queryKey: queryKeys.me,
-    queryFn: getMe,
-    enabled: Boolean(hydrated && token),
-    retry: false
-  });
+  const currentUserQuery = useCurrentUser({ enabled: Boolean(token) });
 
   const galleryQuery = useQuery({
     queryKey: queryKeys.publicGallery,

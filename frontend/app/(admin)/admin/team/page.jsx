@@ -11,13 +11,13 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { getAdminTeamSummary, getAdminTeamTree, getAdminUsersSearch } from '@/lib/services/admin';
-import { getMe } from '@/lib/services/authService';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export default function AdminTeamPage() {
   const [searchInput, setSearchInput] = useState('');
   const [selectedLookupUser, setSelectedLookupUser] = useState(null);
   const [depth, setDepth] = useState(2);
-  const meQuery = useQuery({ queryKey: queryKeys.me, queryFn: getMe });
+  const meQuery = useCurrentUser();
   const trimmedSearch = searchInput.trim();
   const searchEnabled = trimmedSearch.length >= 2;
   const userSearchQuery = useQuery({

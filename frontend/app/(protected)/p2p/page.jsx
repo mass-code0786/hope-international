@@ -7,14 +7,14 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Badge } from '@/components/ui/Badge';
-import { queryKeys } from '@/lib/query/queryKeys';
 import { createP2pTransfer, getP2pHistory } from '@/lib/services/walletService';
-import { getMe } from '@/lib/services/authService';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { queryKeys } from '@/lib/query/queryKeys';
 import { currency, dateTime, statusVariant } from '@/lib/utils/format';
 
 export default function P2pPage() {
   const queryClient = useQueryClient();
-  const meQuery = useQuery({ queryKey: queryKeys.me, queryFn: getMe });
+  const meQuery = useCurrentUser();
   const transfersQuery = useQuery({ queryKey: queryKeys.walletP2p, queryFn: getP2pHistory });
 
   const transferMutation = useMutation({

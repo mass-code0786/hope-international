@@ -2,16 +2,14 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
-import { getMe } from '@/lib/services/authService';
-import { queryKeys } from '@/lib/query/queryKeys';
 import { useSellerMe } from '@/hooks/useSellerMe';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { canAccessSellerArea } from '@/lib/constants/access';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
 
 export function SellerGuard({ children }) {
-  const meQuery = useQuery({ queryKey: queryKeys.me, queryFn: getMe, retry: false });
+  const meQuery = useCurrentUser();
   const sellerQuery = useSellerMe({ enabled: Boolean(meQuery.data) });
 
   const isLoading = meQuery.isLoading || sellerQuery.isLoading;

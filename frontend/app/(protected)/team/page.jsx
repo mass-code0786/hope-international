@@ -10,9 +10,10 @@ import { getTeamSummary, getTeamTreeRoot } from '@/lib/services/teamService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { TeamSummaryPanel } from '@/components/team/TeamSummaryPanel';
 import { BinaryTreeExplorer } from '@/components/team/BinaryTreeExplorer';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export default function TeamPage() {
-  const meQuery = useQuery({ queryKey: queryKeys.me });
+  const meQuery = useCurrentUser();
   const teamSummaryQuery = useQuery({ queryKey: queryKeys.teamSummary, queryFn: getTeamSummary, placeholderData: (previousData) => previousData });
   const treeRootQuery = useQuery({ queryKey: queryKeys.teamTreeRoot, queryFn: getTeamTreeRoot, placeholderData: (previousData) => previousData });
 

@@ -7,39 +7,26 @@ import toast from 'react-hot-toast';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { AdminTopbar } from '@/components/admin/AdminTopbar';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { getMe } from '@/lib/services/authService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { canAccessAdminArea } from '@/lib/constants/access';
 import { useAuthStore } from '@/lib/store/authStore';
 import { clearStoredToken } from '@/lib/utils/tokenStorage';
 import { LoginWelcomeVoice } from '@/components/shell/LoginWelcomeVoice';
 import { clearProtectedQueries } from '@/lib/utils/logout';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export function AdminShell({ children }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { token, hydrated, hydrate, user, setUser, clearSession, isLoggingOut } = useAuthStore();
+  const { token, hydrated, hydrate, user, clearSession, isLoggingOut } = useAuthStore();
 
   useEffect(() => {
     if (!hydrated) hydrate();
   }, [hydrated, hydrate]);
 
-  const meQuery = useQuery({
-    queryKey: queryKeys.me,
-    queryFn: getMe,
-    enabled: hydrated && Boolean(token) && !user,
-    retry: false,
-    initialData: user || undefined,
-    initialDataUpdatedAt: user ? Date.now() : undefined,
-    staleTime: 30_000
-  });
-
+  const meQuery = useCurrentUser();
   const resolvedUser = meQuery.data ?? user ?? null;
-
-  useEffect(() => {
-    if (meQuery.data) setUser(meQuery.data);
-  }, [meQuery.data, setUser]);
 
   useEffect(() => {
     if (!hydrated) return;

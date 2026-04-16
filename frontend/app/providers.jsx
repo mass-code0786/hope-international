@@ -7,16 +7,29 @@ import { applyTheme } from '@/lib/utils/theme';
 
 export function Providers({ children }) {
   const [queryClient] = useState(() =>
-    new QueryClient({
-      defaultOptions: {
-        queries: {
-          staleTime: 90_000,
-          retry: 1,
-          refetchOnWindowFocus: false,
-          refetchOnReconnect: false
+    {
+      const client = new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 90_000,
+            retry: 1,
+            refetchOnWindowFocus: false,
+            refetchOnReconnect: false
+          }
         }
-      }
-    })
+      });
+
+      client.setQueryDefaults(['me'], {
+        retry: false,
+        staleTime: 5 * 60 * 1000,
+        gcTime: 30 * 60 * 1000,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false
+      });
+
+      return client;
+    }
   );
 
   useEffect(() => {
