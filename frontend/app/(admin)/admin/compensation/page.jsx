@@ -9,7 +9,6 @@ import { ActionPanel } from '@/components/admin/ActionPanel';
 import { DataTable } from '@/components/admin/DataTable';
 import { ConfirmationModal } from '@/components/admin/ConfirmationModal';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
 import { queryKeys } from '@/lib/query/queryKeys';
 import {
   getAdminMonthlyCompensation,
@@ -90,7 +89,7 @@ export default function AdminCompensationPage() {
     onError: (err) => toast.error(runFeedback(err))
   });
 
-  if (weeklyQuery.isLoading || monthlyQuery.isLoading) return <AdminShellSkeleton />;
+  if (weeklyQuery.isLoading || monthlyQuery.isLoading) return null;
   if (weeklyQuery.isError) return <ErrorState message="Weekly compensation data unavailable." onRetry={weeklyQuery.refetch} />;
   if (monthlyQuery.isError) return <ErrorState message="Monthly compensation data unavailable." onRetry={monthlyQuery.refetch} />;
 

@@ -9,7 +9,6 @@ import { SearchInput } from '@/components/admin/SearchInput';
 import { DataTable } from '@/components/admin/DataTable';
 import { ActionPanel } from '@/components/admin/ActionPanel';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
 import { queryKeys } from '@/lib/query/queryKeys';
 import {
   createAdminBanner,
@@ -130,7 +129,7 @@ export default function AdminBannersPage() {
     onError: (error) => toast.error(error.message || 'Failed to delete banner')
   });
 
-  if (bannersQuery.isLoading) return <AdminShellSkeleton />;
+  if (bannersQuery.isLoading) return null;
   if (bannersQuery.isError) return <ErrorState message="Unable to load banners." onRetry={bannersQuery.refetch} />;
 
   const envelope = bannersQuery.data || {};

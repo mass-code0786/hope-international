@@ -7,7 +7,6 @@ import { AdminSectionHeader } from '@/components/admin/AdminSectionHeader';
 import { MetricCard } from '@/components/admin/MetricCard';
 import { DataTable } from '@/components/admin/DataTable';
 import { SummaryPanel } from '@/components/admin/SummaryPanel';
-import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { currency, incomeSourceLabel, number, shortDate } from '@/lib/utils/format';
@@ -50,7 +49,7 @@ export default function AdminDashboardPage() {
       : []
   ), [charts.incomeDistribution]);
 
-  if (overviewQuery.isLoading) return <AdminShellSkeleton />;
+  if (overviewQuery.isLoading) return null;
   if (overviewQuery.isError) return <ErrorState message="Admin dashboard failed to load." onRetry={overviewQuery.refetch} />;
 
   return (

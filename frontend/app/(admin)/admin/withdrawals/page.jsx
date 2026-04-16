@@ -10,7 +10,6 @@ import { DataTable } from '@/components/admin/DataTable';
 import { StatusBadge } from '@/components/admin/StatusBadge';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { getAdminWithdrawals, reviewAdminWithdrawal } from '@/lib/services/admin';
 import { currency, dateTime } from '@/lib/utils/format';
@@ -36,7 +35,7 @@ export default function AdminWithdrawalsPage() {
     onError: (error) => toast.error(error.message || 'Failed to update withdrawal')
   });
 
-  if (withdrawalsQuery.isLoading) return <AdminShellSkeleton />;
+  if (withdrawalsQuery.isLoading) return null;
   if (withdrawalsQuery.isError) return <ErrorState message="Unable to load withdrawals." onRetry={withdrawalsQuery.refetch} />;
 
   const envelope = withdrawalsQuery.data || {};

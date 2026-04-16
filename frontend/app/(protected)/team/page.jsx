@@ -6,7 +6,6 @@ import { useQuery } from '@tanstack/react-query';
 import { GitBranchPlus } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { TeamSkeleton } from '@/components/ui/PageSkeletons';
 import { getTeamSummary, getTeamTreeRoot } from '@/lib/services/teamService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { TeamSummaryPanel } from '@/components/team/TeamSummaryPanel';
@@ -22,9 +21,9 @@ export default function TeamPage() {
   const root = treeRootQuery.data || null;
   const directChildren = useMemo(() => [root?.children?.left, root?.children?.right].filter(Boolean), [root]);
 
-  const showSkeleton = (meQuery.isPending && !meQuery.data) || (teamSummaryQuery.isPending && !teamSummaryQuery.data) || (treeRootQuery.isPending && !treeRootQuery.data);
+  const isLoadingTeam = (meQuery.isPending && !meQuery.data) || (teamSummaryQuery.isPending && !teamSummaryQuery.data) || (treeRootQuery.isPending && !treeRootQuery.data);
 
-  if (showSkeleton) return <TeamSkeleton />;
+  if (isLoadingTeam) return null;
   if ((meQuery.isError && !meQuery.data) || (teamSummaryQuery.isError && !teamSummaryQuery.data) || (treeRootQuery.isError && !treeRootQuery.data)) {
     return <ErrorState message="Team tree is temporarily unavailable." onRetry={() => { meQuery.refetch(); teamSummaryQuery.refetch(); treeRootQuery.refetch(); }} />;
   }

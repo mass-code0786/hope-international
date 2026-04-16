@@ -9,7 +9,6 @@ import { DataTable } from '@/components/admin/DataTable';
 import { StatusBadge } from '@/components/admin/StatusBadge';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { getAdminOrderDetails, getAdminOrders } from '@/lib/services/admin';
 import { currency, number, shortDate } from '@/lib/utils/format';
@@ -30,7 +29,7 @@ export default function AdminOrdersPage() {
     enabled: Boolean(selectedOrderId)
   });
 
-  if (ordersQuery.isLoading) return <AdminShellSkeleton />;
+  if (ordersQuery.isLoading) return null;
   if (ordersQuery.isError) return <ErrorState message="Unable to load orders." onRetry={ordersQuery.refetch} />;
 
   const envelope = ordersQuery.data || {};

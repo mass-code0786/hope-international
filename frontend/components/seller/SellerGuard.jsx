@@ -7,7 +7,6 @@ import { getMe } from '@/lib/services/authService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { useSellerMe } from '@/hooks/useSellerMe';
 import { canAccessSellerArea } from '@/lib/constants/access';
-import { SellerDashboardSkeleton } from '@/components/ui/PageSkeletons';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
 
@@ -19,7 +18,7 @@ export function SellerGuard({ children }) {
   const isError = meQuery.isError || sellerQuery.isError;
   const canAccess = useMemo(() => canAccessSellerArea(meQuery.data, sellerQuery.data), [meQuery.data, sellerQuery.data]);
 
-  if (isLoading) return <SellerDashboardSkeleton />;
+  if (isLoading) return null;
   if (isError) return <ErrorState message="Seller access validation failed. Please retry." onRetry={sellerQuery.refetch} />;
 
   if (!canAccess) {

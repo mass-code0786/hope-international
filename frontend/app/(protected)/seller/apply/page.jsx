@@ -6,7 +6,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { SellerApplySkeleton } from '@/components/ui/PageSkeletons';
 import { SellerStatusBadge } from '@/components/seller/SellerStatusBadge';
 import { useSellerMe } from '@/hooks/useSellerMe';
 import { useWallet } from '@/hooks/useWallet';
@@ -132,7 +131,7 @@ export default function SellerApplyPage() {
     await applyMutation.mutateAsync({ ...form, documents: cleanedDocs });
   }
 
-  if (sellerQuery.isLoading) return <SellerApplySkeleton />;
+  if (sellerQuery.isLoading) return null;
   if (sellerQuery.isError) return <ErrorState message="Seller application data could not be loaded." onRetry={sellerQuery.refetch} />;
 
   return (

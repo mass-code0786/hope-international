@@ -5,7 +5,6 @@ import { useMemo, useState } from 'react';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { SellerProductsSkeleton } from '@/components/ui/PageSkeletons';
 import { SellerStatusBadge } from '@/components/seller/SellerStatusBadge';
 import { SellerGuard } from '@/components/seller/SellerGuard';
 import { useSellerProducts } from '@/hooks/useSellerProducts';
@@ -23,7 +22,7 @@ function SellerProductsContent() {
     });
   }, [products, search]);
 
-  if (isLoading) return <SellerProductsSkeleton />;
+  if (isLoading) return null;
   if (isError) return <ErrorState message="Seller products could not be loaded." onRetry={refetch} />;
 
   return (

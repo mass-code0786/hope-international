@@ -9,7 +9,6 @@ import { DataTable } from '@/components/admin/DataTable';
 import { StatusBadge } from '@/components/admin/StatusBadge';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { getAdminIncomeTransactions } from '@/lib/services/admin';
 import { currency, incomeSourceLabel, dateTime } from '@/lib/utils/format';
@@ -24,7 +23,7 @@ export default function AdminIncomePage() {
     queryFn: () => getAdminIncomeTransactions({ search, source, page, limit: 20 })
   });
 
-  if (incomeQuery.isLoading) return <AdminShellSkeleton />;
+  if (incomeQuery.isLoading) return null;
   if (incomeQuery.isError) return <ErrorState message="Unable to load income records." onRetry={incomeQuery.refetch} />;
 
   const envelope = incomeQuery.data || {};

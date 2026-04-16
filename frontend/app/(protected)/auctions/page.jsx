@@ -47,24 +47,6 @@ function getAuctionTimestamp(auction, kind) {
   return Number.isFinite(stamp) ? stamp : 0;
 }
 
-function AuctionGridSkeleton() {
-  return (
-    <div className="grid grid-cols-2 gap-3">
-      {Array.from({ length: 6 }).map((_, index) => (
-        <div key={index} className="rounded-[26px] border border-white/5 bg-[#1a1f2e] p-3 shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
-          <div className="flex items-center justify-between">
-            <div className="h-7 w-20 animate-pulse rounded-full bg-[#1f2937]" />
-            <div className="h-7 w-14 animate-pulse rounded-full bg-[#1f2937]" />
-          </div>
-          <div className="mx-auto mt-4 h-28 w-28 animate-pulse rounded-full bg-[#1f2937]" />
-          <div className="mt-4 h-10 animate-pulse rounded-2xl bg-[#1f2937]" />
-          <div className="mt-3 h-10 animate-pulse rounded-full bg-[#1f2937]" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function EmptyAuctionState() {
   return (
     <section className="rounded-[28px] border border-white/5 bg-[#1a1f2e] p-6 text-center shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
@@ -244,8 +226,8 @@ export default function AuctionsPage() {
     return count;
   }, [filters]);
 
-  const showSkeleton = auctionsQuery.isPending && !auctionsQuery.data;
-  const isEmpty = !showSkeleton && !auctionsQuery.isError && filteredAuctions.length === 0;
+  const isLoadingList = auctionsQuery.isPending && !auctionsQuery.data;
+  const isEmpty = !isLoadingList && !auctionsQuery.isError && filteredAuctions.length === 0;
 
   const applyFilters = () => {
     setFilters(draftFilters);
@@ -339,13 +321,12 @@ export default function AuctionsPage() {
             </div>
           </section>
 
-          {showSkeleton ? <AuctionGridSkeleton /> : null}
-          {!showSkeleton && auctionsQuery.isError ? (
+          {!isLoadingList && auctionsQuery.isError ? (
             <ErrorState message="Auction list could not be loaded." onRetry={auctionsQuery.refetch} />
           ) : null}
-          {!showSkeleton && isEmpty ? <EmptyAuctionState /> : null}
+          {!isLoadingList && isEmpty ? <EmptyAuctionState /> : null}
 
-          {!showSkeleton && !auctionsQuery.isError && filteredAuctions.length > 0 ? (
+          {!isLoadingList && !auctionsQuery.isError && filteredAuctions.length > 0 ? (
             <div className="grid grid-cols-2 gap-3">
               {filteredAuctions.map((auction) => <AuctionCard key={auction.id} auction={auction} />)}
             </div>

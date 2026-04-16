@@ -8,7 +8,6 @@ import { ArrowLeft, MapPin, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { createUserAddress, getUserAddress, updateUserAddress } from '@/lib/services/userAddressService';
 
@@ -82,7 +81,7 @@ export default function AddressPage() {
   });
 
   if (addressQuery.isLoading) {
-    return <LoadingSkeleton className="h-72 rounded-[32px]" />;
+    return null;
   }
 
   if (addressQuery.isError) {

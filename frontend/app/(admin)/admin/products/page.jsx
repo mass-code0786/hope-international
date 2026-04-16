@@ -9,7 +9,6 @@ import { SearchInput } from '@/components/admin/SearchInput';
 import { DataTable } from '@/components/admin/DataTable';
 import { ActionPanel } from '@/components/admin/ActionPanel';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { createAdminProduct, getAdminProducts, updateAdminProduct } from '@/lib/services/admin';
 import { currency, number } from '@/lib/utils/format';
@@ -121,7 +120,7 @@ export default function AdminProductsPage() {
     }
   }
 
-  if (productsQuery.isLoading) return <AdminShellSkeleton />;
+  if (productsQuery.isLoading) return null;
   if (productsQuery.isError) return <ErrorState message="Unable to load products." onRetry={productsQuery.refetch} />;
 
   const envelope = productsQuery.data || {};

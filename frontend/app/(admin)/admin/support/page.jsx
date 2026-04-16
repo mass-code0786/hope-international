@@ -8,7 +8,6 @@ import { AdminSectionHeader } from '@/components/admin/AdminSectionHeader';
 import { SummaryPanel } from '@/components/admin/SummaryPanel';
 import { SearchInput } from '@/components/admin/SearchInput';
 import { FilterBar } from '@/components/admin/FilterBar';
-import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { queryKeys } from '@/lib/query/queryKeys';
@@ -42,7 +41,7 @@ export default function AdminSupportPage() {
     queryFn: () => getAdminSupportThreads({ search, status, category, page, limit: 100 })
   });
 
-  if (supportQuery.isLoading) return <AdminShellSkeleton />;
+  if (supportQuery.isLoading) return null;
   if (supportQuery.isError) return <ErrorState message="Unable to load the support inbox." onRetry={supportQuery.refetch} />;
 
   const envelope = supportQuery.data || {};

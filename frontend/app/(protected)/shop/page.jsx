@@ -30,7 +30,6 @@ import { PurchaseAddressModal } from '@/components/shop/PurchaseAddressModal';
 import { PurchaseConfirmModal } from '@/components/shop/PurchaseConfirmModal';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { ShopSkeleton } from '@/components/ui/PageSkeletons';
 import { Header } from '@/components/layout/Header';
 import { useProducts } from '@/hooks/useProducts';
 import { useWallet } from '@/hooks/useWallet';
@@ -326,8 +325,8 @@ export default function ShopPage() {
   const newArrivals = useMemo(() => [...filtered].slice(-12).reverse(), [filtered]);
   const trending = useMemo(() => [...filtered].sort((a, b) => Number(b.price || 0) - Number(a.price || 0)).slice(0, 12), [filtered]);
 
-  const showProductsSkeleton = isPending && !data;
-  const hasProducts = !showProductsSkeleton && !isError && filtered.length > 0;
+  const isProductsLoading = isPending && !data;
+  const hasProducts = !isError && filtered.length > 0;
   const user = meQuery.data || {};
   const walletBalance = getAvailableWalletBalance(walletQuery.data);
   const walletReady = !walletQuery.isLoading && !walletQuery.isError;
@@ -449,10 +448,9 @@ export default function ShopPage() {
         })}
       </section>
 
-      {showProductsSkeleton ? <ShopSkeleton /> : null}
       {isError ? <ErrorState message="Products could not be loaded. Please check your connection and retry." onRetry={refetch} /> : null}
 
-      {!showProductsSkeleton && !isError && filtered.length === 0 ? (
+      {!isProductsLoading && !isError && filtered.length === 0 ? (
         <EmptyState title="No matching products" description="Try different keywords or switch categories to discover more offers." />
       ) : null}
 

@@ -6,7 +6,6 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { IncomeList } from '@/components/income/IncomeList';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { IncomeSkeleton } from '@/components/ui/PageSkeletons';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { getWalletWithHistory } from '@/lib/services/walletService';
@@ -32,7 +31,7 @@ export default function IncomePage() {
   const reward = transactions.filter((t) => t?.source === 'reward_qualification' && t?.tx_type === 'credit').reduce((s, t) => s + Number(t?.amount || 0), 0);
   const overflow = transactions.filter((t) => t?.source === 'cap_overflow').reduce((s, t) => s + Number(t?.amount || 0), 0);
 
-  if (isLoading) return <IncomeSkeleton />;
+  if (isLoading) return null;
   if (isError) return <ErrorState message="Income records are unavailable right now." onRetry={refetch} />;
 
   return (

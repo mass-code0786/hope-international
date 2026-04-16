@@ -7,7 +7,6 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { StatCard } from '@/components/ui/StatCard';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { SellerDashboardSkeleton } from '@/components/ui/PageSkeletons';
 import { SellerStatusBadge } from '@/components/seller/SellerStatusBadge';
 import { SellerGuard } from '@/components/seller/SellerGuard';
 import { useSellerMe } from '@/hooks/useSellerMe';
@@ -16,7 +15,7 @@ import { shortDate } from '@/lib/utils/format';
 function SellerDashboardContent() {
   const sellerQuery = useSellerMe();
 
-  if (sellerQuery.isLoading) return <SellerDashboardSkeleton />;
+  if (sellerQuery.isLoading) return null;
   if (sellerQuery.isError) return <ErrorState message="Seller dashboard could not be loaded." onRetry={sellerQuery.refetch} />;
 
   const seller = sellerQuery.data || {};

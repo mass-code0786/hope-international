@@ -7,7 +7,6 @@ import toast from 'react-hot-toast';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { AdminTopbar } from '@/components/admin/AdminTopbar';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { ProfileSkeleton } from '@/components/ui/PageSkeletons';
 import { getMe } from '@/lib/services/authService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { canAccessAdminArea } from '@/lib/constants/access';
@@ -80,8 +79,8 @@ export function AdminShell({ children }) {
   const isAuthBootstrapping = hydrated && Boolean(token) && meQuery.isPending && !resolvedUser;
 
   if (isLoggingOut) return null;
-  if (isHydrating || isAuthBootstrapping) return <ProfileSkeleton />;
-  if (!token) return <ProfileSkeleton />;
+  if (isHydrating || isAuthBootstrapping) return null;
+  if (!token) return null;
   if (token && meQuery.isError && !resolvedUser) return <ErrorState message="Unable to verify admin access." onRetry={meQuery.refetch} />;
 
   if (!canAccessAdminArea(resolvedUser)) {

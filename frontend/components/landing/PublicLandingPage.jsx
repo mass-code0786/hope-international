@@ -794,17 +794,11 @@ export default function PublicLandingPage() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
-              {galleryQuery.isLoading ? (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {Array.from({ length: 6 }).map((_, index) => (
-                    <div key={index} className="h-64 animate-pulse rounded-[24px] border border-white/8 bg-white/5" />
-                  ))}
-                </div>
-              ) : galleryQuery.isError ? (
-                <div className="rounded-[24px] border border-white/10 bg-white/5 px-6 py-14 text-center">
-                  <p className="text-base font-semibold text-white">Unable to load gallery photos.</p>
-                  <button
+              <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+                {galleryQuery.isLoading ? null : galleryQuery.isError ? (
+                  <div className="rounded-[24px] border border-white/10 bg-white/5 px-6 py-14 text-center">
+                    <p className="text-base font-semibold text-white">Unable to load gallery photos.</p>
+                    <button
                     type="button"
                     onClick={() => galleryQuery.refetch()}
                     className="mt-4 rounded-[16px] bg-[linear-gradient(135deg,#7c3aed,#22c55e)] px-4 py-2 text-sm font-semibold text-white"

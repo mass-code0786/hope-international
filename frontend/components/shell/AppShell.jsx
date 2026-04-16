@@ -10,7 +10,6 @@ import { useQuery } from '@tanstack/react-query';
 import { getMe } from '@/lib/services/authService';
 import { getSellerAccess } from '@/lib/services/sellerService';
 import { queryKeys } from '@/lib/query/queryKeys';
-import { ProfileSkeleton } from '@/components/ui/PageSkeletons';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { isSeller } from '@/lib/constants/access';
 import { LoginWelcomeVoice } from '@/components/shell/LoginWelcomeVoice';
@@ -73,13 +72,7 @@ export function AppShell({ children }) {
     return null;
   }
 
-  if (isAuthBootstrapping) {
-    return (
-      <div className="min-h-screen bg-bg p-3.5 md:p-5">
-        <ProfileSkeleton />
-      </div>
-    );
-  }
+  if (isAuthBootstrapping) return null;
 
   if (token && meQuery.isError && !resolvedUser) {
     return (

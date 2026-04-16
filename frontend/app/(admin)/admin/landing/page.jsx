@@ -6,7 +6,6 @@ import toast from 'react-hot-toast';
 import { AdminSectionHeader } from '@/components/admin/AdminSectionHeader';
 import { ActionPanel } from '@/components/admin/ActionPanel';
 import { SummaryPanel } from '@/components/admin/SummaryPanel';
-import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { queryKeys } from '@/lib/query/queryKeys';
 import {
@@ -322,7 +321,7 @@ export default function AdminLandingPage() {
     return Array.isArray(envelope.data) ? envelope.data : [];
   }, [productsQuery.data]);
 
-  if (landingQuery.isLoading || !settingsForm || !statsForm) return <AdminShellSkeleton />;
+  if (landingQuery.isLoading || !settingsForm || !statsForm) return null;
   if (landingQuery.isError) return <ErrorState message="Unable to load landing page admin data." onRetry={landingQuery.refetch} />;
 
   const payload = landingQuery.data?.data || {};

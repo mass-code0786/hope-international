@@ -9,7 +9,6 @@ import toast from 'react-hot-toast';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ProfileActions } from '@/components/profile/ProfileActions';
 import { BinaryReferralLinks } from '@/components/referral/BinaryReferralLinks';
-import { ProfileSkeleton } from '@/components/ui/PageSkeletons';
 import { ErrorState } from '@/components/ui/ErrorState';
 import BtctCoinLogo from '@/components/common/BtctCoinLogo';
 import { getMe, getWebauthnRegisterOptions, getWebauthnStatus, removeWebauthnCredential, verifyWebauthnRegister } from '@/lib/services/authService';
@@ -57,11 +56,7 @@ function WalletCard({ title, value, accent, icon: Icon, href, actionLabel, title
 
 function WalletSection({ walletQuery }) {
   if (walletQuery.isLoading) {
-    return (
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {[0, 1, 2, 3].map((item) => <div key={item} className="h-40 animate-pulse rounded-[28px] border border-slate-200 bg-white/80 dark:border-[var(--hope-border)] dark:bg-cardSoft" />)}
-      </div>
-    );
+    return null;
   }
 
   if (walletQuery.isError) {
@@ -216,7 +211,9 @@ function BiometricAccessCard({ user, queryClient }) {
       ) : null}
 
       {webauthnQuery.isLoading ? (
-        <div className="mt-4 h-20 animate-pulse rounded-[20px] border border-[rgba(255,255,255,0.06)] bg-[#171c26] shadow-[0_14px_30px_rgba(0,0,0,0.2)]" />
+        <div className="mt-4 rounded-[20px] border border-[rgba(255,255,255,0.06)] bg-[#171c26] px-4 py-3 text-xs text-slate-400 shadow-[0_14px_30px_rgba(0,0,0,0.2)]">
+          Loading biometric devices...
+        </div>
       ) : null}
 
       {webauthnQuery.isError ? (
@@ -292,9 +289,9 @@ export default function ProfilePage() {
     router.replace('/login');
   }
 
-  if (!hydrated || (token && meQuery.isPending && !user)) return <ProfileSkeleton />;
+  if (!hydrated || (token && meQuery.isPending && !user)) return null;
   if (token && meQuery.isError && !user) return <ErrorState message="Profile data could not be loaded." onRetry={meQuery.refetch} />;
-  if (!user) return <ProfileSkeleton />;
+  if (!user) return null;
 
   return (
     <div className="space-y-4">

@@ -9,7 +9,6 @@ import { DataTable } from '@/components/admin/DataTable';
 import { StatusBadge } from '@/components/admin/StatusBadge';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { getAdminUserFinancialOverview } from '@/lib/services/admin';
 import { currency, dateTime, incomeSourceLabel, rankLabel } from '@/lib/utils/format';
@@ -37,7 +36,7 @@ export default function AdminUserFinancialDetailPage() {
     enabled: Boolean(id)
   });
 
-  if (overviewQuery.isLoading) return <AdminShellSkeleton />;
+  if (overviewQuery.isLoading) return null;
   if (overviewQuery.isError) return <ErrorState message="Unable to load user financial overview." onRetry={overviewQuery.refetch} />;
 
   const data = overviewQuery.data?.data || {};

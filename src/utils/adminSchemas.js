@@ -259,7 +259,6 @@ const adminAuctionBaseBody = z.object({
   stockQuantity: z.number().int().positive().optional(),
   rewardMode: z.enum(['stock', 'split', 'cash']).optional(),
   rewardValue: z.number().positive().optional(),
-  cashPrize: z.number().positive().optional(),
   startAt: z.string().datetime(),
   endAt: z.string().datetime(),
   isActive: z.boolean().optional()
@@ -295,8 +294,8 @@ function validateAuctionCreateMode(body, ctx) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rewardValue'], message: 'rewardValue is required when rewardMode is split' });
   }
 
-  if (rewardMode === 'cash' && !(Number(body.cashPrize ?? body.prizeAmount) > 0)) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['cashPrize'], message: 'cashPrize is required when rewardMode is cash' });
+  if (rewardMode === 'cash' && !(Number(body.rewardValue) > 0)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rewardValue'], message: 'rewardValue is required when rewardMode is cash' });
   }
 
   if (Array.isArray(body.winnerModes) && new Set(body.winnerModes).size !== body.winnerModes.length) {
@@ -326,16 +325,16 @@ function validateAuctionCreateMode(body, ctx) {
       }
     }
   } else if (auctionType === 'cash_amount') {
-    if (!(Number(body.prizeAmount) > 0)) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['prizeAmount'], message: 'prizeAmount is required for cash auctions' });
+    if (!(Number(body.rewardValue) > 0)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rewardValue'], message: 'rewardValue is required for cash auctions' });
     }
     if (!body.prizeDistributionType) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['prizeDistributionType'], message: 'prizeDistributionType is required for cash auctions' });
     }
-    if (body.prizeDistributionType === 'shared_pool' && Number.isFinite(Number(body.prizeAmount)) && Number.isInteger(Number(body.winnerCount)) && Number(body.winnerCount) > 0) {
-      const cents = Math.round(Number(body.prizeAmount) * 100);
+    if (body.prizeDistributionType === 'shared_pool' && Number.isFinite(Number(body.rewardValue)) && Number.isInteger(Number(body.winnerCount)) && Number(body.winnerCount) > 0) {
+      const cents = Math.round(Number(body.rewardValue) * 100);
       if (cents % Number(body.winnerCount) !== 0) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['prizeAmount'], message: 'Shared pool prizeAmount must divide evenly across winners to the cent' });
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rewardValue'], message: 'Shared pool rewardValue must divide evenly across winners to the cent' });
       }
     }
   }

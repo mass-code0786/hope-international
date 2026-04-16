@@ -9,7 +9,6 @@ import { DataTable } from '@/components/admin/DataTable';
 import { StatusBadge } from '@/components/admin/StatusBadge';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { getAdminP2pTransfers } from '@/lib/services/admin';
 import { currency, dateTime } from '@/lib/utils/format';
@@ -23,7 +22,7 @@ export default function AdminP2pPage() {
     queryFn: () => getAdminP2pTransfers({ search, page, limit: 20 })
   });
 
-  if (p2pQuery.isLoading) return <AdminShellSkeleton />;
+  if (p2pQuery.isLoading) return null;
   if (p2pQuery.isError) return <ErrorState message="Unable to load p2p transfers." onRetry={p2pQuery.refetch} />;
 
   const envelope = p2pQuery.data || {};

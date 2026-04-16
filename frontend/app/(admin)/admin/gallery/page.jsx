@@ -6,7 +6,6 @@ import toast from 'react-hot-toast';
 import { AdminSectionHeader } from '@/components/admin/AdminSectionHeader';
 import { ActionPanel } from '@/components/admin/ActionPanel';
 import { SummaryPanel } from '@/components/admin/SummaryPanel';
-import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { compressImageFile } from '@/lib/utils/imageUpload';
@@ -103,7 +102,7 @@ export default function AdminGalleryPage() {
     onError: (error) => toast.error(error.message || 'Failed to save gallery item')
   });
 
-  if (galleryQuery.isLoading) return <AdminShellSkeleton />;
+  if (galleryQuery.isLoading) return null;
   if (galleryQuery.isError) return <ErrorState message="Unable to load gallery items." onRetry={galleryQuery.refetch} />;
 
   const visibleCount = items.filter((item) => item.isVisible).length;

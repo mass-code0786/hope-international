@@ -96,12 +96,12 @@ function validatePositiveMoney(value, label) {
   return amount;
 }
 
-function validateCashAuctionConfig({ rewardMode, auctionType, cashPrize, prizeAmount, prizeDistributionType, eachWinnerAmount: existingEachWinnerAmount, winnerCount }) {
+function validateCashAuctionConfig({ rewardMode, auctionType, rewardValue, prizeDistributionType, winnerCount }) {
   const safeRewardMode = normalizeRewardMode(rewardMode, auctionType === 'cash_amount' ? 'cash' : 'stock');
   if (safeRewardMode !== 'cash') {
     return {
-      cashPrize: null,
       rewardMode: safeRewardMode,
+      rewardValue: null,
       auctionType: 'product',
       prizeAmount: null,
       prizeDistributionType: 'per_winner',
@@ -109,7 +109,7 @@ function validateCashAuctionConfig({ rewardMode, auctionType, cashPrize, prizeAm
     };
   }
 
-  const safePrizeAmount = validatePositiveMoney(cashPrize ?? existingEachWinnerAmount ?? prizeAmount, 'Cash prize');
+  const safeRewardValue = validatePositiveMoney(rewardValue, 'Reward value');
   const safeWinnerCount = Number(winnerCount || 0);
   if (!Number.isInteger(safeWinnerCount) || safeWinnerCount <= 0) {
     throw new ApiError(400, 'Winner count must be a positive whole number');
@@ -118,31 +118,31 @@ function validateCashAuctionConfig({ rewardMode, auctionType, cashPrize, prizeAm
   const safeDistributionType = normalizePrizeDistributionType(prizeDistributionType, 'per_winner');
   if (safeDistributionType === 'rank_wise') {
     return {
-      cashPrize: safePrizeAmount,
       rewardMode: 'cash',
+      rewardValue: safeRewardValue,
       auctionType: 'cash_amount',
-      prizeAmount: safePrizeAmount,
+      prizeAmount: safeRewardValue,
       prizeDistributionType: safeDistributionType,
       eachWinnerAmount: null
     };
   }
 
   if (safeDistributionType === 'shared_pool') {
-    const cents = Math.round(safePrizeAmount * 100);
+    const cents = Math.round(safeRewardValue * 100);
     if (cents % safeWinnerCount !== 0) {
       throw new ApiError(400, 'Shared pool amount must divide evenly across winners to the cent');
     }
   }
 
   const eachWinnerAmount = safeDistributionType === 'shared_pool'
-    ? roundMoney(safePrizeAmount / safeWinnerCount)
-    : safePrizeAmount;
+    ? roundMoney(safeRewardValue / safeWinnerCount)
+    : safeRewardValue;
 
   return {
-    cashPrize: safePrizeAmount,
     rewardMode: 'cash',
+    rewardValue: safeRewardValue,
     auctionType: 'cash_amount',
-    prizeAmount: safePrizeAmount,
+    prizeAmount: safeRewardValue,
     prizeDistributionType: safeDistributionType,
     eachWinnerAmount
   };
@@ -230,7 +230,9 @@ function sanitizeAuctionPayload(payload, before = null) {
   const rewardValueRaw = payload.rewardValue ?? before?.reward_value;
   const rewardValue = rewardMode === 'split'
     ? validateRewardValue(rewardValueRaw)
-    : null;
+    : rewardMode === 'cash'
+      ? validatePositiveMoney(rewardValueRaw, 'Reward value')
+      : null;
 
   const isActive = payload.isActive ?? before?.is_active ?? true;
   const cancelledAt = payload.cancelledAt ?? before?.cancelled_at ?? null;
@@ -247,10 +249,8 @@ function sanitizeAuctionPayload(payload, before = null) {
   const cashConfig = validateCashAuctionConfig({
     rewardMode,
     auctionType,
-    cashPrize: payload.cashPrize ?? before?.cash_prize ?? null,
-    prizeAmount: payload.prizeAmount ?? before?.prize_amount ?? null,
+    rewardValue,
     prizeDistributionType: payload.prizeDistributionType ?? before?.prize_distribution_type ?? 'per_winner',
-    eachWinnerAmount: payload.eachWinnerAmount ?? before?.each_winner_amount ?? null,
     winnerCount: winnerCountValue
   });
   const rankPrizes = cashConfig.auctionType === 'cash_amount' && cashConfig.prizeDistributionType === 'rank_wise'
@@ -278,12 +278,11 @@ function sanitizeAuctionPayload(payload, before = null) {
     hiddenCapacity,
     stockQuantity,
     auctionType: cashConfig.auctionType,
-    cashPrize: cashConfig.cashPrize,
     prizeAmount: effectivePrizeAmount,
     prizeDistributionType: cashConfig.prizeDistributionType,
     eachWinnerAmount: cashConfig.eachWinnerAmount,
     rewardMode,
-    rewardValue,
+    rewardValue: rewardMode === 'cash' ? cashConfig.rewardValue : rewardValue,
     totalEntries,
     hasTie: Boolean(payload.hasTie ?? before?.has_tie ?? false),
     winnerCount: winnerCountValue,
@@ -470,7 +469,8 @@ function buildWinnerAllocations(auction, participants, bids) {
     normalizeAuctionType(auction.auction_type, 'product') === 'cash_amount' ? 'cash' : 'stock'
   );
   const isCashAuction = normalizedRewardMode === 'cash';
-  const cashPrize = isCashAuction ? roundMoney(auction.cash_prize || auction.each_winner_amount || auction.prize_amount || 0) : null;
+  const rewardPool = isCashAuction ? roundMoney(auction.reward_value || 0) : null;
+  const prizeDistributionType = normalizePrizeDistributionType(auction.prize_distribution_type, 'per_winner');
   const rankPrizeMap = new Map(
     normalizeRankPrizeEntries(auction.rank_prizes || []).map((entry) => [entry.winnerRank, entry.prizeAmount])
   );
@@ -484,9 +484,11 @@ function buildWinnerAllocations(auction, participants, bids) {
     const selectionRank = index + 1;
     const prizeAmount = isCashAuction
       ? (
-        normalizePrizeDistributionType(auction.prize_distribution_type, 'per_winner') === 'rank_wise'
+        prizeDistributionType === 'rank_wise'
           ? roundMoney(rankPrizeMap.get(selectionRank) || 0)
-          : cashPrize
+          : prizeDistributionType === 'shared_pool'
+            ? roundMoney((rewardPool || 0) / actualWinnerCount)
+            : rewardPool
       )
       : null;
 
@@ -579,7 +581,7 @@ async function settleAuctionRewards(client, auction, winners) {
     let walletTransactionId = existing?.wallet_transaction_id || null;
     let creditedWalletType = existing?.credited_wallet_type || (isWinner && isCashAuction ? CASH_AUCTION_CREDIT_WALLET : null);
     let cashAwarded = isWinner && isCashAuction
-      ? roundMoney(winnerRecord?.prizeAmount || auction.cash_prize || auction.each_winner_amount || auction.prize_amount || 0)
+      ? roundMoney(winnerRecord?.prizeAmount || 0)
       : 0;
     let distributedAt = existing?.distributed_at || new Date().toISOString();
 

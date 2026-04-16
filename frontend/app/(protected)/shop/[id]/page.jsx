@@ -20,7 +20,6 @@ import {
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { PurchaseConfirmModal } from '@/components/shop/PurchaseConfirmModal';
 import { useProducts } from '@/hooks/useProducts';
 import { useWallet } from '@/hooks/useWallet';
@@ -125,9 +124,7 @@ export default function ProductDetailPage() {
     onSettled: () => setIsBuying(false)
   });
 
-  if (productQuery.isLoading || productsLoading) {
-    return <div className="space-y-3"><LoadingSkeleton className="h-10 w-full" /><LoadingSkeleton className="h-64" /><LoadingSkeleton className="h-44" /></div>;
-  }
+  if (productQuery.isLoading || productsLoading) return null;
 
   if (productQuery.isError) return <ErrorState message="Product could not be loaded." onRetry={productQuery.refetch} />;
   if (!product) return <EmptyState title="Product not found" description="This product may have been removed from the catalog." />;

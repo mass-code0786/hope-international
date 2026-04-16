@@ -10,7 +10,6 @@ import { DataTable } from '@/components/admin/DataTable';
 import { SummaryPanel } from '@/components/admin/SummaryPanel';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { getAdminUsers, getAdminUserDetails, updateAdminUserStatus, updateAdminUserRank, getAdminRanks } from '@/lib/services/admin';
 import { number, rankLabel, shortDate } from '@/lib/utils/format';
@@ -61,7 +60,7 @@ export default function AdminUsersPage() {
     onError: (error) => toast.error(error.message || 'Failed to update rank')
   });
 
-  if (usersQuery.isLoading) return <AdminShellSkeleton />;
+  if (usersQuery.isLoading) return null;
   if (usersQuery.isError) return <ErrorState message="Unable to load users." onRetry={usersQuery.refetch} />;
 
   const usersEnvelope = usersQuery.data || {};

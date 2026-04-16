@@ -10,7 +10,6 @@ import { SellerGuard } from '@/components/seller/SellerGuard';
 import { SellerProductForm } from '@/components/seller/SellerProductForm';
 import { SellerStatusBadge } from '@/components/seller/SellerStatusBadge';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { SellerProductsSkeleton } from '@/components/ui/PageSkeletons';
 import { useSellerProducts } from '@/hooks/useSellerProducts';
 import { updateSellerProduct } from '@/lib/services/sellerService';
 import { queryKeys } from '@/lib/query/queryKeys';
@@ -74,7 +73,7 @@ function EditSellerProductContent() {
     await updateMutation.mutateAsync(payload);
   }
 
-  if (isLoading) return <SellerProductsSkeleton />;
+  if (isLoading) return null;
   if (isError) return <ErrorState message="Product details could not be loaded." onRetry={refetch} />;
   if (!product || !form) {
     return (

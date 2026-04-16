@@ -22,7 +22,6 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { DashboardSkeleton } from '@/components/ui/PageSkeletons';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { WelcomeSpinModal } from '@/components/auth/WelcomeSpinModal';
 import { PurchaseConfirmModal } from '@/components/shop/PurchaseConfirmModal';
@@ -316,7 +315,7 @@ export default function DashboardPage() {
     onError: (error) => toast.error(error.message || 'Unable to claim welcome reward')
   });
 
-  const showInitialPageSkeleton = productsPending && !productData && walletQuery.isPending && !walletQuery.data;
+  const isInitialPageLoading = productsPending && !productData && walletQuery.isPending && !walletQuery.data;
   const hasFatalError = walletQuery.isError && !walletQuery.data;
   const address = addressQuery.data?.data?.address || null;
   const products = Array.isArray(productData) ? productData : [];
@@ -384,7 +383,7 @@ export default function DashboardPage() {
     return () => window.clearInterval(timer);
   }, [slides.length]);
 
-  if (showInitialPageSkeleton) return <DashboardSkeleton />;
+  if (isInitialPageLoading) return null;
 
   if (hasFatalError) {
     return (
@@ -546,8 +545,6 @@ export default function DashboardPage() {
           {productsError ? (
             <ErrorState message="Products could not be loaded." onRetry={refetchProducts} />
           ) : null}
-
-          {productsPending && !productData ? <DashboardSkeleton /> : null}
 
           {!productsPending && !productsError && !popularProducts.length ? (
             <EmptyState title="No products yet" description="Products will appear here as soon as they are available." />

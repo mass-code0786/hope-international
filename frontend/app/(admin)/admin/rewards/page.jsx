@@ -7,7 +7,6 @@ import { AdminSectionHeader } from '@/components/admin/AdminSectionHeader';
 import { DataTable } from '@/components/admin/DataTable';
 import { StatusBadge } from '@/components/admin/StatusBadge';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
 import { REWARD_SLABS } from '@/lib/constants/theme';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { getAdminRewardQualifications, getAdminRewardsSummary, updateAdminRewardQualificationStatus } from '@/lib/services/admin';
@@ -39,7 +38,7 @@ export default function AdminRewardsPage() {
     onError: (error) => toast.error(error.message || 'Failed to update reward status')
   });
 
-  if (rewardsQuery.isLoading || summaryQuery.isLoading) return <AdminShellSkeleton />;
+  if (rewardsQuery.isLoading || summaryQuery.isLoading) return null;
   if (rewardsQuery.isError) return <ErrorState message="Unable to load rewards." onRetry={rewardsQuery.refetch} />;
   if (summaryQuery.isError) return <ErrorState message="Unable to load reward summary." onRetry={summaryQuery.refetch} />;
 

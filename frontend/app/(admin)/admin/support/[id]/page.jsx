@@ -6,7 +6,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Headset, Send } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { getAdminSupportThread, sendAdminSupportMessage, updateAdminSupportStatus } from '@/lib/services/admin';
@@ -77,7 +76,7 @@ export default function AdminSupportDetailPage() {
     onError: (error) => toast.error(error.message || 'Unable to update status')
   });
 
-  if (threadQuery.isLoading) return <AdminShellSkeleton />;
+  if (threadQuery.isLoading) return null;
   if (threadQuery.isError) return <ErrorState message="Unable to load this support thread." onRetry={threadQuery.refetch} />;
   if (!thread) return <ErrorState message="Support thread was not found." />;
 

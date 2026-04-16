@@ -9,7 +9,6 @@ import { SearchInput } from '@/components/admin/SearchInput';
 import { DataTable } from '@/components/admin/DataTable';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { getAdminWalletBindings, updateAdminWalletBinding, removeAdminWalletBinding } from '@/lib/services/admin';
 import { dateTime } from '@/lib/utils/format';
@@ -42,7 +41,7 @@ export default function AdminWalletBindingsPage() {
     onError: (error) => toast.error(error.message || 'Failed to remove binding')
   });
 
-  if (bindingsQuery.isLoading) return <AdminShellSkeleton />;
+  if (bindingsQuery.isLoading) return null;
   if (bindingsQuery.isError) return <ErrorState message="Unable to load wallet bindings." onRetry={bindingsQuery.refetch} />;
 
   const envelope = bindingsQuery.data || {};

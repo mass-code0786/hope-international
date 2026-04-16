@@ -9,7 +9,6 @@ import { DataTable } from '@/components/admin/DataTable';
 import { StatusBadge } from '@/components/admin/StatusBadge';
 import { ConfirmationModal } from '@/components/admin/ConfirmationModal';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
 import BtctCoinLogo from '@/components/common/BtctCoinLogo';
 import { queryKeys } from '@/lib/query/queryKeys';
 import {
@@ -113,7 +112,7 @@ export default function AdminWalletPage() {
     onError: (err) => toast.error(err.message || 'BTCT staking payout run failed')
   });
 
-  if (txQuery.isLoading || summaryQuery.isLoading || stakingQuery.isLoading || usersQuery.isLoading || logsQuery.isLoading) return <AdminShellSkeleton />;
+  if (txQuery.isLoading || summaryQuery.isLoading || stakingQuery.isLoading || usersQuery.isLoading || logsQuery.isLoading) return null;
   if (txQuery.isError) return <ErrorState message="Unable to load wallet ledger." onRetry={txQuery.refetch} />;
   if (summaryQuery.isError) return <ErrorState message="Unable to load wallet summary." onRetry={summaryQuery.refetch} />;
   if (stakingQuery.isError) return <ErrorState message="Unable to load BTCT staking data." onRetry={stakingQuery.refetch} />;

@@ -8,7 +8,6 @@ import toast from 'react-hot-toast';
 import { Copy, ImagePlus } from 'lucide-react';
 import { AdminSectionHeader } from '@/components/admin/AdminSectionHeader';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { getAdminDepositWalletSettings, updateAdminDepositWalletSettings } from '@/lib/services/admin';
 import { compressImageFile } from '@/lib/utils/imageUpload';
@@ -74,7 +73,7 @@ export default function AdminDepositWalletPage() {
     onError: (error) => toast.error(error.message || 'Unable to update deposit wallet')
   });
 
-  if (settingsQuery.isLoading) return <AdminShellSkeleton />;
+  if (settingsQuery.isLoading) return null;
   if (settingsQuery.isError) return <ErrorState message="Unable to load deposit wallet settings." onRetry={settingsQuery.refetch} />;
 
   const qrPreview = form.qrImageUrl || generatedQr;

@@ -9,7 +9,6 @@ import { SummaryPanel } from '@/components/admin/SummaryPanel';
 import { TreeNode } from '@/components/team/TreeNode';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { getAdminTeamSummary, getAdminTeamTree, getAdminUsersSearch } from '@/lib/services/admin';
 import { getMe } from '@/lib/services/authService';
@@ -39,7 +38,7 @@ export default function AdminTeamPage() {
     enabled: Boolean(effectiveUserId)
   });
 
-  if (meQuery.isLoading || summaryQuery.isLoading || treeQuery.isLoading) return <AdminShellSkeleton />;
+  if (meQuery.isLoading || summaryQuery.isLoading || treeQuery.isLoading) return null;
   if (meQuery.isError) return <ErrorState message="Unable to load admin identity." onRetry={meQuery.refetch} />;
   if (summaryQuery.isError) return <ErrorState message="Unable to load team summary." onRetry={summaryQuery.refetch} />;
   if (treeQuery.isError) return <ErrorState message="Unable to load genealogy tree." onRetry={treeQuery.refetch} />;

@@ -26,24 +26,6 @@ function notificationVariant(type) {
   return 'default';
 }
 
-function NotificationSkeleton() {
-  return (
-    <div className="space-y-2.5">
-      <div className="card-surface border border-white/10 p-6">
-        <div className="h-6 w-44 rounded-full bg-white/10" />
-        <div className="mt-3 h-4 w-72 rounded-full bg-white/5" />
-      </div>
-      {[0, 1, 2].map((item) => (
-        <div key={item} className="rounded-[24px] border border-white/10 bg-[rgba(19,21,27,0.9)] p-3.5">
-          <div className="h-4 w-40 rounded-full bg-white/10" />
-          <div className="mt-2.5 h-3 w-full rounded-full bg-white/5" />
-          <div className="mt-1.5 h-3 w-3/4 rounded-full bg-white/5" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export default function NotificationsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -79,7 +61,7 @@ export default function NotificationsPage() {
     onError: (error) => toast.error(error.message || 'Unable to update notifications')
   });
 
-  if (notificationsQuery.isLoading) return <NotificationSkeleton />;
+  if (notificationsQuery.isLoading) return null;
   if (notificationsQuery.isError) return <ErrorState message="Notifications could not be loaded." onRetry={notificationsQuery.refetch} />;
 
   const envelope = notificationsQuery.data || {};

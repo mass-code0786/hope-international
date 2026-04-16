@@ -7,7 +7,6 @@ import toast from 'react-hot-toast';
 import { AdminSectionHeader } from '@/components/admin/AdminSectionHeader';
 import { SummaryPanel } from '@/components/admin/SummaryPanel';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { AdminShellSkeleton } from '@/components/admin/AdminSkeletons';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { getAdminSettings, updateAdminSettings } from '@/lib/services/admin';
 import { REWARD_SLABS, RANKS } from '@/lib/constants/theme';
@@ -51,7 +50,7 @@ export default function AdminSettingsPage() {
     onError: (error) => toast.error(error.message || 'Unable to update settings')
   });
 
-  if (settingsQuery.isLoading) return <AdminShellSkeleton />;
+  if (settingsQuery.isLoading) return null;
   if (settingsQuery.isError) return <ErrorState message="Unable to load settings." onRetry={settingsQuery.refetch} />;
 
   const settings = settingsQuery.data?.data || {};
