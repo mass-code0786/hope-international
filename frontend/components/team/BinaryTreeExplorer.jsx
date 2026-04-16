@@ -8,6 +8,7 @@ import {
   ChevronRight,
   CircleDot,
   Loader2,
+  Plus,
   X
 } from 'lucide-react';
 import { getTeamTreeNode } from '@/lib/services/teamService';
@@ -18,6 +19,21 @@ const MAX_VISIBLE_BLOCK_DEPTH = 2;
 
 function hasEmbeddedChildren(node) {
   return Boolean(node) && Object.prototype.hasOwnProperty.call(node, 'children');
+}
+
+function isRenderableNode(node) {
+  return Boolean(node) && typeof node === 'object' && (node.id != null || node.memberId != null || node.username || node.displayName);
+}
+
+function resolveChildSlots(node) {
+  if (!hasEmbeddedChildren(node) || !node.children || typeof node.children !== 'object') {
+    return { leftNode: null, rightNode: null };
+  }
+
+  return {
+    leftNode: isRenderableNode(node.children.left) ? node.children.left : null,
+    rightNode: isRenderableNode(node.children.right) ? node.children.right : null
+  };
 }
 
 function slotLabel(side) {
@@ -169,17 +185,16 @@ function RootBinaryTreeNode({ node, onPreview }) {
   });
 
   const resolvedNode = nodeQuery.data || node;
-  const children = hasEmbeddedChildren(resolvedNode) ? resolvedNode.children : null;
-  const leftNode = children?.left || null;
-  const rightNode = children?.right || null;
+  const { leftNode, rightNode } = resolveChildSlots(resolvedNode);
   const loadingChildren = nodeQuery.isLoading && node?.hasChildren && !embeddedChildren;
+  const canExpand = Boolean(node?.hasChildren || leftNode || rightNode || loadingChildren);
   const showInlineChildren = expanded && MAX_VISIBLE_BLOCK_DEPTH > 0;
 
   return (
     <div className="relative flex flex-col items-center pt-[128px]">
       <div className="absolute left-1/2 top-0 z-10 flex -translate-x-1/2 flex-col items-center gap-1.5">
         <TreeMemberCard node={resolvedNode} side="root" onPreview={onPreview} widthClass="w-[104px]" />
-        <ExpandCollapseButton expanded={expanded} onClick={() => setExpanded((current) => !current)} />
+        <ExpandCollapseButton expanded={expanded} onClick={() => setExpanded((current) => !current)} disabled={!canExpand} />
       </div>
 
       {expanded ? (
@@ -215,10 +230,9 @@ function BinaryTreeNode({ node, side = 'root', defaultExpanded = false, onPrevie
   });
 
   const resolvedNode = nodeQuery.data || node;
-  const children = hasEmbeddedChildren(resolvedNode) ? resolvedNode.children : null;
-  const leftNode = children?.left || null;
-  const rightNode = children?.right || null;
+  const { leftNode, rightNode } = resolveChildSlots(resolvedNode);
   const loadingChildren = nodeQuery.isLoading && node?.hasChildren && !embeddedChildren;
+  const canExpand = Boolean(node?.hasChildren || leftNode || rightNode || loadingChildren);
   const shouldShowInlineChildren = expanded && blockDepth < MAX_VISIBLE_BLOCK_DEPTH;
   const shouldShowContinuation = expanded && blockDepth >= MAX_VISIBLE_BLOCK_DEPTH;
 
@@ -226,7 +240,7 @@ function BinaryTreeNode({ node, side = 'root', defaultExpanded = false, onPrevie
     <div className="flex w-full max-w-full flex-col items-center">
       <div className="flex flex-col items-center gap-1.5">
         <TreeMemberCard node={resolvedNode} side={side} onPreview={onPreview} widthClass="w-[98px] sm:w-[112px]" />
-        <ExpandCollapseButton expanded={expanded} onClick={() => setExpanded((current) => !current)} />
+        <ExpandCollapseButton expanded={expanded} onClick={() => setExpanded((current) => !current)} disabled={!canExpand} />
       </div>
 
       {expanded ? (
@@ -364,15 +378,16 @@ function TreeMemberCard({ node, side, onPreview, widthClass }) {
   );
 }
 
-function ExpandCollapseButton({ expanded, onClick }) {
+function ExpandCollapseButton({ expanded, onClick, disabled = false }) {
   return (
     <button
       type="button"
-      onClick={onClick}
-      className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/6 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/60 transition hover:border-white/18 hover:bg-white/10"
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/6 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/60 transition hover:border-white/18 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
     >
       {expanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-      {expanded ? 'Collapse' : 'Expand'}
+      {disabled ? 'No Children' : expanded ? 'Collapse' : 'Expand'}
     </button>
   );
 }
