@@ -8,18 +8,13 @@ import {
   ChevronRight,
   CircleDot,
   Loader2,
-  Minus,
-  Move,
-  Plus,
   X
 } from 'lucide-react';
 import { getTeamTreeNode } from '@/lib/services/teamService';
 import { queryKeys } from '@/lib/query/queryKeys';
 
-const MIN_SCALE = 0.75;
-const MAX_SCALE = 1.8;
-const ZOOM_STEP = 0.15;
 const AUTO_HIDE_MS = 10000;
+const MAX_VISIBLE_BLOCK_DEPTH = 2;
 
 function hasEmbeddedChildren(node) {
   return Boolean(node) && Object.prototype.hasOwnProperty.call(node, 'children');
@@ -58,10 +53,6 @@ function nodeInitials(node) {
     .join('') || 'HM';
 }
 
-function clampScale(value) {
-  return Math.min(MAX_SCALE, Math.max(MIN_SCALE, Number(value) || 1));
-}
-
 function getRankLabel(node) {
   return node?.rankName || node?.rank || 'Unranked';
 }
@@ -72,12 +63,8 @@ function getPvValue(node, key) {
 }
 
 export function BinaryTreeExplorer({ root }) {
-  const [scale, setScale] = useState(1);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [previewNode, setPreviewNode] = useState(null);
   const previewTimerRef = useRef(null);
-  const dragStateRef = useRef(null);
-  const pinchStateRef = useRef(null);
 
   useEffect(() => () => {
     if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
@@ -100,142 +87,14 @@ export function BinaryTreeExplorer({ root }) {
     setPreviewNode(null);
   }
 
-  function zoomIn() {
-    setScale((current) => clampScale(current + ZOOM_STEP));
-  }
-
-  function zoomOut() {
-    setScale((current) => clampScale(current - ZOOM_STEP));
-  }
-
-  function resetView() {
-    setScale(1);
-    setOffset({ x: 0, y: 0 });
-  }
-
-  function handlePointerDown(event) {
-    if (event.button !== 0) return;
-    if (event.target.closest('[data-tree-node]') || event.target.closest('[data-tree-popup]')) return;
-
-    dragStateRef.current = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      originX: offset.x,
-      originY: offset.y
-    };
-
-    event.currentTarget.setPointerCapture(event.pointerId);
-  }
-
-  function handlePointerMove(event) {
-    const drag = dragStateRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-
-    setOffset({
-      x: drag.originX + (event.clientX - drag.startX),
-      y: drag.originY + (event.clientY - drag.startY)
-    });
-  }
-
-  function handlePointerUp(event) {
-    const drag = dragStateRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    dragStateRef.current = null;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-  }
-
-  function handleTouchStart(event) {
-    if (event.touches.length !== 2) {
-      pinchStateRef.current = null;
-      return;
-    }
-
-    const [first, second] = event.touches;
-    pinchStateRef.current = {
-      distance: Math.hypot(second.clientX - first.clientX, second.clientY - first.clientY),
-      scale
-    };
-  }
-
-  function handleTouchMove(event) {
-    if (event.touches.length !== 2 || !pinchStateRef.current) return;
-
-    const [first, second] = event.touches;
-    const distance = Math.hypot(second.clientX - first.clientX, second.clientY - first.clientY);
-    if (!distance || !pinchStateRef.current.distance) return;
-
-    const ratio = distance / pinchStateRef.current.distance;
-    setScale(clampScale(pinchStateRef.current.scale * ratio));
-  }
-
-  function handleTouchEnd(event) {
-    if (event.touches.length < 2) {
-      pinchStateRef.current = null;
-    }
-  }
-
   return (
     <div className="relative overflow-hidden rounded-[22px] border border-white/8 bg-[linear-gradient(180deg,rgba(18,20,27,0.96),rgba(10,12,18,0.98))] shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
-      <div className="flex flex-col gap-3 border-b border-white/8 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/45">Interactive Binary View</p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={zoomOut}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white transition hover:border-white/20 hover:bg-white/10"
-            aria-label="Zoom out"
-          >
-            <Minus size={16} />
-          </button>
-          <div className="min-w-[64px] rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-center text-xs font-semibold text-white/72">
-            {Math.round(scale * 100)}%
-          </div>
-          <button
-            type="button"
-            onClick={zoomIn}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white transition hover:border-white/20 hover:bg-white/10"
-            aria-label="Zoom in"
-          >
-            <Plus size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={resetView}
-            className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/72 transition hover:border-white/20 hover:bg-white/10"
-          >
-            <Move size={14} />
-            Reset
-          </button>
-        </div>
-      </div>
-
       <div className="relative overflow-hidden px-2 py-3 sm:px-4 sm:py-4">
         <div
           className="relative overflow-hidden rounded-[20px] border border-white/6 bg-[radial-gradient(circle_at_top,rgba(124,58,237,0.15),transparent_38%),radial-gradient(circle_at_bottom,rgba(16,185,129,0.12),transparent_42%),rgba(8,10,15,0.95)]"
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          style={{ touchAction: 'none', cursor: dragStateRef.current ? 'grabbing' : 'grab' }}
         >
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(transparent_95%,rgba(255,255,255,0.03)_96%),linear-gradient(90deg,transparent_95%,rgba(255,255,255,0.03)_96%)] bg-[length:24px_24px]" />
-          <div
-            className="relative mx-auto min-w-max px-3 py-4 sm:px-6 sm:py-6"
-            style={{
-              transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
-              transformOrigin: 'center top',
-              transition: dragStateRef.current ? 'none' : 'transform 180ms ease-out'
-            }}
-          >
+          <div className="relative mx-auto w-full max-w-[980px] px-3 py-4 sm:px-6 sm:py-6">
             <RootBinaryTreeNode node={root} onPreview={queuePreview} />
           </div>
         </div>
@@ -314,6 +173,7 @@ function RootBinaryTreeNode({ node, onPreview }) {
   const leftNode = children?.left || null;
   const rightNode = children?.right || null;
   const loadingChildren = nodeQuery.isLoading && node?.hasChildren && !embeddedChildren;
+  const showInlineChildren = expanded && MAX_VISIBLE_BLOCK_DEPTH > 0;
 
   return (
     <div className="relative flex flex-col items-center pt-[128px]">
@@ -323,25 +183,26 @@ function RootBinaryTreeNode({ node, onPreview }) {
       </div>
 
       {expanded ? (
-        <div className="relative mt-2 flex flex-col items-center pt-2">
-          <div className="absolute left-1/2 top-0 h-2.5 w-px -translate-x-1/2 bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
-          <div className="relative pt-2">
-            <div className="absolute left-1/4 right-1/4 top-0 h-px bg-[linear-gradient(90deg,rgba(255,255,255,0.08),rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
-            <div className="absolute left-1/4 top-0 h-2.5 w-px bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
-            <div className="absolute right-1/4 top-0 h-2.5 w-px bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
-
-            <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
-              <BinaryTreeSlot side="left" node={leftNode} loading={loadingChildren} onPreview={onPreview} />
-              <BinaryTreeSlot side="right" node={rightNode} loading={loadingChildren} onPreview={onPreview} />
-            </div>
-          </div>
+        <div className="relative mt-2 flex w-full flex-col items-center pt-2">
+          {showInlineChildren ? (
+            <InlineBranchLayout
+              leftNode={leftNode}
+              rightNode={rightNode}
+              loading={loadingChildren}
+              onPreview={onPreview}
+              blockDepth={1}
+            />
+          ) : null}
+          {expanded && MAX_VISIBLE_BLOCK_DEPTH === 0 ? (
+            <ContinuationSection leftNode={leftNode} rightNode={rightNode} loading={loadingChildren} onPreview={onPreview} />
+          ) : null}
         </div>
       ) : null}
     </div>
   );
 }
 
-function BinaryTreeNode({ node, side = 'root', defaultExpanded = false, onPreview }) {
+function BinaryTreeNode({ node, side = 'root', defaultExpanded = false, onPreview, blockDepth = 0 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const embeddedChildren = hasEmbeddedChildren(node);
   const shouldFetch = expanded && node?.hasChildren && !embeddedChildren;
@@ -358,34 +219,97 @@ function BinaryTreeNode({ node, side = 'root', defaultExpanded = false, onPrevie
   const leftNode = children?.left || null;
   const rightNode = children?.right || null;
   const loadingChildren = nodeQuery.isLoading && node?.hasChildren && !embeddedChildren;
+  const shouldShowInlineChildren = expanded && blockDepth < MAX_VISIBLE_BLOCK_DEPTH;
+  const shouldShowContinuation = expanded && blockDepth >= MAX_VISIBLE_BLOCK_DEPTH;
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex w-full max-w-full flex-col items-center">
       <div className="flex flex-col items-center gap-1.5">
         <TreeMemberCard node={resolvedNode} side={side} onPreview={onPreview} widthClass="w-[98px] sm:w-[112px]" />
         <ExpandCollapseButton expanded={expanded} onClick={() => setExpanded((current) => !current)} />
       </div>
 
       {expanded ? (
-        <div className="relative mt-2 flex w-full min-w-[216px] flex-col items-center pt-2 sm:min-w-[280px]">
-          <div className="absolute left-1/2 top-0 h-2.5 w-px -translate-x-1/2 bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
-          <div className="relative w-full pt-2">
-            <div className="absolute left-1/4 right-1/4 top-0 h-px bg-[linear-gradient(90deg,rgba(255,255,255,0.08),rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
-            <div className="absolute left-1/4 top-0 h-2.5 w-px bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
-            <div className="absolute right-1/4 top-0 h-2.5 w-px bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
-
-            <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
-              <BinaryTreeSlot side="left" node={leftNode} loading={loadingChildren} onPreview={onPreview} />
-              <BinaryTreeSlot side="right" node={rightNode} loading={loadingChildren} onPreview={onPreview} />
-            </div>
-          </div>
+        <div className="relative mt-2 flex w-full flex-col items-center pt-2">
+          {shouldShowInlineChildren ? (
+            <InlineBranchLayout
+              leftNode={leftNode}
+              rightNode={rightNode}
+              loading={loadingChildren}
+              onPreview={onPreview}
+              blockDepth={blockDepth + 1}
+            />
+          ) : null}
+          {shouldShowContinuation ? (
+            <ContinuationSection leftNode={leftNode} rightNode={rightNode} loading={loadingChildren} onPreview={onPreview} />
+          ) : null}
         </div>
       ) : null}
     </div>
   );
 }
 
-function BinaryTreeSlot({ side, node, loading = false, onPreview }) {
+function InlineBranchLayout({ leftNode, rightNode, loading = false, onPreview, blockDepth }) {
+  return (
+    <div className="relative flex w-full flex-col items-center pt-2">
+      <div className="absolute left-1/2 top-0 h-2.5 w-px -translate-x-1/2 bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
+      <div className="relative w-full max-w-[560px] pt-2">
+        <div className="absolute left-1/4 right-1/4 top-0 h-px bg-[linear-gradient(90deg,rgba(255,255,255,0.08),rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
+        <div className="absolute left-1/4 top-0 h-2.5 w-px bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
+        <div className="absolute right-1/4 top-0 h-2.5 w-px bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
+
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
+          <BinaryTreeSlot side="left" node={leftNode} loading={loading} onPreview={onPreview} blockDepth={blockDepth} />
+          <BinaryTreeSlot side="right" node={rightNode} loading={loading} onPreview={onPreview} blockDepth={blockDepth} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ContinuationSection({ leftNode, rightNode, loading = false, onPreview }) {
+  return (
+    <div className="relative mt-3 flex w-full max-w-[680px] flex-col items-center pt-3">
+      <div className="absolute left-1/2 top-0 h-3 w-px -translate-x-1/2 bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
+      <div className="w-full rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,24,34,0.94),rgba(11,14,20,0.98))] p-3 shadow-[0_18px_40px_rgba(0,0,0,0.26)]">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <ContinuationSlot side="left" node={leftNode} loading={loading} onPreview={onPreview} />
+          <ContinuationSlot side="right" node={rightNode} loading={loading} onPreview={onPreview} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ContinuationSlot({ side, node, loading = false, onPreview }) {
+  return (
+    <div className="flex flex-col items-center rounded-[20px] border border-white/8 bg-white/[0.03] p-3">
+      <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[8px] font-semibold uppercase tracking-[0.16em] text-white/48">
+        <CircleDot size={8} />
+        {slotLabel(side)} continuation
+      </span>
+
+      <div className="mt-2 flex w-full justify-center">
+        {loading ? (
+          <div className="flex h-[96px] w-[98px] items-center justify-center rounded-[22px] border border-white/10 bg-[rgba(17,20,28,0.92)] text-white/55 shadow-[0_16px_34px_rgba(0,0,0,0.28)] sm:w-[112px]">
+            <Loader2 size={16} className="animate-spin" />
+          </div>
+        ) : node ? (
+          <BinaryTreeNode node={node} side={side} defaultExpanded blockDepth={0} onPreview={onPreview} />
+        ) : (
+          <div className="flex h-[96px] w-[98px] flex-col items-center justify-center rounded-[22px] border border-dashed border-white/12 bg-white/[0.04] px-3 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:w-[112px]">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-[12px] border border-white/10 bg-white/5 text-white/62">
+              <CircleDot size={12} />
+            </span>
+            <p className="mt-2 text-[10px] font-semibold text-white/72">No further user</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BinaryTreeSlot({ side, node, loading = false, onPreview, blockDepth }) {
   return (
     <div className="flex flex-col items-center gap-1.5">
       <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[8px] font-semibold uppercase tracking-[0.16em] text-white/48">
@@ -398,7 +322,7 @@ function BinaryTreeSlot({ side, node, loading = false, onPreview }) {
           <Loader2 size={16} className="animate-spin" />
         </div>
       ) : node ? (
-        <BinaryTreeNode node={node} side={side} onPreview={onPreview} />
+        <BinaryTreeNode node={node} side={side} onPreview={onPreview} blockDepth={blockDepth} />
       ) : (
         <div className="flex h-[96px] w-[98px] flex-col items-center justify-center rounded-[22px] border border-dashed border-white/12 bg-white/[0.04] px-3 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:w-[112px]">
           <span className="inline-flex h-8 w-8 items-center justify-center rounded-[12px] border border-white/10 bg-white/5 text-white/62">
