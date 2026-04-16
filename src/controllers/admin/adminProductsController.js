@@ -31,7 +31,7 @@ const getById = asyncHandler(async (req, res) => {
 });
 
 const create = asyncHandler(async (req, res) => {
-  const data = await adminProductsService.createProduct(req.user.sub, req.body);
+  const data = await adminProductsService.createProduct(req.user, req.body);
   return success(res, {
     data,
     statusCode: 201,
@@ -40,7 +40,7 @@ const create = asyncHandler(async (req, res) => {
 });
 
 const update = asyncHandler(async (req, res) => {
-  const data = await adminProductsService.updateProduct(req.user.sub, req.params.id, req.body);
+  const data = await adminProductsService.updateProduct(req.user, req.params.id, req.body);
   return success(res, {
     data,
     message: 'Admin product updated successfully'

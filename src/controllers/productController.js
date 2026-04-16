@@ -9,8 +9,10 @@ const create = asyncHandler(async (req, res) => {
 
 const list = asyncHandler(async (req, res) => {
   const onlyActive = req.query.active !== 'false';
+  const category = typeof req.query.category === 'string' ? req.query.category.trim() : '';
   const result = await productService.listProducts(null, {
     onlyActive,
+    category: category || undefined,
     page: req.query.page,
     limit: req.query.limit
   });

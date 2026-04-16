@@ -15,10 +15,10 @@ export function useProducts() {
   });
 }
 
-export function useInfiniteProducts({ active = true, limit = 12 } = {}) {
+export function useInfiniteProducts({ active = true, category, limit = 12 } = {}) {
   return useInfiniteQuery({
-    queryKey: [...queryKeys.products, 'infinite', active, limit],
-    queryFn: ({ pageParam = 1 }) => getProducts({ active, page: pageParam, limit }),
+    queryKey: [...queryKeys.products, 'infinite', active, category || 'all', limit],
+    queryFn: ({ pageParam = 1 }) => getProducts({ active, category, page: pageParam, limit }),
     initialPageParam: 1,
     getNextPageParam: (lastPage) => lastPage?.pagination?.nextPage ?? undefined,
     staleTime: 60_000,

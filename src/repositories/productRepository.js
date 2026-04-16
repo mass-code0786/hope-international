@@ -24,9 +24,10 @@ async function createProduct(client, payload) {
   return rows[0];
 }
 
-async function listProducts(client, { onlyActive = false, limit = 20, offset = 0 } = {}) {
+async function listProducts(client, { onlyActive = false, category, limit = 20, offset = 0 } = {}) {
   const safeLimit = Math.max(1, Number(limit) || 20);
   const safeOffset = Math.max(0, Number(offset) || 0);
+  const normalizedCategory = String(category || '').trim().toLowerCase();
   const pool = q(client);
   const [listResult, countResult] = await Promise.all([
     pool.query(
@@ -48,15 +49,17 @@ async function listProducts(client, { onlyActive = false, limit = 20, offset = 0
        updated_at
      FROM products
      WHERE ($1::boolean = false OR is_active = true)
+       AND ($2::text = '' OR LOWER(COALESCE(category, '')) = $2::text)
      ORDER BY created_at DESC, id DESC
-     LIMIT $2 OFFSET $3`,
-      [onlyActive, safeLimit, safeOffset]
+     LIMIT $3 OFFSET $4`,
+      [onlyActive, normalizedCategory, safeLimit, safeOffset]
     ),
     pool.query(
       `SELECT COUNT(*) AS total
        FROM products
-       WHERE ($1::boolean = false OR is_active = true)`,
-      [onlyActive]
+       WHERE ($1::boolean = false OR is_active = true)
+         AND ($2::text = '' OR LOWER(COALESCE(category, '')) = $2::text)`,
+      [onlyActive, normalizedCategory]
     )
   ]);
 

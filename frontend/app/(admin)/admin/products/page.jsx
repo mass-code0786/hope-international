@@ -14,6 +14,8 @@ import { createAdminProduct, getAdminProducts, updateAdminProduct } from '@/lib/
 import { currency, number } from '@/lib/utils/format';
 import { StatusBadge } from '@/components/admin/StatusBadge';
 import { compressImageFile, compressImageFiles } from '@/lib/utils/imageUpload';
+import { useAuthStore } from '@/lib/store/authStore';
+import { PRODUCT_CATEGORY_OPTIONS } from '@/lib/constants/productCategories';
 
 const initialForm = {
   name: '',
@@ -39,6 +41,8 @@ function MediaPreview({ src, alt }) {
 }
 
 export default function AdminProductsPage() {
+  const user = useAuthStore((state) => state.user);
+  const isSuperAdmin = String(user?.role || '').toLowerCase() === 'super_admin';
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [isActiveFilter, setIsActiveFilter] = useState('all');
@@ -62,7 +66,6 @@ export default function AdminProductsPage() {
         name: form.name,
         sku: form.sku,
         description: form.description,
-        category: form.category,
         imageUrl: form.imageUrl || undefined,
         gallery,
         price: Number(form.price || 0),
@@ -70,6 +73,9 @@ export default function AdminProductsPage() {
         pv: Number((bv * 0.3).toFixed(2)),
         isQualifying: Boolean(form.isQualifying)
       };
+      if (isSuperAdmin) {
+        payload.category = form.category;
+      }
       if (editingId) {
         payload.moderationStatus = form.moderationStatus;
         payload.moderationNotes = form.moderationNotes;
@@ -221,7 +227,13 @@ export default function AdminProductsPage() {
           <div className="space-y-2">
             <input value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="Name" className="w-full rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm" />
             <input value={form.sku} onChange={(e) => setForm((p) => ({ ...p, sku: e.target.value }))} placeholder="SKU" className="w-full rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm" />
-            <input value={form.category} onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))} placeholder="Category" className="w-full rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm" />
+            {isSuperAdmin ? (
+              <select value={form.category} onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))} className="w-full rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm text-text">
+                {PRODUCT_CATEGORY_OPTIONS.map((category) => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
+            ) : null}
             <textarea value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} placeholder="Description" className="w-full rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm" rows={3} />
 
             <div className="space-y-2 rounded-xl border border-white/10 bg-cardSoft p-3">

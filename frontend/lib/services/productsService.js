@@ -13,6 +13,7 @@ function withQuery(params = {}) {
 function normalizeProductParams(params = {}) {
   const next = {};
   if (params.active !== undefined) next.active = params.active;
+  if (typeof params.category === 'string' && params.category.trim()) next.category = params.category.trim();
   const page = Number(params.page);
   if (Number.isInteger(page) && page > 0) next.page = page;
   const limit = Number(params.limit);

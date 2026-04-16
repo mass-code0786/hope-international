@@ -71,17 +71,6 @@ const serviceCards = [
   { icon: Headset, title: 'Support', href: '/support' }
 ];
 
-const categoryKeywords = {
-  grocery: ['grocery', 'rashan', 'ration', 'atta', 'rice', 'dal', 'oil', 'spice', 'daily-use'],
-  fashion: ['fashion', 'clothing', 'apparel', 'wear', 'shirt', 'shoe', 'style'],
-  mobile: ['mobile', 'phone', 'smartphone', 'android', 'ios'],
-  gadgets: ['gadget', 'electronics', 'earbuds', 'charger', 'accessory', 'device'],
-  beauty: ['beauty', 'skin', 'cosmetic', 'makeup'],
-  health: ['health', 'wellness', 'nutrition', 'supplement', 'care'],
-  physical: ['physical', 'kit', 'pack', 'product'],
-  digital: ['digital', 'online', 'software', 'ebook', 'subscription', 'course', 'training']
-};
-
 const accountHubSections = [
   {
     title: 'Wallet & Finance',
@@ -145,17 +134,6 @@ function SectionTitle({ title, count }) {
   );
 }
 
-function categoryMatch(product, activeCategory) {
-  if (activeCategory === 'All') return true;
-
-  const haystack = `${product?.name || ''} ${product?.description || ''}`.toLowerCase();
-  const normalized = activeCategory.toLowerCase();
-  const keywords = categoryKeywords[normalized] || [];
-  const labelTokens = normalized.split(/[^a-z0-9]+/g).filter(Boolean);
-
-  return keywords.some((keyword) => haystack.includes(keyword)) || labelTokens.some((token) => haystack.includes(token));
-}
-
 function resolveBannerTarget(targetLink) {
   if (!targetLink) return '/shop';
   if (targetLink.startsWith('http://') || targetLink.startsWith('https://')) return targetLink;
@@ -208,6 +186,9 @@ function ShopCartButton() {
 }
 
 export default function ShopPage() {
+  const [search, setSearch] = useState('');
+  const [activeCategory, setActiveCategory] = useState('All');
+  const selectedCategory = activeCategory === 'All' ? undefined : activeCategory;
   const {
     data,
     isPending,
@@ -216,13 +197,11 @@ export default function ShopPage() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage
-  } = useInfiniteProducts({ limit: 12 });
+  } = useInfiniteProducts({ limit: 12, category: selectedCategory });
   const bannersQuery = useQuery({ queryKey: queryKeys.homepageBanners, queryFn: getHomepageBanners, placeholderData: (previousData) => previousData });
   const meQuery = useCurrentUser();
   const walletQuery = useWallet();
   const clearSession = useAuthStore((state) => state.clearSession);
-  const [search, setSearch] = useState('');
-  const [activeCategory, setActiveCategory] = useState('All');
   const [buyingProductId, setBuyingProductId] = useState('');
   const [pendingPurchase, setPendingPurchase] = useState(null);
   const [addressStepProduct, setAddressStepProduct] = useState(null);
@@ -325,11 +304,9 @@ export default function ShopPage() {
   const filtered = useMemo(() => {
     return products.filter((product) => {
       const text = `${product?.name || ''} ${product?.description || ''}`.toLowerCase();
-      const matchesSearch = text.includes(search.toLowerCase());
-      const matchesCategory = categoryMatch(product, activeCategory);
-      return matchesSearch && matchesCategory;
+      return text.includes(search.toLowerCase());
     });
-  }, [products, search, activeCategory]);
+  }, [products, search]);
 
   const deals = useMemo(() => filtered.filter((item) => item.is_qualifying).slice(0, 12), [filtered]);
   const recommended = useMemo(() => filtered, [filtered]);
@@ -343,6 +320,10 @@ export default function ShopPage() {
   const walletReady = !walletQuery.isLoading && !walletQuery.isError;
   const pendingPayableAmount = pendingPurchase ? getProductPricing(pendingPurchase, 1).lineFinalTotal : 0;
   const pendingCanAfford = pendingPurchase ? hasSufficientWalletBalance(walletQuery.data, pendingPayableAmount) : true;
+  const totalActiveItems = catalogPagination?.totalItems || products.length;
+  const categoryLabel = activeCategory === 'All' ? 'all active products' : `${activeCategory} products`;
+  const reachedAllProducts = !hasNextPage && products.length >= totalActiveItems;
+  const visibleCatalogCount = filtered.length;
 
   return (
     <>
@@ -379,9 +360,15 @@ export default function ShopPage() {
 
       <section className="rounded-xl border border-slate-200 bg-white p-2.5">
         <ProductFilters activeCategory={activeCategory} setActiveCategory={setActiveCategory} />
-        <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 text-[10px] text-slate-600">
-          <Wallet size={11} />
-          Wallet: {currency(walletBalance)}
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <div className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 text-[10px] text-slate-600">
+            <Wallet size={11} />
+            Wallet: {currency(walletBalance)}
+          </div>
+          <div className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-1 text-[10px] text-sky-700">
+            <Store size={11} />
+            {activeCategory === 'All' ? 'All active products' : activeCategory}
+          </div>
         </div>
       </section>
 
@@ -509,11 +496,15 @@ export default function ShopPage() {
                 </button>
               </div>
             ) : null}
-            {catalogPagination?.totalItems > products.length ? (
+            {!reachedAllProducts ? (
               <p className="mt-2 text-center text-[10px] text-slate-500">
-                Showing {products.length} of {catalogPagination.totalItems} active products
+                Showing {products.length} of {totalActiveItems} {categoryLabel}
               </p>
-            ) : null}
+            ) : (
+              <p className="mt-2 text-center text-[10px] text-slate-500">
+                Showing all {visibleCatalogCount} matching {activeCategory === 'All' ? 'active products' : activeCategory.toLowerCase() + ' products'}
+              </p>
+            )}
           </div>
 
           <div>

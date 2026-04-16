@@ -22,15 +22,17 @@ async function createProduct(client, payload) {
   return created;
 }
 
-async function listProducts(client, { onlyActive = true, page = 1, limit = 20 } = {}) {
+async function listProducts(client, { onlyActive = true, category, page = 1, limit = 20 } = {}) {
   const pagination = normalizePagination({ page, limit, maxLimit: 50 });
-  const cacheKey = `${PRODUCT_LIST_CACHE_PREFIX}${onlyActive ? 'active' : 'all'}:${pagination.page}:${pagination.limit}`;
+  const normalizedCategory = String(category || '').trim().toLowerCase();
+  const cacheKey = `${PRODUCT_LIST_CACHE_PREFIX}${onlyActive ? 'active' : 'all'}:${normalizedCategory || 'all-categories'}:${pagination.page}:${pagination.limit}`;
   const cached = getCacheEntry(cacheKey);
   if (cached) return cached;
 
   return withPerfSpan('products.list', async () => {
     const result = await productRepository.listProducts(client, {
       onlyActive,
+      category: normalizedCategory || undefined,
       limit: pagination.limit,
       offset: pagination.offset
     });
@@ -50,7 +52,7 @@ async function listProducts(client, { onlyActive = true, page = 1, limit = 20 } 
     return setCacheEntry(cacheKey, payload, PRODUCT_CACHE_TTL_MS);
   }, {
     thresholdMs: 120,
-    meta: { onlyActive: Boolean(onlyActive), page: pagination.page, limit: pagination.limit }
+    meta: { onlyActive: Boolean(onlyActive), category: normalizedCategory || null, page: pagination.page, limit: pagination.limit }
   });
 }
 

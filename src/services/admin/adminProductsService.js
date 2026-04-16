@@ -52,13 +52,16 @@ async function getProduct(productId) {
   return product;
 }
 
-async function createProduct(adminUserId, payload) {
+async function createProduct(adminUser, payload) {
   return withTransaction(async (client) => {
+    const adminUserId = adminUser?.sub;
+    const isSuperAdmin = String(adminUser?.role || '').toLowerCase() === 'super_admin';
     const bv = Number(payload.bv);
     const pv = toMoney(bv * PV_TO_BV_RATIO);
 
     const created = await adminRepository.createProduct(client, {
       ...payload,
+      category: isSuperAdmin ? payload.category : undefined,
       bv,
       pv
     });
@@ -79,8 +82,10 @@ async function createProduct(adminUserId, payload) {
   });
 }
 
-async function updateProduct(adminUserId, productId, payload) {
+async function updateProduct(adminUser, productId, payload) {
   return withTransaction(async (client) => {
+    const adminUserId = adminUser?.sub;
+    const isSuperAdmin = String(adminUser?.role || '').toLowerCase() === 'super_admin';
     const before = await adminRepository.getProductById(client, productId);
     if (!before) {
       throw new ApiError(404, 'Product not found');
@@ -90,7 +95,7 @@ async function updateProduct(adminUserId, productId, payload) {
       sku: payload.sku ?? before.sku,
       name: payload.name ?? before.name,
       description: payload.description ?? before.description,
-      category: payload.category ?? before.category,
+      category: isSuperAdmin ? (payload.category ?? before.category) : before.category,
       price: payload.price ?? before.price,
       bv: payload.bv ?? before.bv,
       isActive: payload.isActive ?? before.is_active,
