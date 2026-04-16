@@ -47,7 +47,6 @@ export default function AdminNowPaymentsPage() {
     onSuccess: async (result) => {
       toast.success(result.message || 'NOWPayments status refreshed');
       await queryClient.invalidateQueries({ queryKey: queryKeys.adminNowPayments });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.adminDeposits });
       await queryClient.invalidateQueries({ queryKey: queryKeys.adminWalletSummary });
     },
     onError: (error) => toast.error(error.message || 'Failed to refresh NOWPayments status')

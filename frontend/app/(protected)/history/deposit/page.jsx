@@ -22,22 +22,24 @@ export default function DepositHistoryPage() {
 
   return (
     <div className="space-y-3">
-      <SectionHeader title="USDT Deposit History" subtitle="BEP20 requests, newest first" action={<Link href="/deposit" className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-600">New Deposit</Link>} />
+      <SectionHeader title="USDT Deposit History" subtitle="NOWPayments records, newest first" action={<Link href="/deposit" className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-600">New Deposit</Link>} />
       {!deposits.length ? (
-        <EmptyState title="No deposit requests found" description="Once you submit a USDT BEP20 deposit, it will appear here." />
+        <EmptyState title="No deposits found" description="Once you create a NOWPayments deposit, it will appear here." />
       ) : (
         <div className="space-y-2">
           {deposits.map((item) => (
             <article key={item.id} className="rounded-xl border border-slate-200 bg-white p-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-semibold text-slate-900">{currency(item.amount)}</p>
-                <Badge variant={statusVariant(item.status)}>{item.status}</Badge>
+                <Badge variant={statusVariant(item.is_processed ? 'completed' : item.status)}>{item.is_processed ? 'completed' : item.status}</Badge>
               </div>
-              <p className="mt-1 text-[11px] font-medium text-slate-600">{item.asset || 'USDT'} • {item.network || 'BEP20'} • {dateTime(item.created_at)}</p>
-              {item.transaction_reference ? <p className="mt-1 text-[11px] text-slate-700">Transaction Hash: {item.transaction_reference}</p> : null}
-              {item.wallet_address_snapshot ? <p className="mt-1 text-[11px] text-slate-700">Wallet Used: {item.wallet_address_snapshot}</p> : null}
-              {item.note ? <p className="mt-1 text-[11px] text-slate-600">{item.note}</p> : null}
-              {item.proof_image_url ? <img src={item.proof_image_url} alt="Deposit proof" className="mt-3 h-28 w-full rounded-xl border border-slate-200 object-contain bg-slate-50 p-2" /> : null}
+              <p className="mt-1 text-[11px] font-medium text-slate-600">NOWPayments | {item.network || 'BSC/BEP20'} | {dateTime(item.created_at)}</p>
+              <p className="mt-1 text-[11px] text-slate-700">
+                Payment Status: {String(item.payment_status || 'waiting').toUpperCase()}
+                {item.pay_amount ? ` | Pay ${item.pay_amount} ${String(item.pay_currency || '').toUpperCase()}` : ''}
+              </p>
+              {item.wallet_address_snapshot ? <p className="mt-1 text-[11px] text-slate-700">Payment Address: {item.wallet_address_snapshot}</p> : null}
+              {item.payment_record_id ? <Link href={`/payments/${item.payment_record_id}`} className="mt-2 inline-flex text-[11px] font-semibold text-sky-700">Open payment status</Link> : null}
             </article>
           ))}
         </div>

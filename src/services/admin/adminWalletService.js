@@ -84,6 +84,10 @@ function normalizeDepositRecord(item) {
   };
 }
 
+function isNowPaymentsDeposit(item) {
+  return String(item?.payment_provider || '').toLowerCase() === 'nowpayments';
+}
+
 async function listTransactions(filters, paginationInput) {
   const pagination = normalizePagination(paginationInput);
   const result = await adminRepository.listWalletTransactions(null, filters, pagination);
@@ -108,12 +112,6 @@ async function getWalletUser(userId) {
   return user;
 }
 
-async function listDeposits(filters, paginationInput) {
-  const pagination = normalizePagination(paginationInput);
-  const result = await walletRepository.listDepositRequestsAdmin(null, filters, pagination);
-  return buildPagedResult({ ...result, items: result.items.map(normalizeDepositRecord) }, pagination);
-}
-
 async function listNowPayments(filters, paginationInput) {
   const pagination = normalizePagination(paginationInput);
   const result = await paymentService.listAdminNowPaymentsPayments(filters, {
@@ -127,7 +125,7 @@ async function getNowPayments(paymentId) {
   return paymentService.getAdminNowPaymentsPayment(paymentId);
 }
 
-async function syncDepositNowPayments(_adminUserId, requestId) {
+async function syncNowPaymentsDeposit(_adminUserId, requestId) {
   return withTransaction(async (client) => {
     const request = await walletRepository.getDepositRequestById(client, requestId, { forUpdate: true });
     if (!request) {
@@ -143,81 +141,6 @@ async function syncDepositNowPayments(_adminUserId, requestId) {
     await paymentService.syncNowPaymentsPaymentWithClient(client, paymentRecordId);
     const refreshed = await walletRepository.getDepositRequestById(client, requestId);
     return normalizeDepositRecord(refreshed);
-  });
-}
-
-async function reviewDeposit(adminUserId, requestId, payload) {
-  return withTransaction(async (client) => {
-    const requestMeta = sanitizeRequestMeta(payload.requestMeta);
-    const request = await walletRepository.getDepositRequestById(client, requestId, { forUpdate: true });
-    if (!request) {
-      throw new ApiError(404, 'Deposit request not found');
-    }
-    if (String(request.payment_provider || '').toLowerCase() === 'nowpayments') {
-      throw new ApiError(403, 'NOWPayments deposits are reconciled automatically and managed only by super admin');
-    }
-    if (request.status !== 'pending') {
-      await blockWithSecurityLog(client, {
-        userId: request.user_id,
-        actionType: 'admin_deposit_review_blocked',
-        reason: 'already_processed',
-        ipAddress: requestMeta.ipAddress,
-        metadata: { adminUserId, requestId, currentStatus: request.status }
-      }, 400, 'This action was already processed.');
-    }
-
-    const details = {
-      ...(request.details || {}),
-      adminNote: payload.adminNote || null,
-      reviewedBy: adminUserId,
-      reviewedAt: new Date().toISOString()
-    };
-
-    const updated = await walletRepository.updateDepositRequestStatus(client, requestId, {
-      status: payload.status,
-      details,
-      reviewedBy: adminUserId,
-      expectedCurrentStatus: 'pending'
-    });
-    if (!updated) {
-      await blockWithSecurityLog(client, {
-        userId: request.user_id,
-        actionType: 'admin_deposit_review_blocked',
-        reason: 'already_processed',
-        ipAddress: requestMeta.ipAddress,
-        metadata: { adminUserId, requestId }
-      }, 400, 'This action was already processed.');
-    }
-
-    if (payload.status === 'approved') {
-      const { teamIncomeDistributions } = await walletService.settleDepositRequest(client, updated, {
-        createdByAdminId: adminUserId,
-        adminNote: payload.adminNote || null,
-        status: 'approved',
-        expectedCurrentStatus: 'approved'
-      });
-      updated.details = {
-        ...(updated.details || {}),
-        teamIncomeDistributionCount: teamIncomeDistributions.length
-      };
-    }
-
-    await notificationService.createNotificationOnce(client, notificationService.buildDepositStatusNotification(updated));
-
-    await adminRepository.logAdminAction(client, {
-      adminUserId,
-      actionType: 'deposit.review',
-      targetEntity: 'wallet_deposit_requests',
-      targetId: request.id,
-      beforeData: request,
-      afterData: updated,
-      metadata: {
-        status: payload.status,
-        adminNote: payload.adminNote || null
-      }
-    });
-
-    return normalizeDepositRecord(updated);
   });
 }
 
@@ -369,7 +292,7 @@ async function getUserFinancialOverview(userId) {
     profile,
     wallet,
     walletBinding,
-    deposits: deposits.map(normalizeDepositRecord),
+    deposits: deposits.map(normalizeDepositRecord).filter(isNowPaymentsDeposit),
     withdrawals,
     p2pTransfers: p2p,
     incomeHistory,
@@ -590,11 +513,9 @@ module.exports = {
   getSummary,
   listWalletUsers,
   getWalletUser,
-  listDeposits,
   listNowPayments,
   getNowPayments,
-  syncDepositNowPayments,
-  reviewDeposit,
+  syncNowPaymentsDeposit,
   listWithdrawals,
   reviewWithdrawal,
   listP2p,

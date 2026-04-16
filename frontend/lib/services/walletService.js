@@ -92,29 +92,13 @@ export async function bindWalletAddress(payload) {
   });
 }
 
-export async function getDepositWalletConfig() {
-  const envelope = toEnvelope(await apiFetch('/wallet/deposit-config'));
-  return {
-    ...envelope,
-    data: envelope.data || null
-  };
-}
-
-export async function createDepositRequest(payload) {
-  return toEnvelope(
-    await apiFetch('/wallet/deposits', {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    })
-  );
-}
-
 export async function getDepositHistory() {
   const envelope = toEnvelope(await apiFetch('/wallet/deposits'));
   const items = envelope.data;
   return {
     ...envelope,
-    data: Array.isArray(items) ? items : Array.isArray(items?.items) ? items.items : []
+    data: (Array.isArray(items) ? items : Array.isArray(items?.items) ? items.items : [])
+      .filter((item) => String(item?.payment_provider || '').toLowerCase() === 'nowpayments')
   };
 }
 

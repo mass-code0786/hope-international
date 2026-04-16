@@ -159,7 +159,6 @@ const adminFinanceListQuerySchema = z.object({
   query: pagingQuery.extend({
     search: z.string().optional(),
     status: z.enum(['pending', 'approved', 'rejected', 'completed', 'failed']).optional(),
-    paymentProvider: z.enum(['manual', 'nowpayments']).optional(),
     paymentStatus: z.enum(['waiting', 'confirming', 'confirmed', 'finished', 'failed', 'expired', 'partially_paid']).optional(),
     source: z.enum(['all', 'direct_income', 'matching_income', 'reward_qualification', 'direct_deposit_income', 'level_deposit_income']).optional(),
     userId: uuid.optional(),
@@ -202,16 +201,6 @@ const rewardsQuerySchema = z.object({
 const rewardStatusUpdateSchema = z.object({ body: z.object({ status: z.enum(['qualified', 'pending', 'processed', 'rejected']) }), params: z.object({ id: uuid }), query: z.object({}) });
 const teamTreeQuerySchema = z.object({ body: z.object({}), params: z.object({ id: uuid }), query: z.object({ depth: z.string().regex(/^\d+$/).optional() }) });
 const settingsUpdateSchema = z.object({ body: z.object({ compensationSettings: z.record(z.any()).optional(), rankMultipliers: z.array(z.record(z.any())).optional(), rewardSlabs: z.array(z.record(z.any())).optional() }), params: z.object({}), query: z.object({}) });
-const depositWalletSettingsUpdateSchema = z.object({
-  body: z.object({
-    walletAddress: z.string().min(8).max(255).optional(),
-    qrImageUrl: z.string().max(1000000).optional(),
-    instructions: z.string().max(1000).optional(),
-    isActive: z.boolean().optional()
-  }).refine((body) => Object.keys(body).length > 0, { message: 'At least one field is required for update' }),
-  params: z.object({}),
-  query: z.object({})
-});
 const adminPagingQuerySchema = z.object({ body: z.object({}), params: z.object({}), query: pagingQuery });
 const rewardsSummaryQuerySchema = z.object({ body: z.object({}), params: z.object({}), query: z.object({ month: z.string().regex(/^\d{4}-\d{2}$/).optional() }) });
 const teamSummaryParamSchema = z.object({ body: z.object({}), params: z.object({ id: uuid }), query: z.object({}) });
@@ -607,7 +596,6 @@ module.exports = {
   adminSellerApplicationsQuerySchema,
   adminSellerApplicationReviewSchema,
   settingsUpdateSchema,
-  depositWalletSettingsUpdateSchema,
   adminAuctionsQuerySchema,
   adminAuctionCreateSchema,
   adminAuctionUpdateSchema,

@@ -186,37 +186,6 @@ const paymentIdParamSchema = z.object({
   query: z.object({})
 });
 
-const walletDepositSchema = z.object({
-  body: z.object({
-    amount: z.number().positive(),
-    provider: z.enum(['manual', 'nowpayments']).optional().default('manual'),
-    payCurrency: z.string().trim().min(2).max(40).optional(),
-    network: z.string().trim().min(2).max(40).optional(),
-    txHash: z.string().trim().min(6).max(255).optional(),
-    proofImageUrl: z.string().min(16).max(1000000).optional(),
-    note: z.string().max(800).optional()
-  }).superRefine((body, ctx) => {
-    if (body.provider === 'nowpayments') {
-      if (body.payCurrency && !['usdt', 'usdtbsc'].includes(String(body.payCurrency).trim().toLowerCase())) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'NOWPayments deposits support only USDT on BSC/BEP20', path: ['payCurrency'] });
-      }
-      if (body.network && !['bsc', 'bep20', 'bsc/bep20'].includes(String(body.network).trim().toLowerCase())) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'NOWPayments deposits support only USDT on BSC/BEP20', path: ['network'] });
-      }
-      return;
-    }
-
-    if (!body.txHash) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Transaction hash is required', path: ['txHash'] });
-    }
-    if (!body.proofImageUrl) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Screenshot proof is required', path: ['proofImageUrl'] });
-    }
-  }),
-  params: z.object({}),
-  query: z.object({})
-});
-
 const walletWithdrawalSchema = z.object({
   body: z.object({ amount: z.number().positive(), walletAddress: z.string().min(8).max(255).optional(), network: z.string().max(60).optional(), notes: z.string().max(800).optional() }),
   params: z.object({}),
@@ -537,7 +506,6 @@ module.exports = {
   walletBindSchema,
   nowPaymentsCreateSchema,
   paymentIdParamSchema,
-  walletDepositSchema,
   walletTransferSchema,
   walletWithdrawalSchema,
   walletP2pSchema,

@@ -44,7 +44,6 @@ export default function TeamPage() {
           </span>
           <div>
             <h2 className="text-lg font-semibold tracking-[-0.03em] text-text">Binary Team</h2>
-            <p className="mt-1 text-sm text-muted">Compact nodes keep the tree readable. Tap any member to inspect the full card for 10 seconds.</p>
           </div>
         </div>
 

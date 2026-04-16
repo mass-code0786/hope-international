@@ -246,19 +246,6 @@ export async function updateAdminSettings(payload) {
   );
 }
 
-export async function getAdminDepositWalletSettings() {
-  return toEnvelope(await apiFetch('/admin/settings/deposit-wallet'));
-}
-
-export async function updateAdminDepositWalletSettings(payload) {
-  return toEnvelope(
-    await apiFetch('/admin/settings/deposit-wallet', {
-      method: 'PATCH',
-      body: JSON.stringify(payload)
-    })
-  );
-}
-
 export async function getAdminBanners(params = {}) {
   return toEnvelope(await apiFetch(`/admin/banners${withQuery(normalizeAdminListParams(params, { page: 1, limit: 5 }))}`));
 }
@@ -289,28 +276,15 @@ export async function deleteAdminBanner(id) {
   );
 }
 
-export async function getAdminDeposits(params = {}) {
-  return toEnvelope(await apiFetch(`/admin/wallet/deposits${withQuery(params)}`));
-}
-
 export async function getAdminNowPaymentsDeposits(params = {}) {
   return toEnvelope(await apiFetch(`/admin/wallet/nowpayments${withQuery(params)}`));
 }
 
 export async function syncAdminNowPaymentsDeposit(id) {
   return toEnvelope(
-    await apiFetch(`/admin/wallet/deposits/${id}/sync-nowpayments`, {
+    await apiFetch(`/admin/wallet/nowpayments/${id}/sync`, {
       method: 'POST',
       body: JSON.stringify({})
-    })
-  );
-}
-
-export async function reviewAdminDeposit(id, payload) {
-  return toEnvelope(
-    await apiFetch(`/admin/wallet/deposits/${id}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify(payload)
     })
   );
 }

@@ -182,7 +182,6 @@ export function BinaryTreeExplorer({ root }) {
       <div className="flex flex-col gap-3 border-b border-white/8 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/45">Interactive Binary View</p>
-          <p className="mt-1 text-sm text-white/72">Tap a node to inspect the member card. Drag to pan. Use zoom controls for dense branches.</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -216,7 +215,7 @@ export function BinaryTreeExplorer({ root }) {
         </div>
       </div>
 
-      <div className="relative overflow-hidden px-2 py-4 sm:px-4 sm:py-5">
+      <div className="relative overflow-hidden px-2 py-3 sm:px-4 sm:py-4">
         <div
           className="relative overflow-hidden rounded-[20px] border border-white/6 bg-[radial-gradient(circle_at_top,rgba(124,58,237,0.15),transparent_38%),radial-gradient(circle_at_bottom,rgba(16,185,129,0.12),transparent_42%),rgba(8,10,15,0.95)]"
           onPointerDown={handlePointerDown}
@@ -230,14 +229,14 @@ export function BinaryTreeExplorer({ root }) {
         >
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(transparent_95%,rgba(255,255,255,0.03)_96%),linear-gradient(90deg,transparent_95%,rgba(255,255,255,0.03)_96%)] bg-[length:24px_24px]" />
           <div
-            className="relative mx-auto flex min-w-max justify-center px-4 py-5 sm:px-8 sm:py-8"
+            className="relative mx-auto min-w-max px-3 py-4 sm:px-6 sm:py-6"
             style={{
               transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
               transformOrigin: 'center top',
               transition: dragStateRef.current ? 'none' : 'transform 180ms ease-out'
             }}
           >
-            <BinaryTreeNode node={root} side="root" defaultExpanded onPreview={queuePreview} />
+            <RootBinaryTreeNode node={root} onPreview={queuePreview} />
           </div>
         </div>
 
@@ -298,6 +297,50 @@ export function BinaryTreeExplorer({ root }) {
   );
 }
 
+function RootBinaryTreeNode({ node, onPreview }) {
+  const [expanded, setExpanded] = useState(true);
+  const embeddedChildren = hasEmbeddedChildren(node);
+  const shouldFetch = expanded && node?.hasChildren && !embeddedChildren;
+
+  const nodeQuery = useQuery({
+    queryKey: queryKeys.teamTreeNode(node.id),
+    queryFn: () => getTeamTreeNode(node.id),
+    enabled: shouldFetch,
+    staleTime: 60000
+  });
+
+  const resolvedNode = nodeQuery.data || node;
+  const children = hasEmbeddedChildren(resolvedNode) ? resolvedNode.children : null;
+  const leftNode = children?.left || null;
+  const rightNode = children?.right || null;
+  const loadingChildren = nodeQuery.isLoading && node?.hasChildren && !embeddedChildren;
+
+  return (
+    <div className="relative flex flex-col items-center pt-[128px]">
+      <div className="absolute left-1/2 top-0 z-10 flex -translate-x-1/2 flex-col items-center gap-1.5">
+        <TreeMemberCard node={resolvedNode} side="root" onPreview={onPreview} widthClass="w-[104px]" />
+        <ExpandCollapseButton expanded={expanded} onClick={() => setExpanded((current) => !current)} />
+      </div>
+
+      {expanded ? (
+        <div className="relative mt-2 flex flex-col items-center pt-2">
+          <div className="absolute left-1/2 top-0 h-2.5 w-px -translate-x-1/2 bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
+          <div className="relative pt-2">
+            <div className="absolute left-1/4 right-1/4 top-0 h-px bg-[linear-gradient(90deg,rgba(255,255,255,0.08),rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
+            <div className="absolute left-1/4 top-0 h-2.5 w-px bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
+            <div className="absolute right-1/4 top-0 h-2.5 w-px bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
+
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
+              <BinaryTreeSlot side="left" node={leftNode} loading={loadingChildren} onPreview={onPreview} />
+              <BinaryTreeSlot side="right" node={rightNode} loading={loadingChildren} onPreview={onPreview} />
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function BinaryTreeNode({ node, side = 'root', defaultExpanded = false, onPreview }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const embeddedChildren = hasEmbeddedChildren(node);
@@ -318,51 +361,20 @@ function BinaryTreeNode({ node, side = 'root', defaultExpanded = false, onPrevie
 
   return (
     <div className="flex flex-col items-center">
-      <div className="flex flex-col items-center gap-2">
-        <button
-          type="button"
-          data-tree-node
-          onClick={() => onPreview?.(resolvedNode)}
-          className="group relative flex w-[112px] flex-col items-center overflow-hidden rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(25,29,39,0.96),rgba(13,15,21,0.98))] px-3 py-3 text-center shadow-[0_18px_40px_rgba(0,0,0,0.38)] transition duration-200 hover:-translate-y-0.5 hover:border-white/18 sm:w-[124px]"
-        >
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(124,58,237,0.16),transparent_45%),radial-gradient(circle_at_bottom,rgba(16,185,129,0.12),transparent_45%)] opacity-80" />
-          <span className="relative inline-flex h-11 w-11 items-center justify-center rounded-[16px] border border-white/12 bg-white/7 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
-            {resolvedNode?.avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={resolvedNode.avatarUrl} alt={displayNodeName(resolvedNode)} className="h-full w-full rounded-[16px] object-cover" />
-            ) : (
-              nodeInitials(resolvedNode)
-            )}
-          </span>
-
-          <div className="relative mt-2.5 w-full">
-            <p className="truncate text-[12px] font-semibold tracking-[-0.02em] text-white">{displayNodeName(resolvedNode)}</p>
-            <div className="mt-1 flex items-center justify-center gap-1.5">
-              <span className={`h-1.5 w-1.5 rounded-full ${resolvedNode?.isActive ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-              <span className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/48">{slotLabel(side)}</span>
-            </div>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setExpanded((current) => !current)}
-          className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/6 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/60 transition hover:border-white/18 hover:bg-white/10"
-        >
-          {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-          {expanded ? 'Collapse' : 'Expand'}
-        </button>
+      <div className="flex flex-col items-center gap-1.5">
+        <TreeMemberCard node={resolvedNode} side={side} onPreview={onPreview} widthClass="w-[98px] sm:w-[112px]" />
+        <ExpandCollapseButton expanded={expanded} onClick={() => setExpanded((current) => !current)} />
       </div>
 
       {expanded ? (
-        <div className="relative mt-3 flex w-full min-w-[250px] flex-col items-center pt-3 sm:min-w-[320px]">
-          <div className="absolute left-1/2 top-0 h-3 w-px -translate-x-1/2 bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
-          <div className="relative w-full pt-3">
+        <div className="relative mt-2 flex w-full min-w-[216px] flex-col items-center pt-2 sm:min-w-[280px]">
+          <div className="absolute left-1/2 top-0 h-2.5 w-px -translate-x-1/2 bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
+          <div className="relative w-full pt-2">
             <div className="absolute left-1/4 right-1/4 top-0 h-px bg-[linear-gradient(90deg,rgba(255,255,255,0.08),rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
-            <div className="absolute left-1/4 top-0 h-3 w-px bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
-            <div className="absolute right-1/4 top-0 h-3 w-px bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
+            <div className="absolute left-1/4 top-0 h-2.5 w-px bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
+            <div className="absolute right-1/4 top-0 h-2.5 w-px bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
 
-            <div className="grid grid-cols-2 gap-3 sm:gap-5">
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
               <BinaryTreeSlot side="left" node={leftNode} loading={loadingChildren} onPreview={onPreview} />
               <BinaryTreeSlot side="right" node={rightNode} loading={loadingChildren} onPreview={onPreview} />
             </div>
@@ -375,27 +387,69 @@ function BinaryTreeNode({ node, side = 'root', defaultExpanded = false, onPrevie
 
 function BinaryTreeSlot({ side, node, loading = false, onPreview }) {
   return (
-    <div className="flex flex-col items-center gap-2">
-      <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/48">
+    <div className="flex flex-col items-center gap-1.5">
+      <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[8px] font-semibold uppercase tracking-[0.16em] text-white/48">
         <CircleDot size={8} />
         {slotLabel(side)}
       </span>
 
       {loading ? (
-        <div className="flex h-[108px] w-[112px] items-center justify-center rounded-[24px] border border-white/10 bg-[rgba(17,20,28,0.92)] text-white/55 shadow-[0_16px_34px_rgba(0,0,0,0.28)] sm:w-[124px]">
+        <div className="flex h-[96px] w-[98px] items-center justify-center rounded-[22px] border border-white/10 bg-[rgba(17,20,28,0.92)] text-white/55 shadow-[0_16px_34px_rgba(0,0,0,0.28)] sm:w-[112px]">
           <Loader2 size={16} className="animate-spin" />
         </div>
       ) : node ? (
         <BinaryTreeNode node={node} side={side} onPreview={onPreview} />
       ) : (
-        <div className="flex h-[108px] w-[112px] flex-col items-center justify-center rounded-[24px] border border-dashed border-white/12 bg-white/[0.04] px-3 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:w-[124px]">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-[14px] border border-white/10 bg-white/5 text-white/62">
-            <Plus size={14} />
+        <div className="flex h-[96px] w-[98px] flex-col items-center justify-center rounded-[22px] border border-dashed border-white/12 bg-white/[0.04] px-3 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:w-[112px]">
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-[12px] border border-white/10 bg-white/5 text-white/62">
+            <Plus size={13} />
           </span>
-          <p className="mt-2 text-[11px] font-semibold text-white/72">Empty slot</p>
+          <p className="mt-2 text-[10px] font-semibold text-white/72">Empty slot</p>
         </div>
       )}
     </div>
+  );
+}
+
+function TreeMemberCard({ node, side, onPreview, widthClass }) {
+  return (
+    <button
+      type="button"
+      data-tree-node
+      onClick={() => onPreview?.(node)}
+      className={`group relative flex ${widthClass} flex-col items-center overflow-hidden rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(25,29,39,0.96),rgba(13,15,21,0.98))] px-2.5 py-2.5 text-center shadow-[0_18px_40px_rgba(0,0,0,0.38)] transition duration-200 hover:-translate-y-0.5 hover:border-white/18`}
+    >
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(124,58,237,0.16),transparent_45%),radial-gradient(circle_at_bottom,rgba(16,185,129,0.12),transparent_45%)] opacity-80" />
+      <span className="relative inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-white/12 bg-white/7 text-[13px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
+        {node?.avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={node.avatarUrl} alt={displayNodeName(node)} className="h-full w-full rounded-[14px] object-cover" />
+        ) : (
+          nodeInitials(node)
+        )}
+      </span>
+
+      <div className="relative mt-2 w-full">
+        <p className="truncate text-[11px] font-semibold tracking-[-0.02em] text-white">{displayNodeName(node)}</p>
+        <div className="mt-1 flex items-center justify-center gap-1.5">
+          <span className={`h-1.5 w-1.5 rounded-full ${node?.isActive ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+          <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-white/48">{slotLabel(side)}</span>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function ExpandCollapseButton({ expanded, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/6 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/60 transition hover:border-white/18 hover:bg-white/10"
+    >
+      {expanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+      {expanded ? 'Collapse' : 'Expand'}
+    </button>
   );
 }
 

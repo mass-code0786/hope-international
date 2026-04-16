@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -10,7 +9,6 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { getAdminSettings, updateAdminSettings } from '@/lib/services/admin';
 import { REWARD_SLABS, RANKS } from '@/lib/constants/theme';
-import { formatLabel } from '@/lib/utils/format';
 
 export default function AdminSettingsPage() {
   const queryClient = useQueryClient();
@@ -54,13 +52,12 @@ export default function AdminSettingsPage() {
   if (settingsQuery.isError) return <ErrorState message="Unable to load settings." onRetry={settingsQuery.refetch} />;
 
   const settings = settingsQuery.data?.data || {};
-  const depositWallet = settings.depositWalletConfig || {};
   const rankMultipliers = Array.isArray(settings.rankMultipliers) && settings.rankMultipliers.length ? settings.rankMultipliers : RANKS.map((r) => ({ name: r.name, capMultiplier: r.capMultiplier }));
   const rewardSlabs = Array.isArray(settings.rewardSlabs) && settings.rewardSlabs.length ? settings.rewardSlabs : REWARD_SLABS;
 
   return (
     <div className="space-y-5">
-      <AdminSectionHeader title="Settings & Configuration" subtitle="Compensation, rewards, and operational settings" action={<Link href="/admin/settings/deposit-wallet" className="rounded-xl border border-white/10 px-3 py-2 text-sm text-muted">{formatLabel('Deposit Wallet')}</Link>} />
+      <AdminSectionHeader title="Settings & Configuration" subtitle="Compensation, rewards, and operational settings" />
 
       <div className="card-surface p-4">
         <p className="text-sm font-semibold text-text">Compensation Settings</p>
@@ -89,13 +86,7 @@ export default function AdminSettingsPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        <SummaryPanel title={formatLabel('Deposit Wallet')} items={[
-          { label: 'Asset', value: depositWallet.asset || 'USDT' },
-          { label: 'Network', value: depositWallet.network || 'BEP20' },
-          { label: 'Status', value: depositWallet.isActive ? 'Active' : 'Inactive' },
-          { label: formatLabel('Wallet'), value: depositWallet.walletAddress || '-' }
-        ]} />
+      <div className="grid gap-4 xl:grid-cols-2">
         <SummaryPanel title="Rank Multipliers" items={rankMultipliers.map((r) => ({ label: r.name, value: `${r.capMultiplier}x` }))} />
         <SummaryPanel title="Reward Slabs" items={rewardSlabs.map((r) => ({ label: `${r.thresholdBv} Matching BV`, value: r.rewardLabel || r.label }))} />
       </div>

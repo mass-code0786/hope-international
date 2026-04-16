@@ -55,30 +55,6 @@ const user = asyncHandler(async (req, res) => {
   });
 });
 
-const deposits = asyncHandler(async (req, res) => {
-  const isSuperAdmin = String(req.user?.role || '').toLowerCase() === 'super_admin';
-  const filters = {
-    search: req.query.search,
-    status: req.query.status,
-    paymentProvider: isSuperAdmin ? req.query.paymentProvider : 'manual',
-    paymentStatus: isSuperAdmin ? req.query.paymentStatus : undefined,
-    userId: req.query.userId,
-    dateFrom: req.query.dateFrom,
-    dateTo: req.query.dateTo
-  };
-
-  const result = await adminWalletService.listDeposits(filters, {
-    page: req.query.page,
-    limit: req.query.limit
-  });
-
-  return success(res, {
-    data: result.data,
-    pagination: result.pagination,
-    message: 'Admin deposits fetched successfully'
-  });
-});
-
 const nowPayments = asyncHandler(async (req, res) => {
   const result = await adminWalletService.listNowPayments({
     search: req.query.search,
@@ -105,26 +81,11 @@ const nowPaymentsDetail = asyncHandler(async (req, res) => {
   });
 });
 
-const syncDepositNowPayments = asyncHandler(async (req, res) => {
-  const data = await adminWalletService.syncDepositNowPayments(req.user.sub, req.params.id);
+const syncNowPaymentsDeposit = asyncHandler(async (req, res) => {
+  const data = await adminWalletService.syncNowPaymentsDeposit(req.user.sub, req.params.id);
   return success(res, {
     data,
     message: 'NOWPayments deposit synced successfully'
-  });
-});
-
-const reviewDeposit = asyncHandler(async (req, res) => {
-  const data = await adminWalletService.reviewDeposit(req.user.sub, req.params.id, {
-    status: req.body.status,
-    adminNote: req.body.adminNote,
-    requestMeta: {
-      ipAddress: req.ip
-    }
-  });
-
-  return success(res, {
-    data,
-    message: 'Deposit reviewed successfully'
   });
 });
 
@@ -341,11 +302,9 @@ module.exports = {
   summary,
   users,
   user,
-  deposits,
   nowPayments,
   nowPaymentsDetail,
-  syncDepositNowPayments,
-  reviewDeposit,
+  syncNowPaymentsDeposit,
   withdrawals,
   reviewWithdrawal,
   p2p,

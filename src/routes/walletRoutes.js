@@ -5,7 +5,6 @@ const validate = require('../middleware/validate');
 const {
   walletAdjustSchema,
   walletBindSchema,
-  walletDepositSchema,
   nowPaymentsCreateSchema,
   walletTransferSchema,
   walletWithdrawalSchema,
@@ -17,10 +16,8 @@ const router = express.Router();
 
 router.get('/', auth(), walletController.summary);
 router.get('/history', auth(), walletController.history);
-router.get('/deposit-config', auth(), walletController.depositConfig);
 router.get('/deposits', auth(), walletController.depositList);
 router.post('/deposits/nowpayments', auth(), validate(nowPaymentsCreateSchema), walletController.depositCreateNowPayments);
-router.post('/deposits', auth(), validate(walletDepositSchema), walletController.depositCreate);
 router.get('/withdrawals', auth(), walletController.withdrawalList);
 router.post('/withdrawals', auth(), validate(walletWithdrawalSchema), walletController.withdrawalCreate);
 router.post('/transfer', auth(), validate(walletTransferSchema), walletController.transferCreate);

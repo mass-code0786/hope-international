@@ -37,6 +37,10 @@ function normalizeDepositRecord(item) {
   };
 }
 
+function isNowPaymentsDeposit(item) {
+  return String(item?.payment_provider || '').toLowerCase() === 'nowpayments';
+}
+
 const summary = asyncHandler(async (req, res) => {
   const includeHistory = String(req.query.includeHistory || '').toLowerCase() === 'true';
   const data = await walletService.getWalletSummary(null, req.user.sub, { includeHistory });
@@ -51,7 +55,9 @@ const history = asyncHandler(async (req, res) => {
   const userId = req.user.sub;
 
   if (type === 'deposit') {
-    const data = (await walletRepository.listDepositRequests(null, userId, 300)).map(normalizeDepositRecord);
+    const data = (await walletRepository.listDepositRequests(null, userId, 300))
+      .map(normalizeDepositRecord)
+      .filter(isNowPaymentsDeposit);
     return success(res, {
       data,
       message: 'Deposit requests fetched successfully'
@@ -78,7 +84,7 @@ const history = asyncHandler(async (req, res) => {
   return success(res, {
     data: {
       ...data,
-      deposits: Array.isArray(data.deposits) ? data.deposits.map(normalizeDepositRecord) : []
+      deposits: Array.isArray(data.deposits) ? data.deposits.map(normalizeDepositRecord).filter(isNowPaymentsDeposit) : []
     },
     message: 'Wallet history fetched successfully'
   });
@@ -92,43 +98,28 @@ const bindWallet = asyncHandler(async (req, res) => {
   });
 });
 
-const depositConfig = asyncHandler(async (_req, res) => {
-  const data = await walletService.getDepositWalletConfig(null);
-  return success(res, {
-    data,
-    message: 'Deposit wallet fetched successfully'
-  });
-});
-
-const depositCreate = asyncHandler(async (req, res) => {
-  const data = await withTransaction(async (client) => walletService.createDepositRequest(client, req.user.sub, req.body));
-  const isAutoDeposit = String(data.payment_provider || '').toLowerCase() === 'nowpayments';
-  return success(res, {
-    data: normalizeDepositRecord(data),
-    message: isAutoDeposit
-      ? 'NOWPayments deposit created successfully'
-      : 'USDT BEP20 deposit request submitted successfully',
-    statusCode: 201
-  });
-});
-
 const depositCreateNowPayments = asyncHandler(async (req, res) => {
-  const data = await withTransaction(async (client) => walletService.createDepositRequest(client, req.user.sub, {
+  const paymentService = require('../services/paymentService');
+  const data = await withTransaction(async (client) => paymentService.createNowPaymentsDepositPaymentWithClient(client, req.user.sub, {
     amount: req.body.amount,
-    provider: 'nowpayments',
     payCurrency: req.body.payCurrency,
     network: req.body.network
   }));
 
   return success(res, {
-    data: normalizeDepositRecord(data),
+    data: normalizeDepositRecord({
+      ...data.depositRequest,
+      payment_record_id: data.payment?.id || null
+    }),
     message: 'NOWPayments deposit created successfully',
     statusCode: 201
   });
 });
 
 const depositList = asyncHandler(async (req, res) => {
-  const data = (await walletRepository.listDepositRequests(null, req.user.sub, 300)).map(normalizeDepositRecord);
+  const data = (await walletRepository.listDepositRequests(null, req.user.sub, 300))
+    .map(normalizeDepositRecord)
+    .filter(isNowPaymentsDeposit);
   return success(res, {
     data,
     message: 'Deposit requests fetched successfully'
@@ -213,8 +204,6 @@ module.exports = {
   summary,
   history,
   bindWallet,
-  depositConfig,
-  depositCreate,
   depositCreateNowPayments,
   depositList,
   withdrawalCreate,

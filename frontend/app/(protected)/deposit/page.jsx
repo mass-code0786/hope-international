@@ -6,19 +6,16 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import QRCode from 'qrcode';
 import toast from 'react-hot-toast';
-import { Copy, Upload } from 'lucide-react';
+import { Copy } from 'lucide-react';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Badge } from '@/components/ui/Badge';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { createNowPaymentsPayment } from '@/lib/services/paymentsService';
-import { createDepositRequest, getDepositHistory, getDepositWalletConfig } from '@/lib/services/walletService';
-import { compressImageFile } from '@/lib/utils/imageUpload';
+import { getDepositHistory } from '@/lib/services/walletService';
 import { currency, dateTime, statusVariant } from '@/lib/utils/format';
 
-const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 const NOWPAYMENTS_PAY_CURRENCY = 'usdt';
 const NOWPAYMENTS_NETWORK = 'BSC/BEP20';
 
@@ -33,16 +30,11 @@ export default function DepositPage() {
   const searchParams = useSearchParams();
   const formRef = useRef(null);
   const queryClient = useQueryClient();
-  const [depositMode, setDepositMode] = useState(searchParams.get('provider') === 'manual' ? 'manual' : 'nowpayments');
-  const [proofImageUrl, setProofImageUrl] = useState('');
-  const [proofFileName, setProofFileName] = useState('');
   const [qrImage, setQrImage] = useState('');
-  const [isUploadingProof, setIsUploadingProof] = useState(false);
   const [activeGatewayPayment, setActiveGatewayPayment] = useState(null);
   const returnTo = searchParams.get('returnTo') || '';
   const amountPreset = searchParams.get('amount') || '';
 
-  const depositConfigQuery = useQuery({ queryKey: queryKeys.walletDepositConfig, queryFn: getDepositWalletConfig });
   const depositsQuery = useQuery({
     queryKey: queryKeys.walletDeposits,
     queryFn: getDepositHistory,
@@ -53,24 +45,10 @@ export default function DepositPage() {
     }
   });
 
-  const depositMutation = useMutation({
-    mutationFn: createDepositRequest,
-    onSuccess: async (result) => {
-      formRef.current?.reset();
-      setProofImageUrl('');
-      setProofFileName('');
-      toast.success(result.message || 'Manual deposit submitted successfully');
-      await queryClient.invalidateQueries({ queryKey: queryKeys.walletDeposits });
-    },
-    onError: (error) => toast.error(error.message || 'Deposit request failed')
-  });
-
   const nowPaymentsMutation = useMutation({
     mutationFn: createNowPaymentsPayment,
     onSuccess: async (result) => {
       formRef.current?.reset();
-      setProofImageUrl('');
-      setProofFileName('');
       if (result?.data?.depositRequest) {
         setActiveGatewayPayment(result.data.depositRequest);
       }
@@ -84,7 +62,6 @@ export default function DepositPage() {
     onError: (error) => toast.error(error.message || 'Crypto payment creation failed')
   });
 
-  const config = depositConfigQuery.data?.data || null;
   const depositsEnvelope = depositsQuery.data || {};
   const deposits = Array.isArray(depositsEnvelope.data) ? depositsEnvelope.data : [];
   const latestActiveGatewayPayment = useMemo(() => extractLatestActiveGatewayPayment(deposits), [deposits]);
@@ -95,9 +72,7 @@ export default function DepositPage() {
       return;
     }
 
-    if (!activeGatewayPayment?.id) {
-      return;
-    }
+    if (!activeGatewayPayment?.id) return;
 
     const refreshed = deposits.find((item) => item.id === activeGatewayPayment.id);
     if (refreshed) {
@@ -107,7 +82,7 @@ export default function DepositPage() {
 
   useEffect(() => {
     let cancelled = false;
-    const qrTarget = activeGatewayPayment?.pay_address || activeGatewayPayment?.wallet_address_snapshot || config?.walletAddress || '';
+    const qrTarget = activeGatewayPayment?.pay_address || '';
     if (!qrTarget) {
       setQrImage('');
       return undefined;
@@ -124,15 +99,13 @@ export default function DepositPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeGatewayPayment?.pay_address, activeGatewayPayment?.wallet_address_snapshot, config?.walletAddress]);
-
-  const manualDepositUnavailable = depositConfigQuery.isSuccess && (!config?.isActive || !config?.walletAddress);
+  }, [activeGatewayPayment?.pay_address]);
 
   return (
     <div className="space-y-4">
       <SectionHeader
         title="Crypto Deposit"
-        subtitle="Create an automatic crypto payment with NOWPayments or use the manual fallback if needed."
+        subtitle="Create an automatic USDT BSC/BEP20 payment through NOWPayments."
         action={(
           <div className="flex items-center gap-2">
             {returnTo ? <Link href={returnTo} className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700">Back</Link> : null}
@@ -147,6 +120,7 @@ export default function DepositPage() {
           <Badge variant="success">Automatic Credit</Badge>
           {activeGatewayPayment?.payment_status ? <Badge variant="warning">{activeGatewayPayment.payment_status}</Badge> : null}
         </div>
+
         <div className="mt-4 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="flex justify-center">
             {qrImage ? (
@@ -157,37 +131,41 @@ export default function DepositPage() {
               </div>
             )}
           </div>
+
           <div className="space-y-3">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-300">How It Works</p>
-                <p className="mt-2 text-sm leading-6 text-slate-100">
-                  Enter your deposit amount and the system generates a live USDT address on BSC/BEP20. After network confirmation, your deposit wallet is credited automatically and the existing deposit income logic runs from the backend.
-                </p>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-300">Automatic Flow</p>
+              <p className="mt-2 text-sm leading-6 text-slate-100">
+                Enter your amount, receive a live USDT address on BSC/BEP20, pay it, and wait for NOWPayments confirmation. Wallet crediting and deposit income settlement continue from the existing backend flow.
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Coin</p>
+                <p className="mt-2 text-lg font-semibold text-white">USDT</p>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Coin</p>
-                  <p className="mt-2 text-lg font-semibold text-white">USDT</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Network</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{activeGatewayPayment?.network || NOWPAYMENTS_NETWORK}</p>
-                </div>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Pay Amount</p>
-                  <p className="mt-2 text-lg font-semibold text-white">
-                    {activeGatewayPayment?.pay_amount ? `${activeGatewayPayment.pay_amount} USDT` : 'Waiting'}
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Deposit Value</p>
-                  <p className="mt-2 text-lg font-semibold text-white">
-                    {activeGatewayPayment?.amount ? currency(activeGatewayPayment.amount) : 'USD based'}
-                  </p>
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Network</p>
+                <p className="mt-2 text-lg font-semibold text-white">{activeGatewayPayment?.network || NOWPAYMENTS_NETWORK}</p>
               </div>
             </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Pay Amount</p>
+                <p className="mt-2 text-lg font-semibold text-white">
+                  {activeGatewayPayment?.pay_amount ? `${activeGatewayPayment.pay_amount} USDT` : 'Waiting'}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Deposit Value</p>
+                <p className="mt-2 text-lg font-semibold text-white">
+                  {activeGatewayPayment?.amount ? currency(activeGatewayPayment.amount) : 'USD based'}
+                </p>
+              </div>
+            </div>
+
             <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Payment Address</p>
               <p className="mt-2 break-all text-sm font-semibold text-white">
@@ -214,6 +192,7 @@ export default function DepositPage() {
                 </Link>
               ) : null}
             </div>
+
             <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200">Status</p>
               <p className="mt-2 text-sm text-emerald-50">
@@ -235,21 +214,6 @@ export default function DepositPage() {
           const formData = new FormData(event.currentTarget);
           const amount = Number(formData.get('amount') || 0);
 
-          if (depositMode === 'manual') {
-            if (!proofImageUrl) {
-              toast.error('Screenshot proof is required');
-              return;
-            }
-            depositMutation.mutate({
-              provider: 'manual',
-              amount,
-              txHash: String(formData.get('txHash') || ''),
-              proofImageUrl,
-              note: String(formData.get('note') || '')
-            });
-            return;
-          }
-
           nowPaymentsMutation.mutate({
             amount,
             payCurrency: NOWPAYMENTS_PAY_CURRENCY,
@@ -258,128 +222,32 @@ export default function DepositPage() {
         }}
         className="space-y-4 rounded-2xl border border-slate-300 bg-white p-4 shadow-[0_10px_24px_rgba(15,23,42,0.05)]"
       >
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <label htmlFor="deposit-mode" className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">Deposit Mode</label>
-            <select
-              id="deposit-mode"
-              value={depositMode}
-              onChange={(event) => setDepositMode(event.target.value)}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-medium text-slate-950 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
-            >
-              <option value="nowpayments">Automatic via NOWPayments</option>
-              <option value="manual">Manual Proof Submission</option>
-            </select>
+        <div className="grid gap-3 sm:grid-cols-[1fr_0.9fr]">
+          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">Supported Payment</p>
+            <p className="mt-2 text-sm font-semibold text-slate-950">USDT on BSC/BEP20</p>
+            <p className="mt-2 text-sm leading-6 text-slate-700">
+              Deposits are created only through NOWPayments. Manual submission, TXID entry, proof upload, and admin review are no longer available.
+            </p>
           </div>
+
           <div className="space-y-1.5">
             <label htmlFor="deposit-amount" className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">Amount (USD)</label>
             <input id="deposit-amount" name="amount" type="number" min="1" step="0.01" defaultValue={amountPreset} placeholder="Enter deposit amount" className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-950 outline-none placeholder:font-medium placeholder:text-slate-500 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100" required />
           </div>
         </div>
 
-        {depositMode === 'nowpayments' ? (
-          <div className="grid gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">Coin and Network</label>
-              <div className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-950">
-                USDT on BSC/BEP20
-              </div>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Automatic Settlement</p>
-              <p className="mt-2 text-sm leading-6 text-slate-700">
-                Only USDT on BSC/BEP20 is accepted. Deposit wallet credit starts only after NOWPayments sends a confirmed or finished payment webhook.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <>
-            {depositConfigQuery.isError ? (
-              <ErrorState message="Manual deposit wallet could not be loaded." onRetry={depositConfigQuery.refetch} />
-            ) : manualDepositUnavailable ? (
-              <ErrorState message="Manual deposit fallback is currently unavailable." onRetry={depositConfigQuery.refetch} />
-            ) : (
-              <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 sm:grid-cols-2">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Asset</p>
-                  <p className="mt-1 font-semibold text-slate-950">{config?.asset || 'USDT'}</p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Network</p>
-                  <p className="mt-1 font-semibold text-slate-950">{config?.network || 'BEP20'}</p>
-                </div>
-                <div className="sm:col-span-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Manual Wallet Address</p>
-                  <p className="mt-1 break-all font-semibold text-slate-950">{config?.walletAddress || 'Unavailable'}</p>
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-1.5">
-              <label htmlFor="deposit-tx-hash" className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">Transaction Hash</label>
-              <input id="deposit-tx-hash" name="txHash" placeholder="Paste the blockchain transaction hash" className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-500 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100" />
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">Screenshot Proof</p>
-              <label className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm text-slate-700">
-                <span className="inline-flex items-center gap-2 font-medium text-slate-800"><Upload size={16} /> {proofFileName || 'Upload transaction screenshot (PNG/JPG/WEBP)'}</span>
-                <span className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm">Choose File</span>
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  className="hidden"
-                  onChange={async (event) => {
-                    const file = event.target.files?.[0];
-                    if (!file) return;
-                    if (!ACCEPTED_TYPES.includes(file.type)) {
-                      toast.error('Proof image must be PNG, JPG, or WEBP');
-                      return;
-                    }
-                    if (file.size > MAX_FILE_SIZE_BYTES) {
-                      toast.error('Proof image must be 5MB or smaller');
-                      return;
-                    }
-                    try {
-                      setIsUploadingProof(true);
-                      const uploaded = await compressImageFile(file, { maxWidth: 1600, maxHeight: 1600, mimeType: file.type === 'image/png' ? 'image/png' : file.type === 'image/webp' ? 'image/webp' : 'image/jpeg' });
-                      setProofImageUrl(uploaded);
-                      setProofFileName(file.name);
-                      toast.success('Proof image attached');
-                    } catch (error) {
-                      toast.error(error.message || 'Proof upload failed');
-                    } finally {
-                      setIsUploadingProof(false);
-                      event.target.value = '';
-                    }
-                  }}
-                />
-              </label>
-              {proofImageUrl ? <img src={proofImageUrl} alt="Proof preview" className="h-36 w-full rounded-2xl border border-slate-200 object-contain bg-white p-2" /> : null}
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="deposit-note" className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">Note</label>
-              <textarea id="deposit-note" name="note" rows={3} placeholder="Optional note for admin verification" className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-500 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100" />
-            </div>
-          </>
-        )}
-
-        <button disabled={depositMutation.isPending || nowPaymentsMutation.isPending || isUploadingProof || (depositMode === 'manual' && manualDepositUnavailable)} className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">
-          {depositMutation.isPending || nowPaymentsMutation.isPending
-            ? 'Processing...'
-            : depositMode === 'nowpayments'
-              ? 'Create Crypto Payment'
-              : 'Submit Manual Deposit'}
+        <button disabled={nowPaymentsMutation.isPending} className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">
+          {nowPaymentsMutation.isPending ? 'Processing...' : 'Create Crypto Payment'}
         </button>
       </form>
 
       <div className="rounded-xl border border-slate-200 bg-white">
-        <div className="border-b border-slate-200 px-3 py-2 text-[11px] font-medium text-slate-600">Latest Deposits</div>
+        <div className="border-b border-slate-200 px-3 py-2 text-[11px] font-medium text-slate-600">Latest NOWPayments Deposits</div>
         {depositsQuery.isError ? (
           <div className="p-3"><ErrorState message="Deposit history could not be loaded." onRetry={depositsQuery.refetch} /></div>
         ) : !deposits.length ? (
-          <div className="p-3"><EmptyState title="No deposits yet" description="Your manual and NOWPayments deposits will appear here." /></div>
+          <div className="p-3"><EmptyState title="No deposits yet" description="Your NOWPayments deposits will appear here." /></div>
         ) : (
           <div className="divide-y divide-slate-100">
             {deposits.slice(0, 10).map((item) => (
@@ -389,23 +257,19 @@ export default function DepositPage() {
                   <Badge variant={statusVariant(item.is_processed ? 'completed' : item.status)}>{item.is_processed ? 'completed' : item.status}</Badge>
                 </div>
                 <p className="text-[11px] font-medium text-slate-600">
-                  {(item.payment_provider === 'nowpayments' ? 'NOWPayments' : (item.asset || 'USDT'))}
-                  {' • '}
-                  {(item.payment_provider === 'nowpayments' ? (item.network || NOWPAYMENTS_NETWORK) : (item.network || 'BEP20')).toUpperCase()}
-                  {' • '}
+                  NOWPayments
+                  {' | '}
+                  {String(item.network || NOWPAYMENTS_NETWORK).toUpperCase()}
+                  {' | '}
                   {dateTime(item.created_at)}
                 </p>
-                {item.payment_provider === 'nowpayments' ? (
-                  <div className="text-[11px] text-slate-700">
-                    <p>
-                      Status: {(item.payment_status || 'waiting').toUpperCase()}
-                      {item.pay_amount ? ` • Pay ${item.pay_amount} ${(item.pay_currency || '').toUpperCase()}` : ''}
-                    </p>
-                    {item.payment_record_id ? <Link href={`/payments/${item.payment_record_id}`} className="mt-1 inline-flex font-semibold text-sky-700">Open payment status</Link> : null}
-                  </div>
-                ) : item.transaction_reference ? (
-                  <p className="text-[11px] text-slate-700">TX: {item.transaction_reference}</p>
-                ) : null}
+                <div className="text-[11px] text-slate-700">
+                  <p>
+                    Status: {(item.payment_status || 'waiting').toUpperCase()}
+                    {item.pay_amount ? ` | Pay ${item.pay_amount} ${(item.pay_currency || '').toUpperCase()}` : ''}
+                  </p>
+                  {item.payment_record_id ? <Link href={`/payments/${item.payment_record_id}`} className="mt-1 inline-flex font-semibold text-sky-700">Open payment status</Link> : null}
+                </div>
               </div>
             ))}
           </div>

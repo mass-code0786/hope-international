@@ -1,6 +1,5 @@
 const walletRepository = require('../repositories/walletRepository');
 const userRepository = require('../repositories/userRepository');
-const adminRepository = require('../repositories/adminRepository');
 const notificationService = require('./notificationService');
 const { ApiError } = require('../utils/ApiError');
 const { withPerfSpan } = require('../utils/perf');
@@ -8,7 +7,6 @@ const { withPerfSpan } = require('../utils/perf');
 const MIN_WITHDRAWAL_AMOUNT = 10;
 const MIN_DEPOSIT_AMOUNT = 1;
 const MIN_WALLET_TRANSFER_AMOUNT = 5;
-const AUTO_DEPOSIT_PROVIDER = 'nowpayments';
 const WALLET_TRANSFER_DUPLICATE_WINDOW_SECONDS = 30;
 const WALLET_TRANSFER_BURST_WINDOW_SECONDS = 300;
 const WALLET_TRANSFER_BURST_LIMIT = 5;
@@ -18,11 +16,6 @@ const WITHDRAWAL_BURST_LIMIT = 3;
 const WELCOME_SPIN_ATTEMPT_WINDOW_SECONDS = 300;
 const WELCOME_SPIN_ATTEMPT_LIMIT = 5;
 const BTCT_USD_PRICE = 0.10;
-const DEPOSIT_ASSET = 'USDT';
-const DEPOSIT_NETWORK = 'BEP20';
-const DEPOSIT_METHOD_MANUAL = 'manual';
-const DEPOSIT_METHOD_NOWPAYMENTS = 'nowpayments';
-const DEPOSIT_WALLET_SETTING_KEY = 'deposit_wallet_config';
 const DIRECT_DEPOSIT_INCOME_RULE = { levelNumber: 1, percentage: 0.02, incomeType: 'direct_deposit_income' };
 const LEVEL_DEPOSIT_INCOME_RULES = [
   { levelNumber: 2, percentage: 0.012, incomeType: 'level_deposit_income' },
@@ -96,20 +89,6 @@ async function blockWithSecurityLog(client, payload, statusCode, message) {
   throw new ApiError(statusCode, message);
 }
 
-function normalizeDepositWalletConfig(value = {}, meta = {}) {
-  const config = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
-  return {
-    asset: DEPOSIT_ASSET,
-    network: DEPOSIT_NETWORK,
-    walletAddress: String(config.walletAddress || '').trim(),
-    qrImageUrl: String(config.qrImageUrl || '').trim(),
-    isActive: Boolean(config.isActive),
-    instructions: String(config.instructions || 'Send only USDT on the BEP20 network. Deposits are credited after admin verification.').trim(),
-    updatedAt: meta.updatedAt || null,
-    updatedBy: meta.updatedBy || null
-  };
-}
-
 function normalizeWalletBalances(wallet = {}) {
   const incomeBalance = toMoney(wallet?.income_balance ?? wallet?.income_wallet_balance ?? wallet?.balance ?? 0);
   const depositBalance = toMoney(wallet?.deposit_balance ?? wallet?.deposit_wallet_balance ?? 0);
@@ -162,11 +141,6 @@ function resolveCashWalletType(source, metadata = {}) {
   return 'income';
 }
 
-function isSupportedProofImage(value) {
-  const normalized = String(value || '').trim();
-  return /^data:image\/(png|jpe?g|webp);base64,/i.test(normalized) || /^https:\/\//i.test(normalized);
-}
-
 function pickWelcomeSpinReward() {
   const totalWeight = WELCOME_SPIN_REWARD_POOL.reduce((sum, entry) => sum + Number(entry.weight || 0), 0);
   let cursor = Math.random() * totalWeight;
@@ -175,21 +149,6 @@ function pickWelcomeSpinReward() {
     if (cursor <= 0) return toMoney(entry.amount);
   }
   return toMoney(WELCOME_SPIN_REWARD_POOL[WELCOME_SPIN_REWARD_POOL.length - 1]?.amount || 0.1);
-}
-
-async function getDepositWalletConfig(client, options = {}) {
-  const rows = await adminRepository.getSettings(client);
-  const row = rows.find((item) => item.setting_key === DEPOSIT_WALLET_SETTING_KEY);
-  const config = normalizeDepositWalletConfig(row?.setting_value, {
-    updatedAt: row?.updated_at || null,
-    updatedBy: row?.updated_by || null
-  });
-
-  if (options.requireActive && (!config.isActive || !config.walletAddress)) {
-    throw new ApiError(503, 'Deposit wallet is currently unavailable');
-  }
-
-  return config;
 }
 
 async function distributeDepositTeamIncome(client, deposit, createdByAdminId = null, adminNote = null) {
@@ -576,68 +535,6 @@ async function bindWalletAddress(client, userId, payload) {
   return walletRepository.upsertWalletBinding(client, userId, {
     walletAddress,
     network: network || null
-  });
-}
-
-async function createDepositRequest(client, userId, payload) {
-  const amount = Number(payload.amount || 0);
-  if (!Number.isFinite(amount) || amount < MIN_DEPOSIT_AMOUNT) {
-    throw new ApiError(400, `Minimum deposit is ${MIN_DEPOSIT_AMOUNT}`);
-  }
-
-  const provider = String(payload.provider || payload.paymentProvider || DEPOSIT_METHOD_MANUAL).trim().toLowerCase();
-
-  if (provider === AUTO_DEPOSIT_PROVIDER || provider === DEPOSIT_METHOD_NOWPAYMENTS) {
-    const paymentService = require('./paymentService');
-    const result = await paymentService.createNowPaymentsDepositPaymentWithClient(client, userId, {
-      amount,
-      payCurrency: payload.payCurrency,
-      network: payload.network
-    });
-    return {
-      ...result.depositRequest,
-      payment_record_id: result.payment.id
-    };
-  }
-
-  const txHash = String(payload.txHash || payload.transactionHash || '').trim();
-  if (txHash.length < 6) {
-    throw new ApiError(400, 'Transaction hash is required');
-  }
-
-  const proofImageUrl = String(payload.proofImageUrl || '').trim();
-  if (!isSupportedProofImage(proofImageUrl)) {
-    throw new ApiError(400, 'Screenshot proof must be a PNG, JPG, or WEBP image');
-  }
-
-  const note = String(payload.note || '').trim();
-  const depositWallet = await getDepositWalletConfig(client, { requireActive: true });
-  const details = {
-    asset: DEPOSIT_ASSET,
-    network: DEPOSIT_NETWORK,
-    walletAddressSnapshot: depositWallet.walletAddress,
-    transactionReference: txHash,
-    txHash,
-    proofImageUrl
-  };
-
-  if (note) {
-    details.note = note;
-  }
-
-  return walletRepository.createDepositRequest(client, {
-    userId,
-    asset: DEPOSIT_ASSET,
-    network: DEPOSIT_NETWORK,
-    walletAddressSnapshot: depositWallet.walletAddress,
-    amount,
-    transactionHash: txHash,
-    proofImageUrl,
-    method: DEPOSIT_METHOD_MANUAL,
-    instructions: note || null,
-    paymentProvider: DEPOSIT_METHOD_MANUAL,
-    details,
-    status: 'pending'
   });
 }
 
@@ -1093,8 +990,6 @@ module.exports = {
   creditBtct,
   getWalletSummary,
   bindWalletAddress,
-  getDepositWalletConfig,
-  createDepositRequest,
   settleDepositRequest,
   distributeDepositTeamIncome,
   createWithdrawalRequest,
