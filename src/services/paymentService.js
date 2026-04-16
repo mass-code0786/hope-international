@@ -99,6 +99,48 @@ function normalizePaymentRecord(record, options = {}) {
   return normalized;
 }
 
+async function reconcileSuccessfulDepositCreditWithClient(client, paymentRecord, depositRequest, payload, options = {}) {
+  if (!paymentRecord || !depositRequest) {
+    throw new ApiError(404, 'NOWPayments deposit mapping is incomplete');
+  }
+
+  if (String(paymentRecord.user_id) !== String(depositRequest.user_id)) {
+    throw new ApiError(500, 'NOWPayments payment user mapping mismatch');
+  }
+
+  const existingCredit = await walletRepository.getTransactionBySourceAndReference(
+    client,
+    depositRequest.user_id,
+    'deposit_request',
+    depositRequest.id
+  );
+
+  const creditedAt = paymentRecord.credited_at || depositRequest.processed_at || new Date().toISOString();
+  const settled = await walletService.settleDepositRequest(client, depositRequest.id, {
+    status: 'approved',
+    paymentStatus: options.paymentStatus || paymentRecord.payment_status || null,
+    rawWebhookData: payload,
+    extraDetails: {
+      paymentRecordId: paymentRecord.id,
+      confirmedBy: nowPaymentsService.NOWPAYMENTS_PROVIDER,
+      confirmedAt: creditedAt,
+      creditedAt,
+      walletCreditApplied: true
+    }
+  });
+
+  const latestPaymentRecord = await paymentRepository.updateNowPaymentsPayment(client, paymentRecord.id, {
+    isCredited: true,
+    creditedAt,
+    rawPayload: payload
+  });
+
+  return {
+    paymentRecord: latestPaymentRecord || paymentRecord,
+    alreadyCredited: Boolean(existingCredit || settled?.alreadyProcessed)
+  };
+}
+
 async function createNowPaymentsDepositPaymentWithClient(client, userId, payload) {
   const amount = Number(payload.amount || 0);
   if (!Number.isFinite(amount) || amount < MIN_DEPOSIT_AMOUNT) {
@@ -279,6 +321,10 @@ async function processNowPaymentsPayloadWithClient(client, payload, options = {}
   });
 
   if (depositRequest) {
+    if (String(paymentRecord.user_id) !== String(depositRequest.user_id)) {
+      throw new ApiError(500, 'NOWPayments deposit owner mapping mismatch');
+    }
+
     const expectedAmount = toMoney(paymentRecord.price_amount || 0);
     const payloadPriceAmount = payload.price_amount === undefined ? expectedAmount : toMoney(payload.price_amount || 0);
     if (Math.abs(expectedAmount - payloadPriceAmount) > 0.01) {
@@ -316,23 +362,16 @@ async function processNowPaymentsPayloadWithClient(client, payload, options = {}
     });
 
     if (nowPaymentsService.isSuccessfulPaymentStatus(effectiveMappedStatus)) {
-      await walletService.settleDepositRequest(client, depositRequest, {
-        status: 'approved',
-        expectedCurrentStatus: nextDepositStatus,
-        paymentStatus: effectiveMappedStatus,
-        rawWebhookData: payload,
-        extraDetails: {
-          paymentRecordId: nextPaymentRecord.id,
-          confirmedBy: nowPaymentsService.NOWPAYMENTS_PROVIDER,
-          confirmedAt: new Date().toISOString()
-        }
-      });
-
-      await paymentRepository.updateNowPaymentsPayment(client, nextPaymentRecord.id, {
-        isCredited: true,
-        creditedAt: nextPaymentRecord.credited_at || new Date().toISOString(),
-        rawPayload: payload
-      });
+      await reconcileSuccessfulDepositCreditWithClient(
+        client,
+        nextPaymentRecord,
+        {
+          ...depositRequest,
+          status: nextDepositStatus
+        },
+        payload,
+        { paymentStatus: effectiveMappedStatus }
+      );
     }
   }
 

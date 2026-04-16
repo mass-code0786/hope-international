@@ -277,7 +277,7 @@ export default function DepositPage() {
         </div>
 
         <button disabled={nowPaymentsMutation.isPending} className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">
-          {nowPaymentsMutation.isPending ? 'Processing...' : 'Create Crypto Payment'}
+          {nowPaymentsMutation.isPending ? 'Processing...' : 'Deposit'}
         </button>
       </form>
 
