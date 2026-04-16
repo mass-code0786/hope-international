@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useMemo, useState, useEffect, useRef, useDeferredValue } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -30,8 +31,8 @@ import { ProductCard } from '@/components/shop/ProductCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Header } from '@/components/layout/Header';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useInfiniteProducts } from '@/hooks/useProducts';
+import { useSessionUser } from '@/hooks/useSessionUser';
 import { useWallet } from '@/hooks/useWallet';
 import { createOrder } from '@/lib/services/ordersService';
 import { currency } from '@/lib/utils/format';
@@ -188,6 +189,7 @@ function ShopCartButton() {
 }
 
 export default function ShopPage() {
+  const router = useRouter();
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [bannersEnabled, setBannersEnabled] = useState(false);
@@ -212,7 +214,7 @@ export default function ShopPage() {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false
   });
-  const meQuery = useCurrentUser({ enabled: menuOpen });
+  const sessionUser = useSessionUser();
   const walletQuery = useWallet();
   const clearSession = useAuthStore((state) => state.clearSession);
   const [buyingProductId, setBuyingProductId] = useState('');
@@ -376,7 +378,7 @@ export default function ShopPage() {
 
   const isProductsLoading = isPending && !data;
   const hasProducts = !isError && filtered.length > 0;
-  const user = meQuery.data || {};
+  const user = sessionUser.data || {};
   const walletBalance = getAvailableWalletBalance(walletQuery.data);
   const walletReady = !walletQuery.isLoading && !walletQuery.isError;
   const pendingPayableAmount = pendingPurchase ? getProductPricing(pendingPurchase, 1).lineFinalTotal : 0;

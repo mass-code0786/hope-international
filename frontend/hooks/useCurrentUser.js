@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getMe } from '@/lib/services/authService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { useAuthStore } from '@/lib/store/authStore';
@@ -14,6 +14,9 @@ export function useCurrentUser(options = {}) {
     requireToken = true
   } = options;
   const { token, user, hydrated, hydrate, setUser } = useAuthStore();
+  const queryClient = useQueryClient();
+  const cachedUser = queryClient.getQueryData(queryKeys.me) ?? null;
+  const resolvedUser = user ?? cachedUser ?? null;
 
   useEffect(() => {
     if (!hydrated) hydrate();
@@ -22,15 +25,15 @@ export function useCurrentUser(options = {}) {
   const query = useQuery({
     queryKey: queryKeys.me,
     queryFn: getMe,
-    enabled: enabled && hydrated && (!requireToken || Boolean(token)) && !user,
+    enabled: enabled && hydrated && (!requireToken || Boolean(token)) && !resolvedUser,
     retry: false,
     staleTime: CURRENT_USER_STALE_TIME,
     gcTime: 30 * 60 * 1000,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
-    initialData: user || undefined,
-    initialDataUpdatedAt: user ? Date.now() : undefined
+    initialData: resolvedUser || undefined,
+    initialDataUpdatedAt: resolvedUser ? Date.now() : undefined
   });
 
   useEffect(() => {
@@ -41,7 +44,7 @@ export function useCurrentUser(options = {}) {
 
   return {
     ...query,
-    data: query.data ?? user ?? null,
+    data: query.data ?? resolvedUser,
     hydrated,
     token
   };

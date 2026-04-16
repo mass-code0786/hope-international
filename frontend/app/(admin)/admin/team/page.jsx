@@ -11,13 +11,13 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { getAdminTeamSummary, getAdminTeamTree, getAdminUsersSearch } from '@/lib/services/admin';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useSessionUser } from '@/hooks/useSessionUser';
 
 export default function AdminTeamPage() {
   const [searchInput, setSearchInput] = useState('');
   const [selectedLookupUser, setSelectedLookupUser] = useState(null);
   const [depth, setDepth] = useState(2);
-  const meQuery = useCurrentUser();
+  const sessionUser = useSessionUser();
   const trimmedSearch = searchInput.trim();
   const searchEnabled = trimmedSearch.length >= 2;
   const userSearchQuery = useQuery({
@@ -26,7 +26,7 @@ export default function AdminTeamPage() {
     enabled: searchEnabled
   });
   const searchResults = Array.isArray(userSearchQuery.data?.data) ? userSearchQuery.data.data : [];
-  const effectiveUserId = selectedLookupUser?.id || meQuery.data?.id || '';
+  const effectiveUserId = selectedLookupUser?.id || sessionUser.data?.id || '';
   const summaryQuery = useQuery({
     queryKey: queryKeys.adminTeamSummary(effectiveUserId),
     queryFn: () => getAdminTeamSummary(effectiveUserId),
@@ -38,8 +38,7 @@ export default function AdminTeamPage() {
     enabled: Boolean(effectiveUserId)
   });
 
-  if (meQuery.isLoading || summaryQuery.isLoading || treeQuery.isLoading) return null;
-  if (meQuery.isError) return <ErrorState message="Unable to load admin identity." onRetry={meQuery.refetch} />;
+  if (sessionUser.isLoading || summaryQuery.isLoading || treeQuery.isLoading) return null;
   if (summaryQuery.isError) return <ErrorState message="Unable to load team summary." onRetry={summaryQuery.refetch} />;
   if (treeQuery.isError) return <ErrorState message="Unable to load genealogy tree." onRetry={treeQuery.refetch} />;
 
@@ -126,7 +125,7 @@ export default function AdminTeamPage() {
       <div className="grid gap-4 xl:grid-cols-2">
         <SummaryPanel title="Snapshot Coverage" items={[
           { label: 'Tree Depth', value: hasDepth ? `Depth ${depth}` : 'Direct-children level' },
-          { label: 'Root User', value: summaryData.user?.username || selectedLookupUser?.username || summaryData.user?.id || meQuery.data?.username || 'N/A' },
+          { label: 'Root User', value: summaryData.user?.username || selectedLookupUser?.username || summaryData.user?.id || sessionUser.data?.username || 'N/A' },
           { label: 'Node Count', value: treeData.nodeCount || 0 }
         ]} />
 

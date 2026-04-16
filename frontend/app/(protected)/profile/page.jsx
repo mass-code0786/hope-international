@@ -20,7 +20,7 @@ import { currency, formatLabel, number, rankLabel } from '@/lib/utils/format';
 import { isSeller } from '@/lib/constants/access';
 import { createWebAuthnCredential, supportsWebAuthn } from '@/lib/utils/webauthn';
 import { clearProtectedQueries } from '@/lib/utils/logout';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useSessionUser } from '@/hooks/useSessionUser';
 
 function ProfileInfoCard({ label, value, subtitle = null, className = '', statusTone = '' }) {
   return (
@@ -258,10 +258,10 @@ export default function ProfilePage() {
   const hydrated = useAuthStore((s) => s.hydrated);
   const sessionUser = useAuthStore((s) => s.user);
 
-  const meQuery = useCurrentUser();
+  const sessionUserQuery = useSessionUser();
   const walletQuery = useQuery({ queryKey: queryKeys.wallet, queryFn: getWallet, enabled: hydrated && Boolean(token), placeholderData: (previousData) => previousData });
 
-  const user = meQuery.data ?? sessionUser ?? null;
+  const user = sessionUserQuery.data ?? sessionUser ?? null;
   const sellerHref = isSeller(user) ? '/seller' : '/seller/apply';
   const referralLink = useMemo(() => {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -290,8 +290,7 @@ export default function ProfilePage() {
     router.replace('/login');
   }
 
-  if (!hydrated || (token && meQuery.isPending && !user)) return null;
-  if (token && meQuery.isError && !user) return <ErrorState message="Profile data could not be loaded." onRetry={meQuery.refetch} />;
+  if (!hydrated || (token && sessionUserQuery.isPending && !user)) return null;
   if (!user) return null;
 
   return (

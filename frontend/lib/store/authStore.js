@@ -22,7 +22,7 @@ function writeRegistrationSummary(summary) {
   window.sessionStorage.setItem(REGISTRATION_SUMMARY_KEY, JSON.stringify(summary));
 }
 
-export const useAuthStore = create((set) => ({
+export const useAuthStore = create((set, get) => ({
   token: null,
   user: null,
   hydrated: false,
@@ -53,9 +53,10 @@ export const useAuthStore = create((set) => ({
   },
   hydrate: () => {
     const token = getStoredToken();
+    const currentUser = get().user;
     set({
       token,
-      user: null,
+      user: token ? currentUser : null,
       hydrated: true,
       isLoggingOut: false,
       registrationSummary: readRegistrationSummary(),

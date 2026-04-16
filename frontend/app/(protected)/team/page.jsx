@@ -10,23 +10,23 @@ import { getTeamSummary, getTeamTreeRoot } from '@/lib/services/teamService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { TeamSummaryPanel } from '@/components/team/TeamSummaryPanel';
 import { BinaryTreeExplorer } from '@/components/team/BinaryTreeExplorer';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useSessionUser } from '@/hooks/useSessionUser';
 
 export default function TeamPage() {
-  const meQuery = useCurrentUser();
+  const sessionUser = useSessionUser();
   const teamSummaryQuery = useQuery({ queryKey: queryKeys.teamSummary, queryFn: getTeamSummary, placeholderData: (previousData) => previousData });
   const treeRootQuery = useQuery({ queryKey: queryKeys.teamTreeRoot, queryFn: getTeamTreeRoot, placeholderData: (previousData) => previousData });
 
-  const me = meQuery.data || {};
+  const me = sessionUser.data || {};
   const teamSummary = teamSummaryQuery.data || {};
   const root = treeRootQuery.data || null;
   const directChildren = useMemo(() => [root?.children?.left, root?.children?.right].filter(Boolean), [root]);
 
-  const isLoadingTeam = (meQuery.isPending && !meQuery.data) || (teamSummaryQuery.isPending && !teamSummaryQuery.data) || (treeRootQuery.isPending && !treeRootQuery.data);
+  const isLoadingTeam = sessionUser.isPending || (teamSummaryQuery.isPending && !teamSummaryQuery.data) || (treeRootQuery.isPending && !treeRootQuery.data);
 
   if (isLoadingTeam) return null;
-  if ((meQuery.isError && !meQuery.data) || (teamSummaryQuery.isError && !teamSummaryQuery.data) || (treeRootQuery.isError && !treeRootQuery.data)) {
-    return <ErrorState message="Team tree is temporarily unavailable." onRetry={() => { meQuery.refetch(); teamSummaryQuery.refetch(); treeRootQuery.refetch(); }} />;
+  if ((teamSummaryQuery.isError && !teamSummaryQuery.data) || (treeRootQuery.isError && !treeRootQuery.data)) {
+    return <ErrorState message="Team tree is temporarily unavailable." onRetry={() => { teamSummaryQuery.refetch(); treeRootQuery.refetch(); }} />;
   }
 
   return (

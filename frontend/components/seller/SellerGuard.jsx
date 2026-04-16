@@ -3,18 +3,18 @@
 import { useMemo } from 'react';
 import Link from 'next/link';
 import { useSellerMe } from '@/hooks/useSellerMe';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useSessionUser } from '@/hooks/useSessionUser';
 import { canAccessSellerArea } from '@/lib/constants/access';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
 
 export function SellerGuard({ children }) {
-  const meQuery = useCurrentUser();
-  const sellerQuery = useSellerMe({ enabled: Boolean(meQuery.data) });
+  const sessionUser = useSessionUser();
+  const sellerQuery = useSellerMe({ enabled: Boolean(sessionUser.data) });
 
-  const isLoading = meQuery.isLoading || sellerQuery.isLoading;
-  const isError = meQuery.isError || sellerQuery.isError;
-  const canAccess = useMemo(() => canAccessSellerArea(meQuery.data, sellerQuery.data), [meQuery.data, sellerQuery.data]);
+  const isLoading = sessionUser.isLoading || sellerQuery.isLoading;
+  const isError = sellerQuery.isError;
+  const canAccess = useMemo(() => canAccessSellerArea(sessionUser.data, sellerQuery.data), [sessionUser.data, sellerQuery.data]);
 
   if (isLoading) return null;
   if (isError) return <ErrorState message="Seller access validation failed. Please retry." onRetry={sellerQuery.refetch} />;

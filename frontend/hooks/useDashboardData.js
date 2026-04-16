@@ -4,10 +4,10 @@ import { useQuery } from '@tanstack/react-query';
 import { getWallet } from '@/lib/services/walletService';
 import { getWeeklyCompensation, getMonthlyCompensation } from '@/lib/services/compensationService';
 import { queryKeys } from '@/lib/query/queryKeys';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useSessionUser } from '@/hooks/useSessionUser';
 
 export function useDashboardData(cycle, month) {
-  const meQuery = useCurrentUser();
+  const sessionUser = useSessionUser();
   const walletQuery = useQuery({ queryKey: queryKeys.wallet, queryFn: getWallet, retry: 1 });
   const weeklyQuery = useQuery({
     queryKey: queryKeys.weeklyCompensation(cycle.cycleStart, cycle.cycleEnd),
@@ -23,11 +23,11 @@ export function useDashboardData(cycle, month) {
   });
 
   return {
-    meQuery,
+    meQuery: sessionUser,
     walletQuery,
     weeklyQuery,
     monthlyQuery,
-    isLoading: meQuery.isLoading || walletQuery.isLoading || weeklyQuery.isLoading || monthlyQuery.isLoading,
-    isError: meQuery.isError || walletQuery.isError || weeklyQuery.isError || monthlyQuery.isError
+    isLoading: sessionUser.isLoading || walletQuery.isLoading || weeklyQuery.isLoading || monthlyQuery.isLoading,
+    isError: walletQuery.isError || weeklyQuery.isError || monthlyQuery.isError
   };
 }

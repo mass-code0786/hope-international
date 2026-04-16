@@ -8,13 +8,13 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Badge } from '@/components/ui/Badge';
 import { createP2pTransfer, getP2pHistory } from '@/lib/services/walletService';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useSessionUser } from '@/hooks/useSessionUser';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { currency, dateTime, statusVariant } from '@/lib/utils/format';
 
 export default function P2pPage() {
   const queryClient = useQueryClient();
-  const meQuery = useCurrentUser();
+  const sessionUser = useSessionUser();
   const transfersQuery = useQuery({ queryKey: queryKeys.walletP2p, queryFn: getP2pHistory });
 
   const transferMutation = useMutation({
@@ -34,7 +34,7 @@ export default function P2pPage() {
   }
 
   const transfers = Array.isArray(transfersQuery.data) ? transfersQuery.data : [];
-  const me = meQuery.data || {};
+  const me = sessionUser.data || {};
 
   return (
     <div className="space-y-3">
