@@ -360,15 +360,9 @@ export default function ShopPage() {
 
       <section className="rounded-xl border border-slate-200 bg-white p-2.5">
         <ProductFilters activeCategory={activeCategory} setActiveCategory={setActiveCategory} />
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <div className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 text-[10px] text-slate-600">
-            <Wallet size={11} />
-            Wallet: {currency(walletBalance)}
-          </div>
-          <div className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-1 text-[10px] text-sky-700">
-            <Store size={11} />
-            {activeCategory === 'All' ? 'All active products' : activeCategory}
-          </div>
+        <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 text-[10px] text-slate-600">
+          <Wallet size={11} />
+          Wallet: {currency(walletBalance)}
         </div>
       </section>
 
