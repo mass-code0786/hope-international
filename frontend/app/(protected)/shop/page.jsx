@@ -1,7 +1,8 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect, useRef, useDeferredValue } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Menu,
@@ -26,8 +27,6 @@ import {
 import toast from 'react-hot-toast';
 import { ProductFilters } from '@/components/shop/ProductFilters';
 import { ProductCard } from '@/components/shop/ProductCard';
-import { PurchaseAddressModal } from '@/components/shop/PurchaseAddressModal';
-import { PurchaseConfirmModal } from '@/components/shop/PurchaseConfirmModal';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Header } from '@/components/layout/Header';
@@ -44,6 +43,9 @@ import { clearStoredToken } from '@/lib/utils/tokenStorage';
 import { clearProtectedQueries } from '@/lib/utils/logout';
 import { getAvailableWalletBalance, hasSufficientWalletBalance } from '@/lib/utils/wallet';
 import { getProductPricing } from '@/lib/utils/pricing';
+
+const PurchaseAddressModal = dynamic(() => import('@/components/shop/PurchaseAddressModal').then((mod) => mod.PurchaseAddressModal));
+const PurchaseConfirmModal = dynamic(() => import('@/components/shop/PurchaseConfirmModal').then((mod) => mod.PurchaseConfirmModal));
 
 const fallbackSlides = [
   {
@@ -188,7 +190,9 @@ function ShopCartButton() {
 export default function ShopPage() {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
+  const [bannersEnabled, setBannersEnabled] = useState(false);
   const selectedCategory = activeCategory === 'All' ? undefined : activeCategory;
+  const deferredSearch = useDeferredValue(search);
   const {
     data,
     isPending,
@@ -197,9 +201,17 @@ export default function ShopPage() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage
-  } = useInfiniteProducts({ limit: 50, category: selectedCategory });
-  const bannersQuery = useQuery({ queryKey: queryKeys.homepageBanners, queryFn: getHomepageBanners, placeholderData: (previousData) => previousData });
-  const meQuery = useCurrentUser();
+  } = useInfiniteProducts({ limit: 16, category: selectedCategory });
+  const bannersQuery = useQuery({
+    queryKey: queryKeys.homepageBanners,
+    queryFn: getHomepageBanners,
+    enabled: bannersEnabled,
+    placeholderData: (previousData) => previousData,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false
+  });
+  const meQuery = useCurrentUser({ enabled: menuOpen });
   const walletQuery = useWallet();
   const clearSession = useAuthStore((state) => state.clearSession);
   const [buyingProductId, setBuyingProductId] = useState('');
@@ -220,6 +232,30 @@ export default function ShopPage() {
       document.body.style.overflow = previous;
     };
   }, [menuOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let idleId = null;
+    let timeoutId = null;
+
+    const enable = () => {
+      if (!cancelled) setBannersEnabled(true);
+    };
+
+    if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+      idleId = window.requestIdleCallback(enable, { timeout: 1200 });
+    } else {
+      timeoutId = window.setTimeout(enable, 250);
+    }
+
+    return () => {
+      cancelled = true;
+      if (idleId !== null && typeof window !== 'undefined' && typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
+    };
+  }, []);
 
   const buyMutation = useMutation({
     mutationFn: (product) => {
@@ -302,16 +338,36 @@ export default function ShopPage() {
   }, [heroBanners.length]);
 
   useEffect(() => {
-    if (isPending || isError || isFetchingNextPage || !hasNextPage) return;
-    void fetchNextPage();
-  }, [fetchNextPage, hasNextPage, isError, isFetchingNextPage, isPending]);
+    if (!productPages.length || isError || isFetchingNextPage || !hasNextPage) return undefined;
+
+    let cancelled = false;
+    let idleId = null;
+    let timeoutId = null;
+    const warmCatalog = () => {
+      if (!cancelled) void fetchNextPage();
+    };
+
+    if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+      idleId = window.requestIdleCallback(warmCatalog, { timeout: 1500 });
+    } else {
+      timeoutId = window.setTimeout(warmCatalog, 300);
+    }
+
+    return () => {
+      cancelled = true;
+      if (idleId !== null && typeof window !== 'undefined' && typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
+    };
+  }, [fetchNextPage, hasNextPage, isError, isFetchingNextPage, productPages.length]);
 
   const filtered = useMemo(() => {
     return products.filter((product) => {
       const text = `${product?.name || ''} ${product?.description || ''}`.toLowerCase();
-      return text.includes(search.toLowerCase());
+      return text.includes(deferredSearch.toLowerCase());
     });
-  }, [products, search]);
+  }, [deferredSearch, products]);
 
   const deals = useMemo(() => filtered.filter((item) => item.is_qualifying).slice(0, 12), [filtered]);
   const recommended = useMemo(() => filtered, [filtered]);
