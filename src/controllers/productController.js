@@ -1,5 +1,6 @@
 const asyncHandler = require('../utils/asyncHandler');
 const productService = require('../services/productService');
+const { success } = require('../utils/response');
 
 const create = asyncHandler(async (req, res) => {
   const product = await productService.createProduct(null, req.body);
@@ -8,11 +9,17 @@ const create = asyncHandler(async (req, res) => {
 
 const list = asyncHandler(async (req, res) => {
   const onlyActive = req.query.active !== 'false';
-  const requestedLimit = Math.floor(Number(req.query.limit));
-  const limit = Number.isInteger(requestedLimit) && requestedLimit > 0 ? Math.min(requestedLimit, 20) : 10;
-  const products = await productService.listProducts(null, onlyActive, limit);
+  const result = await productService.listProducts(null, {
+    onlyActive,
+    page: req.query.page,
+    limit: req.query.limit
+  });
   res.setHeader('Cache-Control', 'public, max-age=30, s-maxage=30');
-  res.status(200).json(products);
+  return success(res, {
+    data: result.data,
+    pagination: result.pagination,
+    message: result.data.length ? 'Products fetched successfully' : 'No products available'
+  });
 });
 
 const getById = asyncHandler(async (req, res) => {

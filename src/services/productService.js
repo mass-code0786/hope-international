@@ -3,6 +3,7 @@ const { PV_TO_BV_RATIO } = require('../config/constants');
 const { ApiError } = require('../utils/ApiError');
 const { getCacheEntry, setCacheEntry, clearCacheEntriesByPrefix } = require('../utils/runtimeCache');
 const { withPerfSpan } = require('../utils/perf');
+const { normalizePagination, buildPagination } = require('../utils/pagination');
 
 const PRODUCT_LIST_CACHE_PREFIX = 'products:list:';
 const PRODUCT_DETAIL_CACHE_PREFIX = 'products:detail:';
@@ -21,18 +22,35 @@ async function createProduct(client, payload) {
   return created;
 }
 
-async function listProducts(client, onlyActive, limit = 10) {
-  const safeLimit = Math.max(1, Math.min(Number(limit) || 10, 20));
-  const cacheKey = `${PRODUCT_LIST_CACHE_PREFIX}${onlyActive ? 'active' : 'all'}:${safeLimit}`;
+async function listProducts(client, { onlyActive = true, page = 1, limit = 20 } = {}) {
+  const pagination = normalizePagination({ page, limit, maxLimit: 50 });
+  const cacheKey = `${PRODUCT_LIST_CACHE_PREFIX}${onlyActive ? 'active' : 'all'}:${pagination.page}:${pagination.limit}`;
   const cached = getCacheEntry(cacheKey);
   if (cached) return cached;
 
   return withPerfSpan('products.list', async () => {
-    const items = await productRepository.listProducts(client, onlyActive, safeLimit);
-    return setCacheEntry(cacheKey, items, PRODUCT_CACHE_TTL_MS);
+    const result = await productRepository.listProducts(client, {
+      onlyActive,
+      limit: pagination.limit,
+      offset: pagination.offset
+    });
+    const pageInfo = buildPagination({
+      page: pagination.page,
+      limit: pagination.limit,
+      total: result.total
+    });
+    const payload = {
+      data: result.items,
+      pagination: {
+        ...pageInfo,
+        hasMore: pageInfo.page < pageInfo.totalPages,
+        nextPage: pageInfo.page < pageInfo.totalPages ? pageInfo.page + 1 : null
+      }
+    };
+    return setCacheEntry(cacheKey, payload, PRODUCT_CACHE_TTL_MS);
   }, {
     thresholdMs: 120,
-    meta: { onlyActive: Boolean(onlyActive), limit: safeLimit }
+    meta: { onlyActive: Boolean(onlyActive), page: pagination.page, limit: pagination.limit }
   });
 }
 

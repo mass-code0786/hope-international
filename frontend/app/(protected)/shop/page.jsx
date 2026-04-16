@@ -31,7 +31,7 @@ import { PurchaseConfirmModal } from '@/components/shop/PurchaseConfirmModal';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Header } from '@/components/layout/Header';
-import { useProducts } from '@/hooks/useProducts';
+import { useInfiniteProducts } from '@/hooks/useProducts';
 import { useWallet } from '@/hooks/useWallet';
 import { createOrder } from '@/lib/services/ordersService';
 import { currency } from '@/lib/utils/format';
@@ -207,7 +207,15 @@ function ShopCartButton() {
 }
 
 export default function ShopPage() {
-  const { data, isPending, isError, refetch } = useProducts();
+  const {
+    data,
+    isPending,
+    isError,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage
+  } = useInfiniteProducts({ limit: 12 });
   const bannersQuery = useQuery({ queryKey: queryKeys.homepageBanners, queryFn: getHomepageBanners, placeholderData: (previousData) => previousData });
   const meQuery = useQuery({ queryKey: queryKeys.me });
   const walletQuery = useWallet();
@@ -268,7 +276,9 @@ export default function ShopPage() {
     onSettled: () => setBuyingProductId('')
   });
 
-  const products = Array.isArray(data) ? data : [];
+  const productPages = Array.isArray(data?.pages) ? data.pages : [];
+  const products = productPages.flatMap((page) => (Array.isArray(page?.data) ? page.data : []));
+  const catalogPagination = productPages[productPages.length - 1]?.pagination || null;
   const liveBanners = Array.isArray(bannersQuery.data) ? bannersQuery.data : [];
 
   const heroBanners = useMemo(() => {
@@ -321,7 +331,7 @@ export default function ShopPage() {
   }, [products, search, activeCategory]);
 
   const deals = useMemo(() => filtered.filter((item) => item.is_qualifying).slice(0, 12), [filtered]);
-  const recommended = useMemo(() => filtered.slice(0, 12), [filtered]);
+  const recommended = useMemo(() => filtered, [filtered]);
   const newArrivals = useMemo(() => [...filtered].slice(-12).reverse(), [filtered]);
   const trending = useMemo(() => [...filtered].sort((a, b) => Number(b.price || 0) - Number(a.price || 0)).slice(0, 12), [filtered]);
 
@@ -486,6 +496,23 @@ export default function ShopPage() {
                 />
               ))}
             </div>
+            {hasNextPage ? (
+              <div className="mt-3 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                  className="inline-flex min-w-[9rem] items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-[11px] font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isFetchingNextPage ? 'Loading...' : 'Load More'}
+                </button>
+              </div>
+            ) : null}
+            {catalogPagination?.totalItems > products.length ? (
+              <p className="mt-2 text-center text-[10px] text-slate-500">
+                Showing {products.length} of {catalogPagination.totalItems} active products
+              </p>
+            ) : null}
           </div>
 
           <div>
