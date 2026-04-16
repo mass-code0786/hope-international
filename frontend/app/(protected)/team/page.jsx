@@ -37,15 +37,18 @@ export default function TeamPage() {
       <TeamSummaryPanel me={me} teamSummary={teamSummary} children={directChildren} />
 
       <section className="overflow-hidden rounded-[20px] border border-[rgba(255,255,255,0.05)] bg-[linear-gradient(145deg,#1a1d24,#0f1115)] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.6),inset_0_0_40px_rgba(124,58,237,0.08)]">
-        <div className="flex items-center gap-2 border-b border-[var(--hope-border)] pb-3">
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-[1rem] bg-[var(--hope-accent-soft)] text-accent">
+        <div className="flex items-start gap-3 border-b border-[var(--hope-border)] pb-3">
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[1rem] bg-[var(--hope-accent-soft)] text-accent">
             <GitBranchPlus size={16} />
           </span>
-          <h2 className="text-lg font-semibold tracking-[-0.03em] text-text">Binary Team</h2>
+          <div>
+            <h2 className="text-lg font-semibold tracking-[-0.03em] text-text">Binary Team</h2>
+            <p className="mt-1 text-sm text-muted">Compact nodes keep the tree readable. Tap any member to inspect the full card for 10 seconds.</p>
+          </div>
         </div>
 
         {root ? (
-          <div className="mt-3.5 rounded-[16px] border border-[rgba(255,255,255,0.05)] bg-[radial-gradient(circle_at_top,rgba(124,58,237,0.15),transparent_60%),radial-gradient(circle_at_bottom,rgba(34,197,94,0.12),transparent_60%),#0f1115] p-3.5 shadow-[0_10px_30px_rgba(0,0,0,0.6),inset_0_0_40px_rgba(124,58,237,0.08)] sm:p-5">
+          <div className="mt-3.5">
             <BinaryTreeExplorer root={root} />
           </div>
         ) : (
