@@ -3,6 +3,7 @@ const { ApiError } = require('../../utils/ApiError');
 const { normalizePagination, buildPagination } = require('../../utils/pagination');
 const bannerRepository = require('../../repositories/bannerRepository');
 const adminRepository = require('../../repositories/adminRepository');
+const bannerService = require('../bannerService');
 
 async function listBanners(filters, paginationInput) {
   const pagination = normalizePagination(paginationInput);
@@ -28,6 +29,7 @@ async function createBanner(adminUserId, payload) {
       metadata: { title: created.title }
     });
 
+    bannerService.clearBannerListCache();
     return created;
   });
 }
@@ -63,6 +65,7 @@ async function updateBanner(adminUserId, bannerId, payload) {
       metadata: { title: updated?.title }
     });
 
+    bannerService.clearBannerListCache();
     return updated;
   });
 }
@@ -86,6 +89,7 @@ async function deleteBanner(adminUserId, bannerId) {
       metadata: { title: before.title }
     });
 
+    bannerService.clearBannerListCache();
     return deleted;
   });
 }

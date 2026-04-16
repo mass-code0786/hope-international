@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { X, LayoutDashboard, Users, Boxes, ShoppingCart, Wallet, Cpu, Gift, Network, Settings, Image, ArrowDownCircle, ArrowUpCircle, Repeat2, Landmark, BadgeDollarSign, Gavel, Sparkles, Headset, Images } from 'lucide-react';
 import { THEME } from '@/lib/constants/theme';
+import { canAccessSuperAdminArea } from '@/lib/constants/access';
 import Logo from '@/components/common/Logo';
 
 export const adminNav = [
@@ -17,6 +18,7 @@ export const adminNav = [
   { href: '/admin/support', label: 'Support', icon: Headset },
   { href: '/admin/orders', label: 'Orders', icon: ShoppingCart },
   { href: '/admin/deposits', label: 'Deposits', icon: ArrowDownCircle },
+  { href: '/admin/nowpayments', label: 'NOWPayments', icon: ArrowDownCircle, superAdminOnly: true },
   { href: '/admin/withdrawals', label: 'Withdrawals', icon: ArrowUpCircle },
   { href: '/admin/p2p', label: 'P2P', icon: Repeat2 },
   { href: '/admin/wallets', label: 'Wallet Bindings', icon: Landmark },
@@ -32,12 +34,13 @@ export const adminNav = [
 const adminGroups = [
   { title: 'Overview', items: ['/admin'] },
   { title: 'Commerce', items: ['/admin/products', '/admin/orders', '/admin/auctions', '/admin/banners', '/admin/landing', '/admin/gallery', '/admin/support'] },
-  { title: 'Finance', items: ['/admin/deposits', '/admin/withdrawals', '/admin/p2p', '/admin/wallets', '/admin/income', '/admin/wallet', '/admin/settings/deposit-wallet'] },
+  { title: 'Finance', items: ['/admin/deposits', '/admin/nowpayments', '/admin/withdrawals', '/admin/p2p', '/admin/wallets', '/admin/income', '/admin/wallet', '/admin/settings/deposit-wallet'] },
   { title: 'Network', items: ['/admin/users', '/admin/compensation', '/admin/rewards', '/admin/team', '/admin/settings'] }
 ];
 
-function AdminNavLinks({ onNavigate }) {
+function AdminNavLinks({ onNavigate, user }) {
   const pathname = usePathname();
+  const superAdmin = canAccessSuperAdminArea(user);
 
   return (
     <nav className="space-y-5">
@@ -48,6 +51,7 @@ function AdminNavLinks({ onNavigate }) {
             {group.items.map((href) => {
               const item = adminNav.find((entry) => entry.href === href);
               if (!item) return null;
+              if (item.superAdminOnly && !superAdmin) return null;
               const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
               const Icon = item.icon;
               return (
@@ -71,7 +75,7 @@ function AdminNavLinks({ onNavigate }) {
   );
 }
 
-function SidebarContent({ onNavigate, mobile = false, onClose }) {
+function SidebarContent({ onNavigate, mobile = false, onClose, user }) {
   return (
     <div className="h-full overflow-y-auto p-6 text-white">
       <div className="mb-8 rounded-[30px] border border-white/10 bg-white/5 p-5 shadow-[0_24px_64px_rgba(2,8,23,0.28)] backdrop-blur">
@@ -91,16 +95,16 @@ function SidebarContent({ onNavigate, mobile = false, onClose }) {
         <h1 className="mt-2 text-xl font-semibold tracking-[-0.05em] text-white">{THEME.appName}</h1>
         <p className="mt-2 text-sm text-white/65">Operational control center for products, finance, support, users, content, and growth systems.</p>
       </div>
-      <AdminNavLinks onNavigate={onNavigate} />
+      <AdminNavLinks onNavigate={onNavigate} user={user} />
     </div>
   );
 }
 
-export function AdminSidebar({ mobileOpen = false, onClose = () => {} }) {
+export function AdminSidebar({ mobileOpen = false, onClose = () => {}, user = null }) {
   return (
     <>
       <aside className="hidden w-80 border-r border-white/10 bg-[linear-gradient(180deg,rgba(6,16,27,0.98),rgba(11,23,36,0.96))] lg:block">
-        <SidebarContent />
+        <SidebarContent user={user} />
       </aside>
 
       {mobileOpen ? (
@@ -111,7 +115,7 @@ export function AdminSidebar({ mobileOpen = false, onClose = () => {} }) {
             onClick={onClose}
           />
           <aside className="absolute left-0 top-0 h-full w-[86vw] max-w-[320px] border-r border-white/10 bg-[linear-gradient(180deg,rgba(6,16,27,0.99),rgba(11,23,36,0.98))] shadow-2xl">
-            <SidebarContent mobile onNavigate={onClose} onClose={onClose} />
+            <SidebarContent user={user} mobile onNavigate={onClose} onClose={onClose} />
           </aside>
         </div>
       ) : null}

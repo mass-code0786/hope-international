@@ -8,12 +8,21 @@ const create = asyncHandler(async (req, res) => {
 
 const list = asyncHandler(async (req, res) => {
   const onlyActive = req.query.active !== 'false';
-  const products = await productService.listProducts(null, onlyActive);
+  const requestedLimit = Math.floor(Number(req.query.limit));
+  const limit = Number.isInteger(requestedLimit) && requestedLimit > 0 ? Math.min(requestedLimit, 20) : 10;
+  const products = await productService.listProducts(null, onlyActive, limit);
   res.setHeader('Cache-Control', 'public, max-age=30, s-maxage=30');
   res.status(200).json(products);
 });
 
+const getById = asyncHandler(async (req, res) => {
+  const product = await productService.getProduct(null, req.params.id);
+  res.setHeader('Cache-Control', 'public, max-age=45, s-maxage=45');
+  res.status(200).json(product);
+});
+
 module.exports = {
   create,
-  list
+  list,
+  getById
 };

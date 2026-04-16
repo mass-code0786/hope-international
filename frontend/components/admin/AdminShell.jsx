@@ -94,7 +94,7 @@ export function AdminShell({ children }) {
 
   return (
     <div className="min-h-screen bg-bg text-text lg:flex">
-      <AdminSidebar mobileOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+      <AdminSidebar user={resolvedUser} mobileOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
       <main className="relative w-full min-w-0">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(94,234,212,0.1),transparent_24%)]" />
         <div className="relative mx-auto w-full max-w-[1600px] p-4 pb-10 md:p-5">

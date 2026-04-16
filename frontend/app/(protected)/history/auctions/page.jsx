@@ -121,10 +121,10 @@ function AuctionHistoryHubContent() {
 
   const [bidsQuery, winsQuery, historyQuery, joinedQuery, walletQuery, stakingQuery] = useQueries({
     queries: [
-      { queryKey: queryKeys.auctionHistory('bids'), queryFn: () => getMyAuctionHistory({ kind: 'bids', page: 1, limit: 100 }) },
-      { queryKey: queryKeys.auctionHistory('wins'), queryFn: () => getMyAuctionHistory({ kind: 'wins', page: 1, limit: 100 }) },
-      { queryKey: queryKeys.auctionHistory('history'), queryFn: () => getMyAuctionHistory({ kind: 'history', page: 1, limit: 100 }) },
-      { queryKey: queryKeys.auctionHistory('joined'), queryFn: () => getMyAuctionHistory({ kind: 'joined', page: 1, limit: 100 }) },
+      { queryKey: queryKeys.auctionHistory('bids'), queryFn: () => getMyAuctionHistory({ kind: 'bids', page: 1, limit: 10 }) },
+      { queryKey: queryKeys.auctionHistory('wins'), queryFn: () => getMyAuctionHistory({ kind: 'wins', page: 1, limit: 10 }) },
+      { queryKey: queryKeys.auctionHistory('history'), queryFn: () => getMyAuctionHistory({ kind: 'history', page: 1, limit: 10 }) },
+      { queryKey: queryKeys.auctionHistory('joined'), queryFn: () => getMyAuctionHistory({ kind: 'joined', page: 1, limit: 10 }) },
       { queryKey: [...queryKeys.wallet, 'history'], queryFn: getWalletWithHistory, staleTime: 20_000, refetchOnWindowFocus: false },
       { queryKey: queryKeys.walletStaking, queryFn: getBtctStakingSummary }
     ]

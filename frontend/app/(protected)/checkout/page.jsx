@@ -114,6 +114,7 @@ export default function CheckoutPage() {
   }
 
   const cannotPlaceOrder = orderMutation.isPending || paymentMethod !== 'wallet' || (walletReady && !hasFunds) || !savedAddress?.id;
+  const checkoutTopupHref = `/deposit?provider=nowpayments&amount=${encodeURIComponent(summary.total.toFixed(2))}&returnTo=${encodeURIComponent('/checkout')}`;
 
   return (
     <div className="space-y-3 bg-[#f8fafc] pb-24">
@@ -166,16 +167,26 @@ export default function CheckoutPage() {
             Wallet
           </button>
           <button
-            disabled
-            className="rounded-lg border border-slate-200 bg-slate-100 px-2 py-2 text-[11px] font-medium text-slate-400"
+            onClick={() => setPaymentMethod('nowpayments')}
+            className={`rounded-lg border px-2 py-2 text-[11px] font-medium ${paymentMethod === 'nowpayments' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-600'}`}
           >
-            Cash on Delivery
+            NOWPayments
           </button>
         </div>
 
         <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[11px] text-slate-600">
-          <p className="inline-flex items-center gap-1 font-semibold text-slate-800"><Wallet size={12} /> Wallet Balance: {currency(walletBalance)}</p>
-          {!walletQuery.isLoading && !hasFunds ? <p className="mt-1 text-rose-600">Insufficient wallet balance</p> : null}
+          {paymentMethod === 'wallet' ? (
+            <>
+              <p className="inline-flex items-center gap-1 font-semibold text-slate-800"><Wallet size={12} /> Wallet Balance: {currency(walletBalance)}</p>
+              {!walletQuery.isLoading && !hasFunds ? <p className="mt-1 text-rose-600">Insufficient wallet balance</p> : null}
+            </>
+          ) : (
+            <>
+              <p className="font-semibold text-slate-800">Top up your deposit wallet through NOWPayments first.</p>
+              <p className="mt-1">The existing checkout flow still settles orders from the deposit wallet after the crypto payment confirms.</p>
+              <Link href={checkoutTopupHref} className="mt-2 inline-flex font-semibold text-emerald-700">Fund wallet with crypto</Link>
+            </>
+          )}
         </div>
 
         <div className="mt-2 flex items-center gap-2">
@@ -224,13 +235,19 @@ export default function CheckoutPage() {
             <p className="text-[10px] text-slate-500">Payable Amount</p>
             <p className="text-[14px] font-semibold text-slate-900">{currency(summary.total)}</p>
           </div>
-          <button
-            onClick={() => orderMutation.mutate()}
-            disabled={cannotPlaceOrder}
-            className="rounded-lg bg-[#0ea5e9] px-4 py-2 text-[12px] font-semibold text-white disabled:bg-slate-300 disabled:opacity-100"
-          >
-            {orderMutation.isPending ? 'Placing...' : walletReady && !hasFunds ? 'Insufficient Balance' : 'Place Order'}
-          </button>
+          {paymentMethod === 'wallet' ? (
+            <button
+              onClick={() => orderMutation.mutate()}
+              disabled={cannotPlaceOrder}
+              className="rounded-lg bg-[#0ea5e9] px-4 py-2 text-[12px] font-semibold text-white disabled:bg-slate-300 disabled:opacity-100"
+            >
+              {orderMutation.isPending ? 'Placing...' : walletReady && !hasFunds ? 'Insufficient Balance' : 'Place Order'}
+            </button>
+          ) : (
+            <Link href={checkoutTopupHref} className="rounded-lg bg-emerald-600 px-4 py-2 text-[12px] font-semibold text-white">
+              Fund via Crypto
+            </Link>
+          )}
         </div>
       </section>
     </div>

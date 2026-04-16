@@ -4,6 +4,10 @@ const { normalizePagination, buildPagination } = require('../../utils/pagination
 const { PV_TO_BV_RATIO } = require('../../config/constants');
 const adminRepository = require('../../repositories/adminRepository');
 const sellerRepository = require('../../repositories/sellerRepository');
+const { clearCacheEntriesByPrefix } = require('../../utils/runtimeCache');
+
+const PRODUCT_LIST_CACHE_PREFIX = 'products:list:';
+const PRODUCT_DETAIL_CACHE_PREFIX = 'products:detail:';
 
 function toMoney(value) {
   return Number(Number(value).toFixed(2));
@@ -69,6 +73,8 @@ async function createProduct(adminUserId, payload) {
       metadata: { sku: created.sku }
     });
 
+    clearCacheEntriesByPrefix(PRODUCT_LIST_CACHE_PREFIX);
+    clearCacheEntriesByPrefix(PRODUCT_DETAIL_CACHE_PREFIX);
     return created;
   });
 }
@@ -138,6 +144,8 @@ async function updateProduct(adminUserId, productId, payload) {
       metadata: { sku: updated?.sku }
     });
 
+    clearCacheEntriesByPrefix(PRODUCT_LIST_CACHE_PREFIX);
+    clearCacheEntriesByPrefix(PRODUCT_DETAIL_CACHE_PREFIX);
     return updated;
   });
 }

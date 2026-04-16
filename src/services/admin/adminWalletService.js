@@ -4,6 +4,7 @@ const { ApiError } = require('../../utils/ApiError');
 const adminRepository = require('../../repositories/adminRepository');
 const walletRepository = require('../../repositories/walletRepository');
 const walletService = require('../walletService');
+const paymentService = require('../paymentService');
 const btctStakingRepository = require('../../repositories/btctStakingRepository');
 const btctStakingService = require('../btctStakingService');
 const notificationService = require('../notificationService');
@@ -69,6 +70,15 @@ function normalizeDepositRecord(item) {
     tx_hash: transactionReference,
     wallet_address_snapshot: walletAddressSnapshot,
     proof_image_url: proofImageUrl,
+    payment_provider: item.payment_provider || details.provider || null,
+    payment_record_id: details.paymentRecordId || null,
+    payment_id: item.payment_id || details.providerPaymentId || details.paymentId || null,
+    payment_status: item.payment_status || details.paymentStatus || null,
+    pay_currency: item.pay_currency || details.payCurrency || null,
+    pay_amount: item.pay_amount ?? details.payAmount ?? null,
+    pay_address: item.pay_address || details.payAddress || walletAddressSnapshot || null,
+    payment_url: item.payment_url || details.paymentUrl || null,
+    raw_webhook_data: item.raw_webhook_data || {},
     note: item.instructions || details.note || null,
     details
   };
@@ -104,12 +114,43 @@ async function listDeposits(filters, paginationInput) {
   return buildPagedResult({ ...result, items: result.items.map(normalizeDepositRecord) }, pagination);
 }
 
+async function listNowPayments(filters, paginationInput) {
+  const pagination = normalizePagination(paginationInput);
+  const result = await paymentService.listAdminNowPaymentsPayments(filters, {
+    limit: pagination.limit,
+    offset: (pagination.page - 1) * pagination.limit
+  });
+  return buildPagedResult(result, pagination);
+}
+
+async function syncDepositNowPayments(_adminUserId, requestId) {
+  return withTransaction(async (client) => {
+    const request = await walletRepository.getDepositRequestById(client, requestId, { forUpdate: true });
+    if (!request) {
+      throw new ApiError(404, 'Deposit request not found');
+    }
+
+    const details = request.details && typeof request.details === 'object' && !Array.isArray(request.details) ? request.details : {};
+    const paymentRecordId = details.paymentRecordId || null;
+    if (!paymentRecordId || String(request.payment_provider || '').toLowerCase() !== 'nowpayments') {
+      throw new ApiError(400, 'NOWPayments record not found for this deposit');
+    }
+
+    await paymentService.syncNowPaymentsPaymentWithClient(client, paymentRecordId);
+    const refreshed = await walletRepository.getDepositRequestById(client, requestId);
+    return normalizeDepositRecord(refreshed);
+  });
+}
+
 async function reviewDeposit(adminUserId, requestId, payload) {
   return withTransaction(async (client) => {
     const requestMeta = sanitizeRequestMeta(payload.requestMeta);
     const request = await walletRepository.getDepositRequestById(client, requestId, { forUpdate: true });
     if (!request) {
       throw new ApiError(404, 'Deposit request not found');
+    }
+    if (String(request.payment_provider || '').toLowerCase() === 'nowpayments') {
+      throw new ApiError(403, 'NOWPayments deposits are reconciled automatically and managed only by super admin');
     }
     if (request.status !== 'pending') {
       await blockWithSecurityLog(client, {
@@ -546,6 +587,8 @@ module.exports = {
   listWalletUsers,
   getWalletUser,
   listDeposits,
+  listNowPayments,
+  syncDepositNowPayments,
   reviewDeposit,
   listWithdrawals,
   reviewWithdrawal,

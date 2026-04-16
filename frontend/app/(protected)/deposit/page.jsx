@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import QRCode from 'qrcode';
 import toast from 'react-hot-toast';
@@ -11,6 +12,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Badge } from '@/components/ui/Badge';
 import { queryKeys } from '@/lib/query/queryKeys';
+import { createNowPaymentsPayment } from '@/lib/services/paymentsService';
 import { createDepositRequest, getDepositHistory, getDepositWalletConfig } from '@/lib/services/walletService';
 import { compressImageFile } from '@/lib/utils/imageUpload';
 import { currency, dateTime, statusVariant } from '@/lib/utils/format';
@@ -33,15 +35,19 @@ function extractLatestActiveGatewayPayment(items = []) {
 }
 
 export default function DepositPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const formRef = useRef(null);
   const queryClient = useQueryClient();
-  const [depositMode, setDepositMode] = useState('nowpayments');
-  const [payCurrency, setPayCurrency] = useState('usdtbsc');
+  const [depositMode, setDepositMode] = useState(searchParams.get('provider') === 'manual' ? 'manual' : 'nowpayments');
+  const [payCurrency, setPayCurrency] = useState(searchParams.get('coin') || 'usdtbsc');
   const [proofImageUrl, setProofImageUrl] = useState('');
   const [proofFileName, setProofFileName] = useState('');
   const [qrImage, setQrImage] = useState('');
   const [isUploadingProof, setIsUploadingProof] = useState(false);
   const [activeGatewayPayment, setActiveGatewayPayment] = useState(null);
+  const returnTo = searchParams.get('returnTo') || '';
+  const amountPreset = searchParams.get('amount') || '';
 
   const depositConfigQuery = useQuery({ queryKey: queryKeys.walletDepositConfig, queryFn: getDepositWalletConfig });
   const depositsQuery = useQuery({
@@ -60,15 +66,29 @@ export default function DepositPage() {
       formRef.current?.reset();
       setProofImageUrl('');
       setProofFileName('');
-      if (result?.data?.payment_provider === 'nowpayments') {
-        setActiveGatewayPayment(result.data);
-        toast.success(result.message || 'Crypto payment created successfully');
-      } else {
-        toast.success(result.message || 'Manual deposit submitted successfully');
-      }
+      toast.success(result.message || 'Manual deposit submitted successfully');
       await queryClient.invalidateQueries({ queryKey: queryKeys.walletDeposits });
     },
     onError: (error) => toast.error(error.message || 'Deposit request failed')
+  });
+
+  const nowPaymentsMutation = useMutation({
+    mutationFn: createNowPaymentsPayment,
+    onSuccess: async (result) => {
+      formRef.current?.reset();
+      setProofImageUrl('');
+      setProofFileName('');
+      if (result?.data?.depositRequest) {
+        setActiveGatewayPayment(result.data.depositRequest);
+      }
+      await queryClient.invalidateQueries({ queryKey: queryKeys.walletDeposits });
+      toast.success(result.message || 'Crypto payment created successfully');
+      if (result?.data?.payment?.id) {
+        const suffix = returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : '';
+        router.push(`/payments/${result.data.payment.id}${suffix}`);
+      }
+    },
+    onError: (error) => toast.error(error.message || 'Crypto payment creation failed')
   });
 
   const config = depositConfigQuery.data?.data || null;
@@ -120,12 +140,17 @@ export default function DepositPage() {
       <SectionHeader
         title="Crypto Deposit"
         subtitle="Create an automatic crypto payment with NOWPayments or use the manual fallback if needed."
-        action={<Link href="/history/deposit" className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700">History</Link>}
+        action={(
+          <div className="flex items-center gap-2">
+            {returnTo ? <Link href={returnTo} className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700">Back</Link> : null}
+            <Link href="/history/deposit" className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700">History</Link>
+          </div>
+        )}
       />
 
       <section className="rounded-3xl border border-slate-800 bg-[radial-gradient(circle_at_top,#15213f_0%,#0b1220_55%,#070b14_100%)] p-4 text-white shadow-[0_16px_40px_rgba(2,6,23,0.45)]">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="info">NOWPayments</Badge>
+          <Badge variant="accent">NOWPayments</Badge>
           <Badge variant="success">Automatic Credit</Badge>
           {activeGatewayPayment?.payment_status ? <Badge variant="warning">{activeGatewayPayment.payment_status}</Badge> : null}
         </div>
@@ -177,6 +202,14 @@ export default function DepositPage() {
                   <Copy size={14} /> Copy Address
                 </button>
               ) : null}
+              {activeGatewayPayment?.payment_record_id ? (
+                <Link
+                  href={`/payments/${activeGatewayPayment.payment_record_id}${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`}
+                  className="mt-3 ml-2 inline-flex items-center gap-2 rounded-xl border border-white/15 px-3 py-2 text-xs font-medium text-slate-100"
+                >
+                  Open Status Page
+                </Link>
+              ) : null}
             </div>
             <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200">Status</p>
@@ -214,8 +247,7 @@ export default function DepositPage() {
             return;
           }
 
-          depositMutation.mutate({
-            provider: 'nowpayments',
+          nowPaymentsMutation.mutate({
             amount,
             payCurrency
           });
@@ -237,7 +269,7 @@ export default function DepositPage() {
           </div>
           <div className="space-y-1.5">
             <label htmlFor="deposit-amount" className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">Amount (USD)</label>
-            <input id="deposit-amount" name="amount" type="number" min="1" step="0.01" placeholder="Enter deposit amount" className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-950 outline-none placeholder:font-medium placeholder:text-slate-500 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100" required />
+            <input id="deposit-amount" name="amount" type="number" min="1" step="0.01" defaultValue={amountPreset} placeholder="Enter deposit amount" className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-950 outline-none placeholder:font-medium placeholder:text-slate-500 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100" required />
           </div>
         </div>
 
@@ -336,8 +368,8 @@ export default function DepositPage() {
           </>
         )}
 
-        <button disabled={depositMutation.isPending || isUploadingProof || (depositMode === 'manual' && manualDepositUnavailable)} className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">
-          {depositMutation.isPending
+        <button disabled={depositMutation.isPending || nowPaymentsMutation.isPending || isUploadingProof || (depositMode === 'manual' && manualDepositUnavailable)} className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">
+          {depositMutation.isPending || nowPaymentsMutation.isPending
             ? 'Processing...'
             : depositMode === 'nowpayments'
               ? 'Create Crypto Payment'
@@ -367,10 +399,13 @@ export default function DepositPage() {
                   {dateTime(item.created_at)}
                 </p>
                 {item.payment_provider === 'nowpayments' ? (
-                  <p className="text-[11px] text-slate-700">
-                    Status: {(item.payment_status || 'waiting').toUpperCase()}
-                    {item.pay_amount ? ` • Pay ${item.pay_amount} ${(item.pay_currency || '').toUpperCase()}` : ''}
-                  </p>
+                  <div className="text-[11px] text-slate-700">
+                    <p>
+                      Status: {(item.payment_status || 'waiting').toUpperCase()}
+                      {item.pay_amount ? ` • Pay ${item.pay_amount} ${(item.pay_currency || '').toUpperCase()}` : ''}
+                    </p>
+                    {item.payment_record_id ? <Link href={`/payments/${item.payment_record_id}`} className="mt-1 inline-flex font-semibold text-sky-700">Open payment status</Link> : null}
+                  </div>
                 ) : item.transaction_reference ? (
                   <p className="text-[11px] text-slate-700">TX: {item.transaction_reference}</p>
                 ) : null}

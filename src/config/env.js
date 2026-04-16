@@ -25,7 +25,7 @@ module.exports = {
   railwayVolumeMountPath: process.env.RAILWAY_VOLUME_MOUNT_PATH || '',
   mediaPublicPath: process.env.MEDIA_PUBLIC_PATH || '/media',
   mediaPublicBaseUrl: process.env.MEDIA_PUBLIC_BASE_URL || '',
-  nowPaymentsApiBaseUrl: process.env.NOWPAYMENTS_API_BASE_URL || 'https://api.nowpayments.io/v1',
+  nowPaymentsBaseUrl: process.env.NOWPAYMENTS_BASE_URL || process.env.NOWPAYMENTS_API_BASE_URL || 'https://api.nowpayments.io',
   nowPaymentsApiKey: process.env.NOWPAYMENTS_API_KEY || '',
   nowPaymentsIpnSecret: process.env.NOWPAYMENTS_IPN_SECRET || '',
   nowPaymentsWebhookPublicUrl: process.env.NOWPAYMENTS_WEBHOOK_PUBLIC_URL || ''

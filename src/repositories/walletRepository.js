@@ -1008,6 +1008,14 @@ async function listDepositRequestsAdmin(client, filters, pagination) {
     values.push(filters.status);
     where.push(`d.status = $${values.length}`);
   }
+  if (filters?.paymentProvider && columns.has('payment_provider')) {
+    values.push(filters.paymentProvider);
+    where.push(`d.payment_provider = $${values.length}`);
+  }
+  if (filters?.paymentStatus && columns.has('payment_status')) {
+    values.push(filters.paymentStatus);
+    where.push(`d.payment_status = $${values.length}`);
+  }
   if (filters?.userId) {
     values.push(filters.userId);
     where.push(`d.user_id = $${values.length}`);

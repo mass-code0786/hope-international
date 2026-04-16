@@ -26,7 +26,7 @@ export default function AdminAuctionDetailPage() {
 
   const productsQuery = useQuery({
     queryKey: [...queryKeys.adminProducts, 'auction-form'],
-    queryFn: () => getAdminProducts({ page: 1, limit: 200, isActive: 'true' })
+    queryFn: () => getAdminProducts({ page: 1, limit: 10, isActive: 'true' })
   });
 
   const updateMutation = useMutation({

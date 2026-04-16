@@ -158,6 +158,20 @@ const walletBindSchema = z.object({
   query: z.object({})
 });
 
+const nowPaymentsCreateSchema = z.object({
+  body: z.object({
+    amount: z.number().positive()
+  }),
+  params: z.object({}),
+  query: z.object({})
+});
+
+const paymentIdParamSchema = z.object({
+  body: z.object({}),
+  params: z.object({ id: uuid }),
+  query: z.object({})
+});
+
 const walletDepositSchema = z.object({
   body: z.object({
     amount: z.number().positive(),
@@ -168,8 +182,8 @@ const walletDepositSchema = z.object({
     note: z.string().max(800).optional()
   }).superRefine((body, ctx) => {
     if (body.provider === 'nowpayments') {
-      if (!body.payCurrency) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Crypto currency is required', path: ['payCurrency'] });
+      if (body.payCurrency && !['usdt', 'usdtbsc'].includes(String(body.payCurrency).trim().toLowerCase())) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'NOWPayments deposits support only USDT on BSC/BEP20', path: ['payCurrency'] });
       }
       return;
     }
@@ -503,6 +517,8 @@ module.exports = {
   compensationMonthlyQuerySchema,
   walletAdjustSchema,
   walletBindSchema,
+  nowPaymentsCreateSchema,
+  paymentIdParamSchema,
   walletDepositSchema,
   walletTransferSchema,
   walletWithdrawalSchema,

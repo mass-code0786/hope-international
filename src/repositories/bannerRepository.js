@@ -43,14 +43,26 @@ async function listAdminBanners(client, filters, pagination) {
   };
 }
 
-async function listActiveBanners(client) {
+async function listActiveBanners(client, limit = 5) {
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 5, 20));
   const { rows } = await q(client).query(
-    `SELECT *
+    `SELECT
+       id,
+       image_url,
+       title,
+       subtitle,
+       cta_text,
+       target_link,
+       sort_order,
+       created_at,
+       updated_at
      FROM homepage_banners
      WHERE is_active = true
        AND (start_at IS NULL OR start_at <= NOW())
        AND (end_at IS NULL OR end_at >= NOW())
-     ORDER BY sort_order ASC, created_at DESC`
+     ORDER BY sort_order ASC, created_at DESC
+     LIMIT $1`,
+    [safeLimit]
   );
   return rows;
 }

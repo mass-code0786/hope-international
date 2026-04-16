@@ -159,6 +159,8 @@ const adminFinanceListQuerySchema = z.object({
   query: pagingQuery.extend({
     search: z.string().optional(),
     status: z.enum(['pending', 'approved', 'rejected', 'completed', 'failed']).optional(),
+    paymentProvider: z.enum(['manual', 'nowpayments']).optional(),
+    paymentStatus: z.enum(['waiting', 'confirming', 'confirmed', 'finished', 'failed', 'expired', 'partially_paid']).optional(),
     source: z.enum(['all', 'direct_income', 'matching_income', 'reward_qualification', 'direct_deposit_income', 'level_deposit_income']).optional(),
     userId: uuid.optional(),
     senderId: uuid.optional(),
@@ -169,6 +171,7 @@ const adminFinanceListQuerySchema = z.object({
 });
 
 const adminWalletReviewSchema = z.object({ body: z.object({ status: z.enum(['approved', 'rejected']), adminNote: z.string().max(1000).optional() }), params: z.object({ id: uuid }), query: z.object({}) });
+const adminPaymentSyncParamSchema = z.object({ body: z.object({}), params: z.object({ id: uuid }), query: z.object({}) });
 const adminWalletBindingUpsertSchema = z.object({ body: z.object({ walletAddress: z.string().min(8).max(255), network: z.string().max(60).optional() }), params: z.object({ userId: uuid }), query: z.object({}) });
 const adminWalletBindingParamSchema = z.object({ body: z.object({}), params: z.object({ userId: uuid }), query: z.object({}) });
 const adminBtctStakingPayoutRunSchema = z.object({
@@ -583,6 +586,7 @@ module.exports = {
   adminWalletFreezeSchema,
   adminWalletLogsQuerySchema,
   adminFinanceListQuerySchema,
+  adminPaymentSyncParamSchema,
   adminWalletReviewSchema,
   adminWalletBindingUpsertSchema,
   adminWalletBindingParamSchema,

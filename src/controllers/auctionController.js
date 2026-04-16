@@ -13,7 +13,7 @@ function normalizeListQuery(query = {}) {
   const requestedPage = Math.floor(Number(query.page));
   const safePage = Number.isFinite(requestedPage) && requestedPage > 0 ? String(requestedPage) : '1';
   const requestedLimit = Math.floor(Number(query.limit));
-  const safeLimit = String(Number.isFinite(requestedLimit) && requestedLimit > 0 ? Math.min(requestedLimit, 100) : 10);
+  const safeLimit = String(Number.isFinite(requestedLimit) && requestedLimit > 0 ? Math.min(requestedLimit, 20) : 10);
 
   return {
     filters: {

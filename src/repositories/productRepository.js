@@ -24,7 +24,35 @@ async function createProduct(client, payload) {
   return rows[0];
 }
 
-async function listProducts(client, onlyActive = false) {
+async function listProducts(client, onlyActive = false, limit = 10) {
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 10, 20));
+  const { rows } = await q(client).query(
+    `SELECT
+       id,
+       sku,
+       name,
+       category,
+       price,
+       pv,
+       bv,
+       is_active,
+       is_qualifying,
+        image_url,
+       LEFT(COALESCE(description, ''), 160) AS description,
+       seller_profile_id,
+       moderation_status,
+       created_at,
+       updated_at
+     FROM products
+     WHERE ($1::boolean = false OR is_active = true)
+     ORDER BY created_at DESC
+     LIMIT $2`,
+    [onlyActive, safeLimit]
+  );
+  return rows;
+}
+
+async function findById(client, id) {
   const { rows } = await q(client).query(
     `SELECT
        id,
@@ -41,18 +69,13 @@ async function listProducts(client, onlyActive = false) {
        gallery,
        seller_profile_id,
        moderation_status,
+       moderation_notes,
        created_at,
        updated_at
      FROM products
-     WHERE ($1::boolean = false OR is_active = true)
-     ORDER BY created_at DESC`,
-    [onlyActive]
+     WHERE id = $1`,
+    [id]
   );
-  return rows;
-}
-
-async function findById(client, id) {
-  const { rows } = await q(client).query('SELECT * FROM products WHERE id = $1', [id]);
   return rows[0] || null;
 }
 

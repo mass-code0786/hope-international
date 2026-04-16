@@ -17,6 +17,10 @@ export function canAccessAdminArea(user) {
   return isAdmin(user);
 }
 
+export function canAccessSuperAdminArea(user) {
+  return user?.role === ROLES.SUPER_ADMIN;
+}
+
 export function canAccessSellerArea(user, sellerMe) {
   if (isSeller(user)) return true;
   return Boolean(sellerMe?.canAccessDashboard);

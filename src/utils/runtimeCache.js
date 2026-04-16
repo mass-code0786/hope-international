@@ -22,8 +22,19 @@ function clearCacheEntry(key) {
   cacheStore.delete(key);
 }
 
+function clearCacheEntriesByPrefix(prefix) {
+  const safePrefix = String(prefix || '');
+  if (!safePrefix) return;
+  for (const key of cacheStore.keys()) {
+    if (String(key).startsWith(safePrefix)) {
+      cacheStore.delete(key);
+    }
+  }
+}
+
 module.exports = {
   getCacheEntry,
   setCacheEntry,
-  clearCacheEntry
+  clearCacheEntry,
+  clearCacheEntriesByPrefix
 };

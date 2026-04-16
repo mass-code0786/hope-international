@@ -5,6 +5,7 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 
 const routes = require('./routes');
+const webhooksRoutes = require('./routes/webhooksRoutes');
 const paymentsRoutes = require('./routes/paymentsRoutes');
 const errorHandler = require('./middleware/errorHandler');
 const { nowMs } = require('./utils/perf');
@@ -24,7 +25,7 @@ app.use(cors({
   credentials: true
 }));
 
-app.use('/api/payments', paymentsRoutes);
+app.use('/api', webhooksRoutes);
 app.use(express.json({ limit: '5mb' }));
 app.use(morgan('combined'));
 app.use((req, res, next) => {
@@ -51,6 +52,7 @@ app.use(
     legacyHeaders: false
   })
 );
+app.use('/api/payments', paymentsRoutes);
 
 app.get('/', (_req, res) => {
   res.status(200).json({

@@ -26,6 +26,7 @@ import { useProducts } from '@/hooks/useProducts';
 import { useWallet } from '@/hooks/useWallet';
 import { currency, number } from '@/lib/utils/format';
 import { createOrder } from '@/lib/services/ordersService';
+import { getProductDetail } from '@/lib/services/productsService';
 import { getUserAddress } from '@/lib/services/userAddressService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { addToCart } from '@/lib/utils/cart';
@@ -62,7 +63,12 @@ function getProductImages(product) {
 export default function ProductDetailPage() {
   const params = useParams();
   const id = String(params?.id || '');
-  const { data, isLoading, isError, refetch } = useProducts();
+  const { data, isLoading: productsLoading } = useProducts();
+  const productQuery = useQuery({
+    queryKey: queryKeys.productDetail(id),
+    queryFn: () => getProductDetail(id),
+    enabled: Boolean(id)
+  });
   const walletQuery = useWallet();
   const addressQuery = useQuery({ queryKey: queryKeys.userAddress, queryFn: getUserAddress });
   const [isBuying, setIsBuying] = useState(false);
@@ -70,7 +76,7 @@ export default function ProductDetailPage() {
   const queryClient = useQueryClient();
 
   const products = Array.isArray(data) ? data : [];
-  const product = useMemo(() => products.find((item) => String(item?.id) === id), [products, id]);
+  const product = productQuery.data || null;
 
   const relatedProducts = useMemo(() => {
     if (!product) return [];
@@ -119,11 +125,11 @@ export default function ProductDetailPage() {
     onSettled: () => setIsBuying(false)
   });
 
-  if (isLoading) {
+  if (productQuery.isLoading || productsLoading) {
     return <div className="space-y-3"><LoadingSkeleton className="h-10 w-full" /><LoadingSkeleton className="h-64" /><LoadingSkeleton className="h-44" /></div>;
   }
 
-  if (isError) return <ErrorState message="Product could not be loaded." onRetry={refetch} />;
+  if (productQuery.isError) return <ErrorState message="Product could not be loaded." onRetry={productQuery.refetch} />;
   if (!product) return <EmptyState title="Product not found" description="This product may have been removed from the catalog." />;
 
   const offerPercent = getOfferPercent(product);

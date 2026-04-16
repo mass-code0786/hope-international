@@ -28,6 +28,23 @@ function withQuery(params = {}) {
   return encoded ? `?${encoded}` : '';
 }
 
+function clampPositiveInt(value, fallback, max) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) return fallback;
+  return Math.min(parsed, max);
+}
+
+function normalizeAdminListParams(params = {}, defaults = {}) {
+  const next = { ...params };
+  if (defaults.limit) {
+    next.limit = clampPositiveInt(params.limit, defaults.limit, defaults.limit);
+  }
+  if (defaults.page) {
+    next.page = clampPositiveInt(params.page, defaults.page, 10_000);
+  }
+  return next;
+}
+
 export async function getAdminDashboardOverview() {
   const envelope = toEnvelope(await apiFetch('/admin/dashboard'));
   const data = envelope.data || {};
@@ -77,7 +94,7 @@ export async function getAdminRanks() {
 }
 
 export async function getAdminProducts(params = {}) {
-  return toEnvelope(await apiFetch(`/admin/products${withQuery(params)}`));
+  return toEnvelope(await apiFetch(`/admin/products${withQuery(normalizeAdminListParams(params, { page: 1, limit: 10 }))}`));
 }
 
 export async function getAdminProductDetails(productId) {
@@ -243,7 +260,7 @@ export async function updateAdminDepositWalletSettings(payload) {
 }
 
 export async function getAdminBanners(params = {}) {
-  return toEnvelope(await apiFetch(`/admin/banners${withQuery(params)}`));
+  return toEnvelope(await apiFetch(`/admin/banners${withQuery(normalizeAdminListParams(params, { page: 1, limit: 5 }))}`));
 }
 
 export async function createAdminBanner(payload) {
@@ -274,6 +291,19 @@ export async function deleteAdminBanner(id) {
 
 export async function getAdminDeposits(params = {}) {
   return toEnvelope(await apiFetch(`/admin/wallet/deposits${withQuery(params)}`));
+}
+
+export async function getAdminNowPaymentsDeposits(params = {}) {
+  return toEnvelope(await apiFetch(`/admin/wallet/nowpayments${withQuery(params)}`));
+}
+
+export async function syncAdminNowPaymentsDeposit(id) {
+  return toEnvelope(
+    await apiFetch(`/admin/wallet/deposits/${id}/sync-nowpayments`, {
+      method: 'POST',
+      body: JSON.stringify({})
+    })
+  );
 }
 
 export async function reviewAdminDeposit(id, payload) {
@@ -331,7 +361,7 @@ export async function getAdminUserFinancialOverview(userId) {
   return toEnvelope(await apiFetch(`/admin/wallet/users/${userId}/financial-overview`));
 }
 export async function getAdminAuctions(params = {}) {
-  return toEnvelope(await apiFetch('/admin/auctions' + withQuery(params)));
+  return toEnvelope(await apiFetch('/admin/auctions' + withQuery(normalizeAdminListParams(params, { page: 1, limit: 10 }))));
 }
 
 export async function getAdminAuctionDetails(id) {

@@ -32,6 +32,31 @@ function normalizeAuctionRow(row) {
   };
 }
 
+function normalizeAuctionListRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    title: row.title,
+    short_description: row.short_description || '',
+    image_url: row.image_url || null,
+    product_image_url: row.product_image_url || null,
+    category: row.category || null,
+    status: row.status,
+    computed_status: row.computed_status,
+    start_at: row.start_at,
+    end_at: row.end_at,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    entry_price: row.entry_price,
+    display_current_bid: row.display_current_bid,
+    total_entries: Number(row.total_entries || 0),
+    hidden_capacity: Number(row.hidden_capacity || 0),
+    total_bids: Number(row.total_bids || 0),
+    winner_count: Number(row.winner_count || 1),
+    product_id: row.product_id || null
+  };
+}
+
 function normalizeAuctionRewardDistributionRow(row) {
   if (!row) return null;
   return {
@@ -75,6 +100,37 @@ function buildAuctionSelect(nowPlaceholder) {
     LEFT JOIN users creator ON creator.id = a.created_by
     LEFT JOIN users updater ON updater.id = a.updated_by
     LEFT JOIN products p ON p.id = a.product_id
+  `;
+}
+
+function buildAuctionListSelect(nowPlaceholder, includeProductJoin) {
+  const statusCase = buildAuctionStatusCase(nowPlaceholder);
+  return `
+    SELECT
+      a.id,
+      a.product_id,
+      a.title,
+      LEFT(COALESCE(a.short_description, ''), 160) AS short_description,
+      a.category,
+      a.image_url,
+      a.status,
+      a.is_active,
+      a.start_at,
+      a.end_at,
+      a.created_at,
+      a.updated_at,
+      a.entry_price,
+      a.hidden_capacity,
+      a.total_entries,
+      a.total_bids,
+      a.winner_count,
+      ${statusCase} AS computed_status,
+      a.entry_price::numeric(14,2) AS display_current_bid
+      ${includeProductJoin ? `,
+      p.image_url AS product_image_url` : `,
+      NULL::text AS product_image_url`}
+    FROM auctions a
+    ${includeProductJoin ? 'LEFT JOIN products p ON p.id = a.product_id' : ''}
   `;
 }
 
@@ -299,6 +355,7 @@ async function listAuctions(client, filters = {}, pagination = {}) {
     const values = [filters.now || new Date().toISOString()];
     const statusCase = buildAuctionStatusCase('$1');
     const where = [];
+    const includeProductJoin = true;
 
     if (filters.status && filters.status !== 'all') {
       values.push(filters.status);
@@ -334,7 +391,7 @@ async function listAuctions(client, filters = {}, pagination = {}) {
     a.created_at DESC`;
 
     const listValues = [...values, limit, offset];
-    const listSql = `${buildAuctionSelect('$1')}
+    const listSql = `${buildAuctionListSelect('$1', includeProductJoin)}
      ${whereSql}
      ${sortSql}
      LIMIT $${listValues.length - 1} OFFSET $${listValues.length}`;
@@ -343,13 +400,13 @@ async function listAuctions(client, filters = {}, pagination = {}) {
 
     const countSql = `SELECT COUNT(*)
      FROM auctions a
-     LEFT JOIN products p ON p.id = a.product_id
+     ${filters.search ? 'LEFT JOIN products p ON p.id = a.product_id' : ''}
      ${where.length ? `WHERE $1::timestamptz IS NOT NULL AND ${where.join(' AND ')}` : 'WHERE $1::timestamptz IS NOT NULL'}`;
     logAuctionQuery('[auction.list.countSql]', countSql, values, filters);
     const countResult = await q(client).query(countSql, values);
 
     return {
-      items: await attachRankPrizeRows(client, await attachWinnerRows(client, rows.map(normalizeAuctionRow))),
+      items: rows.map(normalizeAuctionListRow),
       total: Number(countResult.rows[0]?.count || 0)
     };
   } catch (error) {

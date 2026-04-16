@@ -193,7 +193,7 @@ export default function AuctionsPage() {
 
   const auctionsQuery = useQuery({
     queryKey: [...queryKeys.auctions, requestStatus || 'all', deferredSearch],
-    queryFn: () => getAuctions({ status: requestStatus, search: deferredSearch, page: 1, limit: 100 }),
+    queryFn: () => getAuctions({ status: requestStatus, search: deferredSearch, page: 1, limit: 10 }),
     placeholderData: (previousData) => previousData,
     staleTime: 20_000,
     refetchOnWindowFocus: false

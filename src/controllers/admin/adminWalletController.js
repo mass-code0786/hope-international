@@ -56,9 +56,12 @@ const user = asyncHandler(async (req, res) => {
 });
 
 const deposits = asyncHandler(async (req, res) => {
+  const isSuperAdmin = String(req.user?.role || '').toLowerCase() === 'super_admin';
   const filters = {
     search: req.query.search,
     status: req.query.status,
+    paymentProvider: isSuperAdmin ? req.query.paymentProvider : 'manual',
+    paymentStatus: isSuperAdmin ? req.query.paymentStatus : undefined,
     userId: req.query.userId,
     dateFrom: req.query.dateFrom,
     dateTo: req.query.dateTo
@@ -73,6 +76,32 @@ const deposits = asyncHandler(async (req, res) => {
     data: result.data,
     pagination: result.pagination,
     message: 'Admin deposits fetched successfully'
+  });
+});
+
+const nowPayments = asyncHandler(async (req, res) => {
+  const result = await adminWalletService.listNowPayments({
+    search: req.query.search,
+    status: req.query.paymentStatus,
+    userId: req.query.userId,
+    depositId: req.query.depositId
+  }, {
+    page: req.query.page,
+    limit: req.query.limit
+  });
+
+  return success(res, {
+    data: result.data,
+    pagination: result.pagination,
+    message: 'NOWPayments deposits fetched successfully'
+  });
+});
+
+const syncDepositNowPayments = asyncHandler(async (req, res) => {
+  const data = await adminWalletService.syncDepositNowPayments(req.user.sub, req.params.id);
+  return success(res, {
+    data,
+    message: 'NOWPayments deposit synced successfully'
   });
 });
 
@@ -305,6 +334,8 @@ module.exports = {
   users,
   user,
   deposits,
+  nowPayments,
+  syncDepositNowPayments,
   reviewDeposit,
   withdrawals,
   reviewWithdrawal,

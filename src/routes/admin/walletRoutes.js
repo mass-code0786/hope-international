@@ -1,4 +1,5 @@
 const express = require('express');
+const { requireSuperAdmin } = require('../../middleware/auth');
 const validate = require('../../middleware/validate');
 const adminWalletController = require('../../controllers/admin/adminWalletController');
 const {
@@ -9,6 +10,7 @@ const {
   adminWalletFreezeSchema,
   adminWalletLogsQuerySchema,
   adminFinanceListQuerySchema,
+  adminPaymentSyncParamSchema,
   adminWalletReviewSchema,
   adminWalletBindingUpsertSchema,
   adminWalletBindingParamSchema,
@@ -25,6 +27,8 @@ router.get('/users/:userId', validate(adminWalletUserParamSchema), adminWalletCo
 router.get('/logs', validate(adminWalletLogsQuerySchema), adminWalletController.logs);
 
 router.get('/deposits', validate(adminFinanceListQuerySchema), adminWalletController.deposits);
+router.get('/nowpayments', requireSuperAdmin, validate(adminFinanceListQuerySchema), adminWalletController.nowPayments);
+router.post('/deposits/:id/sync-nowpayments', requireSuperAdmin, validate(adminPaymentSyncParamSchema), adminWalletController.syncDepositNowPayments);
 router.patch('/deposits/:id/status', validate(adminWalletReviewSchema), adminWalletController.reviewDeposit);
 
 router.get('/withdrawals', validate(adminFinanceListQuerySchema), adminWalletController.withdrawals);

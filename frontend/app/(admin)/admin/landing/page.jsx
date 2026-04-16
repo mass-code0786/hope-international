@@ -152,7 +152,7 @@ export default function AdminLandingPage() {
 
   const productsQuery = useQuery({
     queryKey: [...queryKeys.adminProducts, 'landing-selector'],
-    queryFn: () => getAdminProducts({ page: 1, limit: 100, isActive: 'true' })
+    queryFn: () => getAdminProducts({ page: 1, limit: 10, isActive: 'true' })
   });
 
   useEffect(() => {

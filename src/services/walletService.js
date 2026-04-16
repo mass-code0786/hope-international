@@ -2,7 +2,6 @@ const walletRepository = require('../repositories/walletRepository');
 const userRepository = require('../repositories/userRepository');
 const adminRepository = require('../repositories/adminRepository');
 const notificationService = require('./notificationService');
-const nowPaymentsService = require('./nowPaymentsService');
 const { ApiError } = require('../utils/ApiError');
 const { withPerfSpan } = require('../utils/perf');
 
@@ -54,10 +53,6 @@ function isAllowedWalletTransfer(fromWallet, toWallet) {
 
 function buildTransferReference() {
   return `WTX_${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
-}
-
-function buildDepositOrderId(userId) {
-  return `DEP_${String(userId).slice(0, 8).toUpperCase()}_${Date.now()}`;
 }
 
 function isWalletFrozen(wallet = {}, walletType) {
@@ -593,45 +588,15 @@ async function createDepositRequest(client, userId, payload) {
   const provider = String(payload.provider || payload.paymentProvider || DEPOSIT_METHOD_MANUAL).trim().toLowerCase();
 
   if (provider === AUTO_DEPOSIT_PROVIDER || provider === DEPOSIT_METHOD_NOWPAYMENTS) {
-    const payCurrency = nowPaymentsService.normalizeCurrency(payload.payCurrency);
-    const orderId = buildDepositOrderId(userId);
-    const payment = await nowPaymentsService.createPayment({
-      priceAmount: amount,
-      priceCurrency: 'usd',
-      payCurrency,
-      orderId,
-      orderDescription: `Hope International deposit for user ${userId}`
-    });
-
-    return walletRepository.createDepositRequest(client, {
-      userId,
-      asset: DEPOSIT_ASSET,
-      network: payCurrency.toUpperCase(),
-      walletAddressSnapshot: payment.pay_address || null,
+    const paymentService = require('./paymentService');
+    const result = await paymentService.createNowPaymentsDepositPaymentWithClient(client, userId, {
       amount,
-      method: DEPOSIT_METHOD_NOWPAYMENTS,
-      instructions: 'Waiting for NOWPayments confirmation.',
-      paymentProvider: AUTO_DEPOSIT_PROVIDER,
-      paymentId: String(payment.payment_id),
-      orderId,
-      paymentStatus: String(payment.payment_status || 'waiting'),
-      payCurrency,
-      payAmount: Number(payment.pay_amount || 0),
-      payAddress: payment.pay_address || null,
-      paymentUrl: payment.payment_url || payment.invoice_url || null,
-      isProcessed: false,
-      details: {
-        provider: AUTO_DEPOSIT_PROVIDER,
-        priceAmount: amount,
-        priceCurrency: 'USD',
-        payCurrency,
-        payAmount: Number(payment.pay_amount || 0),
-        payAddress: payment.pay_address || null,
-        paymentId: payment.payment_id || null,
-        paymentStatus: payment.payment_status || 'waiting'
-      },
-      status: 'pending'
+      payCurrency: payload.payCurrency
     });
+    return {
+      ...result.depositRequest,
+      payment_record_id: result.payment.id
+    };
   }
 
   const txHash = String(payload.txHash || payload.transactionHash || '').trim();
