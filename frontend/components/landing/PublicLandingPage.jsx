@@ -533,14 +533,6 @@ export default function PublicLandingPage() {
                         onClick={() => setMoreMenuOpen(false)}
                       >
                         <span>Login</span>
-                        <span className="text-xs text-[#9ca3af]">Members</span>
-                      </Link>
-                      <Link
-                        href="/login"
-                        className="flex w-full items-center justify-between rounded-[14px] px-3 py-3 text-sm text-white transition hover:bg-white/8"
-                        onClick={() => setMoreMenuOpen(false)}
-                      >
-                        <span>Login</span>
                         <span className="text-xs text-[#9ca3af]">Account</span>
                       </Link>
                     </>
@@ -575,7 +567,7 @@ export default function PublicLandingPage() {
 
             <div className="hidden items-center gap-3 md:flex">
               <SecondaryButton href="#features">Explore Platform</SecondaryButton>
-              <PrimaryButton href="/login">Member Login</PrimaryButton>
+              <PrimaryButton href="/login">Login</PrimaryButton>
             </div>
           </div>
         </header>
@@ -610,7 +602,7 @@ export default function PublicLandingPage() {
 
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <PrimaryButton href="/login">
-                  <span>Member Login</span>
+                  <span>Login</span>
                   <ArrowRight size={15} />
                 </PrimaryButton>
                 <SecondaryButton href="#features">
@@ -765,7 +757,6 @@ export default function PublicLandingPage() {
                 <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-white">Start Your Income Journey Today</h2>
                 <p className="mt-3 text-sm leading-7 text-[#d1d5db]">Join Hope International and step into a premium mobile-first ecosystem for earnings, shopping, and network growth.</p>
               </div>
-              <PrimaryButton href="/login">Member Login</PrimaryButton>
             </div>
           </div>
         </section>
