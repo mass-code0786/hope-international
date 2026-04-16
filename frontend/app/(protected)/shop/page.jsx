@@ -197,7 +197,7 @@ export default function ShopPage() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage
-  } = useInfiniteProducts({ limit: 12, category: selectedCategory });
+  } = useInfiniteProducts({ limit: 50, category: selectedCategory });
   const bannersQuery = useQuery({ queryKey: queryKeys.homepageBanners, queryFn: getHomepageBanners, placeholderData: (previousData) => previousData });
   const meQuery = useCurrentUser();
   const walletQuery = useWallet();
@@ -300,6 +300,11 @@ export default function ShopPage() {
 
     return () => window.clearInterval(timer);
   }, [heroBanners.length]);
+
+  useEffect(() => {
+    if (isPending || isError || isFetchingNextPage || !hasNextPage) return;
+    void fetchNextPage();
+  }, [fetchNextPage, hasNextPage, isError, isFetchingNextPage, isPending]);
 
   const filtered = useMemo(() => {
     return products.filter((product) => {
