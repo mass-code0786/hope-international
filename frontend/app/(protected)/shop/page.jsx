@@ -191,6 +191,7 @@ export default function ShopPage() {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [bannersEnabled, setBannersEnabled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const selectedCategory = activeCategory === 'All' ? undefined : activeCategory;
   const deferredSearch = useDeferredValue(search);
   const {
@@ -219,7 +220,6 @@ export default function ShopPage() {
   const [addressStepProduct, setAddressStepProduct] = useState(null);
   const [selectedPurchaseAddress, setSelectedPurchaseAddress] = useState(null);
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
-  const [menuOpen, setMenuOpen] = useState(false);
   const bannerTrackRef = useRef(null);
   const queryClient = useQueryClient();
 
