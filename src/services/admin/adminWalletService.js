@@ -123,6 +123,10 @@ async function listNowPayments(filters, paginationInput) {
   return buildPagedResult(result, pagination);
 }
 
+async function getNowPayments(paymentId) {
+  return paymentService.getAdminNowPaymentsPayment(paymentId);
+}
+
 async function syncDepositNowPayments(_adminUserId, requestId) {
   return withTransaction(async (client) => {
     const request = await walletRepository.getDepositRequestById(client, requestId, { forUpdate: true });
@@ -588,6 +592,7 @@ module.exports = {
   getWalletUser,
   listDeposits,
   listNowPayments,
+  getNowPayments,
   syncDepositNowPayments,
   reviewDeposit,
   listWithdrawals,

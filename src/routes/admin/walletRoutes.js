@@ -28,6 +28,7 @@ router.get('/logs', validate(adminWalletLogsQuerySchema), adminWalletController.
 
 router.get('/deposits', validate(adminFinanceListQuerySchema), adminWalletController.deposits);
 router.get('/nowpayments', requireSuperAdmin, validate(adminFinanceListQuerySchema), adminWalletController.nowPayments);
+router.get('/nowpayments/:id', requireSuperAdmin, validate(adminPaymentSyncParamSchema), adminWalletController.nowPaymentsDetail);
 router.post('/deposits/:id/sync-nowpayments', requireSuperAdmin, validate(adminPaymentSyncParamSchema), adminWalletController.syncDepositNowPayments);
 router.patch('/deposits/:id/status', validate(adminWalletReviewSchema), adminWalletController.reviewDeposit);
 

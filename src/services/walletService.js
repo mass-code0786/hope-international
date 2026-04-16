@@ -591,7 +591,8 @@ async function createDepositRequest(client, userId, payload) {
     const paymentService = require('./paymentService');
     const result = await paymentService.createNowPaymentsDepositPaymentWithClient(client, userId, {
       amount,
-      payCurrency: payload.payCurrency
+      payCurrency: payload.payCurrency,
+      network: payload.network
     });
     return {
       ...result.depositRequest,

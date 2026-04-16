@@ -7,6 +7,7 @@ const NOWPAYMENTS_PAY_CURRENCY = 'usdtbsc';
 const NOWPAYMENTS_DISPLAY_CURRENCY = 'USDT';
 const NOWPAYMENTS_DISPLAY_NETWORK = 'BSC/BEP20';
 const SUPPORTED_PAY_CURRENCIES = [NOWPAYMENTS_PAY_CURRENCY];
+const SUPPORTED_NETWORK_ALIASES = new Set(['bsc', 'bep20', 'bsc/bep20']);
 const SUCCESS_STATUSES = new Set(['finished', 'confirmed']);
 const FAILED_STATUSES = new Set(['failed', 'expired', 'refunded']);
 
@@ -22,6 +23,14 @@ function normalizeCurrency(value, fallback = NOWPAYMENTS_PAY_CURRENCY) {
     throw new ApiError(400, 'NOWPayments deposits support only USDT on BSC/BEP20');
   }
   return NOWPAYMENTS_PAY_CURRENCY;
+}
+
+function normalizeNetwork(value, fallback = NOWPAYMENTS_DISPLAY_NETWORK) {
+  const normalized = String(value || fallback).trim().toLowerCase();
+  if (!SUPPORTED_NETWORK_ALIASES.has(normalized)) {
+    throw new ApiError(400, 'NOWPayments deposits support only USDT on BSC/BEP20');
+  }
+  return NOWPAYMENTS_DISPLAY_NETWORK;
 }
 
 function ensureGatewayConfigured() {
@@ -161,6 +170,7 @@ module.exports = {
   getPaymentStatus,
   verifyWebhookSignature,
   normalizeCurrency,
+  normalizeNetwork,
   mapPaymentStatus,
   isSuccessfulPaymentStatus,
   isFailedPaymentStatus,

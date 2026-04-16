@@ -112,6 +112,21 @@ const depositCreate = asyncHandler(async (req, res) => {
   });
 });
 
+const depositCreateNowPayments = asyncHandler(async (req, res) => {
+  const data = await withTransaction(async (client) => walletService.createDepositRequest(client, req.user.sub, {
+    amount: req.body.amount,
+    provider: 'nowpayments',
+    payCurrency: req.body.payCurrency,
+    network: req.body.network
+  }));
+
+  return success(res, {
+    data: normalizeDepositRecord(data),
+    message: 'NOWPayments deposit created successfully',
+    statusCode: 201
+  });
+});
+
 const depositList = asyncHandler(async (req, res) => {
   const data = (await walletRepository.listDepositRequests(null, req.user.sub, 300)).map(normalizeDepositRecord);
   return success(res, {
@@ -200,6 +215,7 @@ module.exports = {
   bindWallet,
   depositConfig,
   depositCreate,
+  depositCreateNowPayments,
   depositList,
   withdrawalCreate,
   withdrawalList,

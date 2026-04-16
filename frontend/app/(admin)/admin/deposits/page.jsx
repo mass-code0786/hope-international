@@ -12,9 +12,13 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { getAdminDeposits, reviewAdminDeposit, syncAdminNowPaymentsDeposit } from '@/lib/services/admin';
+import { useAuthStore } from '@/lib/store/authStore';
+import { canAccessSuperAdminArea } from '@/lib/constants/access';
 import { currency, dateTime } from '@/lib/utils/format';
 
 export default function AdminDepositsPage() {
+  const user = useAuthStore((state) => state.user);
+  const superAdmin = canAccessSuperAdminArea(user);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
   const [paymentProvider, setPaymentProvider] = useState('all');
@@ -70,18 +74,20 @@ export default function AdminDepositsPage() {
         <select value={paymentProvider} onChange={(e) => setPaymentProvider(e.target.value)} className="rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm text-text">
           <option value="all">All Providers</option>
           <option value="manual">Manual</option>
-          <option value="nowpayments">NOWPayments</option>
+          {superAdmin ? <option value="nowpayments">NOWPayments</option> : null}
         </select>
-        <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)} className="rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm text-text">
-          <option value="all">All Payment Status</option>
-          <option value="waiting">Waiting</option>
-          <option value="confirming">Confirming</option>
-          <option value="confirmed">Confirmed</option>
-          <option value="finished">Finished</option>
-          <option value="partially_paid">Partially Paid</option>
-          <option value="failed">Failed</option>
-          <option value="expired">Expired</option>
-        </select>
+        {superAdmin ? (
+          <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)} className="rounded-xl border border-white/10 bg-cardSoft px-3 py-2 text-sm text-text">
+            <option value="all">All Payment Status</option>
+            <option value="waiting">Waiting</option>
+            <option value="confirming">Confirming</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="finished">Finished</option>
+            <option value="partially_paid">Partially Paid</option>
+            <option value="failed">Failed</option>
+            <option value="expired">Expired</option>
+          </select>
+        ) : null}
       </FilterBar>
 
       <DataTable
@@ -102,7 +108,7 @@ export default function AdminDepositsPage() {
             className: 'col-span-2',
             render: (row) => (
               <div className="flex gap-1">
-                {row.payment_provider === 'nowpayments' ? (
+                {superAdmin && row.payment_provider === 'nowpayments' ? (
                   <>
                     <button
                       disabled={syncMutation.isPending}
@@ -152,7 +158,7 @@ export default function AdminDepositsPage() {
         <button onClick={() => setPage((p) => ((pagination.totalPages || 1) > p ? p + 1 : p))} disabled={(pagination.page || 1) >= (pagination.totalPages || 1)} className="rounded-xl border border-white/10 px-3 py-2 text-sm text-muted disabled:opacity-50">Next</button>
       </div>
 
-      {selectedPayload ? (
+      {superAdmin && selectedPayload ? (
         <div className="card-surface p-4">
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold text-text">NOWPayments Payload</h3>

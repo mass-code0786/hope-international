@@ -32,9 +32,10 @@ function getFriendlyPaymentStatus(status) {
   }[normalized] || 'awaiting_payment';
 }
 
-function normalizePaymentRecord(record) {
+function normalizePaymentRecord(record, options = {}) {
   if (!record) return null;
-  return {
+  const includeSensitive = options.includeSensitive === true;
+  const normalized = {
     ...record,
     requested_amount: Number(record.requested_amount || record.price_amount || 0),
     expected_amount: record.expected_amount === null || record.expected_amount === undefined ? null : Number(record.expected_amount),
@@ -52,6 +53,13 @@ function normalizePaymentRecord(record) {
     is_terminal: ['confirmed', 'finished', 'failed', 'expired'].includes(String(record.payment_status || '').toLowerCase()),
     is_completed: ['confirmed', 'finished'].includes(String(record.payment_status || '').toLowerCase())
   };
+
+  if (!includeSensitive) {
+    delete normalized.raw_payload;
+    delete normalized.status_history;
+  }
+
+  return normalized;
 }
 
 async function createNowPaymentsDepositPaymentWithClient(client, userId, payload) {
@@ -61,6 +69,7 @@ async function createNowPaymentsDepositPaymentWithClient(client, userId, payload
   }
 
   const payCurrency = nowPaymentsService.normalizeCurrency(payload.payCurrency);
+  const network = nowPaymentsService.normalizeNetwork(payload.network);
   const providerOrderId = buildDepositOrderId(userId);
   const providerPayment = await nowPaymentsService.createPayment({
     priceAmount: amount,
@@ -73,7 +82,7 @@ async function createNowPaymentsDepositPaymentWithClient(client, userId, payload
   const depositRequest = await walletRepository.createDepositRequest(client, {
     userId,
     asset: 'USDT',
-    network: nowPaymentsService.NOWPAYMENTS_DISPLAY_NETWORK,
+    network,
     walletAddressSnapshot: providerPayment.pay_address || null,
     amount,
     method: 'nowpayments',
@@ -92,7 +101,7 @@ async function createNowPaymentsDepositPaymentWithClient(client, userId, payload
       provider: nowPaymentsService.NOWPAYMENTS_PROVIDER,
       priceAmount: toMoney(amount),
       priceCurrency: 'USD',
-      network: nowPaymentsService.NOWPAYMENTS_DISPLAY_NETWORK,
+      network,
       payCurrency: nowPaymentsService.NOWPAYMENTS_DISPLAY_CURRENCY,
       payAmount: toCryptoAmount(providerPayment.pay_amount || 0),
       payAddress: providerPayment.pay_address || null,
@@ -107,7 +116,7 @@ async function createNowPaymentsDepositPaymentWithClient(client, userId, payload
     depositId: depositRequest.id,
     providerPaymentId: String(providerPayment.payment_id || ''),
     providerOrderId,
-    network: nowPaymentsService.NOWPAYMENTS_DISPLAY_NETWORK,
+    network,
     requestedAmount: toMoney(amount),
     expectedAmount: toCryptoAmount(providerPayment.pay_amount || 0),
     priceAmount: toMoney(amount),
@@ -297,19 +306,29 @@ async function getPaymentForUser(paymentId, userId, options = {}) {
   if (!paymentRecord) {
     throw new ApiError(404, 'Payment not found');
   }
-  const isAdmin = ['admin', 'super_admin'].includes(String(options.role || '').toLowerCase());
-  if (!isAdmin && String(paymentRecord.user_id) !== String(userId)) {
+  const role = String(options.role || '').toLowerCase();
+  const isSuperAdmin = role === 'super_admin';
+  const isOwner = String(paymentRecord.user_id) === String(userId);
+  if (!isSuperAdmin && !isOwner) {
     throw new ApiError(404, 'Payment not found');
   }
-  return normalizePaymentRecord(paymentRecord);
+  return normalizePaymentRecord(paymentRecord, { includeSensitive: isSuperAdmin && !isOwner });
 }
 
 async function listAdminNowPaymentsPayments(filters, pagination) {
   const result = await paymentRepository.listNowPaymentsPaymentsAdmin(null, filters, pagination);
   return {
-    items: result.items.map(normalizePaymentRecord),
+    items: result.items.map((item) => normalizePaymentRecord(item, { includeSensitive: true })),
     total: result.total
   };
+}
+
+async function getAdminNowPaymentsPayment(paymentId) {
+  const paymentRecord = await paymentRepository.getNowPaymentsPaymentById(null, paymentId);
+  if (!paymentRecord) {
+    throw new ApiError(404, 'Payment not found');
+  }
+  return normalizePaymentRecord(paymentRecord, { includeSensitive: true });
 }
 
 module.exports = {
@@ -321,5 +340,6 @@ module.exports = {
   syncNowPaymentsPaymentWithClient,
   getPaymentForUser,
   listAdminNowPaymentsPayments,
+  getAdminNowPaymentsPayment,
   normalizePaymentRecord
 };

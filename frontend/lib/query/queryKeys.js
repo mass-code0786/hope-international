@@ -48,6 +48,7 @@ export const queryKeys = {
   adminWalletUser: (id) => ['admin', 'wallet', 'users', id],
   adminWalletLogs: ['admin', 'wallet', 'logs'],
   adminDeposits: ['admin', 'deposits'],
+  adminNowPayments: ['admin', 'nowpayments'],
   adminWithdrawals: ['admin', 'withdrawals'],
   adminP2p: ['admin', 'p2p'],
   adminWalletBindings: ['admin', 'wallet-bindings'],

@@ -20,7 +20,7 @@ function toEnvelope(payload) {
 
 export async function createNowPaymentsPayment(payload) {
   return toEnvelope(
-    await apiFetch('/payments/nowpayments/create', {
+    await apiFetch('/wallet/deposits/nowpayments', {
       method: 'POST',
       body: JSON.stringify(payload)
     })

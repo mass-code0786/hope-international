@@ -151,15 +151,23 @@ export default function PaymentStatusPage() {
               <p className="mt-2 text-lg font-semibold text-slate-950">{currency(payment?.price_amount || 0)}</p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Coin</p>
+              <p className="mt-2 text-lg font-semibold text-slate-950">USDT</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Network</p>
+              <p className="mt-2 text-lg font-semibold text-slate-950">{payment?.network || 'BSC/BEP20'}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Pay Amount</p>
               <p className="mt-2 text-lg font-semibold text-slate-950">
-                {payment?.pay_amount ? `${payment.pay_amount} ${(payment?.pay_currency || '').toUpperCase()}` : 'Waiting for quote'}
+                {payment?.pay_amount ? `${payment.pay_amount} USDT` : 'Waiting for quote'}
               </p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Actually Paid</p>
               <p className="mt-2 text-lg font-semibold text-slate-950">
-                {payment?.actually_paid ? `${payment.actually_paid} ${(payment?.pay_currency || '').toUpperCase()}` : '0'}
+                {payment?.actually_paid ? `${payment.actually_paid} USDT` : '0'}
               </p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">

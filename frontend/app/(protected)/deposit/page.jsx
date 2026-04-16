@@ -19,14 +19,8 @@ import { currency, dateTime, statusVariant } from '@/lib/utils/format';
 
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
-const AUTO_CRYPTO_OPTIONS = [
-  { value: 'btc', label: 'BTC' },
-  { value: 'eth', label: 'ETH' },
-  { value: 'usdtbsc', label: 'USDT (BSC)' },
-  { value: 'usdttrc20', label: 'USDT (TRC20)' },
-  { value: 'usdterc20', label: 'USDT (ERC20)' },
-  { value: 'ltc', label: 'LTC' }
-];
+const NOWPAYMENTS_PAY_CURRENCY = 'usdt';
+const NOWPAYMENTS_NETWORK = 'BSC/BEP20';
 
 function extractLatestActiveGatewayPayment(items = []) {
   return items.find((item) => item.payment_provider === 'nowpayments' && !item.is_processed)
@@ -40,7 +34,6 @@ export default function DepositPage() {
   const formRef = useRef(null);
   const queryClient = useQueryClient();
   const [depositMode, setDepositMode] = useState(searchParams.get('provider') === 'manual' ? 'manual' : 'nowpayments');
-  const [payCurrency, setPayCurrency] = useState(searchParams.get('coin') || 'usdtbsc');
   const [proofImageUrl, setProofImageUrl] = useState('');
   const [proofFileName, setProofFileName] = useState('');
   const [qrImage, setQrImage] = useState('');
@@ -165,24 +158,34 @@ export default function DepositPage() {
             )}
           </div>
           <div className="space-y-3">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-300">How It Works</p>
-              <p className="mt-2 text-sm leading-6 text-slate-100">
-                Enter your deposit amount, choose a coin, and the system generates a live NOWPayments address. After network confirmation, your deposit wallet is credited automatically and the existing deposit income logic runs from the backend.
-              </p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Pay Amount</p>
-                <p className="mt-2 text-lg font-semibold text-white">
-                  {activeGatewayPayment?.pay_amount ? `${activeGatewayPayment.pay_amount} ${(activeGatewayPayment.pay_currency || '').toUpperCase()}` : 'Waiting'}
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-300">How It Works</p>
+                <p className="mt-2 text-sm leading-6 text-slate-100">
+                  Enter your deposit amount and the system generates a live USDT address on BSC/BEP20. After network confirmation, your deposit wallet is credited automatically and the existing deposit income logic runs from the backend.
                 </p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Deposit Value</p>
-                <p className="mt-2 text-lg font-semibold text-white">
-                  {activeGatewayPayment?.amount ? currency(activeGatewayPayment.amount) : 'USD based'}
-                </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Coin</p>
+                  <p className="mt-2 text-lg font-semibold text-white">USDT</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Network</p>
+                  <p className="mt-2 text-lg font-semibold text-white">{activeGatewayPayment?.network || NOWPAYMENTS_NETWORK}</p>
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Pay Amount</p>
+                  <p className="mt-2 text-lg font-semibold text-white">
+                    {activeGatewayPayment?.pay_amount ? `${activeGatewayPayment.pay_amount} USDT` : 'Waiting'}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Deposit Value</p>
+                  <p className="mt-2 text-lg font-semibold text-white">
+                    {activeGatewayPayment?.amount ? currency(activeGatewayPayment.amount) : 'USD based'}
+                  </p>
               </div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
@@ -249,7 +252,8 @@ export default function DepositPage() {
 
           nowPaymentsMutation.mutate({
             amount,
-            payCurrency
+            payCurrency: NOWPAYMENTS_PAY_CURRENCY,
+            network: NOWPAYMENTS_NETWORK
           });
         }}
         className="space-y-4 rounded-2xl border border-slate-300 bg-white p-4 shadow-[0_10px_24px_rgba(15,23,42,0.05)]"
@@ -276,22 +280,15 @@ export default function DepositPage() {
         {depositMode === 'nowpayments' ? (
           <div className="grid gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <label htmlFor="deposit-crypto" className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">Crypto Currency</label>
-              <select
-                id="deposit-crypto"
-                value={payCurrency}
-                onChange={(event) => setPayCurrency(event.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-medium text-slate-950 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
-              >
-                {AUTO_CRYPTO_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
+              <label className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">Coin and Network</label>
+              <div className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-950">
+                USDT on BSC/BEP20
+              </div>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Automatic Settlement</p>
               <p className="mt-2 text-sm leading-6 text-slate-700">
-                Deposit wallet credit starts only after NOWPayments sends a confirmed or finished payment webhook. No manual approval is required for this mode.
+                Only USDT on BSC/BEP20 is accepted. Deposit wallet credit starts only after NOWPayments sends a confirmed or finished payment webhook.
               </p>
             </div>
           </div>
@@ -394,7 +391,7 @@ export default function DepositPage() {
                 <p className="text-[11px] font-medium text-slate-600">
                   {(item.payment_provider === 'nowpayments' ? 'NOWPayments' : (item.asset || 'USDT'))}
                   {' • '}
-                  {(item.pay_currency || item.network || 'BEP20').toUpperCase()}
+                  {(item.payment_provider === 'nowpayments' ? (item.network || NOWPAYMENTS_NETWORK) : (item.network || 'BEP20')).toUpperCase()}
                   {' • '}
                   {dateTime(item.created_at)}
                 </p>

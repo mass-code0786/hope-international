@@ -97,6 +97,14 @@ const nowPayments = asyncHandler(async (req, res) => {
   });
 });
 
+const nowPaymentsDetail = asyncHandler(async (req, res) => {
+  const data = await adminWalletService.getNowPayments(req.params.id);
+  return success(res, {
+    data,
+    message: 'NOWPayments deposit fetched successfully'
+  });
+});
+
 const syncDepositNowPayments = asyncHandler(async (req, res) => {
   const data = await adminWalletService.syncDepositNowPayments(req.user.sub, req.params.id);
   return success(res, {
@@ -335,6 +343,7 @@ module.exports = {
   user,
   deposits,
   nowPayments,
+  nowPaymentsDetail,
   syncDepositNowPayments,
   reviewDeposit,
   withdrawals,

@@ -160,7 +160,21 @@ const walletBindSchema = z.object({
 
 const nowPaymentsCreateSchema = z.object({
   body: z.object({
-    amount: z.number().positive()
+    amount: z.number().positive(),
+    payCurrency: z.string().trim().min(2).max(40).optional(),
+    network: z.string().trim().min(2).max(40).optional()
+  }).superRefine((body, ctx) => {
+    const payCurrency = String(body.payCurrency || 'usdt').trim().toLowerCase();
+    if (!['usdt', 'usdtbsc'].includes(payCurrency)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'NOWPayments deposits support only USDT on BSC/BEP20', path: ['payCurrency'] });
+    }
+
+    if (body.network) {
+      const network = String(body.network).trim().toLowerCase();
+      if (!['bsc', 'bep20', 'bsc/bep20'].includes(network)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'NOWPayments deposits support only USDT on BSC/BEP20', path: ['network'] });
+      }
+    }
   }),
   params: z.object({}),
   query: z.object({})
@@ -177,6 +191,7 @@ const walletDepositSchema = z.object({
     amount: z.number().positive(),
     provider: z.enum(['manual', 'nowpayments']).optional().default('manual'),
     payCurrency: z.string().trim().min(2).max(40).optional(),
+    network: z.string().trim().min(2).max(40).optional(),
     txHash: z.string().trim().min(6).max(255).optional(),
     proofImageUrl: z.string().min(16).max(1000000).optional(),
     note: z.string().max(800).optional()
@@ -184,6 +199,9 @@ const walletDepositSchema = z.object({
     if (body.provider === 'nowpayments') {
       if (body.payCurrency && !['usdt', 'usdtbsc'].includes(String(body.payCurrency).trim().toLowerCase())) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'NOWPayments deposits support only USDT on BSC/BEP20', path: ['payCurrency'] });
+      }
+      if (body.network && !['bsc', 'bep20', 'bsc/bep20'].includes(String(body.network).trim().toLowerCase())) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'NOWPayments deposits support only USDT on BSC/BEP20', path: ['network'] });
       }
       return;
     }

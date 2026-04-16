@@ -4,7 +4,9 @@ const { success } = require('../utils/response');
 
 const createNowPaymentsPayment = asyncHandler(async (req, res) => {
   const data = await paymentService.createNowPaymentsDepositPayment(req.user.sub, {
-    amount: req.body.amount
+    amount: req.body.amount,
+    payCurrency: req.body.payCurrency,
+    network: req.body.network
   });
 
   return success(res, {
