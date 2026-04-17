@@ -206,7 +206,7 @@ export default function ShopPage() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage
-  } = useInfiniteProducts({ limit: 8, category: selectedCategory });
+  } = useInfiniteProducts({ limit: 24, category: selectedCategory, includeTotal: true });
   const bannersQuery = useQuery({
     queryKey: queryKeys.homepageBanners,
     queryFn: getHomepageBanners,
@@ -310,6 +310,11 @@ export default function ShopPage() {
       if (timeoutId !== null) window.clearTimeout(timeoutId);
     };
   }, [activeCategory]);
+
+  useEffect(() => {
+    if (!hasNextPage || isFetchingNextPage) return;
+    fetchNextPage();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   const buyMutation = useMutation({
     mutationFn: (product) => {
@@ -556,45 +561,33 @@ export default function ShopPage() {
             </div>
           </div>
 
+          <div>
+            <SectionTitle title={activeCategory === 'All' ? 'All Products' : `${activeCategory} Products`} count={recommended.length} />
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+              {visibleRecommended.map((product) => (
+                <ProductCard
+                  key={`recommended-${product.id}`}
+                  product={product}
+                  onBuy={(p) => setAddressStepProduct(p)}
+                  isBuying={buyMutation.isPending && buyingProductId === product.id}
+                  disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
+                  buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy Now'}
+                />
+              ))}
+            </div>
+            {!reachedAllProducts && totalActiveItems !== null ? (
+              <p className="mt-2 text-center text-[10px] text-slate-500">
+                Showing {visibleCatalogCount} of {totalActiveItems} {categoryLabel}. Loading remaining products...
+              </p>
+            ) : reachedAllProducts ? (
+              <p className="mt-2 text-center text-[10px] text-slate-500">
+                Showing all {visibleCatalogCount} matching {activeCategory === 'All' ? 'active products' : activeCategory.toLowerCase() + ' products'}
+              </p>
+            ) : null}
+          </div>
+
           {secondarySectionsEnabled ? (
             <>
-              <div>
-                <SectionTitle title="Recommended" count={recommended.length} />
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                  {visibleRecommended.map((product) => (
-                    <ProductCard
-                      key={`recommended-${product.id}`}
-                      product={product}
-                      onBuy={(p) => setAddressStepProduct(p)}
-                      isBuying={buyMutation.isPending && buyingProductId === product.id}
-                      disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
-                      buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy Now'}
-                    />
-                  ))}
-                </div>
-                {hasNextPage ? (
-                  <div className="mt-3 flex justify-center">
-                    <button
-                      type="button"
-                      onClick={() => fetchNextPage()}
-                      disabled={isFetchingNextPage}
-                      className="inline-flex min-w-[9rem] items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-[11px] font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {isFetchingNextPage ? 'Loading...' : 'Load More'}
-                    </button>
-                  </div>
-                ) : null}
-                {!reachedAllProducts && totalActiveItems !== null ? (
-                  <p className="mt-2 text-center text-[10px] text-slate-500">
-                    Showing {visibleCatalogCount} of {totalActiveItems} {categoryLabel}
-                  </p>
-                ) : reachedAllProducts ? (
-                  <p className="mt-2 text-center text-[10px] text-slate-500">
-                    Showing all {visibleCatalogCount} matching {activeCategory === 'All' ? 'active products' : activeCategory.toLowerCase() + ' products'}
-                  </p>
-                ) : null}
-              </div>
-
               <div>
                 <SectionTitle title="New Arrivals" count={newArrivals.length} />
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">

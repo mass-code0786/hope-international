@@ -26,10 +26,10 @@ export function useHomeProducts() {
   });
 }
 
-export function useInfiniteProducts({ active = true, category, limit = 12 } = {}) {
+export function useInfiniteProducts({ active = true, category, limit = 12, includeTotal = true } = {}) {
   return useInfiniteQuery({
-    queryKey: [...queryKeys.products, 'infinite', active, category || 'all', limit],
-    queryFn: ({ pageParam = 1 }) => getProducts({ active, category, page: pageParam, limit, view: 'card', includeTotal: false }),
+    queryKey: [...queryKeys.products, 'infinite', active, category || 'all', limit, includeTotal],
+    queryFn: ({ pageParam = 1 }) => getProducts({ active, category, page: pageParam, limit, view: 'card', includeTotal }),
     initialPageParam: 1,
     getNextPageParam: (lastPage) => lastPage?.pagination?.nextPage ?? undefined,
     staleTime: 60_000,
