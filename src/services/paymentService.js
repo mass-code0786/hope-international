@@ -158,6 +158,7 @@ async function reconcileSuccessfulDepositCreditWithClient(client, paymentRecord,
     'deposit_request',
     depositRequest.id
   );
+  const alreadyApplied = Boolean(depositRequest.is_processed || paymentRecord.is_credited || paymentRecord.wallet_credit_applied);
 
   logNowPayments('wallet-credit.reconcile', {
     paymentRecordId: paymentRecord.id,
@@ -165,25 +166,41 @@ async function reconcileSuccessfulDepositCreditWithClient(client, paymentRecord,
     userId: depositRequest.user_id,
     providerPaymentId: paymentRecord.provider_payment_id,
     paymentStatus: options.paymentStatus || paymentRecord.payment_status || null,
-    alreadyCredited: Boolean(existingCredit)
+    alreadyCredited: Boolean(existingCredit),
+    alreadyApplied
   });
 
-  const creditedAt = paymentRecord.credited_at || depositRequest.processed_at || new Date().toISOString();
-  const settled = await walletService.settleDepositRequest(client, depositRequest.id, {
-    status: 'approved',
-    paymentStatus: options.paymentStatus || paymentRecord.payment_status || null,
-    rawWebhookData: payload,
-    extraDetails: {
+  const creditedAt = paymentRecord.credited_at || existingCredit?.created_at || depositRequest.processed_at || new Date().toISOString();
+  let settled = null;
+
+  if (alreadyApplied) {
+    logNowPayments('wallet-credit.duplicate-prevented', {
       paymentRecordId: paymentRecord.id,
-      confirmedBy: nowPaymentsService.NOWPAYMENTS_PROVIDER,
-      confirmedAt: creditedAt,
-      creditedAt,
-      walletCreditApplied: true
-    }
-  });
+      depositId: depositRequest.id,
+      userId: depositRequest.user_id,
+      providerPaymentId: paymentRecord.provider_payment_id,
+      paymentStatus: options.paymentStatus || paymentRecord.payment_status || null,
+      paymentAlreadyMarkedCredited: Boolean(paymentRecord.is_credited || paymentRecord.wallet_credit_applied),
+      depositAlreadyProcessed: Boolean(depositRequest.is_processed)
+    });
+  } else {
+    settled = await walletService.settleDepositRequest(client, depositRequest.id, {
+      status: 'approved',
+      paymentStatus: options.paymentStatus || paymentRecord.payment_status || null,
+      rawWebhookData: payload,
+      extraDetails: {
+        paymentRecordId: paymentRecord.id,
+        confirmedBy: nowPaymentsService.NOWPAYMENTS_PROVIDER,
+        confirmedAt: creditedAt,
+        creditedAt,
+        walletCreditApplied: true
+      }
+    });
+  }
 
   const latestPaymentRecord = await paymentRepository.updateNowPaymentsPayment(client, paymentRecord.id, {
     isCredited: true,
+    walletCreditApplied: true,
     creditedAt,
     rawPayload: payload
   });
@@ -194,12 +211,12 @@ async function reconcileSuccessfulDepositCreditWithClient(client, paymentRecord,
     userId: depositRequest.user_id,
     providerPaymentId: paymentRecord.provider_payment_id,
     creditedAt,
-    alreadyCredited: Boolean(existingCredit || settled?.alreadyProcessed)
+    alreadyCredited: Boolean(existingCredit || alreadyApplied || settled?.alreadyProcessed)
   });
 
   return {
     paymentRecord: latestPaymentRecord || paymentRecord,
-    alreadyCredited: Boolean(existingCredit || settled?.alreadyProcessed)
+    alreadyCredited: Boolean(existingCredit || alreadyApplied || settled?.alreadyProcessed)
   };
 }
 
@@ -393,6 +410,14 @@ async function processNowPaymentsPayloadWithClient(client, payload, options = {}
     providerOrderId: providerOrderId || paymentRecord.provider_order_id,
     incomingStatus: payload.payment_status || null
   });
+  logNowPayments('payment-record.found', {
+    source: options.source || 'webhook',
+    paymentRecordId: paymentRecord.id,
+    depositId: paymentRecord.deposit_id || null,
+    userId: paymentRecord.user_id,
+    providerPaymentId: providerPaymentId || paymentRecord.provider_payment_id,
+    providerOrderId: providerOrderId || paymentRecord.provider_order_id
+  });
 
   const mappedStatus = nowPaymentsService.mapPaymentStatus(payload.payment_status || paymentRecord.payment_status);
   const expiresAt = resolveExpiresAt(payload.expiration_estimate_date || paymentRecord.expires_at, buildLocalExpiryDate(new Date(paymentRecord.created_at || Date.now())));
@@ -452,7 +477,7 @@ async function processNowPaymentsPayloadWithClient(client, payload, options = {}
         ? 'approved'
         : depositRequest.status;
 
-    await walletRepository.updateDepositRequestStatus(client, depositRequest.id, {
+    const nextDepositRequest = await walletRepository.updateDepositRequestStatus(client, depositRequest.id, {
       status: nextDepositStatus,
       details: {
         paymentRecordId: nextPaymentRecord.id,
@@ -477,12 +502,20 @@ async function processNowPaymentsPayloadWithClient(client, payload, options = {}
     });
 
     if (nowPaymentsService.isSuccessfulPaymentStatus(effectiveMappedStatus)) {
+      logNowPayments('payment.status-terminal-success', {
+        source: options.source || 'webhook',
+        paymentRecordId: nextPaymentRecord.id,
+        depositId: depositRequest.id,
+        userId: depositRequest.user_id,
+        paymentStatus: effectiveMappedStatus
+      });
       await reconcileSuccessfulDepositCreditWithClient(
         client,
         nextPaymentRecord,
-        {
+        nextDepositRequest || {
           ...depositRequest,
-          status: nextDepositStatus
+          status: nextDepositStatus,
+          payment_status: effectiveMappedStatus
         },
         payload,
         { paymentStatus: effectiveMappedStatus }

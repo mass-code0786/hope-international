@@ -34,13 +34,14 @@ async function createNowPaymentsPayment(client, payload) {
       ipn_callback_url,
       expires_at,
       is_credited,
+      wallet_credit_applied,
       credited_at,
       status_history,
       raw_payload
     )
     VALUES (
       $1, $2, $3, 'nowpayments', $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-      $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24::jsonb, $25::jsonb
+      $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26::jsonb, $27::jsonb
     )
     RETURNING *`,
     [
@@ -66,6 +67,7 @@ async function createNowPaymentsPayment(client, payload) {
       payload.ipnCallbackUrl || null,
       payload.expiresAt || null,
       Boolean(payload.isCredited),
+      Boolean(payload.walletCreditApplied ?? payload.isCredited),
       payload.creditedAt || null,
       JSON.stringify(payload.statusHistory || []),
       JSON.stringify(payload.rawPayload || {})
@@ -151,6 +153,13 @@ async function updateNowPaymentsPayment(client, id, payload = {}) {
   if (Object.prototype.hasOwnProperty.call(payload, 'paymentUrl')) addField('payment_url', payload.paymentUrl || null);
   if (Object.prototype.hasOwnProperty.call(payload, 'expiresAt')) addField('expires_at', payload.expiresAt || null);
   if (Object.prototype.hasOwnProperty.call(payload, 'isCredited')) addField('is_credited', Boolean(payload.isCredited));
+  if (Object.prototype.hasOwnProperty.call(payload, 'walletCreditApplied')) addField('wallet_credit_applied', Boolean(payload.walletCreditApplied));
+  if (
+    Object.prototype.hasOwnProperty.call(payload, 'isCredited')
+    && !Object.prototype.hasOwnProperty.call(payload, 'walletCreditApplied')
+  ) {
+    addField('wallet_credit_applied', Boolean(payload.isCredited));
+  }
   if (Object.prototype.hasOwnProperty.call(payload, 'creditedAt')) addField('credited_at', payload.creditedAt || null);
   if (Object.prototype.hasOwnProperty.call(payload, 'statusHistory')) addField('status_history', JSON.stringify(payload.statusHistory || []), { jsonb: true });
   if (Object.prototype.hasOwnProperty.call(payload, 'rawPayload')) addField('raw_payload', JSON.stringify(payload.rawPayload || {}), { jsonb: true });
