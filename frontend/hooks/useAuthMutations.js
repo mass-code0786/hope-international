@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { getMe, login, register } from '@/lib/services/authService';
+import { login, register } from '@/lib/services/authService';
 import { useAuthStore } from '@/lib/store/authStore';
 import { queryKeys } from '@/lib/query/queryKeys';
 
@@ -35,6 +35,7 @@ export function useAuthMutations() {
   const queryClient = useQueryClient();
   const setSession = useAuthStore((s) => s.setSession);
   const setUser = useAuthStore((s) => s.setUser);
+  const setCurrentUserState = useAuthStore((s) => s.setCurrentUserState);
   const setRegistrationSummary = useAuthStore((s) => s.setRegistrationSummary);
   const [error, setError] = useState('');
 
@@ -51,14 +52,10 @@ export function useAuthMutations() {
     queryClient.removeQueries({ queryKey: queryKeys.teamChildren });
     queryClient.removeQueries({ queryKey: queryKeys.teamSummary });
     queryClient.removeQueries({ queryKey: queryKeys.teamTreeRoot });
-    const currentUser = await queryClient.fetchQuery({
-      queryKey: queryKeys.me,
-      queryFn: getMe,
-      staleTime: 0
-    }).catch(() => user);
-    setUser(currentUser);
-    queryClient.setQueryData(queryKeys.me, currentUser);
-    return currentUser;
+    setUser(user || null);
+    setCurrentUserState({ user: user || null, status: user ? 'ready' : 'idle', error: null, initialized: Boolean(user) });
+    queryClient.setQueryData(queryKeys.me, user || null);
+    return user || null;
   }
 
   const loginMutation = useMutation({

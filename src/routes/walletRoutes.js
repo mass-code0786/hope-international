@@ -20,6 +20,7 @@ router.get('/history', auth(), walletController.history);
 router.get('/deposits', auth(), walletController.depositList);
 router.post('/deposits/nowpayments', auth(), validate(nowPaymentsCreateSchema), walletController.depositCreateNowPayments);
 router.get('/deposits/nowpayments/:id', auth(), validate(paymentIdParamSchema), walletController.depositNowPaymentsDetail);
+router.post('/deposits/nowpayments/:id/sync', auth(), validate(paymentIdParamSchema), walletController.depositNowPaymentsSync);
 router.get('/withdrawals', auth(), walletController.withdrawalList);
 router.post('/withdrawals', auth(), validate(walletWithdrawalSchema), walletController.withdrawalCreate);
 router.post('/transfer', auth(), validate(walletTransferSchema), walletController.transferCreate);

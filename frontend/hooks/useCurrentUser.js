@@ -1,52 +1,36 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getMe } from '@/lib/services/authService';
-import { queryKeys } from '@/lib/query/queryKeys';
 import { useAuthStore } from '@/lib/store/authStore';
-
-const CURRENT_USER_STALE_TIME = 5 * 60 * 1000;
 
 export function useCurrentUser(options = {}) {
   const {
     enabled = true,
     requireToken = true
   } = options;
-  const { token, user, hydrated, hydrate, setUser } = useAuthStore();
-  const queryClient = useQueryClient();
+  const token = useAuthStore((state) => state.token);
+  const user = useAuthStore((state) => state.user);
+  const hydrated = useAuthStore((state) => state.hydrated);
+  const currentUserStatus = useAuthStore((state) => state.currentUserStatus);
+  const currentUserError = useAuthStore((state) => state.currentUserError);
+  const currentUserInitialized = useAuthStore((state) => state.currentUserInitialized);
+  const refreshCurrentUser = useAuthStore((state) => state.refreshCurrentUser);
   const canUseToken = !requireToken || Boolean(token);
-  const cachedUser = canUseToken ? (queryClient.getQueryData(queryKeys.me) ?? null) : null;
-  const resolvedUser = canUseToken ? (user ?? cachedUser ?? null) : null;
-
-  useEffect(() => {
-    if (!hydrated) hydrate();
-  }, [hydrated, hydrate]);
-
-  const query = useQuery({
-    queryKey: queryKeys.me,
-    queryFn: getMe,
-    enabled: enabled && hydrated && canUseToken && !resolvedUser,
-    retry: false,
-    staleTime: CURRENT_USER_STALE_TIME,
-    gcTime: 30 * 60 * 1000,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    initialData: resolvedUser || undefined,
-    initialDataUpdatedAt: resolvedUser ? Date.now() : undefined
-  });
-
-  useEffect(() => {
-    if (query.data && query.data !== user) {
-      setUser(query.data);
-    }
-  }, [query.data, setUser, user]);
+  const data = enabled && canUseToken ? user ?? null : null;
+  const isPending = Boolean(enabled && hydrated && canUseToken && !data && !currentUserInitialized && ['idle', 'loading'].includes(currentUserStatus));
+  const isError = Boolean(enabled && canUseToken && currentUserStatus === 'error');
 
   return {
-    ...query,
-    data: query.data ?? resolvedUser,
+    data,
     hydrated,
-    token
+    token,
+    error: isError ? currentUserError : null,
+    isError,
+    isLoading: isPending,
+    isPending,
+    isSuccess: Boolean(data),
+    refetch: async () => {
+      refreshCurrentUser();
+      return { data: useAuthStore.getState().user };
+    }
   };
 }

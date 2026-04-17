@@ -12,6 +12,29 @@ const { nowMs } = require('./utils/perf');
 const landingMediaStorageService = require('./services/landingMediaStorageService');
 
 const app = express();
+const requestBurstState = new Map();
+
+function trackRequestBurst(req) {
+  const windowMs = 60 * 1000;
+  const key = `${req.ip}:${req.method}:${req.path}`;
+  const now = Date.now();
+  const current = requestBurstState.get(key);
+  if (!current || now - current.startedAt > windowMs) {
+    requestBurstState.set(key, { count: 1, startedAt: now, logged: false });
+    return;
+  }
+  current.count += 1;
+  if (!current.logged && current.count >= 12) {
+    current.logged = true;
+    console.warn('[request.burst.detected]', {
+      ip: req.ip,
+      method: req.method,
+      path: req.originalUrl,
+      count: current.count,
+      userAgent: req.get('user-agent') || null
+    });
+  }
+}
 
 app.use(helmet());
 app.use(cors({
@@ -29,6 +52,7 @@ app.use('/api', webhooksRoutes);
 app.use(express.json({ limit: '5mb' }));
 app.use(morgan('combined'));
 app.use((req, res, next) => {
+  trackRequestBurst(req);
   const startedAt = nowMs();
   res.on('finish', () => {
     const durationMs = Number((nowMs() - startedAt).toFixed(1));
@@ -47,9 +71,18 @@ app.use((req, res, next) => {
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 100,
+    max: 300,
     standardHeaders: true,
-    legacyHeaders: false
+    legacyHeaders: false,
+    handler: (req, res) => {
+      console.warn('[rate-limit.hit]', {
+        ip: req.ip,
+        method: req.method,
+        path: req.originalUrl,
+        userAgent: req.get('user-agent') || null
+      });
+      res.status(429).json({ message: 'Too many requests. Please try again later.' });
+    }
   })
 );
 app.use('/api/payments', paymentsRoutes);

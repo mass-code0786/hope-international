@@ -30,19 +30,48 @@ export const useAuthStore = create((set, get) => ({
   isLoggingOut: false,
   registrationSummary: null,
   rememberMe: false,
+  currentUserStatus: 'idle',
+  currentUserError: null,
+  currentUserInitialized: false,
+  currentUserVersion: 0,
   setSession: async ({ token, user, rememberMe = false, username = '' }) => {
     if (token) {
       setStoredToken(token, { rememberMe });
       await new Promise((resolve) => window.setTimeout(resolve, SESSION_PERSIST_DELAY_MS));
     }
     setRememberedUsername(username || user?.username || '', true);
-    set({ token, user, rememberMe, isLoggingOut: false });
+    set({
+      token,
+      user,
+      rememberMe,
+      isLoggingOut: false,
+      currentUserStatus: user ? 'ready' : 'idle',
+      currentUserError: null,
+      currentUserInitialized: Boolean(user)
+    });
   },
   setRememberPreference: (rememberMe, username = '') => {
     setRememberedUsername(username, rememberMe);
     set({ rememberMe: Boolean(rememberMe) });
   },
-  setUser: (user) => set({ user }),
+  setUser: (user) => set({
+    user,
+    currentUserStatus: user ? 'ready' : 'idle',
+    currentUserError: null,
+    currentUserInitialized: Boolean(user)
+  }),
+  setCurrentUserState: (payload = {}) => set((state) => ({
+    user: Object.prototype.hasOwnProperty.call(payload, 'user') ? (payload.user || null) : state.user,
+    currentUserStatus: payload.status || state.currentUserStatus,
+    currentUserError: Object.prototype.hasOwnProperty.call(payload, 'error') ? payload.error : state.currentUserError,
+    currentUserInitialized: Object.prototype.hasOwnProperty.call(payload, 'initialized') ? Boolean(payload.initialized) : state.currentUserInitialized
+  })),
+  refreshCurrentUser: () => set((state) => ({
+    currentUserStatus: 'idle',
+    currentUserError: null,
+    currentUserInitialized: false,
+    currentUserVersion: state.currentUserVersion + 1
+  })),
   setRegistrationSummary: (registrationSummary) => {
     writeRegistrationSummary(registrationSummary);
     set({ registrationSummary });
@@ -53,7 +82,15 @@ export const useAuthStore = create((set, get) => ({
   },
   clearSession: ({ loggingOut = false } = {}) => {
     clearStoredToken();
-    set({ token: null, user: null, rememberMe: false, isLoggingOut: Boolean(loggingOut) });
+    set({
+      token: null,
+      user: null,
+      rememberMe: false,
+      isLoggingOut: Boolean(loggingOut),
+      currentUserStatus: 'idle',
+      currentUserError: null,
+      currentUserInitialized: false
+    });
   },
   hydrate: () => {
     const token = getStoredToken();
@@ -64,7 +101,10 @@ export const useAuthStore = create((set, get) => ({
       hydrated: true,
       isLoggingOut: false,
       registrationSummary: readRegistrationSummary(),
-      rememberMe: getRememberedLoginPreference()
+      rememberMe: getRememberedLoginPreference(),
+      currentUserStatus: token ? (currentUser ? 'ready' : 'idle') : 'idle',
+      currentUserError: null,
+      currentUserInitialized: Boolean(token && currentUser)
     });
   }
 }));

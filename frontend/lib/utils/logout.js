@@ -19,6 +19,7 @@ const protectedQueryKeys = [
   queryKeys.notificationsRoot,
   queryKeys.supportThreads,
   queryKeys.homepageBanners,
+  queryKeys.homeProducts,
   queryKeys.teamChildren,
   queryKeys.teamSummary,
   queryKeys.teamTreeRoot,

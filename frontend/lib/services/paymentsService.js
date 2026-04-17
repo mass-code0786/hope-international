@@ -1,4 +1,5 @@
 import { apiFetch } from '@/lib/api/client';
+import { API_ROUTES } from '@/lib/api/routes';
 
 function toEnvelope(payload) {
   if (payload && typeof payload === 'object' && Object.prototype.hasOwnProperty.call(payload, 'data')) {
@@ -20,7 +21,7 @@ function toEnvelope(payload) {
 
 export async function createNowPaymentsPayment(payload) {
   return toEnvelope(
-    await apiFetch('/wallet/deposits/nowpayments', {
+    await apiFetch(API_ROUTES.wallet.nowpayments.create, {
       method: 'POST',
       body: JSON.stringify(payload)
     })
@@ -28,12 +29,12 @@ export async function createNowPaymentsPayment(payload) {
 }
 
 export async function getPaymentDetail(id) {
-  return toEnvelope(await apiFetch(`/wallet/deposits/nowpayments/${id}`));
+  return toEnvelope(await apiFetch(API_ROUTES.wallet.nowpayments.detail(id)));
 }
 
 export async function syncPaymentDetail(id) {
   return toEnvelope(
-    await apiFetch(`/payments/${id}/sync`, {
+    await apiFetch(API_ROUTES.wallet.nowpayments.sync(id), {
       method: 'POST',
       body: JSON.stringify({})
     })

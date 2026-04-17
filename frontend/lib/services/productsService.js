@@ -1,4 +1,5 @@
 import { apiFetch } from '@/lib/api/client';
+import { API_ROUTES } from '@/lib/api/routes';
 
 function withQuery(params = {}) {
   const query = new URLSearchParams();
@@ -24,7 +25,7 @@ function normalizeProductParams(params = {}) {
 }
 
 export async function getProducts(params = {}) {
-  const data = await apiFetch(`/products${withQuery(normalizeProductParams(params))}`);
+  const data = await apiFetch(`${API_ROUTES.products.list}${withQuery(normalizeProductParams(params))}`);
   if (Array.isArray(data)) {
     return {
       data,
@@ -46,5 +47,5 @@ export async function getProductsList(params = {}) {
 }
 
 export async function getProductDetail(id) {
-  return apiFetch(`/products/${id}`);
+  return apiFetch(API_ROUTES.products.detail(id));
 }

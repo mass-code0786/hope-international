@@ -1,4 +1,5 @@
 import { apiFetch } from '@/lib/api/client';
+import { API_ROUTES } from '@/lib/api/routes';
 
 export async function login(payload) {
   return apiFetch('/auth/login', {
@@ -61,6 +62,6 @@ export async function getReferralPreview(params) {
 }
 
 export async function getMe() {
-  const data = await apiFetch('/users/me');
+  const data = await apiFetch(API_ROUTES.users.me);
   return data.user || data;
 }
