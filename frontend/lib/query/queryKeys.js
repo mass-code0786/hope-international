@@ -20,6 +20,7 @@ export const queryKeys = {
   auctionDetail: (id) => ['auctions', id],
   auctionHistory: (kind = 'bids') => ['auctions', 'history', kind],
   orders: ['orders'],
+  homeProducts: ['products', 'home'],
   notificationsRoot: ['notifications'],
   notifications: (page = 1) => ['notifications', page],
   notificationsUnreadCount: ['notifications', 'unread-count'],

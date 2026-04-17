@@ -22,10 +22,11 @@ async function createProduct(client, payload) {
   return created;
 }
 
-async function listProducts(client, { onlyActive = true, category, page = 1, limit = 20 } = {}) {
+async function listProducts(client, { onlyActive = true, category, page = 1, limit = 20, includeTotal = true, view = 'card' } = {}) {
   const pagination = normalizePagination({ page, limit, maxLimit: 50 });
   const normalizedCategory = String(category || '').trim().toLowerCase();
-  const cacheKey = `${PRODUCT_LIST_CACHE_PREFIX}${onlyActive ? 'active' : 'all'}:${normalizedCategory || 'all-categories'}:${pagination.page}:${pagination.limit}`;
+  const normalizedView = view === 'full' ? 'full' : 'card';
+  const cacheKey = `${PRODUCT_LIST_CACHE_PREFIX}${onlyActive ? 'active' : 'all'}:${normalizedCategory || 'all-categories'}:${pagination.page}:${pagination.limit}:${normalizedView}:${includeTotal ? 'total' : 'nototal'}`;
   const cached = getCacheEntry(cacheKey);
   if (cached) return cached;
 
@@ -34,25 +35,30 @@ async function listProducts(client, { onlyActive = true, category, page = 1, lim
       onlyActive,
       category: normalizedCategory || undefined,
       limit: pagination.limit,
-      offset: pagination.offset
+      offset: pagination.offset,
+      includeTotal,
+      view: normalizedView
     });
+    const total = includeTotal ? result.total : ((pagination.page - 1) * pagination.limit) + result.items.length + (result.hasMore ? 1 : 0);
     const pageInfo = buildPagination({
       page: pagination.page,
       limit: pagination.limit,
-      total: result.total
+      total
     });
     const payload = {
       data: result.items,
       pagination: {
         ...pageInfo,
-        hasMore: pageInfo.page < pageInfo.totalPages,
-        nextPage: pageInfo.page < pageInfo.totalPages ? pageInfo.page + 1 : null
+        totalItems: includeTotal ? pageInfo.totalItems : undefined,
+        totalPages: includeTotal ? pageInfo.totalPages : undefined,
+        hasMore: includeTotal ? pageInfo.page < pageInfo.totalPages : Boolean(result.hasMore),
+        nextPage: includeTotal ? (pageInfo.page < pageInfo.totalPages ? pageInfo.page + 1 : null) : (result.hasMore ? pageInfo.page + 1 : null)
       }
     };
     return setCacheEntry(cacheKey, payload, PRODUCT_CACHE_TTL_MS);
   }, {
     thresholdMs: 120,
-    meta: { onlyActive: Boolean(onlyActive), category: normalizedCategory || null, page: pagination.page, limit: pagination.limit }
+    meta: { onlyActive: Boolean(onlyActive), category: normalizedCategory || null, page: pagination.page, limit: pagination.limit, view: normalizedView, includeTotal: Boolean(includeTotal) }
   });
 }
 

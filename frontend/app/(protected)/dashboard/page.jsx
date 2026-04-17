@@ -31,7 +31,7 @@ import { getUserAddress } from '@/lib/services/userAddressService';
 import { getUnreadNotificationCount } from '@/lib/services/notificationsService';
 import { getWallet } from '@/lib/services/walletService';
 import { claimWelcomeSpin, getWelcomeSpinStatus } from '@/lib/services/welcomeSpinService';
-import { useProducts } from '@/hooks/useProducts';
+import { useHomeProducts } from '@/hooks/useProducts';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { addToCart, subscribeCart } from '@/lib/utils/cart';
 import { currency } from '@/lib/utils/format';
@@ -219,18 +219,23 @@ function CartPill() {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { data: productData, isPending: productsPending, isError: productsError, refetch: refetchProducts } = useProducts();
-  const bannersQuery = useQuery({ queryKey: queryKeys.homepageBanners, queryFn: getHomepageBanners, placeholderData: (previousData) => previousData });
-  const addressQuery = useQuery({ queryKey: queryKeys.userAddress, queryFn: getUserAddress, placeholderData: (previousData) => previousData });
+  const { data: productData, isPending: productsPending, isError: productsError, refetch: refetchProducts } = useHomeProducts();
+  const bannersQuery = useQuery({ queryKey: queryKeys.homepageBanners, queryFn: getHomepageBanners, placeholderData: (previousData) => previousData, staleTime: 300_000, refetchOnWindowFocus: false, refetchOnReconnect: false });
+  const addressQuery = useQuery({ queryKey: queryKeys.userAddress, queryFn: getUserAddress, placeholderData: (previousData) => previousData, staleTime: 300_000, refetchOnWindowFocus: false, refetchOnReconnect: false });
   const notificationsCountQuery = useQuery({
     queryKey: queryKeys.notificationsUnreadCount,
     queryFn: getUnreadNotificationCount,
-    staleTime: 15_000
+    staleTime: 15_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false
   });
   const walletQuery = useQuery({
     queryKey: queryKeys.wallet,
     queryFn: getWallet,
-    placeholderData: (previousData) => previousData
+    placeholderData: (previousData) => previousData,
+    staleTime: 45_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false
   });
   const queryClient = useQueryClient();
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
@@ -241,7 +246,10 @@ export default function DashboardPage() {
   const welcomeSpinQuery = useQuery({
     queryKey: queryKeys.welcomeSpinStatus,
     queryFn: getWelcomeSpinStatus,
-    placeholderData: (previousData) => previousData
+    placeholderData: (previousData) => previousData,
+    staleTime: 45_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false
   });
 
   const buyMutation = useMutation({
@@ -315,8 +323,6 @@ export default function DashboardPage() {
     onError: (error) => toast.error(error.message || 'Unable to claim welcome reward')
   });
 
-  const isInitialPageLoading = productsPending && !productData && walletQuery.isPending && !walletQuery.data;
-  const hasFatalError = walletQuery.isError && !walletQuery.data;
   const address = addressQuery.data?.data?.address || null;
   const products = Array.isArray(productData) ? productData : [];
   const homepageBanners = Array.isArray(bannersQuery.data) ? bannersQuery.data : [];
@@ -382,22 +388,6 @@ export default function DashboardPage() {
 
     return () => window.clearInterval(timer);
   }, [slides.length]);
-
-  if (isInitialPageLoading) return null;
-
-  if (hasFatalError) {
-    return (
-      <ErrorState
-        message="Home page data could not be loaded."
-        onRetry={() => {
-          walletQuery.refetch();
-          bannersQuery.refetch();
-          addressQuery.refetch();
-          refetchProducts();
-        }}
-      />
-    );
-  }
 
   return (
     <>

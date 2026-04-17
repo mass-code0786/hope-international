@@ -52,7 +52,7 @@ export function AppShell({ children }) {
     }
   }, [clearSession, meQuery.error, meQuery.isError, resolvedUser, router]);
 
-  const isAuthBootstrapping = !hydrated || (Boolean(token) && meQuery.isPending && !resolvedUser);
+  const isAuthBootstrapping = !hydrated;
   const sellerActive = sellerRoleAccess || Boolean(sellerAccessQuery.data?.canAccessDashboard);
 
   if (isLoggingOut) {
@@ -60,6 +60,7 @@ export function AppShell({ children }) {
   }
 
   if (isAuthBootstrapping) return null;
+  if (!token) return null;
 
   if (token && meQuery.isError && !resolvedUser) {
     return (

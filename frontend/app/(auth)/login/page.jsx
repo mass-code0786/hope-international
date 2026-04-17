@@ -9,10 +9,7 @@ import toast from 'react-hot-toast';
 import Logo from '@/components/common/Logo';
 import { useAuthStore } from '@/lib/store/authStore';
 import { getWebauthnLoginOptions, verifyWebauthnLogin } from '@/lib/services/authService';
-import { getHomepageBanners } from '@/lib/services/bannersService';
-import { getProducts } from '@/lib/services/productsService';
 import { getTeamSummary, getTeamTreeRoot } from '@/lib/services/teamService';
-import { getWallet } from '@/lib/services/walletService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { getPostLoginRoute } from '@/lib/utils/postLoginRedirect';
 import { getWebAuthnAssertion, supportsWebAuthn } from '@/lib/utils/webauthn';
@@ -40,18 +37,9 @@ export default function LoginPage() {
   }, []);
 
   async function warmPostLoginRoute(route) {
-    if (route === '/admin') return;
+    if (route === '/admin' || route === '/dashboard' || route === '/shop' || route === '/seller') return;
 
-    const tasks = [
-      queryClient.prefetchQuery({ queryKey: queryKeys.wallet, queryFn: getWallet })
-    ];
-
-    if (route === '/dashboard' || route === '/shop' || route === '/seller') {
-      tasks.push(
-        queryClient.prefetchQuery({ queryKey: queryKeys.products, queryFn: getProducts }),
-        queryClient.prefetchQuery({ queryKey: queryKeys.homepageBanners, queryFn: getHomepageBanners })
-      );
-    }
+    const tasks = [];
 
     if (route === '/team') {
       tasks.push(

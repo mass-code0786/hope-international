@@ -194,6 +194,7 @@ export default function ShopPage() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [bannersEnabled, setBannersEnabled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [secondarySectionsEnabled, setSecondarySectionsEnabled] = useState(false);
   const selectedCategory = activeCategory === 'All' ? undefined : activeCategory;
   const deferredSearch = useDeferredValue(search);
   const {
@@ -204,7 +205,7 @@ export default function ShopPage() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage
-  } = useInfiniteProducts({ limit: 16, category: selectedCategory });
+  } = useInfiniteProducts({ limit: 8, category: selectedCategory });
   const bannersQuery = useQuery({
     queryKey: queryKeys.homepageBanners,
     queryFn: getHomepageBanners,
@@ -258,6 +259,32 @@ export default function ShopPage() {
       if (timeoutId !== null) window.clearTimeout(timeoutId);
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    let idleId = null;
+    let timeoutId = null;
+
+    const enable = () => {
+      if (!cancelled) setSecondarySectionsEnabled(true);
+    };
+
+    setSecondarySectionsEnabled(false);
+
+    if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+      idleId = window.requestIdleCallback(enable, { timeout: 900 });
+    } else {
+      timeoutId = window.setTimeout(enable, 200);
+    }
+
+    return () => {
+      cancelled = true;
+      if (idleId !== null && typeof window !== 'undefined' && typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
+    };
+  }, [activeCategory]);
 
   const buyMutation = useMutation({
     mutationFn: (product) => {
@@ -339,31 +366,6 @@ export default function ShopPage() {
     return () => window.clearInterval(timer);
   }, [heroBanners.length]);
 
-  useEffect(() => {
-    if (!productPages.length || isError || isFetchingNextPage || !hasNextPage) return undefined;
-
-    let cancelled = false;
-    let idleId = null;
-    let timeoutId = null;
-    const warmCatalog = () => {
-      if (!cancelled) void fetchNextPage();
-    };
-
-    if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
-      idleId = window.requestIdleCallback(warmCatalog, { timeout: 1500 });
-    } else {
-      timeoutId = window.setTimeout(warmCatalog, 300);
-    }
-
-    return () => {
-      cancelled = true;
-      if (idleId !== null && typeof window !== 'undefined' && typeof window.cancelIdleCallback === 'function') {
-        window.cancelIdleCallback(idleId);
-      }
-      if (timeoutId !== null) window.clearTimeout(timeoutId);
-    };
-  }, [fetchNextPage, hasNextPage, isError, isFetchingNextPage, productPages.length]);
-
   const filtered = useMemo(() => {
     return products.filter((product) => {
       const text = `${product?.name || ''} ${product?.description || ''}`.toLowerCase();
@@ -375,6 +377,8 @@ export default function ShopPage() {
   const recommended = useMemo(() => filtered, [filtered]);
   const newArrivals = useMemo(() => [...filtered].slice(-12).reverse(), [filtered]);
   const trending = useMemo(() => [...filtered].sort((a, b) => Number(b.price || 0) - Number(a.price || 0)).slice(0, 12), [filtered]);
+  const visibleDeals = useMemo(() => (deals.length ? deals : recommended).slice(0, 8), [deals, recommended]);
+  const visibleRecommended = useMemo(() => recommended.slice(0, Math.max(8, products.length)), [products.length, recommended]);
 
   const isProductsLoading = isPending && !data;
   const hasProducts = !isError && filtered.length > 0;
@@ -383,9 +387,9 @@ export default function ShopPage() {
   const walletReady = !walletQuery.isLoading && !walletQuery.isError;
   const pendingPayableAmount = pendingPurchase ? getProductPricing(pendingPurchase, 1).lineFinalTotal : 0;
   const pendingCanAfford = pendingPurchase ? hasSufficientWalletBalance(walletQuery.data, pendingPayableAmount) : true;
-  const totalActiveItems = catalogPagination?.totalItems || products.length;
+  const totalActiveItems = Number.isFinite(Number(catalogPagination?.totalItems)) ? Number(catalogPagination.totalItems) : null;
   const categoryLabel = activeCategory === 'All' ? 'all active products' : `${activeCategory} products`;
-  const reachedAllProducts = !hasNextPage && products.length >= totalActiveItems;
+  const reachedAllProducts = !hasNextPage;
   const visibleCatalogCount = filtered.length;
 
   return (
@@ -514,7 +518,7 @@ export default function ShopPage() {
           <div>
             <SectionTitle title="Deals of the Day" count={deals.length || 0} />
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-              {(deals.length ? deals : recommended).map((product) => (
+              {visibleDeals.map((product) => (
                 <ProductCard
                   key={`deal-${product.id}`}
                   product={product}
@@ -530,7 +534,7 @@ export default function ShopPage() {
           <div>
             <SectionTitle title="Recommended" count={recommended.length} />
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-              {recommended.map((product) => (
+              {visibleRecommended.map((product) => (
                 <ProductCard
                   key={`recommended-${product.id}`}
                   product={product}
@@ -553,48 +557,52 @@ export default function ShopPage() {
                 </button>
               </div>
             ) : null}
-            {!reachedAllProducts ? (
+            {!reachedAllProducts && totalActiveItems !== null ? (
               <p className="mt-2 text-center text-[10px] text-slate-500">
                 Showing {products.length} of {totalActiveItems} {categoryLabel}
               </p>
-            ) : (
+            ) : reachedAllProducts ? (
               <p className="mt-2 text-center text-[10px] text-slate-500">
                 Showing all {visibleCatalogCount} matching {activeCategory === 'All' ? 'active products' : activeCategory.toLowerCase() + ' products'}
               </p>
-            )}
+            ) : null}
           </div>
 
-          <div>
-            <SectionTitle title="New Arrivals" count={newArrivals.length} />
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-              {newArrivals.map((product) => (
-                <ProductCard
-                  key={`new-${product.id}`}
-                  product={product}
-                  onBuy={(p) => setAddressStepProduct(p)}
-                  isBuying={buyMutation.isPending && buyingProductId === product.id}
-                  disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
-                  buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy Now'}
-                />
-              ))}
-            </div>
-          </div>
+          {secondarySectionsEnabled ? (
+            <>
+              <div>
+                <SectionTitle title="New Arrivals" count={newArrivals.length} />
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                  {newArrivals.map((product) => (
+                    <ProductCard
+                      key={`new-${product.id}`}
+                      product={product}
+                      onBuy={(p) => setAddressStepProduct(p)}
+                      isBuying={buyMutation.isPending && buyingProductId === product.id}
+                      disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
+                      buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy Now'}
+                    />
+                  ))}
+                </div>
+              </div>
 
-          <div>
-            <SectionTitle title="Trending" count={trending.length} />
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-              {trending.map((product) => (
-                <ProductCard
-                  key={`trending-${product.id}`}
-                  product={product}
-                  onBuy={(p) => setAddressStepProduct(p)}
-                  isBuying={buyMutation.isPending && buyingProductId === product.id}
-                  disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
-                  buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy Now'}
-                />
-              ))}
-            </div>
-          </div>
+              <div>
+                <SectionTitle title="Trending" count={trending.length} />
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                  {trending.map((product) => (
+                    <ProductCard
+                      key={`trending-${product.id}`}
+                      product={product}
+                      onBuy={(p) => setAddressStepProduct(p)}
+                      isBuying={buyMutation.isPending && buyingProductId === product.id}
+                      disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
+                      buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy Now'}
+                    />
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : null}
         </section>
       ) : null}
 

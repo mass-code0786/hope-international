@@ -24,15 +24,29 @@ async function createProduct(client, payload) {
   return rows[0];
 }
 
-async function listProducts(client, { onlyActive = false, category, limit = 20, offset = 0 } = {}) {
+async function listProducts(client, { onlyActive = false, category, limit = 20, offset = 0, includeTotal = true, view = 'card' } = {}) {
   const safeLimit = Math.max(1, Number(limit) || 20);
   const safeOffset = Math.max(0, Number(offset) || 0);
   const normalizedCategory = String(category || '').trim().toLowerCase();
   const pool = q(client);
-  const [listResult, countResult] = await Promise.all([
-    pool.query(
-    `SELECT
-       id,
+  const listColumns = view === 'full'
+    ? `id,
+       sku,
+       name,
+       description,
+       category,
+       price,
+       pv,
+       bv,
+       is_active,
+       is_qualifying,
+       image_url,
+       gallery,
+       seller_profile_id,
+       moderation_status,
+       created_at,
+       updated_at`
+    : `id,
        sku,
        name,
        category,
@@ -41,31 +55,38 @@ async function listProducts(client, { onlyActive = false, category, limit = 20, 
        bv,
        is_active,
        is_qualifying,
-        image_url,
-       LEFT(COALESCE(description, ''), 160) AS description,
-       seller_profile_id,
-       moderation_status,
-       created_at,
-       updated_at
+       COALESCE(image_url, gallery->>0) AS image_url,
+       LEFT(COALESCE(description, ''), 80) AS description,
+       created_at`;
+  const listResult = await pool.query(
+    `SELECT ${listColumns}
      FROM products
      WHERE ($1::boolean = false OR is_active = true)
        AND ($2::text = '' OR LOWER(COALESCE(category, '')) = $2::text)
      ORDER BY created_at DESC, id DESC
      LIMIT $3 OFFSET $4`,
-      [onlyActive, normalizedCategory, safeLimit, safeOffset]
-    ),
-    pool.query(
+    [onlyActive, normalizedCategory, includeTotal ? safeLimit : safeLimit + 1, safeOffset]
+  );
+
+  let total = null;
+  if (includeTotal) {
+    const countResult = await pool.query(
       `SELECT COUNT(*) AS total
        FROM products
        WHERE ($1::boolean = false OR is_active = true)
          AND ($2::text = '' OR LOWER(COALESCE(category, '')) = $2::text)`,
       [onlyActive, normalizedCategory]
-    )
-  ]);
+    );
+    total = Number(countResult.rows[0]?.total || 0);
+  }
+
+  const hasMore = !includeTotal && listResult.rows.length > safeLimit;
+  const items = includeTotal ? listResult.rows : listResult.rows.slice(0, safeLimit);
 
   return {
-    items: listResult.rows,
-    total: Number(countResult.rows[0]?.total || 0)
+    items,
+    total,
+    hasMore
   };
 }
 

@@ -10,11 +10,15 @@ const create = asyncHandler(async (req, res) => {
 const list = asyncHandler(async (req, res) => {
   const onlyActive = req.query.active !== 'false';
   const category = typeof req.query.category === 'string' ? req.query.category.trim() : '';
+  const includeTotal = req.query.includeTotal !== 'false';
+  const view = typeof req.query.view === 'string' ? req.query.view.trim().toLowerCase() : 'card';
   const result = await productService.listProducts(null, {
     onlyActive,
     category: category || undefined,
     page: req.query.page,
-    limit: req.query.limit
+    limit: req.query.limit,
+    includeTotal,
+    view
   });
   res.setHeader('Cache-Control', 'public, max-age=30, s-maxage=30');
   return success(res, {

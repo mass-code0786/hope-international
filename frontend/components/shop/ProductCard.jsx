@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { ArrowRight, ImageOff, Plus, Star } from 'lucide-react';
 import { currency } from '@/lib/utils/format';
@@ -53,6 +54,8 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
   const imageTheme = buildImageTheme(safeProduct.id || safeProduct.name);
   const cover = getProductCover(safeProduct);
   const buyNowLabel = disableBuying ? buyLabel : isBuying ? '...' : buyLabel;
+  const [imageFailed, setImageFailed] = useState(false);
+  const showImage = Boolean(cover) && !imageFailed;
 
   return (
     <article className="flex h-[15rem] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
@@ -64,12 +67,13 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
           <Star size={9} className="fill-amber-400 text-amber-400" />
           {rating}
         </span>
-        {cover ? (
+        {showImage ? (
           <img
             src={cover}
             alt={safeProduct.name || 'Product'}
             loading="lazy"
             decoding="async"
+            onError={() => setImageFailed(true)}
             className="h-full w-full object-cover"
           />
         ) : (

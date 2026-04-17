@@ -14,6 +14,8 @@ function normalizeProductParams(params = {}) {
   const next = {};
   if (params.active !== undefined) next.active = params.active;
   if (typeof params.category === 'string' && params.category.trim()) next.category = params.category.trim();
+  if (typeof params.view === 'string' && params.view.trim()) next.view = params.view.trim();
+  if (params.includeTotal !== undefined) next.includeTotal = params.includeTotal;
   const page = Number(params.page);
   if (Number.isInteger(page) && page > 0) next.page = page;
   const limit = Number(params.limit);
