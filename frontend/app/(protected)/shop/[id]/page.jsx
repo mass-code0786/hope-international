@@ -174,7 +174,7 @@ export default function ProductDetailPage() {
   const highlights = ['Verified marketplace product', 'Fast dispatch and tracked support', product.is_qualifying ? 'Qualifying item for network benefits' : 'Trusted and quality-checked item'];
 
   return (
-    <div className="-mx-4 space-y-3 bg-[#f8fafc] px-3 pb-28 pt-0 sm:mx-0 sm:rounded-2xl sm:border sm:border-slate-200 sm:px-4 sm:py-3 sm:pb-24">
+    <div className="-mx-4 space-y-3 bg-[#f8fafc] px-3 pb-[calc(4.75rem+4.5rem+env(safe-area-inset-bottom,0px)+1.5rem)] pt-0 sm:mx-0 sm:rounded-2xl sm:border sm:border-slate-200 sm:px-4 sm:py-3 sm:pb-24">
       <section className="sticky top-0 z-20 rounded-xl border border-slate-200 bg-white p-2 shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
         <div className="flex items-center justify-between gap-2">
           <Link href="/shop" className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700"><ArrowLeft size={14} /></Link>
@@ -244,7 +244,10 @@ export default function ProductDetailPage() {
 
       {relatedProducts.length ? <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_4px_12px_rgba(0,0,0,0.05)]"><h2 className="text-[13px] font-semibold text-slate-900">Related Products</h2><div className="mt-2 grid grid-cols-2 gap-2">{relatedProducts.map((item) => { const itemOffer = getOfferPercent(item); const itemPricing = getProductPricing(item, 1); const itemCover = item.image_url || item.gallery?.[0] || ''; return <Link key={item.id} href={`/shop/${encodeURIComponent(String(item.id))}`} className="overflow-hidden rounded-xl border border-slate-200 bg-white">{itemCover ? <img src={itemCover} alt={item.name || 'Product'} className="h-20 w-full object-cover" /> : <div className={`flex h-20 items-center justify-center bg-gradient-to-br ${buildImageTheme(item.id || item.name)} text-slate-500`}><ImageOff size={16} /></div>}<div className="space-y-1 p-2"><p className="line-clamp-2 text-[10px] font-medium text-slate-800">{item.name || 'Product'}</p><div className="flex items-center gap-1"><p className="text-[11px] font-bold text-slate-900">{currency(itemPricing.finalPrice)}</p><p className="text-[9px] text-emerald-700">-{itemOffer}%</p></div></div></Link>; })}</div></section> : null}
 
-      <section className="fixed bottom-12 left-0 right-0 z-30 border-t border-slate-200 bg-white p-2 md:hidden">
+      <section
+        className="fixed left-0 right-0 z-30 border-t border-slate-200 bg-white p-2 md:hidden"
+        style={{ bottom: 'calc(4.75rem + env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
+      >
         <div className="mx-auto grid max-w-3xl grid-cols-2 gap-2">
           <button onClick={() => { const nextCount = addToCart(product, 1); if (!nextCount) { toast.error('Unable to add this product to cart'); return; } toast.success(`Added to cart (${nextCount})`); }} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[12px] font-semibold text-slate-700">Add to Cart</button>
           <button onClick={() => {
