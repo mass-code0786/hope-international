@@ -54,7 +54,9 @@ function buildImageTheme(seed) {
 }
 
 function getProductImages(product) {
-  const gallery = Array.isArray(product?.gallery) ? product.gallery.filter(Boolean) : [];
+  const gallery = Array.isArray(product?.gallery)
+    ? product.gallery.filter(Boolean)
+    : [];
   const primary = product?.image_url || gallery[0] || '';
   const rest = gallery.filter((item) => item !== primary);
   return primary ? [primary, ...rest] : [];
@@ -63,17 +65,19 @@ function getProductImages(product) {
 export default function ProductDetailPage() {
   const params = useParams();
   const id = String(params?.id || '');
+  const [walletEnabled, setWalletEnabled] = useState(false);
+  const [isBuying, setIsBuying] = useState(false);
+  const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
+  const [primaryImageFailed, setPrimaryImageFailed] = useState(false);
+  const [thumbnailFailures, setThumbnailFailures] = useState({});
   const { data, isLoading: productsLoading } = useProducts();
   const productQuery = useQuery({
     queryKey: queryKeys.productDetail(id),
     queryFn: () => getProductDetail(id),
     enabled: Boolean(id)
   });
-  const [walletEnabled, setWalletEnabled] = useState(false);
   const walletQuery = useWallet({ enabled: walletEnabled });
   const addressQuery = useQuery({ queryKey: queryKeys.userAddress, queryFn: getUserAddress, enabled: purchaseModalOpen });
-  const [isBuying, setIsBuying] = useState(false);
-  const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const products = Array.isArray(data) ? data : [];
@@ -87,7 +91,7 @@ export default function ProductDetailPage() {
       .filter((item) => String(item?.id) !== id)
       .sort((a, b) => (getCategory(b) === category ? 1 : 0) - (getCategory(a) === category ? 1 : 0))
       .slice(0, 8);
-  }, [products, product, id]);
+  }, [products, product, id, productsLoading]);
 
   const pricing = getProductPricing(product, 1);
   const address = addressQuery.data?.data?.address || null;
@@ -118,6 +122,11 @@ export default function ProductDetailPage() {
       if (timeoutId !== null) window.clearTimeout(timeoutId);
     };
   }, []);
+
+  useEffect(() => {
+    setPrimaryImageFailed(false);
+    setThumbnailFailures({});
+  }, [id]);
 
   const buyMutation = useMutation({
     mutationFn: (selected) => {
@@ -161,6 +170,7 @@ export default function ProductDetailPage() {
   const rating = getRating(product);
   const imageTheme = buildImageTheme(product.id || product.name);
   const images = getProductImages(product);
+  const visiblePrimaryImage = primaryImageFailed ? '' : (images[0] || '');
   const highlights = ['Verified marketplace product', 'Fast dispatch and tracked support', product.is_qualifying ? 'Qualifying item for network benefits' : 'Trusted and quality-checked item'];
 
   return (
@@ -180,10 +190,12 @@ export default function ProductDetailPage() {
         <div className={`relative h-56 bg-gradient-to-br ${imageTheme}`}>
           <span className="absolute left-2 top-2 z-10 rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">-{offerPercent}%</span>
           <span className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-medium text-slate-700"><Star size={10} className="fill-amber-400 text-amber-400" />{rating}</span>
-          {images[0] ? <img src={images[0]} alt={product.name || 'Product'} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-slate-500"><ImageOff size={28} /></div>}
+          {visiblePrimaryImage ? <img src={visiblePrimaryImage} alt={product.name || 'Product'} onError={() => setPrimaryImageFailed(true)} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-slate-500"><ImageOff size={28} /></div>}
         </div>
         <div className="grid grid-cols-4 gap-1.5 border-t border-slate-100 p-2">
-          {(images.length ? images.slice(0, 4) : [null, null, null, null]).map((src, index) => src ? <img key={`${src}-${index}`} src={src} alt={`${product.name || 'Product'} ${index + 1}`} className="h-12 w-full rounded-md border border-slate-200 object-cover" /> : <div key={index} className={`flex h-12 items-center justify-center rounded-md border border-white/60 bg-gradient-to-br ${buildImageTheme(`${product.id}-${index}`)} text-slate-500`}><ImageOff size={12} /></div>)}
+          {(images.length ? images.slice(0, 4) : [null, null, null, null]).map((src, index) => (src && !thumbnailFailures[index])
+            ? <img key={`${src}-${index}`} src={src} alt={`${product.name || 'Product'} ${index + 1}`} onError={() => setThumbnailFailures((current) => ({ ...current, [index]: true }))} className="h-12 w-full rounded-md border border-slate-200 object-cover" />
+            : <div key={src ? `${src}-${index}` : index} className={`flex h-12 items-center justify-center rounded-md border border-white/60 bg-gradient-to-br ${buildImageTheme(`${product.id}-${index}`)} text-slate-500`}><ImageOff size={12} /></div>)}
         </div>
       </section>
 

@@ -4,6 +4,36 @@ const API_BASE_URL =
   'http://localhost:4000';
 const API_TIMEOUT_MS = 12_000;
 const TOKEN_KEY = 'hope_token';
+const RETRYABLE_GET_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504]);
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseRetryAfterMs(response) {
+  const retryAfter = response.headers.get('retry-after');
+  if (!retryAfter) return null;
+
+  const seconds = Number(retryAfter);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return seconds * 1000;
+  }
+
+  const retryAt = Date.parse(retryAfter);
+  if (Number.isFinite(retryAt)) {
+    return Math.max(retryAt - Date.now(), 0);
+  }
+
+  return null;
+}
+
+function getDefaultStatusMessage(status) {
+  if (status === 404) return 'Requested service was not found.';
+  if (status === 408) return 'The request timed out. Please try again.';
+  if (status === 429) return 'Too many requests. Please wait a moment and try again.';
+  if (status >= 500) return 'The server could not complete the request. Please try again.';
+  return 'Request failed';
+}
 
 function extractApiErrorMessage(data) {
   const formError = data?.details?.formErrors?.find((msg) => typeof msg === 'string' && msg.trim());
@@ -20,10 +50,10 @@ function extractApiErrorMessage(data) {
     }
   }
 
-  return data?.message || 'Request failed';
+  return data?.message || '';
 }
 
-export async function apiFetch(path, options = {}) {
+export async function apiFetch(path, options = {}, attempt = 0) {
   const token = typeof window === 'undefined'
     ? null
     : window.localStorage.getItem(TOKEN_KEY) || window.sessionStorage.getItem(TOKEN_KEY);
@@ -54,7 +84,7 @@ export async function apiFetch(path, options = {}) {
   } catch (error) {
     clearTimeout(timeoutId);
     if (error?.name === 'AbortError') {
-      const timeoutError = new Error('Unable to load data');
+      const timeoutError = new Error(getDefaultStatusMessage(408));
       timeoutError.status = 408;
       timeoutError.details = { reason: 'timeout' };
       throw timeoutError;
@@ -67,7 +97,16 @@ export async function apiFetch(path, options = {}) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    const error = new Error(extractApiErrorMessage(data));
+    const method = String(options.method || 'GET').toUpperCase();
+    if (method === 'GET' && attempt < 2 && RETRYABLE_GET_STATUS_CODES.has(response.status)) {
+      const retryAfterMs = parseRetryAfterMs(response);
+      const backoffMs = retryAfterMs ?? (response.status === 429 ? 1200 * (attempt + 1) : 500 * (attempt + 1));
+      await sleep(backoffMs);
+      return apiFetch(path, options, attempt + 1);
+    }
+
+    const message = extractApiErrorMessage(data) || getDefaultStatusMessage(response.status);
+    const error = new Error(message);
     error.status = response.status;
     error.details = data?.details || null;
     throw error;

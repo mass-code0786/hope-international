@@ -40,6 +40,18 @@ export function useAuthMutations() {
   const [error, setError] = useState('');
 
   async function refreshCoreQueries(user) {
+    await queryClient.cancelQueries({ queryKey: queryKeys.me });
+    await queryClient.cancelQueries({ queryKey: queryKeys.webauthn });
+    await queryClient.cancelQueries({ queryKey: queryKeys.welcomeSpinStatus });
+    await queryClient.cancelQueries({ queryKey: queryKeys.sellerMe });
+    await queryClient.cancelQueries({ queryKey: queryKeys.sellerAccess });
+    await queryClient.cancelQueries({ queryKey: queryKeys.wallet });
+    await queryClient.cancelQueries({ queryKey: queryKeys.orders });
+    await queryClient.cancelQueries({ queryKey: queryKeys.weeklyCompensationRoot });
+    await queryClient.cancelQueries({ queryKey: queryKeys.monthlyCompensationRoot });
+    await queryClient.cancelQueries({ queryKey: queryKeys.teamChildren });
+    await queryClient.cancelQueries({ queryKey: queryKeys.teamSummary });
+    await queryClient.cancelQueries({ queryKey: queryKeys.teamTreeRoot });
     queryClient.removeQueries({ queryKey: queryKeys.me });
     queryClient.removeQueries({ queryKey: queryKeys.webauthn });
     queryClient.removeQueries({ queryKey: queryKeys.welcomeSpinStatus });

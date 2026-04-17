@@ -403,7 +403,7 @@ export default function ShopPage() {
   const newArrivals = useMemo(() => [...filtered].slice(-12).reverse(), [filtered]);
   const trending = useMemo(() => [...filtered].sort((a, b) => Number(b.price || 0) - Number(a.price || 0)).slice(0, 12), [filtered]);
   const visibleDeals = useMemo(() => (deals.length ? deals : recommended).slice(0, 8), [deals, recommended]);
-  const visibleRecommended = useMemo(() => recommended.slice(0, 8), [recommended]);
+  const visibleRecommended = useMemo(() => recommended, [recommended]);
 
   const isProductsLoading = isPending && !data;
   const hasProducts = !isError && filtered.length > 0;
@@ -586,7 +586,7 @@ export default function ShopPage() {
                 ) : null}
                 {!reachedAllProducts && totalActiveItems !== null ? (
                   <p className="mt-2 text-center text-[10px] text-slate-500">
-                    Showing {products.length} of {totalActiveItems} {categoryLabel}
+                    Showing {visibleCatalogCount} of {totalActiveItems} {categoryLabel}
                   </p>
                 ) : reachedAllProducts ? (
                   <p className="mt-2 text-center text-[10px] text-slate-500">

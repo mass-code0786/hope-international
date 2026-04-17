@@ -98,7 +98,7 @@ export function AppShell({ children }) {
           <LoginWelcomeVoice username={resolvedUser?.username} />
           {token && meQuery.isError && !resolvedUser ? (
             <div className="mb-4">
-              <ErrorState message="Unable to fully load your account. Some sections may be limited." onRetry={meQuery.refetch} />
+              <ErrorState message={meQuery.error?.message || 'Unable to fully load your account. Some sections may be limited.'} onRetry={meQuery.refetch} />
             </div>
           ) : null}
           {children}

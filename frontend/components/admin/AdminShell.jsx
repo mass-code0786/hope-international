@@ -68,7 +68,7 @@ export function AdminShell({ children }) {
   if (isLoggingOut) return null;
   if (isHydrating || isAuthBootstrapping) return null;
   if (!token) return null;
-  if (token && meQuery.isError && !resolvedUser) return <ErrorState message="Unable to verify admin access." onRetry={meQuery.refetch} />;
+  if (token && meQuery.isError && !resolvedUser) return <ErrorState message={meQuery.error?.message || 'Unable to verify admin access.'} onRetry={meQuery.refetch} />;
 
   if (!canAccessAdminArea(resolvedUser)) {
     return (
