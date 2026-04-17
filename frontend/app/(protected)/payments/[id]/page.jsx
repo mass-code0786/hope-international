@@ -52,8 +52,8 @@ function Countdown({ expiresAt }) {
 }
 
 function formatProviderPayable(payment) {
-  const payAmount = Number(payment?.pay_amount ?? 0);
-  const payCurrency = String(payment?.pay_currency || '').trim().toUpperCase();
+  const payAmount = Number(payment?.exact_payable_amount ?? payment?.pay_amount ?? 0);
+  const payCurrency = String(payment?.exact_payable_currency || payment?.pay_currency || '').trim().toUpperCase();
   if (payAmount > 0 && payCurrency) {
     return `${number(payAmount)} ${payCurrency}`;
   }
@@ -91,6 +91,9 @@ export default function PaymentStatusPage() {
 
   const payment = paymentQuery.data?.data || null;
   const paymentExpired = Boolean(payment?.is_expired) || String(payment?.user_facing_status || '').toLowerCase() === 'expired';
+  const partialPaidAmount = Number(payment?.actually_paid || 0);
+  const partialExpectedAmount = Number(payment?.exact_payable_amount ?? payment?.pay_amount ?? payment?.expected_amount ?? 0);
+  const partialRemainingAmount = Number(payment?.remaining_pay_amount ?? Math.max(0, partialExpectedAmount - partialPaidAmount));
 
   useEffect(() => {
     if (!payment?.id) return;
@@ -174,6 +177,13 @@ export default function PaymentStatusPage() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-300">Payment Timer</p>
             <p className="mt-2 text-lg font-semibold text-white"><Countdown expiresAt={payment?.expires_at} /></p>
             <p className="mt-2 text-slate-200">{meta.description}</p>
+            {!paymentExpired && payment?.exact_payable_amount ? (
+              <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 shadow-[0_0_22px_rgba(34,197,94,0.08)]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-100/78">Exact Amount To Pay</p>
+                <p className="mt-1 text-[1.55rem] font-semibold tracking-[-0.05em] text-white">{formatProviderPayable(payment)}</p>
+                <p className="mt-2 text-xs text-emerald-50/88">Send the exact amount shown below to avoid partial payment.</p>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -184,7 +194,7 @@ export default function PaymentStatusPage() {
               <p className="mt-2 text-lg font-semibold text-slate-950">{currency(payment?.deposit_amount || payment?.requested_amount || 0)}</p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Amount To Pay</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Exact Amount To Pay</p>
               <p className="mt-2 text-lg font-semibold text-slate-950">{formatProviderPayable(payment)}</p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -216,6 +226,30 @@ export default function PaymentStatusPage() {
             <p className="mt-2 text-xs text-slate-500">Created {payment?.created_at ? dateTime(payment.created_at) : '-'}</p>
             <p className="mt-2 text-xs text-slate-500">Network {payment?.network || 'BSC/BEP20'} | Coin USDT</p>
           </div>
+
+          {String(payment?.payment_status || '').toLowerCase() === 'partially_paid' ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700">Partial Payment Details</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <div>
+                  <p className="text-[11px] text-amber-700/80">Expected</p>
+                  <p className="mt-1 text-sm font-semibold text-amber-950">{formatProviderPayable(payment)}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-amber-700/80">Received</p>
+                  <p className="mt-1 text-sm font-semibold text-amber-950">
+                    {partialPaidAmount > 0 ? `${number(partialPaidAmount)} ${String(payment?.exact_payable_currency || payment?.pay_currency || 'USDT').trim().toUpperCase()}` : '-'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-amber-700/80">Remaining</p>
+                  <p className="mt-1 text-sm font-semibold text-amber-950">
+                    {partialRemainingAmount > 0 ? `${number(partialRemainingAmount)} ${String(payment?.exact_payable_currency || payment?.pay_currency || 'USDT').trim().toUpperCase()}` : '-'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
       </section>
     </div>

@@ -134,19 +134,27 @@ function normalizePaymentRecord(record, options = {}) {
   const requestedAmount = Number(record.requested_amount || 0);
   const totalPayableAmount = Number(record.price_amount || 0);
   const feeAmount = Math.max(0, Number((totalPayableAmount - requestedAmount).toFixed(2)));
+  const expectedAmount = record.expected_amount === null || record.expected_amount === undefined ? null : Number(record.expected_amount);
+  const payAmount = record.pay_amount === null || record.pay_amount === undefined ? null : Number(record.pay_amount);
+  const actuallyPaid = Number(record.actually_paid || 0);
+  const exactPayableAmount = expectedAmount ?? payAmount;
+  const remainingPayAmount = exactPayableAmount == null ? null : Math.max(0, Number((exactPayableAmount - actuallyPaid).toFixed(8)));
   const locallyExpired = !['confirmed', 'finished', 'failed', 'expired'].includes(String(record.payment_status || '').toLowerCase())
     && isExpiredAt(record.expires_at);
   const effectivePaymentStatus = locallyExpired ? 'expired' : record.payment_status;
   const normalized = {
     ...record,
     requested_amount: requestedAmount,
-    expected_amount: record.expected_amount === null || record.expected_amount === undefined ? null : Number(record.expected_amount),
+    expected_amount: expectedAmount,
     price_amount: totalPayableAmount,
     deposit_amount: requestedAmount,
     fee_amount: feeAmount,
     total_payable_amount: totalPayableAmount,
-    pay_amount: record.pay_amount === null || record.pay_amount === undefined ? null : Number(record.pay_amount),
-    actually_paid: Number(record.actually_paid || 0),
+    pay_amount: payAmount,
+    exact_payable_amount: exactPayableAmount,
+    exact_payable_currency: record.pay_currency || nowPaymentsService.NOWPAYMENTS_DISPLAY_CURRENCY,
+    actually_paid: actuallyPaid,
+    remaining_pay_amount: remainingPayAmount,
     outcome_amount: record.outcome_amount === null || record.outcome_amount === undefined ? null : Number(record.outcome_amount),
     network: record.network || nowPaymentsService.NOWPAYMENTS_DISPLAY_NETWORK,
     pay_currency: nowPaymentsService.NOWPAYMENTS_DISPLAY_CURRENCY,

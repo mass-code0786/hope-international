@@ -47,8 +47,8 @@ function getExpiryState(expiresAt) {
 }
 
 function formatProviderPayable(payment) {
-  const payAmount = Number(payment?.pay_amount ?? 0);
-  const payCurrency = String(payment?.pay_currency || '').trim().toUpperCase();
+  const payAmount = Number(payment?.exact_payable_amount ?? payment?.pay_amount ?? 0);
+  const payCurrency = String(payment?.exact_payable_currency || payment?.pay_currency || '').trim().toUpperCase();
   if (payAmount > 0 && payCurrency) {
     return `${number(payAmount)} ${payCurrency}`;
   }
@@ -205,11 +205,12 @@ export default function DepositPage() {
                   {paymentSummary.depositAmount ? currency(paymentSummary.depositAmount) : 'Waiting'}
                 </p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Amount To Pay</p>
-                <p className="mt-2 text-lg font-semibold text-white">
+              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 shadow-[0_0_30px_rgba(34,197,94,0.08)]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-100/78">Exact Amount To Pay</p>
+                <p className="mt-2 text-[1.45rem] font-semibold tracking-[-0.04em] text-white">
                   {formatProviderPayable(activeGatewayPayment)}
                 </p>
+                <p className="mt-2 text-[11px] text-emerald-50/86">Send the exact amount shown below to avoid partial payment.</p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Gateway Difference</p>
@@ -224,6 +225,11 @@ export default function DepositPage() {
               <p className="mt-2 break-all text-sm font-semibold text-white">
                 {activePaymentExpired ? 'Expired payment address' : (activeGatewayPayment?.pay_address || 'Create a NOWPayments deposit to get a crypto address')}
               </p>
+              {!activePaymentExpired && activeGatewayPayment?.exact_payable_amount ? (
+                <p className="mt-3 rounded-xl border border-emerald-400/15 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-100">
+                  Exact amount: {formatProviderPayable(activeGatewayPayment)}
+                </p>
+              ) : null}
               {activeGatewayPayment?.pay_address && !activePaymentExpired ? (
                 <button
                   type="button"
