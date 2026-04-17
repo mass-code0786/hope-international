@@ -1,7 +1,7 @@
 'use client';
 
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { getMe } from '@/lib/services/authService';
 import { queryKeys } from '@/lib/query/queryKeys';
@@ -19,12 +19,13 @@ function createCurrentUserTimeoutError() {
 
 function AuthBootstrap() {
   const queryClient = useQueryClient();
+  const requestIdRef = useRef(0);
+  const inFlightRef = useRef(false);
   const hydrate = useAuthStore((state) => state.hydrate);
   const hydrated = useAuthStore((state) => state.hydrated);
   const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
   const currentUserInitialized = useAuthStore((state) => state.currentUserInitialized);
-  const currentUserStatus = useAuthStore((state) => state.currentUserStatus);
   const currentUserVersion = useAuthStore((state) => state.currentUserVersion);
   const setCurrentUserState = useAuthStore((state) => state.setCurrentUserState);
   const clearSession = useAuthStore((state) => state.clearSession);
@@ -36,30 +37,39 @@ function AuthBootstrap() {
   useEffect(() => {
     if (!hydrated) return undefined;
     if (!token) {
+      inFlightRef.current = false;
       queryClient.removeQueries({ queryKey: queryKeys.me });
       return undefined;
     }
     if (currentUserInitialized && user) {
+      inFlightRef.current = false;
       queryClient.setQueryData(queryKeys.me, user);
       return undefined;
     }
-    if (currentUserStatus === 'loading') return undefined;
+    if (inFlightRef.current) return undefined;
 
-    let cancelled = false;
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
+    inFlightRef.current = true;
     setCurrentUserState({ status: 'loading', error: null, initialized: false });
 
+    let timeoutId = null;
     const timeoutPromise = new Promise((_, reject) => {
-      window.setTimeout(() => reject(createCurrentUserTimeoutError()), CURRENT_USER_BOOTSTRAP_TIMEOUT_MS);
+      timeoutId = window.setTimeout(() => reject(createCurrentUserTimeoutError()), CURRENT_USER_BOOTSTRAP_TIMEOUT_MS);
     });
 
     Promise.race([getMe(), timeoutPromise])
       .then((currentUser) => {
-        if (cancelled) return;
+        if (requestIdRef.current !== requestId) return;
+        if (timeoutId !== null) window.clearTimeout(timeoutId);
+        inFlightRef.current = false;
         queryClient.setQueryData(queryKeys.me, currentUser);
         setCurrentUserState({ user: currentUser, status: 'ready', error: null, initialized: true });
       })
       .catch((error) => {
-        if (cancelled) return;
+        if (requestIdRef.current !== requestId) return;
+        if (timeoutId !== null) window.clearTimeout(timeoutId);
+        inFlightRef.current = false;
         if (error?.status === 401 || error?.status === 403) {
           clearSession();
           return;
@@ -69,9 +79,9 @@ function AuthBootstrap() {
       });
 
     return () => {
-      cancelled = true;
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
     };
-  }, [clearSession, currentUserInitialized, currentUserStatus, currentUserVersion, hydrated, queryClient, setCurrentUserState, token, user]);
+  }, [clearSession, currentUserInitialized, currentUserVersion, hydrated, queryClient, setCurrentUserState, token, user]);
 
   return null;
 }
