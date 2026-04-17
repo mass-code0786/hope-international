@@ -137,7 +137,7 @@ function normalizePaymentRecord(record, options = {}) {
   const expectedAmount = record.expected_amount === null || record.expected_amount === undefined ? null : Number(record.expected_amount);
   const payAmount = record.pay_amount === null || record.pay_amount === undefined ? null : Number(record.pay_amount);
   const actuallyPaid = Number(record.actually_paid || 0);
-  const exactPayableAmount = expectedAmount ?? payAmount;
+  const exactPayableAmount = payAmount ?? expectedAmount;
   const remainingPayAmount = exactPayableAmount == null ? null : Math.max(0, Number((exactPayableAmount - actuallyPaid).toFixed(8)));
   const locallyExpired = !['confirmed', 'finished', 'failed', 'expired'].includes(String(record.payment_status || '').toLowerCase())
     && isExpiredAt(record.expires_at);
@@ -305,6 +305,18 @@ async function createNowPaymentsDepositPaymentWithClient(client, userId, payload
     payCurrency,
     orderId: providerOrderId,
     orderDescription: `Hope International deposit for user ${userId}`
+  });
+  logNowPayments('provider.create-payment.response', {
+    providerPaymentId: providerPayment.payment_id || null,
+    providerOrderId,
+    priceAmount: providerPayment.price_amount ?? null,
+    priceCurrency: providerPayment.price_currency || null,
+    payAmount: providerPayment.pay_amount ?? null,
+    payCurrency: providerPayment.pay_currency || null,
+    actuallyPaid: providerPayment.actually_paid ?? null,
+    outcomeAmount: providerPayment.outcome_amount ?? null,
+    outcomeCurrency: providerPayment.outcome_currency || null,
+    paymentStatus: providerPayment.payment_status || null
   });
   const providerPriceAmount = providerPayment.price_amount === undefined ? depositAmount : toMoney(providerPayment.price_amount || 0);
   const providerFeeAmount = Math.max(0, Number((providerPriceAmount - depositAmount).toFixed(2)));
@@ -489,6 +501,19 @@ async function processNowPaymentsPayloadWithClient(client, payload, options = {}
   });
 
   const rawProviderStatus = payload.payment_status || paymentRecord.payment_status || null;
+  logNowPayments('provider.status-payload', {
+    source: options.source || 'webhook',
+    providerPaymentId: providerPaymentId || paymentRecord.provider_payment_id || null,
+    providerOrderId: providerOrderId || paymentRecord.provider_order_id || null,
+    priceAmount: payload.price_amount ?? null,
+    priceCurrency: payload.price_currency || null,
+    payAmount: payload.pay_amount ?? null,
+    payCurrency: payload.pay_currency || null,
+    actuallyPaid: payload.actually_paid ?? null,
+    outcomeAmount: payload.outcome_amount ?? null,
+    outcomeCurrency: payload.outcome_currency || null,
+    paymentStatus: rawProviderStatus
+  });
   const mappedStatus = nowPaymentsService.mapPaymentStatus(rawProviderStatus);
   const expiresAt = resolveExpiresAt(payload.expiration_estimate_date || paymentRecord.expires_at, buildLocalExpiryDate(new Date(paymentRecord.created_at || Date.now())));
   const effectiveMappedStatus = ['confirmed', 'finished', 'failed', 'expired'].includes(mappedStatus)

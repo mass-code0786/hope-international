@@ -16,6 +16,17 @@ export function number(value = 0) {
   }).format(Number.isFinite(Number(value)) ? Number(value) : 0);
 }
 
+export function cryptoAmount(value = 0, options = {}) {
+  const amount = Number.isFinite(Number(value)) ? Number(value) : 0;
+  const maximumFractionDigits = Math.max(0, Math.min(Number(options.maximumFractionDigits ?? 8), 8));
+  const minimumFractionDigits = Math.max(0, Math.min(Number(options.minimumFractionDigits ?? 0), maximumFractionDigits));
+
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits,
+    maximumFractionDigits
+  }).format(amount);
+}
+
 export function percentage(value = 0) {
   return `${Number(value || 0).toFixed(1)}%`;
 }

@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/Badge';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { createNowPaymentsPayment } from '@/lib/services/paymentsService';
 import { getDepositHistory } from '@/lib/services/walletService';
-import { currency, dateTime, number, statusVariant } from '@/lib/utils/format';
+import { cryptoAmount, currency, dateTime, number, statusVariant } from '@/lib/utils/format';
 
 const NOWPAYMENTS_PAY_CURRENCY = 'usdt';
 const NOWPAYMENTS_NETWORK = 'BSC/BEP20';
@@ -50,7 +50,7 @@ function formatProviderPayable(payment) {
   const payAmount = Number(payment?.exact_payable_amount ?? payment?.pay_amount ?? 0);
   const payCurrency = String(payment?.exact_payable_currency || payment?.pay_currency || '').trim().toUpperCase();
   if (payAmount > 0 && payCurrency) {
-    return `${number(payAmount)} ${payCurrency}`;
+    return `${cryptoAmount(payAmount)} ${payCurrency}`;
   }
 
   const totalPayableAmount = Number(payment?.total_payable_amount ?? payment?.amount ?? 0);
@@ -327,7 +327,7 @@ export default function DepositPage() {
                 <div className="text-[11px] text-slate-700">
                   <p>
                     Status: {(item.payment_status || 'waiting').toUpperCase()}
-                    {item.pay_amount ? ` | Pay ${number(item.pay_amount)} ${(item.pay_currency || '').toUpperCase()}` : ''}
+                    {item.pay_amount ? ` | Pay ${cryptoAmount(item.pay_amount)} ${(item.pay_currency || '').toUpperCase()}` : ''}
                   </p>
                   {item.payment_record_id ? <Link href={`/payments/${item.payment_record_id}`} className="mt-1 inline-flex font-semibold text-sky-700">Open payment status</Link> : null}
                 </div>

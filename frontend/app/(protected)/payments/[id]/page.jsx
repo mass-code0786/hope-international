@@ -13,7 +13,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { Badge } from '@/components/ui/Badge';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { getPaymentDetail, syncPaymentDetail } from '@/lib/services/paymentsService';
-import { currency, dateTime, number } from '@/lib/utils/format';
+import { cryptoAmount, currency, dateTime } from '@/lib/utils/format';
 
 function statusMeta(status) {
   const normalized = String(status || 'awaiting_payment').trim().toLowerCase();
@@ -55,7 +55,7 @@ function formatProviderPayable(payment) {
   const payAmount = Number(payment?.exact_payable_amount ?? payment?.pay_amount ?? 0);
   const payCurrency = String(payment?.exact_payable_currency || payment?.pay_currency || '').trim().toUpperCase();
   if (payAmount > 0 && payCurrency) {
-    return `${number(payAmount)} ${payCurrency}`;
+    return `${cryptoAmount(payAmount)} ${payCurrency}`;
   }
 
   const totalPayableAmount = Number(payment?.total_payable_amount ?? payment?.price_amount ?? 0);
@@ -238,13 +238,13 @@ export default function PaymentStatusPage() {
                 <div>
                   <p className="text-[11px] text-amber-700/80">Received</p>
                   <p className="mt-1 text-sm font-semibold text-amber-950">
-                    {partialPaidAmount > 0 ? `${number(partialPaidAmount)} ${String(payment?.exact_payable_currency || payment?.pay_currency || 'USDT').trim().toUpperCase()}` : '-'}
+                    {partialPaidAmount > 0 ? `${cryptoAmount(partialPaidAmount)} ${String(payment?.exact_payable_currency || payment?.pay_currency || 'USDT').trim().toUpperCase()}` : '-'}
                   </p>
                 </div>
                 <div>
                   <p className="text-[11px] text-amber-700/80">Remaining</p>
                   <p className="mt-1 text-sm font-semibold text-amber-950">
-                    {partialRemainingAmount > 0 ? `${number(partialRemainingAmount)} ${String(payment?.exact_payable_currency || payment?.pay_currency || 'USDT').trim().toUpperCase()}` : '-'}
+                    {partialRemainingAmount > 0 ? `${cryptoAmount(partialRemainingAmount)} ${String(payment?.exact_payable_currency || payment?.pay_currency || 'USDT').trim().toUpperCase()}` : '-'}
                   </p>
                 </div>
               </div>
