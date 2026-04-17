@@ -89,11 +89,11 @@ function buildLocationDetail(address) {
 }
 
 function getProductCover(product) {
-  return product?.image_url || product?.gallery?.[0] || '';
+  return product?.primary_image || product?.thumbnail_url || product?.image_url || '';
 }
 
 function getProductMeta(product) {
-  return product?.seller_name || product?.store_name || product?.category || 'Hope Store';
+  return product?.seller_name || product?.store_name || product?.category || product?.badge || 'Hope Store';
 }
 
 function getActionHref(action) {
@@ -220,11 +220,13 @@ function CartPill() {
 export default function DashboardPage() {
   const router = useRouter();
   const { data: productData, isPending: productsPending, isError: productsError, refetch: refetchProducts } = useHomeProducts();
-  const bannersQuery = useQuery({ queryKey: queryKeys.homepageBanners, queryFn: getHomepageBanners, placeholderData: (previousData) => previousData, staleTime: 300_000, refetchOnWindowFocus: false, refetchOnReconnect: false });
-  const addressQuery = useQuery({ queryKey: queryKeys.userAddress, queryFn: getUserAddress, placeholderData: (previousData) => previousData, staleTime: 300_000, refetchOnWindowFocus: false, refetchOnReconnect: false });
+  const [nonCriticalEnabled, setNonCriticalEnabled] = useState(false);
+  const bannersQuery = useQuery({ queryKey: queryKeys.homepageBanners, queryFn: getHomepageBanners, enabled: nonCriticalEnabled, placeholderData: (previousData) => previousData, staleTime: 300_000, refetchOnWindowFocus: false, refetchOnReconnect: false });
+  const addressQuery = useQuery({ queryKey: queryKeys.userAddress, queryFn: getUserAddress, enabled: nonCriticalEnabled, placeholderData: (previousData) => previousData, staleTime: 300_000, refetchOnWindowFocus: false, refetchOnReconnect: false });
   const notificationsCountQuery = useQuery({
     queryKey: queryKeys.notificationsUnreadCount,
     queryFn: getUnreadNotificationCount,
+    enabled: nonCriticalEnabled,
     staleTime: 15_000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false
@@ -232,6 +234,7 @@ export default function DashboardPage() {
   const walletQuery = useQuery({
     queryKey: queryKeys.wallet,
     queryFn: getWallet,
+    enabled: nonCriticalEnabled,
     placeholderData: (previousData) => previousData,
     staleTime: 45_000,
     refetchOnWindowFocus: false,
@@ -246,11 +249,36 @@ export default function DashboardPage() {
   const welcomeSpinQuery = useQuery({
     queryKey: queryKeys.welcomeSpinStatus,
     queryFn: getWelcomeSpinStatus,
+    enabled: nonCriticalEnabled,
     placeholderData: (previousData) => previousData,
     staleTime: 45_000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false
   });
+
+  useEffect(() => {
+    let cancelled = false;
+    let idleId = null;
+    let timeoutId = null;
+
+    const enable = () => {
+      if (!cancelled) setNonCriticalEnabled(true);
+    };
+
+    if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+      idleId = window.requestIdleCallback(enable, { timeout: 900 });
+    } else {
+      timeoutId = window.setTimeout(enable, 250);
+    }
+
+    return () => {
+      cancelled = true;
+      if (idleId !== null && typeof window !== 'undefined' && typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
+    };
+  }, []);
 
   const buyMutation = useMutation({
     mutationFn: (product) => {
@@ -405,7 +433,9 @@ export default function DashboardPage() {
                 <h1 className="truncate text-[15px] font-semibold tracking-[-0.03em] text-slate-900">{buildLocationLabel(address)}</h1>
                 <ChevronRight size={13} className="shrink-0 text-slate-400" />
               </div>
-              <p className="mt-0.5 truncate text-[10px] text-slate-500">{addressQuery.isError && !address ? 'Unable to load address' : buildLocationDetail(address)}</p>
+              <p className="mt-0.5 truncate text-[10px] text-slate-500">
+                {!nonCriticalEnabled ? 'Loading address details...' : addressQuery.isError && !address ? 'Unable to load address' : buildLocationDetail(address)}
+              </p>
             </button>
 
             <div className="flex items-center gap-2">
@@ -551,6 +581,10 @@ export default function DashboardPage() {
                     key={product.id}
                     product={product}
                     onBuy={(item) => {
+                      if (!nonCriticalEnabled || addressQuery.isLoading) {
+                        toast.error('Address is still loading');
+                        return;
+                      }
                       if (!address?.id) {
                         toast.error('Add a delivery address before payment');
                         router.push('/profile/address');

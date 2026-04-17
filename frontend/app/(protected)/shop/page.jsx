@@ -193,6 +193,7 @@ export default function ShopPage() {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [bannersEnabled, setBannersEnabled] = useState(false);
+  const [walletEnabled, setWalletEnabled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [secondarySectionsEnabled, setSecondarySectionsEnabled] = useState(false);
   const selectedCategory = activeCategory === 'All' ? undefined : activeCategory;
@@ -216,7 +217,7 @@ export default function ShopPage() {
     refetchOnReconnect: false
   });
   const sessionUser = useSessionUser();
-  const walletQuery = useWallet();
+  const walletQuery = useWallet({ enabled: walletEnabled });
   const clearSession = useAuthStore((state) => state.clearSession);
   const [buyingProductId, setBuyingProductId] = useState('');
   const [pendingPurchase, setPendingPurchase] = useState(null);
@@ -249,6 +250,30 @@ export default function ShopPage() {
       idleId = window.requestIdleCallback(enable, { timeout: 1200 });
     } else {
       timeoutId = window.setTimeout(enable, 250);
+    }
+
+    return () => {
+      cancelled = true;
+      if (idleId !== null && typeof window !== 'undefined' && typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    let idleId = null;
+    let timeoutId = null;
+
+    const enable = () => {
+      if (!cancelled) setWalletEnabled(true);
+    };
+
+    if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+      idleId = window.requestIdleCallback(enable, { timeout: 1200 });
+    } else {
+      timeoutId = window.setTimeout(enable, 350);
     }
 
     return () => {
@@ -368,7 +393,7 @@ export default function ShopPage() {
 
   const filtered = useMemo(() => {
     return products.filter((product) => {
-      const text = `${product?.name || ''} ${product?.description || ''}`.toLowerCase();
+      const text = `${product?.name || product?.title || ''} ${product?.category || ''} ${product?.badge || ''}`.toLowerCase();
       return text.includes(deferredSearch.toLowerCase());
     });
   }, [deferredSearch, products]);
@@ -378,7 +403,7 @@ export default function ShopPage() {
   const newArrivals = useMemo(() => [...filtered].slice(-12).reverse(), [filtered]);
   const trending = useMemo(() => [...filtered].sort((a, b) => Number(b.price || 0) - Number(a.price || 0)).slice(0, 12), [filtered]);
   const visibleDeals = useMemo(() => (deals.length ? deals : recommended).slice(0, 8), [deals, recommended]);
-  const visibleRecommended = useMemo(() => recommended.slice(0, Math.max(8, products.length)), [products.length, recommended]);
+  const visibleRecommended = useMemo(() => recommended.slice(0, 8), [recommended]);
 
   const isProductsLoading = isPending && !data;
   const hasProducts = !isError && filtered.length > 0;
@@ -429,7 +454,7 @@ export default function ShopPage() {
         <ProductFilters activeCategory={activeCategory} setActiveCategory={setActiveCategory} />
         <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 text-[10px] text-slate-600">
           <Wallet size={11} />
-          Wallet: {currency(walletBalance)}
+          Wallet: {walletEnabled && walletReady ? currency(walletBalance) : 'Loading...'}
         </div>
       </section>
 
@@ -531,45 +556,45 @@ export default function ShopPage() {
             </div>
           </div>
 
-          <div>
-            <SectionTitle title="Recommended" count={recommended.length} />
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-              {visibleRecommended.map((product) => (
-                <ProductCard
-                  key={`recommended-${product.id}`}
-                  product={product}
-                  onBuy={(p) => setAddressStepProduct(p)}
-                  isBuying={buyMutation.isPending && buyingProductId === product.id}
-                  disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
-                  buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy Now'}
-                />
-              ))}
-            </div>
-            {hasNextPage ? (
-              <div className="mt-3 flex justify-center">
-                <button
-                  type="button"
-                  onClick={() => fetchNextPage()}
-                  disabled={isFetchingNextPage}
-                  className="inline-flex min-w-[9rem] items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-[11px] font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isFetchingNextPage ? 'Loading...' : 'Load More'}
-                </button>
-              </div>
-            ) : null}
-            {!reachedAllProducts && totalActiveItems !== null ? (
-              <p className="mt-2 text-center text-[10px] text-slate-500">
-                Showing {products.length} of {totalActiveItems} {categoryLabel}
-              </p>
-            ) : reachedAllProducts ? (
-              <p className="mt-2 text-center text-[10px] text-slate-500">
-                Showing all {visibleCatalogCount} matching {activeCategory === 'All' ? 'active products' : activeCategory.toLowerCase() + ' products'}
-              </p>
-            ) : null}
-          </div>
-
           {secondarySectionsEnabled ? (
             <>
+              <div>
+                <SectionTitle title="Recommended" count={recommended.length} />
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                  {visibleRecommended.map((product) => (
+                    <ProductCard
+                      key={`recommended-${product.id}`}
+                      product={product}
+                      onBuy={(p) => setAddressStepProduct(p)}
+                      isBuying={buyMutation.isPending && buyingProductId === product.id}
+                      disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
+                      buyLabel={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal) ? 'Low Balance' : 'Buy Now'}
+                    />
+                  ))}
+                </div>
+                {hasNextPage ? (
+                  <div className="mt-3 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => fetchNextPage()}
+                      disabled={isFetchingNextPage}
+                      className="inline-flex min-w-[9rem] items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-[11px] font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isFetchingNextPage ? 'Loading...' : 'Load More'}
+                    </button>
+                  </div>
+                ) : null}
+                {!reachedAllProducts && totalActiveItems !== null ? (
+                  <p className="mt-2 text-center text-[10px] text-slate-500">
+                    Showing {products.length} of {totalActiveItems} {categoryLabel}
+                  </p>
+                ) : reachedAllProducts ? (
+                  <p className="mt-2 text-center text-[10px] text-slate-500">
+                    Showing all {visibleCatalogCount} matching {activeCategory === 'All' ? 'active products' : activeCategory.toLowerCase() + ' products'}
+                  </p>
+                ) : null}
+              </div>
+
               <div>
                 <SectionTitle title="New Arrivals" count={newArrivals.length} />
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">

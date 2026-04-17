@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -21,6 +21,28 @@ import { isSeller } from '@/lib/constants/access';
 import { createWebAuthnCredential, supportsWebAuthn } from '@/lib/utils/webauthn';
 import { clearProtectedQueries } from '@/lib/utils/logout';
 import { useSessionUser } from '@/hooks/useSessionUser';
+
+function ProfileLoadingShell() {
+  return (
+    <div className="space-y-4">
+      <SectionHeader title="Profile" />
+      <div className="rounded-[22px] border border-[rgba(255,255,255,0.07)] bg-[#161b24] p-4 shadow-[0_18px_36px_rgba(0,0,0,0.24)]">
+        <div className="space-y-2">
+          <div className="h-7 w-40 rounded-full bg-white/10" />
+          <div className="h-4 w-64 rounded-full bg-white/5" />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div key={index} className="rounded-[20px] border border-[rgba(255,255,255,0.07)] bg-[#171c26] px-4 py-3.5 shadow-[0_14px_28px_rgba(0,0,0,0.22)]">
+            <div className="h-3 w-20 rounded-full bg-white/10" />
+            <div className="mt-3 h-5 w-28 rounded-full bg-white/5" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function ProfileInfoCard({ label, value, subtitle = null, className = '', statusTone = '' }) {
   return (
@@ -56,7 +78,7 @@ function WalletCard({ title, value, accent, icon: Icon, href, actionLabel, title
 }
 
 function WalletSection({ walletQuery }) {
-  if (walletQuery.isLoading) {
+  if (walletQuery.isLoading || (!walletQuery.data && !walletQuery.isError)) {
     return null;
   }
 
@@ -257,9 +279,10 @@ export default function ProfilePage() {
   const token = useAuthStore((s) => s.token);
   const hydrated = useAuthStore((s) => s.hydrated);
   const sessionUser = useAuthStore((s) => s.user);
+  const [walletEnabled, setWalletEnabled] = useState(false);
 
   const sessionUserQuery = useSessionUser();
-  const walletQuery = useQuery({ queryKey: queryKeys.wallet, queryFn: getWallet, enabled: hydrated && Boolean(token), placeholderData: (previousData) => previousData });
+  const walletQuery = useQuery({ queryKey: queryKeys.wallet, queryFn: getWallet, enabled: hydrated && Boolean(token) && walletEnabled, placeholderData: (previousData) => previousData });
 
   const user = sessionUserQuery.data ?? sessionUser ?? null;
   const sellerHref = isSeller(user) ? '/seller' : '/seller/apply';
@@ -290,8 +313,32 @@ export default function ProfilePage() {
     router.replace('/login');
   }
 
-  if (!hydrated || (token && sessionUserQuery.isPending && !user)) return null;
-  if (!user) return null;
+  useEffect(() => {
+    let cancelled = false;
+    let idleId = null;
+    let timeoutId = null;
+
+    const enable = () => {
+      if (!cancelled) setWalletEnabled(true);
+    };
+
+    if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+      idleId = window.requestIdleCallback(enable, { timeout: 900 });
+    } else {
+      timeoutId = window.setTimeout(enable, 250);
+    }
+
+    return () => {
+      cancelled = true;
+      if (idleId !== null && typeof window !== 'undefined' && typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
+    };
+  }, []);
+
+  if (!hydrated || (token && sessionUserQuery.isPending && !user)) return <ProfileLoadingShell />;
+  if (!user) return <ErrorState message="Profile data could not be loaded." onRetry={() => sessionUserQuery.refetch()} />;
 
   return (
     <div className="space-y-4">

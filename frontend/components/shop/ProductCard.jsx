@@ -17,7 +17,8 @@ function getRating(product) {
 }
 
 function getCategory(product) {
-  const text = `${product?.name || ''} ${product?.description || ''}`.toLowerCase();
+  if (product?.category) return product.category;
+  const text = `${product?.name || product?.title || ''}`.toLowerCase();
   if (text.includes('health') || text.includes('wellness')) return 'Health';
   if (text.includes('beauty') || text.includes('skin')) return 'Beauty';
   if (text.includes('course') || text.includes('digital')) return 'Digital';
@@ -41,7 +42,7 @@ function buildImageTheme(seed) {
 }
 
 function getProductCover(product) {
-  return product?.image_url || product?.gallery?.[0] || '';
+  return product?.primary_image || product?.thumbnail_url || product?.image_url || '';
 }
 
 export function ProductCard({ product, onBuy, isBuying = false, disableBuying = false, buyLabel = 'Buy' }) {
@@ -49,7 +50,7 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
   const href = safeProduct?.id ? `/shop/${encodeURIComponent(String(safeProduct.id))}` : '/shop';
   const pricing = getProductPricing(safeProduct, 1);
   const offerPercent = getOfferPercent(safeProduct);
-  const rating = getRating(safeProduct);
+  const rating = safeProduct?.rating ? Number(safeProduct.rating).toFixed(1) : getRating(safeProduct);
   const category = getCategory(safeProduct);
   const imageTheme = buildImageTheme(safeProduct.id || safeProduct.name);
   const cover = getProductCover(safeProduct);

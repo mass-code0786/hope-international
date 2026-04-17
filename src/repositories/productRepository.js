@@ -47,17 +47,21 @@ async function listProducts(client, { onlyActive = false, category, limit = 20, 
        created_at,
        updated_at`
     : `id,
-       sku,
        name,
+       name AS title,
+       id::text AS slug,
        category,
        price,
-       pv,
-       bv,
-       is_active,
-       is_qualifying,
+       NULL::numeric AS sale_price,
        COALESCE(image_url, gallery->>0) AS image_url,
-       LEFT(COALESCE(description, ''), 80) AS description,
-       created_at`;
+       COALESCE(image_url, gallery->>0) AS primary_image,
+       COALESCE(image_url, gallery->>0) AS thumbnail_url,
+       is_active,
+       is_active AS is_available,
+       NULL::integer AS stock,
+       is_qualifying,
+       CASE WHEN is_qualifying THEN 'Featured' ELSE NULL END AS badge,
+       NULL::numeric(3,2) AS rating`;
   const listResult = await pool.query(
     `SELECT ${listColumns}
      FROM products
