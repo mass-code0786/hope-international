@@ -62,6 +62,49 @@ function formatProviderPayable(payment) {
   return totalPayableAmount > 0 ? currency(totalPayableAmount) : '-';
 }
 
+function getProviderPayableDetails(payment) {
+  const exactPayableAmount = Number(payment?.exact_payable_amount ?? 0);
+  const fallbackPayAmount = Number(payment?.pay_amount ?? 0);
+  const providerPayableAmount = exactPayableAmount > 0 ? exactPayableAmount : fallbackPayAmount;
+  const providerPayableCurrency = String(payment?.exact_payable_currency || payment?.pay_currency || '').trim().toUpperCase();
+
+  if (providerPayableAmount > 0 && providerPayableCurrency) {
+    return {
+      sourceField: exactPayableAmount > 0 ? 'exact_payable_amount' : 'pay_amount',
+      text: `${cryptoAmount(providerPayableAmount)} ${providerPayableCurrency}`
+    };
+  }
+
+  return {
+    sourceField: null,
+    text: formatProviderPayable(payment)
+  };
+}
+
+async function copyTextWithFallback(text) {
+  if (navigator?.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.setAttribute('readonly', '');
+  textArea.style.position = 'absolute';
+  textArea.style.left = '-9999px';
+  document.body.appendChild(textArea);
+  textArea.select();
+
+  try {
+    const copied = document.execCommand('copy');
+    if (!copied) {
+      throw new Error('copy_failed');
+    }
+  } finally {
+    document.body.removeChild(textArea);
+  }
+}
+
 export default function PaymentStatusPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -90,6 +133,7 @@ export default function PaymentStatusPage() {
   });
 
   const payment = paymentQuery.data?.data || null;
+  const providerPayable = getProviderPayableDetails(payment);
   const paymentExpired = Boolean(payment?.is_expired) || String(payment?.user_facing_status || '').toLowerCase() === 'expired';
   const partialPaidAmount = Number(payment?.actually_paid || 0);
   const partialExpectedAmount = Number(payment?.exact_payable_amount ?? payment?.pay_amount ?? payment?.expected_amount ?? 0);
@@ -177,11 +221,27 @@ export default function PaymentStatusPage() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-300">Payment Timer</p>
             <p className="mt-2 text-lg font-semibold text-white"><Countdown expiresAt={payment?.expires_at} /></p>
             <p className="mt-2 text-slate-200">{meta.description}</p>
-            {!paymentExpired && payment?.exact_payable_amount ? (
+            {!paymentExpired && providerPayable.sourceField ? (
               <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 shadow-[0_0_22px_rgba(34,197,94,0.08)]">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-100/78">Exact Amount To Pay</p>
-                <p className="mt-1 text-[1.55rem] font-semibold tracking-[-0.05em] text-white">{formatProviderPayable(payment)}</p>
+                <p className="mt-1 text-[1.55rem] font-semibold tracking-[-0.05em] text-white">{providerPayable.text}</p>
                 <p className="mt-2 text-xs text-emerald-50/88">Send the exact amount shown below to avoid partial payment.</p>
+                {providerPayable.sourceField ? (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await copyTextWithFallback(providerPayable.text);
+                        toast.success('Exact payment amount copied');
+                      } catch {
+                        toast.error('Unable to copy exact payment amount');
+                      }
+                    }}
+                    className="mt-3 inline-flex items-center gap-2 rounded-xl border border-white/15 px-3 py-2 text-xs font-medium text-white"
+                  >
+                    <Copy size={14} /> Copy Amount
+                  </button>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -195,7 +255,7 @@ export default function PaymentStatusPage() {
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Exact Amount To Pay</p>
-              <p className="mt-2 text-lg font-semibold text-slate-950">{formatProviderPayable(payment)}</p>
+              <p className="mt-2 text-lg font-semibold text-slate-950">{providerPayable.text}</p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Gateway Difference</p>
@@ -210,8 +270,12 @@ export default function PaymentStatusPage() {
               <button
                 type="button"
                 onClick={async () => {
-                  await navigator.clipboard.writeText(payment.pay_address);
-                  toast.success('Payment address copied');
+                  try {
+                    await copyTextWithFallback(payment.pay_address);
+                    toast.success('Payment address copied');
+                  } catch {
+                    toast.error('Unable to copy payment address');
+                  }
                 }}
                 className="mt-3 inline-flex items-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700"
               >
