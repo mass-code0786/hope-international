@@ -8,6 +8,8 @@ const { ApiError } = require('../utils/ApiError');
 const MIN_DEPOSIT_AMOUNT = 1;
 const MAX_DEPOSIT_AMOUNT = 1000;
 const PAYMENT_EXPIRY_MINUTES = 30;
+const AUTO_SYNCABLE_PAYMENT_STATUSES = new Set(['waiting', 'confirming', 'partially_paid']);
+const AUTO_SYNC_MIN_INTERVAL_MS = 15_000;
 
 function logNowPayments(event, payload = {}) {
   console.info(`[nowpayments] ${event}`, payload);
@@ -60,6 +62,20 @@ function getFriendlyPaymentStatus(status) {
     failed: 'failed',
     expired: 'expired'
   }[normalized] || 'awaiting_payment';
+}
+
+function shouldAttemptAutoSync(paymentRecord, options = {}) {
+  if (!paymentRecord) return false;
+  if (!paymentRecord.provider_payment_id) return false;
+  if (options.force === true) return true;
+
+  const status = String(paymentRecord.payment_status || '').trim().toLowerCase();
+  if (!AUTO_SYNCABLE_PAYMENT_STATUSES.has(status)) return false;
+  if (isExpiredAt(paymentRecord.expires_at)) return false;
+
+  const lastUpdatedAt = new Date(paymentRecord.updated_at || paymentRecord.created_at || 0).getTime();
+  if (!Number.isFinite(lastUpdatedAt)) return true;
+  return (Date.now() - lastUpdatedAt) >= AUTO_SYNC_MIN_INTERVAL_MS;
 }
 
 async function resolveNowPaymentsPaymentRecord(client, lookupId, options = {}) {
@@ -335,6 +351,7 @@ async function createNowPaymentsDepositPaymentWithClient(client, userId, payload
     userId,
     providerPaymentId: paymentRecord.provider_payment_id,
     providerOrderId,
+    webhookUrl: paymentRecord.ipn_callback_url || nowPaymentsService.buildWebhookUrl() || null,
     requestedAmount: depositAmount,
     feeAmount,
     totalPayableAmount,
@@ -400,6 +417,8 @@ async function processNowPaymentsPayloadWithClient(client, payload, options = {}
   const depositRequest = paymentRecord.deposit_id
     ? await walletRepository.getDepositRequestById(client, paymentRecord.deposit_id, { forUpdate: true })
     : null;
+  const previousPaymentStatus = String(paymentRecord.payment_status || '').trim().toLowerCase() || null;
+  const previousDepositStatus = depositRequest?.status || null;
 
   logNowPayments('webhook.received', {
     source: options.source || 'webhook',
@@ -456,6 +475,8 @@ async function processNowPaymentsPayloadWithClient(client, payload, options = {}
     depositId: nextPaymentRecord.deposit_id,
     userId: nextPaymentRecord.user_id,
     providerPaymentId: nextPaymentRecord.provider_payment_id,
+    providerOrderId: nextPaymentRecord.provider_order_id,
+    previousPaymentStatus,
     paymentStatus: effectiveMappedStatus,
     expiresAt
   });
@@ -507,6 +528,8 @@ async function processNowPaymentsPayloadWithClient(client, payload, options = {}
         paymentRecordId: nextPaymentRecord.id,
         depositId: depositRequest.id,
         userId: depositRequest.user_id,
+        previousDepositStatus,
+        nextDepositStatus,
         paymentStatus: effectiveMappedStatus
       });
       await reconcileSuccessfulDepositCreditWithClient(
@@ -520,7 +543,27 @@ async function processNowPaymentsPayloadWithClient(client, payload, options = {}
         payload,
         { paymentStatus: effectiveMappedStatus }
       );
+    } else {
+      logNowPayments('wallet-credit.skipped', {
+        source: options.source || 'webhook',
+        paymentRecordId: nextPaymentRecord.id,
+        depositId: depositRequest.id,
+        userId: depositRequest.user_id,
+        previousDepositStatus,
+        nextDepositStatus,
+        paymentStatus: effectiveMappedStatus,
+        reason: ['failed', 'expired'].includes(effectiveMappedStatus) ? 'terminal_non_success' : 'awaiting_success_status'
+      });
     }
+  } else {
+    logNowPayments('wallet-credit.skipped', {
+      source: options.source || 'webhook',
+      paymentRecordId: nextPaymentRecord.id,
+      depositId: null,
+      userId: nextPaymentRecord.user_id,
+      paymentStatus: effectiveMappedStatus,
+      reason: 'deposit_request_not_found'
+    });
   }
 
   return normalizePaymentRecord(await paymentRepository.getNowPaymentsPaymentById(client, paymentRecord.id));
@@ -530,7 +573,7 @@ async function processNowPaymentsPayload(payload, options = {}) {
   return withTransaction((client) => processNowPaymentsPayloadWithClient(client, payload, options));
 }
 
-async function syncNowPaymentsPaymentWithClient(client, paymentId) {
+async function syncNowPaymentsPaymentWithClient(client, paymentId, options = {}) {
   const paymentRecord = await resolveNowPaymentsPaymentRecord(client, paymentId, { forUpdate: true });
   if (!paymentRecord) {
     throw new ApiError(404, 'Payment not found');
@@ -540,18 +583,83 @@ async function syncNowPaymentsPaymentWithClient(client, paymentId) {
     throw new ApiError(400, 'Provider payment id is missing');
   }
   logNowPayments('payment.sync-requested', {
+    source: options.source || 'sync',
     paymentLookupId: paymentId,
     paymentRecordId: paymentRecord.id,
     depositId: paymentRecord.deposit_id,
     userId: paymentRecord.user_id,
-    providerPaymentId
+    providerPaymentId,
+    providerOrderId: paymentRecord.provider_order_id || null,
+    paymentStatus: paymentRecord.payment_status || null
   });
   const providerPayload = await nowPaymentsService.getPaymentStatus(providerPaymentId);
-  return processNowPaymentsPayloadWithClient(client, providerPayload, { source: 'sync' });
+  return processNowPaymentsPayloadWithClient(client, providerPayload, { source: options.source || 'sync' });
 }
 
-async function syncNowPaymentsPayment(paymentId) {
-  return withTransaction((client) => syncNowPaymentsPaymentWithClient(client, paymentId));
+async function syncNowPaymentsPayment(paymentId, options = {}) {
+  return withTransaction((client) => syncNowPaymentsPaymentWithClient(client, paymentId, options));
+}
+
+async function maybeAutoSyncNowPaymentsPayment(paymentRecord, options = {}) {
+  if (!shouldAttemptAutoSync(paymentRecord, options)) {
+    return paymentRecord;
+  }
+
+  try {
+    logNowPayments('payment.auto-sync-triggered', {
+      source: options.source || 'auto-sync',
+      paymentRecordId: paymentRecord.id,
+      depositId: paymentRecord.deposit_id,
+      userId: paymentRecord.user_id,
+      providerPaymentId: paymentRecord.provider_payment_id,
+      providerOrderId: paymentRecord.provider_order_id || null,
+      paymentStatus: paymentRecord.payment_status || null
+    });
+    const synced = await syncNowPaymentsPayment(paymentRecord.id, { source: options.source || 'auto-sync' });
+    return synced || paymentRecord;
+  } catch (error) {
+    logNowPayments('payment.auto-sync-failed', {
+      source: options.source || 'auto-sync',
+      paymentRecordId: paymentRecord.id,
+      depositId: paymentRecord.deposit_id,
+      userId: paymentRecord.user_id,
+      providerPaymentId: paymentRecord.provider_payment_id,
+      providerOrderId: paymentRecord.provider_order_id || null,
+      paymentStatus: paymentRecord.payment_status || null,
+      errorMessage: error?.message || 'Unknown error',
+      errorStatus: error?.statusCode || error?.status || null
+    });
+    return paymentRecord;
+  }
+}
+
+async function syncPendingNowPaymentsPaymentsForUser(userId, options = {}) {
+  const limit = Math.max(1, Math.min(Number(options.limit || 1), 5));
+  const requests = await walletRepository.listDepositRequests(null, userId, 50);
+  const pendingRequests = requests
+    .filter((item) => {
+      if (String(item.payment_provider || '').toLowerCase() !== nowPaymentsService.NOWPAYMENTS_PROVIDER) return false;
+      if (item.is_processed) return false;
+      const status = String(item.payment_status || '').trim().toLowerCase() || 'waiting';
+      return AUTO_SYNCABLE_PAYMENT_STATUSES.has(status);
+    })
+    .slice(0, limit);
+
+  for (const request of pendingRequests) {
+    const details = request.details && typeof request.details === 'object' && !Array.isArray(request.details) ? request.details : {};
+    const lookupId = details.paymentRecordId || request.payment_id || request.order_id || request.id;
+    const paymentRecord = await resolveNowPaymentsPaymentRecord(null, lookupId);
+    if (!paymentRecord) {
+      logNowPayments('payment.auto-sync.lookup-miss', {
+        source: options.source || 'user-pending-sync',
+        userId,
+        depositId: request.id,
+        lookupId
+      });
+      continue;
+    }
+    await maybeAutoSyncNowPaymentsPayment(paymentRecord, { ...options, source: options.source || 'user-pending-sync' });
+  }
 }
 
 async function getNowPaymentsPaymentForUserById(paymentId, userId) {
@@ -578,7 +686,8 @@ async function getNowPaymentsPaymentForUserById(paymentId, userId) {
     paymentStatus: paymentRecord.payment_status,
     scope: 'wallet.nowpayments'
   });
-  return normalizePaymentRecord(paymentRecord);
+  const currentPaymentRecord = await maybeAutoSyncNowPaymentsPayment(paymentRecord, { source: 'status-page-auto-sync' });
+  return normalizePaymentRecord(currentPaymentRecord);
 }
 
 async function getPaymentForUser(paymentId, userId, options = {}) {
@@ -607,7 +716,8 @@ async function getPaymentForUser(paymentId, userId, options = {}) {
     userId: paymentRecord.user_id,
     paymentStatus: paymentRecord.payment_status
   });
-  return normalizePaymentRecord(paymentRecord, { includeSensitive: isSuperAdmin && !isOwner });
+  const currentPaymentRecord = await maybeAutoSyncNowPaymentsPayment(paymentRecord, { source: 'status-page-auto-sync' });
+  return normalizePaymentRecord(currentPaymentRecord, { includeSensitive: isSuperAdmin && !isOwner });
 }
 
 async function listAdminNowPaymentsPayments(filters, pagination) {
@@ -633,6 +743,7 @@ module.exports = {
   processNowPaymentsPayloadWithClient,
   syncNowPaymentsPayment,
   syncNowPaymentsPaymentWithClient,
+  syncPendingNowPaymentsPaymentsForUser,
   getNowPaymentsPaymentForUserById,
   getPaymentForUser,
   listAdminNowPaymentsPayments,

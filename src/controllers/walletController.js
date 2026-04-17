@@ -66,8 +66,10 @@ const summary = asyncHandler(async (req, res) => {
 const history = asyncHandler(async (req, res) => {
   const type = String(req.query.type || 'all').toLowerCase();
   const userId = req.user.sub;
+  const paymentService = require('../services/paymentService');
 
   if (type === 'deposit') {
+    await paymentService.syncPendingNowPaymentsPaymentsForUser(userId, { limit: 1, source: 'wallet-history-auto-sync' });
     const data = (await walletRepository.listDepositRequests(null, userId, 300))
       .map(normalizeDepositRecord)
       .filter(isNowPaymentsDeposit);
@@ -93,6 +95,7 @@ const history = asyncHandler(async (req, res) => {
     });
   }
 
+  await paymentService.syncPendingNowPaymentsPaymentsForUser(userId, { limit: 1, source: 'wallet-history-auto-sync' });
   const data = await walletService.getHubHistory(null, userId);
   return success(res, {
     data: {
@@ -152,6 +155,8 @@ const depositNowPaymentsSync = asyncHandler(async (req, res) => {
 });
 
 const depositList = asyncHandler(async (req, res) => {
+  const paymentService = require('../services/paymentService');
+  await paymentService.syncPendingNowPaymentsPaymentsForUser(req.user.sub, { limit: 1, source: 'wallet-deposit-list-auto-sync' });
   const data = (await walletRepository.listDepositRequests(null, req.user.sub, 300))
     .map(normalizeDepositRecord)
     .filter(isNowPaymentsDeposit);
