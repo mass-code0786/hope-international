@@ -78,6 +78,23 @@ function shouldAttemptAutoSync(paymentRecord, options = {}) {
   return (Date.now() - lastUpdatedAt) >= AUTO_SYNC_MIN_INTERVAL_MS;
 }
 
+function getSettlementEligibility(rawProviderStatus, mappedStatus) {
+  const providerStatus = String(rawProviderStatus || '').trim().toLowerCase() || null;
+  const localStatus = String(mappedStatus || '').trim().toLowerCase() || null;
+  const providerEligible = nowPaymentsService.isSuccessfulPaymentStatus(providerStatus);
+  const localEligible = nowPaymentsService.isSuccessfulPaymentStatus(localStatus);
+  return {
+    providerStatus,
+    localStatus,
+    eligible: providerEligible || localEligible,
+    reason: providerEligible
+      ? 'provider_status_success'
+      : localEligible
+        ? 'mapped_status_success'
+        : 'not_success_terminal'
+  };
+}
+
 async function resolveNowPaymentsPaymentRecord(client, lookupId, options = {}) {
   if (!lookupId) return null;
 
@@ -174,16 +191,22 @@ async function reconcileSuccessfulDepositCreditWithClient(client, paymentRecord,
     'deposit_request',
     depositRequest.id
   );
-  const alreadyApplied = Boolean(depositRequest.is_processed || paymentRecord.is_credited || paymentRecord.wallet_credit_applied);
+  const paymentFlagsApplied = Boolean(paymentRecord.is_credited || paymentRecord.wallet_credit_applied);
+  const depositFlagsApplied = Boolean(depositRequest.is_processed && depositRequest.processed_at);
+  const alreadyApplied = Boolean(existingCredit || (paymentFlagsApplied && depositFlagsApplied));
 
   logNowPayments('wallet-credit.reconcile', {
     paymentRecordId: paymentRecord.id,
     depositId: depositRequest.id,
     userId: depositRequest.user_id,
     providerPaymentId: paymentRecord.provider_payment_id,
+    providerOrderId: paymentRecord.provider_order_id || null,
+    rawProviderStatus: payload?.payment_status || null,
     paymentStatus: options.paymentStatus || paymentRecord.payment_status || null,
     alreadyCredited: Boolean(existingCredit),
-    alreadyApplied
+    alreadyApplied,
+    paymentFlagsApplied,
+    depositFlagsApplied
   });
 
   const creditedAt = paymentRecord.credited_at || existingCredit?.created_at || depositRequest.processed_at || new Date().toISOString();
@@ -195,11 +218,24 @@ async function reconcileSuccessfulDepositCreditWithClient(client, paymentRecord,
       depositId: depositRequest.id,
       userId: depositRequest.user_id,
       providerPaymentId: paymentRecord.provider_payment_id,
+      providerOrderId: paymentRecord.provider_order_id || null,
+      rawProviderStatus: payload?.payment_status || null,
       paymentStatus: options.paymentStatus || paymentRecord.payment_status || null,
+      existingCreditTransactionId: existingCredit?.id || null,
       paymentAlreadyMarkedCredited: Boolean(paymentRecord.is_credited || paymentRecord.wallet_credit_applied),
-      depositAlreadyProcessed: Boolean(depositRequest.is_processed)
+      depositAlreadyProcessed: Boolean(depositRequest.is_processed),
+      depositProcessedAt: depositRequest.processed_at || null
     });
   } else {
+    logNowPayments('wallet-settlement.called', {
+      paymentRecordId: paymentRecord.id,
+      depositId: depositRequest.id,
+      userId: depositRequest.user_id,
+      providerPaymentId: paymentRecord.provider_payment_id,
+      providerOrderId: paymentRecord.provider_order_id || null,
+      rawProviderStatus: payload?.payment_status || null,
+      paymentStatus: options.paymentStatus || paymentRecord.payment_status || null
+    });
     settled = await walletService.settleDepositRequest(client, depositRequest.id, {
       status: 'approved',
       paymentStatus: options.paymentStatus || paymentRecord.payment_status || null,
@@ -212,6 +248,16 @@ async function reconcileSuccessfulDepositCreditWithClient(client, paymentRecord,
         walletCreditApplied: true
       }
     });
+    logNowPayments('wallet-settlement.succeeded', {
+      paymentRecordId: paymentRecord.id,
+      depositId: depositRequest.id,
+      userId: depositRequest.user_id,
+      providerPaymentId: paymentRecord.provider_payment_id,
+      providerOrderId: paymentRecord.provider_order_id || null,
+      rawProviderStatus: payload?.payment_status || null,
+      paymentStatus: options.paymentStatus || paymentRecord.payment_status || null,
+      alreadyProcessed: Boolean(settled?.alreadyProcessed)
+    });
   }
 
   const latestPaymentRecord = await paymentRepository.updateNowPaymentsPayment(client, paymentRecord.id, {
@@ -221,11 +267,14 @@ async function reconcileSuccessfulDepositCreditWithClient(client, paymentRecord,
     rawPayload: payload
   });
 
-  logNowPayments('wallet-credit.applied', {
+  logNowPayments('wallet.credited', {
     paymentRecordId: paymentRecord.id,
     depositId: depositRequest.id,
     userId: depositRequest.user_id,
     providerPaymentId: paymentRecord.provider_payment_id,
+    providerOrderId: paymentRecord.provider_order_id || null,
+    rawProviderStatus: payload?.payment_status || null,
+    paymentStatus: options.paymentStatus || paymentRecord.payment_status || null,
     creditedAt,
     alreadyCredited: Boolean(existingCredit || alreadyApplied || settled?.alreadyProcessed)
   });
@@ -438,11 +487,13 @@ async function processNowPaymentsPayloadWithClient(client, payload, options = {}
     providerOrderId: providerOrderId || paymentRecord.provider_order_id
   });
 
-  const mappedStatus = nowPaymentsService.mapPaymentStatus(payload.payment_status || paymentRecord.payment_status);
+  const rawProviderStatus = payload.payment_status || paymentRecord.payment_status || null;
+  const mappedStatus = nowPaymentsService.mapPaymentStatus(rawProviderStatus);
   const expiresAt = resolveExpiresAt(payload.expiration_estimate_date || paymentRecord.expires_at, buildLocalExpiryDate(new Date(paymentRecord.created_at || Date.now())));
   const effectiveMappedStatus = ['confirmed', 'finished', 'failed', 'expired'].includes(mappedStatus)
     ? mappedStatus
     : (isExpiredAt(expiresAt) ? 'expired' : mappedStatus);
+  const settlementEligibility = getSettlementEligibility(rawProviderStatus, effectiveMappedStatus);
   const statusHistory = Array.isArray(paymentRecord.status_history) ? [...paymentRecord.status_history] : [];
   statusHistory.push({
     status: effectiveMappedStatus,
@@ -476,19 +527,54 @@ async function processNowPaymentsPayloadWithClient(client, payload, options = {}
     userId: nextPaymentRecord.user_id,
     providerPaymentId: nextPaymentRecord.provider_payment_id,
     providerOrderId: nextPaymentRecord.provider_order_id,
+    rawProviderStatus,
     previousPaymentStatus,
     paymentStatus: effectiveMappedStatus,
     expiresAt
   });
+  logNowPayments('payment.settlement-eligibility', {
+    source: options.source || 'webhook',
+    paymentRecordId: nextPaymentRecord.id,
+    depositId: nextPaymentRecord.deposit_id,
+    userId: nextPaymentRecord.user_id,
+    providerPaymentId: nextPaymentRecord.provider_payment_id,
+    providerOrderId: nextPaymentRecord.provider_order_id,
+    rawProviderStatus: settlementEligibility.providerStatus,
+    mappedLocalStatus: settlementEligibility.localStatus,
+    eligible: settlementEligibility.eligible,
+    reason: settlementEligibility.reason
+  });
 
   if (depositRequest) {
     if (String(paymentRecord.user_id) !== String(depositRequest.user_id)) {
+      logNowPayments('wallet-credit.skipped', {
+        source: options.source || 'webhook',
+        paymentRecordId: nextPaymentRecord.id,
+        depositId: depositRequest.id,
+        userId: depositRequest.user_id,
+        rawProviderStatus: settlementEligibility.providerStatus,
+        mappedLocalStatus: settlementEligibility.localStatus,
+        paymentStatus: effectiveMappedStatus,
+        reason: 'deposit_owner_mapping_mismatch'
+      });
       throw new ApiError(500, 'NOWPayments deposit owner mapping mismatch');
     }
 
     const expectedAmount = toMoney(paymentRecord.price_amount || 0);
     const payloadPriceAmount = payload.price_amount === undefined ? expectedAmount : toMoney(payload.price_amount || 0);
     if (Math.abs(expectedAmount - payloadPriceAmount) > 0.01) {
+      logNowPayments('wallet-credit.skipped', {
+        source: options.source || 'webhook',
+        paymentRecordId: nextPaymentRecord.id,
+        depositId: depositRequest.id,
+        userId: depositRequest.user_id,
+        rawProviderStatus: settlementEligibility.providerStatus,
+        mappedLocalStatus: settlementEligibility.localStatus,
+        paymentStatus: effectiveMappedStatus,
+        expectedPriceAmount: expectedAmount,
+        payloadPriceAmount,
+        reason: 'amount_mismatch'
+      });
       throw new ApiError(400, 'NOWPayments amount mismatch');
     }
 
@@ -522,12 +608,14 @@ async function processNowPaymentsPayloadWithClient(client, payload, options = {}
       expectedCurrentStatus: depositRequest.status
     });
 
-    if (nowPaymentsService.isSuccessfulPaymentStatus(effectiveMappedStatus)) {
+    if (settlementEligibility.eligible) {
       logNowPayments('payment.status-terminal-success', {
         source: options.source || 'webhook',
         paymentRecordId: nextPaymentRecord.id,
         depositId: depositRequest.id,
         userId: depositRequest.user_id,
+        rawProviderStatus: settlementEligibility.providerStatus,
+        mappedLocalStatus: settlementEligibility.localStatus,
         previousDepositStatus,
         nextDepositStatus,
         paymentStatus: effectiveMappedStatus
@@ -549,10 +637,12 @@ async function processNowPaymentsPayloadWithClient(client, payload, options = {}
         paymentRecordId: nextPaymentRecord.id,
         depositId: depositRequest.id,
         userId: depositRequest.user_id,
+        rawProviderStatus: settlementEligibility.providerStatus,
+        mappedLocalStatus: settlementEligibility.localStatus,
         previousDepositStatus,
         nextDepositStatus,
         paymentStatus: effectiveMappedStatus,
-        reason: ['failed', 'expired'].includes(effectiveMappedStatus) ? 'terminal_non_success' : 'awaiting_success_status'
+        reason: ['failed', 'expired'].includes(effectiveMappedStatus) ? 'terminal_non_success' : settlementEligibility.reason
       });
     }
   } else {
