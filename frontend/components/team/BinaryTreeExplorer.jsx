@@ -105,12 +105,12 @@ export function BinaryTreeExplorer({ root }) {
 
   return (
     <div className="relative overflow-hidden rounded-[22px] border border-white/8 bg-[linear-gradient(180deg,rgba(18,20,27,0.96),rgba(10,12,18,0.98))] shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
-      <div className="relative overflow-hidden px-2 py-3 sm:px-4 sm:py-4">
+      <div className="relative overflow-x-auto overflow-y-hidden px-2 py-3 sm:px-4 sm:py-4">
         <div
-          className="relative overflow-hidden rounded-[20px] border border-white/6 bg-[radial-gradient(circle_at_top,rgba(124,58,237,0.15),transparent_38%),radial-gradient(circle_at_bottom,rgba(16,185,129,0.12),transparent_42%),rgba(8,10,15,0.95)]"
+          className="relative min-w-full overflow-hidden rounded-[20px] border border-white/6 bg-[radial-gradient(circle_at_top,rgba(124,58,237,0.15),transparent_38%),radial-gradient(circle_at_bottom,rgba(16,185,129,0.12),transparent_42%),rgba(8,10,15,0.95)]"
         >
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(transparent_95%,rgba(255,255,255,0.03)_96%),linear-gradient(90deg,transparent_95%,rgba(255,255,255,0.03)_96%)] bg-[length:24px_24px]" />
-          <div className="relative mx-auto w-full max-w-[980px] px-3 py-4 sm:px-6 sm:py-6">
+          <div className="relative mx-auto w-max min-w-full px-3 py-4 sm:px-6 sm:py-6">
             <RootBinaryTreeNode node={root} onPreview={queuePreview} />
           </div>
         </div>
@@ -266,16 +266,14 @@ function BinaryTreeNode({ node, side = 'root', defaultExpanded = false, onPrevie
 }
 
 function InlineBranchLayout({ leftNode, rightNode, loading = false, onPreview, blockDepth }) {
-  const stackOnMobile = true;
-
   return (
     <div className="relative flex w-full min-w-0 flex-col items-center pt-2">
-      <div className="relative w-full max-w-[320px] min-w-0 pt-2 min-[420px]:max-w-[560px]">
-        <div className="absolute left-1/4 right-1/4 top-0 hidden h-px bg-[linear-gradient(90deg,rgba(255,255,255,0.08),rgba(255,255,255,0.34),rgba(255,255,255,0.08))] min-[420px]:block" />
-        <div className="absolute left-1/4 top-0 hidden h-2.5 w-px bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))] min-[420px]:block" />
-        <div className="absolute right-1/4 top-0 hidden h-2.5 w-px bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))] min-[420px]:block" />
+      <div className="relative w-full min-w-[260px] pt-2">
+        <div className="absolute left-1/4 right-1/4 top-0 h-px bg-[linear-gradient(90deg,rgba(255,255,255,0.08),rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
+        <div className="absolute left-1/4 top-0 h-2.5 w-px bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
+        <div className="absolute right-1/4 top-0 h-2.5 w-px bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
 
-        <div className={`grid items-start ${stackOnMobile ? 'grid-cols-1 min-[420px]:grid-cols-2' : 'grid-cols-2'} gap-x-3 gap-y-4 sm:gap-x-4 sm:gap-y-5`}>
+        <div className="grid grid-cols-2 items-start gap-x-3 gap-y-4 sm:gap-x-4 sm:gap-y-5">
           <BinaryTreeSlot side="left" node={leftNode} loading={loading} onPreview={onPreview} blockDepth={blockDepth} />
           <BinaryTreeSlot side="right" node={rightNode} loading={loading} onPreview={onPreview} blockDepth={blockDepth} />
         </div>
@@ -306,13 +304,15 @@ function ContinuationSlot({ side, node, loading = false, onPreview }) {
         {slotLabel(side)} continuation
       </span>
 
-      <div className="mt-2.5 flex w-full min-w-0 justify-center">
+      <div className="mt-2.5 flex w-full min-w-0 justify-center overflow-x-auto overflow-y-hidden">
         {loading ? (
           <div className="flex h-[84px] w-[86px] items-center justify-center rounded-[20px] border border-white/10 bg-[rgba(17,20,28,0.92)] text-white/55 shadow-[0_16px_34px_rgba(0,0,0,0.28)] sm:h-[96px] sm:w-[112px] sm:rounded-[22px]">
             <Loader2 size={16} className="animate-spin" />
           </div>
         ) : node ? (
-          <BinaryTreeNode node={node} side={side} defaultExpanded blockDepth={0} onPreview={onPreview} />
+          <div className="flex min-w-fit justify-center px-1">
+            <BinaryTreeNode node={node} side={side} defaultExpanded blockDepth={0} onPreview={onPreview} />
+          </div>
         ) : (
           <div className="flex h-[84px] w-[86px] flex-col items-center justify-center rounded-[20px] border border-dashed border-white/12 bg-white/[0.04] px-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:h-[96px] sm:w-[112px] sm:rounded-[22px] sm:px-3">
             <span className="inline-flex h-7 w-7 items-center justify-center rounded-[10px] border border-white/10 bg-white/5 text-white/62 sm:h-8 sm:w-8 sm:rounded-[12px]">
@@ -334,20 +334,24 @@ function BinaryTreeSlot({ side, node, loading = false, onPreview, blockDepth }) 
         {slotLabel(side)}
       </span>
 
-      {loading ? (
-        <div className="flex h-[84px] w-[86px] items-center justify-center rounded-[20px] border border-white/10 bg-[rgba(17,20,28,0.92)] text-white/55 shadow-[0_16px_34px_rgba(0,0,0,0.28)] sm:h-[96px] sm:w-[112px] sm:rounded-[22px]">
-          <Loader2 size={16} className="animate-spin" />
-        </div>
-      ) : node ? (
-        <BinaryTreeNode node={node} side={side} onPreview={onPreview} blockDepth={blockDepth} />
-      ) : (
-        <div className="flex h-[84px] w-[86px] flex-col items-center justify-center rounded-[20px] border border-dashed border-white/12 bg-white/[0.04] px-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:h-[96px] sm:w-[112px] sm:rounded-[22px] sm:px-3">
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-[10px] border border-white/10 bg-white/5 text-white/62 sm:h-8 sm:w-8 sm:rounded-[12px]">
-            <Plus size={13} />
-          </span>
-          <p className="mt-1.5 text-[9px] font-semibold text-white/72 sm:mt-2 sm:text-[10px]">Empty slot</p>
-        </div>
-      )}
+      <div className="flex w-full min-w-0 justify-center overflow-x-auto overflow-y-hidden">
+        {loading ? (
+          <div className="flex h-[84px] w-[86px] items-center justify-center rounded-[20px] border border-white/10 bg-[rgba(17,20,28,0.92)] text-white/55 shadow-[0_16px_34px_rgba(0,0,0,0.28)] sm:h-[96px] sm:w-[112px] sm:rounded-[22px]">
+            <Loader2 size={16} className="animate-spin" />
+          </div>
+        ) : node ? (
+          <div className="flex min-w-fit justify-center px-1">
+            <BinaryTreeNode node={node} side={side} onPreview={onPreview} blockDepth={blockDepth} />
+          </div>
+        ) : (
+          <div className="flex h-[84px] w-[86px] flex-col items-center justify-center rounded-[20px] border border-dashed border-white/12 bg-white/[0.04] px-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:h-[96px] sm:w-[112px] sm:rounded-[22px] sm:px-3">
+            <span className="inline-flex h-7 w-7 items-center justify-center rounded-[10px] border border-white/10 bg-white/5 text-white/62 sm:h-8 sm:w-8 sm:rounded-[12px]">
+              <Plus size={13} />
+            </span>
+            <p className="mt-1.5 text-[9px] font-semibold text-white/72 sm:mt-2 sm:text-[10px]">Empty slot</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
