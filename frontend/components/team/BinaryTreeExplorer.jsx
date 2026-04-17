@@ -266,14 +266,16 @@ function BinaryTreeNode({ node, side = 'root', defaultExpanded = false, onPrevie
 }
 
 function InlineBranchLayout({ leftNode, rightNode, loading = false, onPreview, blockDepth }) {
+  const stackOnMobile = true;
+
   return (
     <div className="relative flex w-full min-w-0 flex-col items-center pt-2">
-      <div className="relative w-full max-w-[280px] min-w-0 pt-2 sm:max-w-[560px]">
-        <div className="absolute left-1/4 right-1/4 top-0 h-px bg-[linear-gradient(90deg,rgba(255,255,255,0.08),rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
-        <div className="absolute left-1/4 top-0 h-2.5 w-px bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
-        <div className="absolute right-1/4 top-0 h-2.5 w-px bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
+      <div className="relative w-full max-w-[320px] min-w-0 pt-2 min-[420px]:max-w-[560px]">
+        <div className="absolute left-1/4 right-1/4 top-0 hidden h-px bg-[linear-gradient(90deg,rgba(255,255,255,0.08),rgba(255,255,255,0.34),rgba(255,255,255,0.08))] min-[420px]:block" />
+        <div className="absolute left-1/4 top-0 hidden h-2.5 w-px bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))] min-[420px]:block" />
+        <div className="absolute right-1/4 top-0 hidden h-2.5 w-px bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))] min-[420px]:block" />
 
-        <div className="grid grid-cols-2 items-start gap-x-1.5 gap-y-4 sm:gap-x-4 sm:gap-y-5">
+        <div className={`grid items-start ${stackOnMobile ? 'grid-cols-1 min-[420px]:grid-cols-2' : 'grid-cols-2'} gap-x-3 gap-y-4 sm:gap-x-4 sm:gap-y-5`}>
           <BinaryTreeSlot side="left" node={leftNode} loading={loading} onPreview={onPreview} blockDepth={blockDepth} />
           <BinaryTreeSlot side="right" node={rightNode} loading={loading} onPreview={onPreview} blockDepth={blockDepth} />
         </div>
@@ -298,7 +300,7 @@ function ContinuationSection({ leftNode, rightNode, loading = false, onPreview }
 
 function ContinuationSlot({ side, node, loading = false, onPreview }) {
   return (
-    <div className="flex min-w-0 flex-col items-center rounded-[20px] border border-white/8 bg-white/[0.03] p-2.5 sm:p-3">
+    <div className="flex w-full min-w-0 flex-col items-center rounded-[20px] border border-white/8 bg-white/[0.03] p-2.5 sm:p-3">
       <span className="inline-flex max-w-full items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[8px] font-semibold uppercase tracking-[0.16em] text-white/48">
         <CircleDot size={8} />
         {slotLabel(side)} continuation
@@ -326,7 +328,7 @@ function ContinuationSlot({ side, node, loading = false, onPreview }) {
 
 function BinaryTreeSlot({ side, node, loading = false, onPreview, blockDepth }) {
   return (
-    <div className="flex min-w-0 flex-col items-center gap-1.5">
+    <div className="flex w-full min-w-0 flex-col items-center gap-1.5">
       <span className="inline-flex max-w-full items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[8px] font-semibold uppercase tracking-[0.16em] text-white/48">
         <CircleDot size={8} />
         {slotLabel(side)}
