@@ -7,16 +7,17 @@ import { useSessionUser } from '@/hooks/useSessionUser';
 import { canAccessSellerArea } from '@/lib/constants/access';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { PageLoadingState } from '@/components/ui/PageLoadingState';
 
 export function SellerGuard({ children }) {
   const sessionUser = useSessionUser();
-  const sellerQuery = useSellerMe({ enabled: Boolean(sessionUser.data) });
+  const sellerQuery = useSellerMe({ enabled: Boolean(sessionUser.token) });
 
   const isLoading = sessionUser.isLoading || sellerQuery.isLoading;
   const isError = sellerQuery.isError;
   const canAccess = useMemo(() => canAccessSellerArea(sessionUser.data, sellerQuery.data), [sessionUser.data, sellerQuery.data]);
 
-  if (isLoading) return null;
+  if (isLoading) return <PageLoadingState title="Seller" subtitle="Checking seller access." />;
   if (isError) return <ErrorState message="Seller access validation failed. Please retry." onRetry={sellerQuery.refetch} />;
 
   if (!canAccess) {

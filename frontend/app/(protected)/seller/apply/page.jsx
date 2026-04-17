@@ -13,6 +13,7 @@ import { applyForSeller } from '@/lib/services/sellerService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { SELLER_APPLICATION_FEE_USD } from '@/lib/constants/seller';
 import { currency, shortDate } from '@/lib/utils/format';
+import { PageLoadingState } from '@/components/ui/PageLoadingState';
 
 const EMPTY_DOC = { documentType: '', documentNumber: '', documentUrl: '', notes: '' };
 
@@ -131,7 +132,7 @@ export default function SellerApplyPage() {
     await applyMutation.mutateAsync({ ...form, documents: cleanedDocs });
   }
 
-  if (sellerQuery.isLoading) return null;
+  if (sellerQuery.isLoading) return <PageLoadingState title="Seller Application" subtitle="Loading your seller application status." />;
   if (sellerQuery.isError) return <ErrorState message="Seller application data could not be loaded." onRetry={sellerQuery.refetch} />;
 
   return (

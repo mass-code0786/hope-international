@@ -19,6 +19,33 @@ const LazyHopeAssistant = dynamic(
   { ssr: false }
 );
 
+function ShellLoadingState() {
+  return (
+    <div className="min-h-screen bg-bg text-text md:flex">
+      <aside className="hidden w-80 border-r border-[var(--hope-border)] bg-[linear-gradient(180deg,#1e1f25,#23242b)] p-6 md:block">
+        <div className="space-y-4 rounded-[30px] border border-white/10 bg-white/5 p-5">
+          <div className="h-5 w-40 rounded-full bg-white/10" />
+          <div className="h-16 rounded-[24px] bg-white/5" />
+        </div>
+      </aside>
+      <main className="relative w-full min-w-0">
+        <div className="relative mx-auto w-full max-w-7xl p-3.5 pb-24 md:p-5 md:pb-6">
+          <div className="space-y-4">
+            <div className="h-8 w-40 rounded-full bg-white/10" />
+            <div className="rounded-2xl border border-[var(--hope-border)] bg-card p-4">
+              <div className="space-y-3">
+                <div className="h-4 w-32 rounded-full bg-white/10" />
+                <div className="h-3 w-5/6 rounded-full bg-white/5" />
+                <div className="h-3 w-2/3 rounded-full bg-white/5" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
 export function AppShell({ children }) {
   const router = useRouter();
   const { token, hydrated, hydrate, clearSession, user, isLoggingOut } = useAuthStore();
@@ -59,16 +86,8 @@ export function AppShell({ children }) {
     return null;
   }
 
-  if (isAuthBootstrapping) return null;
-  if (!token) return null;
-
-  if (token && meQuery.isError && !resolvedUser) {
-    return (
-      <div className="min-h-screen bg-bg p-3.5 md:p-5">
-        <ErrorState message="Unable to load your account." onRetry={meQuery.refetch} />
-      </div>
-    );
-  }
+  if (isAuthBootstrapping) return <ShellLoadingState />;
+  if (!token) return <ShellLoadingState />;
 
   return (
     <div className="min-h-screen bg-bg text-text md:flex">
@@ -77,6 +96,11 @@ export function AppShell({ children }) {
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(139,61,255,0.12),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(50,209,125,0.08),transparent_26%)]" />
         <div className="relative mx-auto w-full max-w-7xl p-3.5 pb-24 md:p-5 md:pb-6">
           <LoginWelcomeVoice username={resolvedUser?.username} />
+          {token && meQuery.isError && !resolvedUser ? (
+            <div className="mb-4">
+              <ErrorState message="Unable to fully load your account. Some sections may be limited." onRetry={meQuery.refetch} />
+            </div>
+          ) : null}
           {children}
         </div>
       </main>

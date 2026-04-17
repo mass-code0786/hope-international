@@ -10,6 +10,7 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { createUserAddress, getUserAddress, updateUserAddress } from '@/lib/services/userAddressService';
+import { PageLoadingState } from '@/components/ui/PageLoadingState';
 
 const emptyForm = {
   fullName: '',
@@ -80,9 +81,7 @@ export default function AddressPage() {
     onError: (error) => toast.error(error.message || 'Failed to save address')
   });
 
-  if (addressQuery.isLoading) {
-    return null;
-  }
+  if (addressQuery.isLoading) return <PageLoadingState title="Delivery Address" subtitle="Loading your saved address details." />;
 
   if (addressQuery.isError) {
     return <ErrorState message="Address details could not be loaded." onRetry={addressQuery.refetch} />;

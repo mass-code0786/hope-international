@@ -9,11 +9,12 @@ import { SellerStatusBadge } from '@/components/seller/SellerStatusBadge';
 import { SellerGuard } from '@/components/seller/SellerGuard';
 import { useSellerMe } from '@/hooks/useSellerMe';
 import { shortDate } from '@/lib/utils/format';
+import { PageLoadingState } from '@/components/ui/PageLoadingState';
 
 function SellerProfileContent() {
   const sellerQuery = useSellerMe();
 
-  if (sellerQuery.isLoading) return null;
+  if (sellerQuery.isLoading) return <PageLoadingState title="Seller Profile" subtitle="Loading seller profile details." />;
   if (sellerQuery.isError) return <ErrorState message="Seller profile could not be loaded." onRetry={sellerQuery.refetch} />;
 
   const profile = sellerQuery.data?.profile;

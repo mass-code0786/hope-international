@@ -11,11 +11,12 @@ import { queryKeys } from '@/lib/query/queryKeys';
 import { TeamSummaryPanel } from '@/components/team/TeamSummaryPanel';
 import { BinaryTreeExplorer } from '@/components/team/BinaryTreeExplorer';
 import { useSessionUser } from '@/hooks/useSessionUser';
+import { PageLoadingState } from '@/components/ui/PageLoadingState';
 
 export default function TeamPage() {
   const sessionUser = useSessionUser();
-  const teamSummaryQuery = useQuery({ queryKey: queryKeys.teamSummary, queryFn: getTeamSummary, placeholderData: (previousData) => previousData });
-  const treeRootQuery = useQuery({ queryKey: queryKeys.teamTreeRoot, queryFn: getTeamTreeRoot, placeholderData: (previousData) => previousData });
+  const teamSummaryQuery = useQuery({ queryKey: queryKeys.teamSummary, queryFn: getTeamSummary, placeholderData: (previousData) => previousData, refetchOnWindowFocus: false, refetchOnReconnect: false });
+  const treeRootQuery = useQuery({ queryKey: queryKeys.teamTreeRoot, queryFn: getTeamTreeRoot, placeholderData: (previousData) => previousData, refetchOnWindowFocus: false, refetchOnReconnect: false });
 
   const me = sessionUser.data || {};
   const teamSummary = teamSummaryQuery.data || {};
@@ -24,10 +25,7 @@ export default function TeamPage() {
 
   const isLoadingTeam = sessionUser.isPending || (teamSummaryQuery.isPending && !teamSummaryQuery.data) || (treeRootQuery.isPending && !treeRootQuery.data);
 
-  if (isLoadingTeam) return null;
-  if ((teamSummaryQuery.isError && !teamSummaryQuery.data) || (treeRootQuery.isError && !treeRootQuery.data)) {
-    return <ErrorState message="Team tree is temporarily unavailable." onRetry={() => { teamSummaryQuery.refetch(); treeRootQuery.refetch(); }} />;
-  }
+  if (isLoadingTeam) return <PageLoadingState title="Team Overview" subtitle="Loading your summary and binary team tree." />;
 
   return (
     <div className="space-y-3">
@@ -35,7 +33,11 @@ export default function TeamPage() {
         <h1 className="text-2xl font-semibold tracking-[-0.04em] text-text">Team Overview</h1>
       </div>
 
-      <TeamSummaryPanel me={me} teamSummary={teamSummary} children={directChildren} />
+      {teamSummaryQuery.isError && !teamSummaryQuery.data ? (
+        <ErrorState message="Team summary is temporarily unavailable." onRetry={teamSummaryQuery.refetch} />
+      ) : (
+        <TeamSummaryPanel me={me} teamSummary={teamSummary} children={directChildren} />
+      )}
 
       <section className="overflow-hidden rounded-[20px] border border-[rgba(255,255,255,0.05)] bg-[linear-gradient(145deg,#1a1d24,#0f1115)] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.6),inset_0_0_40px_rgba(124,58,237,0.08)]">
         <div className="flex items-start gap-3 border-b border-[var(--hope-border)] pb-3">
@@ -47,7 +49,11 @@ export default function TeamPage() {
           </div>
         </div>
 
-        {root ? (
+        {treeRootQuery.isError && !root ? (
+          <div className="mt-3.5">
+            <ErrorState message="Team tree is temporarily unavailable." onRetry={treeRootQuery.refetch} />
+          </div>
+        ) : root ? (
           <div className="mt-3.5">
             <BinaryTreeExplorer root={root} />
           </div>

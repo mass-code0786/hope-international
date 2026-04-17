@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Badge } from '@/components/ui/Badge';
 import { queryKeys } from '@/lib/query/queryKeys';
+import { PageLoadingState } from '@/components/ui/PageLoadingState';
 import {
   getMyNotifications,
   getUnreadNotificationCount,
@@ -61,7 +62,7 @@ export default function NotificationsPage() {
     onError: (error) => toast.error(error.message || 'Unable to update notifications')
   });
 
-  if (notificationsQuery.isLoading) return null;
+  if (notificationsQuery.isLoading) return <PageLoadingState title="Notifications" subtitle="Loading your recent alerts and updates." />;
   if (notificationsQuery.isError) return <ErrorState message="Notifications could not be loaded." onRetry={notificationsQuery.refetch} />;
 
   const envelope = notificationsQuery.data || {};

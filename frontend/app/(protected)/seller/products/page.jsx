@@ -9,6 +9,7 @@ import { SellerStatusBadge } from '@/components/seller/SellerStatusBadge';
 import { SellerGuard } from '@/components/seller/SellerGuard';
 import { useSellerProducts } from '@/hooks/useSellerProducts';
 import { currency, number, shortDate } from '@/lib/utils/format';
+import { PageLoadingState } from '@/components/ui/PageLoadingState';
 
 function SellerProductsContent() {
   const { products, isLoading, isError, refetch } = useSellerProducts();
@@ -22,7 +23,7 @@ function SellerProductsContent() {
     });
   }, [products, search]);
 
-  if (isLoading) return null;
+  if (isLoading) return <PageLoadingState title="Seller Products" subtitle="Loading your seller catalog." />;
   if (isError) return <ErrorState message="Seller products could not be loaded." onRetry={refetch} />;
 
   return (

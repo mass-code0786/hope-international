@@ -13,6 +13,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { useSellerProducts } from '@/hooks/useSellerProducts';
 import { updateSellerProduct } from '@/lib/services/sellerService';
 import { queryKeys } from '@/lib/query/queryKeys';
+import { PageLoadingState } from '@/components/ui/PageLoadingState';
 
 function parseGallery(text) {
   return String(text || '').split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
@@ -73,7 +74,7 @@ function EditSellerProductContent() {
     await updateMutation.mutateAsync(payload);
   }
 
-  if (isLoading) return null;
+  if (isLoading) return <PageLoadingState title="Edit Seller Product" subtitle="Loading product details for editing." />;
   if (isError) return <ErrorState message="Product details could not be loaded." onRetry={refetch} />;
   if (!product || !form) {
     return (

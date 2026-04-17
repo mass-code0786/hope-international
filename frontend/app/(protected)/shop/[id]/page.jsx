@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -23,6 +23,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { PurchaseConfirmModal } from '@/components/shop/PurchaseConfirmModal';
 import { useProducts } from '@/hooks/useProducts';
 import { useWallet } from '@/hooks/useWallet';
+import { PageLoadingState } from '@/components/ui/PageLoadingState';
 import { currency, number } from '@/lib/utils/format';
 import { createOrder } from '@/lib/services/ordersService';
 import { getProductDetail } from '@/lib/services/productsService';
@@ -68,8 +69,9 @@ export default function ProductDetailPage() {
     queryFn: () => getProductDetail(id),
     enabled: Boolean(id)
   });
-  const walletQuery = useWallet();
-  const addressQuery = useQuery({ queryKey: queryKeys.userAddress, queryFn: getUserAddress });
+  const [walletEnabled, setWalletEnabled] = useState(false);
+  const walletQuery = useWallet({ enabled: walletEnabled });
+  const addressQuery = useQuery({ queryKey: queryKeys.userAddress, queryFn: getUserAddress, enabled: purchaseModalOpen });
   const [isBuying, setIsBuying] = useState(false);
   const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -79,6 +81,7 @@ export default function ProductDetailPage() {
 
   const relatedProducts = useMemo(() => {
     if (!product) return [];
+    if (productsLoading) return [];
     const category = getCategory(product);
     return products
       .filter((item) => String(item?.id) !== id)
@@ -91,6 +94,30 @@ export default function ProductDetailPage() {
   const walletBalance = getAvailableWalletBalance(walletQuery.data);
   const canAfford = hasSufficientWalletBalance(walletQuery.data, pricing.lineFinalTotal);
   const walletReady = !walletQuery.isLoading && !walletQuery.isError;
+
+  useEffect(() => {
+    let cancelled = false;
+    let idleId = null;
+    let timeoutId = null;
+
+    const enable = () => {
+      if (!cancelled) setWalletEnabled(true);
+    };
+
+    if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+      idleId = window.requestIdleCallback(enable, { timeout: 900 });
+    } else {
+      timeoutId = window.setTimeout(enable, 250);
+    }
+
+    return () => {
+      cancelled = true;
+      if (idleId !== null && typeof window !== 'undefined' && typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
+    };
+  }, []);
 
   const buyMutation = useMutation({
     mutationFn: (selected) => {
@@ -124,7 +151,7 @@ export default function ProductDetailPage() {
     onSettled: () => setIsBuying(false)
   });
 
-  if (productQuery.isLoading || productsLoading) return null;
+  if (productQuery.isLoading) return <PageLoadingState title="Product Details" subtitle="Loading product information." />;
 
   if (productQuery.isError) return <ErrorState message="Product could not be loaded." onRetry={productQuery.refetch} />;
   if (!product) return <EmptyState title="Product not found" description="This product may have been removed from the catalog." />;
@@ -169,7 +196,7 @@ export default function ProductDetailPage() {
           <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">Save {offerPercent}%</span>
         </div>
         <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[11px] text-slate-600">
-          <p className="inline-flex items-center gap-1 font-semibold text-slate-800"><Wallet size={12} /> Wallet Balance: {currency(walletBalance)}</p>
+          <p className="inline-flex items-center gap-1 font-semibold text-slate-800"><Wallet size={12} /> Wallet Balance: {walletEnabled && walletReady ? currency(walletBalance) : 'Loading...'}</p>
           {walletReady && !canAfford ? <p className="mt-1 text-rose-600">Insufficient wallet balance</p> : null}
         </div>
         <ul className="mt-3 space-y-1 text-[11px] text-slate-700">
@@ -209,6 +236,10 @@ export default function ProductDetailPage() {
         <div className="mx-auto grid max-w-3xl grid-cols-2 gap-2">
           <button onClick={() => { const nextCount = addToCart(product, 1); if (!nextCount) { toast.error('Unable to add this product to cart'); return; } toast.success(`Added to cart (${nextCount})`); }} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[12px] font-semibold text-slate-700">Add to Cart</button>
           <button onClick={() => {
+            if (addressQuery.isLoading) {
+              toast.error('Address is still loading');
+              return;
+            }
             if (!address?.id) {
               toast.error('Add a delivery address before payment');
               return;

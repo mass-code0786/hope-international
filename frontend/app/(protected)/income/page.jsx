@@ -11,6 +11,7 @@ import { queryKeys } from '@/lib/query/queryKeys';
 import { getWalletWithHistory } from '@/lib/services/walletService';
 import { incomeSourceLabel } from '@/lib/utils/format';
 import { IncomeSummaryStrip } from '@/components/income/IncomeSummaryStrip';
+import { PageLoadingState } from '@/components/ui/PageLoadingState';
 
 const filters = ['all', 'direct_income', 'direct_deposit_income', 'level_deposit_income', 'matching_income', 'reward_qualification', 'cap_overflow'];
 
@@ -31,7 +32,7 @@ export default function IncomePage() {
   const reward = transactions.filter((t) => t?.source === 'reward_qualification' && t?.tx_type === 'credit').reduce((s, t) => s + Number(t?.amount || 0), 0);
   const overflow = transactions.filter((t) => t?.source === 'cap_overflow').reduce((s, t) => s + Number(t?.amount || 0), 0);
 
-  if (isLoading) return null;
+  if (isLoading) return <PageLoadingState title="Income" subtitle="Loading income summary and history." />;
   if (isError) return <ErrorState message="Income records are unavailable right now." onRetry={refetch} />;
 
   return (
