@@ -104,10 +104,13 @@ export function BinaryTreeExplorer({ root }) {
   }
 
   return (
-    <div className="relative overflow-hidden rounded-[22px] border border-white/8 bg-[linear-gradient(180deg,rgba(18,20,27,0.96),rgba(10,12,18,0.98))] shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
-      <div className="relative overflow-x-auto overflow-y-hidden px-2 py-3 sm:px-4 sm:py-4">
+    <div className="relative rounded-[22px] border border-white/8 bg-[linear-gradient(180deg,rgba(18,20,27,0.96),rgba(10,12,18,0.98))] shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
+      <div
+        className="relative overflow-x-auto overflow-y-visible px-2 py-3 sm:px-4 sm:py-4"
+        style={{ touchAction: 'pan-x pan-y' }}
+      >
         <div
-          className="relative min-w-full overflow-hidden rounded-[20px] border border-white/6 bg-[radial-gradient(circle_at_top,rgba(124,58,237,0.15),transparent_38%),radial-gradient(circle_at_bottom,rgba(16,185,129,0.12),transparent_42%),rgba(8,10,15,0.95)]"
+          className="relative min-w-full rounded-[20px] border border-white/6 bg-[radial-gradient(circle_at_top,rgba(124,58,237,0.15),transparent_38%),radial-gradient(circle_at_bottom,rgba(16,185,129,0.12),transparent_42%),rgba(8,10,15,0.95)]"
         >
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(transparent_95%,rgba(255,255,255,0.03)_96%),linear-gradient(90deg,transparent_95%,rgba(255,255,255,0.03)_96%)] bg-[length:24px_24px]" />
           <div className="relative mx-auto w-max min-w-full px-3 py-4 sm:px-6 sm:py-6">

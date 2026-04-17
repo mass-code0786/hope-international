@@ -39,7 +39,7 @@ export default function TeamPage() {
         <TeamSummaryPanel me={me} teamSummary={teamSummary} children={directChildren} />
       )}
 
-      <section className="overflow-hidden rounded-[20px] border border-[rgba(255,255,255,0.05)] bg-[linear-gradient(145deg,#1a1d24,#0f1115)] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.6),inset_0_0_40px_rgba(124,58,237,0.08)]">
+      <section className="rounded-[20px] border border-[rgba(255,255,255,0.05)] bg-[linear-gradient(145deg,#1a1d24,#0f1115)] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.6),inset_0_0_40px_rgba(124,58,237,0.08)]">
         <div className="flex items-start gap-3 border-b border-[var(--hope-border)] pb-3">
           <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[1rem] bg-[var(--hope-accent-soft)] text-accent">
             <GitBranchPlus size={16} />

@@ -12,7 +12,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { Badge } from '@/components/ui/Badge';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { getPaymentDetail, syncPaymentDetail } from '@/lib/services/paymentsService';
-import { currency, dateTime } from '@/lib/utils/format';
+import { currency, dateTime, number } from '@/lib/utils/format';
 
 function statusMeta(status) {
   const normalized = String(status || 'awaiting_payment').trim().toLowerCase();
@@ -48,6 +48,17 @@ function Countdown({ expiresAt }) {
   })();
 
   return <span>{text}</span>;
+}
+
+function formatProviderPayable(payment) {
+  const payAmount = Number(payment?.pay_amount ?? 0);
+  const payCurrency = String(payment?.pay_currency || '').trim().toUpperCase();
+  if (payAmount > 0 && payCurrency) {
+    return `${number(payAmount)} ${payCurrency}`;
+  }
+
+  const totalPayableAmount = Number(payment?.total_payable_amount ?? payment?.price_amount ?? 0);
+  return totalPayableAmount > 0 ? currency(totalPayableAmount) : '-';
 }
 
 export default function PaymentStatusPage() {
@@ -154,12 +165,12 @@ export default function PaymentStatusPage() {
               <p className="mt-2 text-lg font-semibold text-slate-950">{currency(payment?.deposit_amount || payment?.requested_amount || 0)}</p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Fee</p>
-              <p className="mt-2 text-lg font-semibold text-slate-950">{currency(payment?.fee_amount || 0)}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Amount To Pay</p>
+              <p className="mt-2 text-lg font-semibold text-slate-950">{formatProviderPayable(payment)}</p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Total Payable</p>
-              <p className="mt-2 text-lg font-semibold text-slate-950">{currency(payment?.total_payable_amount || payment?.price_amount || 0)}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Gateway Difference</p>
+              <p className="mt-2 text-lg font-semibold text-slate-950">{Number(payment?.fee_amount || 0) > 0 ? currency(payment.fee_amount) : 'None'}</p>
             </div>
           </div>
 

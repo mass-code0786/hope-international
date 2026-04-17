@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/Badge';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { createNowPaymentsPayment } from '@/lib/services/paymentsService';
 import { getDepositHistory } from '@/lib/services/walletService';
-import { currency, dateTime, statusVariant } from '@/lib/utils/format';
+import { currency, dateTime, number, statusVariant } from '@/lib/utils/format';
 
 const NOWPAYMENTS_PAY_CURRENCY = 'usdt';
 const NOWPAYMENTS_NETWORK = 'BSC/BEP20';
@@ -44,6 +44,17 @@ function getExpiryState(expiresAt) {
     label: `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`,
     remainingMs
   };
+}
+
+function formatProviderPayable(payment) {
+  const payAmount = Number(payment?.pay_amount ?? 0);
+  const payCurrency = String(payment?.pay_currency || '').trim().toUpperCase();
+  if (payAmount > 0 && payCurrency) {
+    return `${number(payAmount)} ${payCurrency}`;
+  }
+
+  const totalPayableAmount = Number(payment?.total_payable_amount ?? payment?.amount ?? 0);
+  return totalPayableAmount > 0 ? currency(totalPayableAmount) : 'Waiting';
 }
 
 export default function DepositPage() {
@@ -141,7 +152,7 @@ export default function DepositPage() {
   const activePaymentExpired = Boolean(activeGatewayPayment) && expiryState.expired && !activeGatewayPayment?.is_processed;
   const paymentSummary = {
     depositAmount: Number(activeGatewayPayment?.deposit_amount ?? activeGatewayPayment?.amount ?? 0),
-    feeAmount: Number(activeGatewayPayment?.fee_amount ?? 0),
+    providerDifferenceAmount: Number(activeGatewayPayment?.fee_amount ?? 0),
     totalPayableAmount: Number(activeGatewayPayment?.total_payable_amount ?? activeGatewayPayment?.amount ?? 0)
   };
 
@@ -195,15 +206,15 @@ export default function DepositPage() {
                 </p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Fee</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Amount To Pay</p>
                 <p className="mt-2 text-lg font-semibold text-white">
-                  {paymentSummary.totalPayableAmount ? currency(paymentSummary.feeAmount) : 'Waiting'}
+                  {formatProviderPayable(activeGatewayPayment)}
                 </p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Total Payable</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Gateway Difference</p>
                 <p className="mt-2 text-lg font-semibold text-white">
-                  {paymentSummary.totalPayableAmount ? currency(paymentSummary.totalPayableAmount) : 'Waiting'}
+                  {paymentSummary.providerDifferenceAmount > 0 ? currency(paymentSummary.providerDifferenceAmount) : 'None'}
                 </p>
               </div>
             </div>
@@ -310,7 +321,7 @@ export default function DepositPage() {
                 <div className="text-[11px] text-slate-700">
                   <p>
                     Status: {(item.payment_status || 'waiting').toUpperCase()}
-                    {item.pay_amount ? ` | Pay ${item.pay_amount} ${(item.pay_currency || '').toUpperCase()}` : ''}
+                    {item.pay_amount ? ` | Pay ${number(item.pay_amount)} ${(item.pay_currency || '').toUpperCase()}` : ''}
                   </p>
                   {item.payment_record_id ? <Link href={`/payments/${item.payment_record_id}`} className="mt-1 inline-flex font-semibold text-sky-700">Open payment status</Link> : null}
                 </div>

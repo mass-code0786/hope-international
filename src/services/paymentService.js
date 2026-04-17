@@ -27,13 +27,6 @@ function buildDepositOrderId(userId) {
   return `DEP_${String(userId).slice(0, 8).toUpperCase()}_${Date.now()}`;
 }
 
-function computeDepositFee(amount) {
-  const normalizedAmount = toMoney(amount);
-  if (normalizedAmount >= 1 && normalizedAmount <= 50) return 0.5;
-  if (normalizedAmount >= 51 && normalizedAmount <= 1000) return 1;
-  throw new ApiError(400, 'Deposit amount must be between 1 and 1000 USD');
-}
-
 function buildLocalExpiryDate(fromDate = new Date()) {
   return new Date(fromDate.getTime() + PAYMENT_EXPIRY_MINUTES * 60 * 1000);
 }
@@ -295,18 +288,18 @@ async function createNowPaymentsDepositPaymentWithClient(client, userId, payload
   }
 
   const depositAmount = toMoney(amount);
-  const feeAmount = computeDepositFee(depositAmount);
-  const totalPayableAmount = toMoney(depositAmount + feeAmount);
   const payCurrency = nowPaymentsService.normalizeCurrency(payload.payCurrency);
   const network = nowPaymentsService.normalizeNetwork(payload.network);
   const providerOrderId = buildDepositOrderId(userId);
   const providerPayment = await nowPaymentsService.createPayment({
-    priceAmount: totalPayableAmount,
+    priceAmount: depositAmount,
     priceCurrency: 'usd',
     payCurrency,
     orderId: providerOrderId,
     orderDescription: `Hope International deposit for user ${userId}`
   });
+  const providerPriceAmount = providerPayment.price_amount === undefined ? depositAmount : toMoney(providerPayment.price_amount || 0);
+  const providerFeeAmount = Math.max(0, Number((providerPriceAmount - depositAmount).toFixed(2)));
   const localExpiresAt = buildLocalExpiryDate();
   const expiresAt = resolveExpiresAt(providerPayment.expiration_estimate_date, localExpiresAt);
 
@@ -331,9 +324,9 @@ async function createNowPaymentsDepositPaymentWithClient(client, userId, payload
     details: {
       provider: nowPaymentsService.NOWPAYMENTS_PROVIDER,
       depositAmount,
-      feeAmount,
-      totalPayableAmount,
-      priceAmount: totalPayableAmount,
+      feeAmount: providerFeeAmount,
+      totalPayableAmount: providerPriceAmount,
+      priceAmount: providerPriceAmount,
       priceCurrency: 'USD',
       network,
       payCurrency: nowPaymentsService.NOWPAYMENTS_DISPLAY_CURRENCY,
@@ -354,7 +347,7 @@ async function createNowPaymentsDepositPaymentWithClient(client, userId, payload
     network,
     requestedAmount: depositAmount,
     expectedAmount: toCryptoAmount(providerPayment.pay_amount || 0),
-    priceAmount: totalPayableAmount,
+    priceAmount: providerPriceAmount,
     priceCurrency: 'usd',
     payCurrency: nowPaymentsService.NOWPAYMENTS_DISPLAY_CURRENCY,
     payAmount: toCryptoAmount(providerPayment.pay_amount || 0),
@@ -402,8 +395,8 @@ async function createNowPaymentsDepositPaymentWithClient(client, userId, payload
     providerOrderId,
     webhookUrl: paymentRecord.ipn_callback_url || nowPaymentsService.buildWebhookUrl() || null,
     requestedAmount: depositAmount,
-    feeAmount,
-    totalPayableAmount,
+    feeAmount: providerFeeAmount,
+    totalPayableAmount: providerPriceAmount,
     paymentStatus: paymentRecord.payment_status,
     expiresAt
   });
@@ -416,8 +409,8 @@ async function createNowPaymentsDepositPaymentWithClient(client, userId, payload
         paymentRecordId: paymentRecord.id,
         providerOrderId,
         providerPaymentId: paymentRecord.provider_payment_id,
-        feeAmount,
-        totalPayableAmount,
+        feeAmount: providerFeeAmount,
+        totalPayableAmount: providerPriceAmount,
         expiresAt
       }
     },
