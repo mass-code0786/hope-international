@@ -500,6 +500,16 @@ async function processNowPaymentsPayloadWithClient(client, payload, options = {}
     source: options.source || 'webhook',
     recordedAt: new Date().toISOString()
   });
+  logNowPayments('payment.status-mapped', {
+    source: options.source || 'webhook',
+    paymentRecordId: paymentRecord.id,
+    depositId: paymentRecord.deposit_id || null,
+    userId: paymentRecord.user_id,
+    providerPaymentId: providerPaymentId || paymentRecord.provider_payment_id,
+    providerOrderId: providerOrderId || paymentRecord.provider_order_id,
+    rawProviderStatus,
+    mappedLocalStatus: effectiveMappedStatus
+  });
   const nextPaymentRecord = await paymentRepository.updateNowPaymentsPayment(client, paymentRecord.id, {
     providerPaymentId: providerPaymentId || paymentRecord.provider_payment_id,
     providerOrderId: providerOrderId || paymentRecord.provider_order_id,
@@ -531,6 +541,17 @@ async function processNowPaymentsPayloadWithClient(client, payload, options = {}
     previousPaymentStatus,
     paymentStatus: effectiveMappedStatus,
     expiresAt
+  });
+  logNowPayments('payment.status-transition', {
+    source: options.source || 'webhook',
+    paymentRecordId: nextPaymentRecord.id,
+    depositId: nextPaymentRecord.deposit_id,
+    userId: nextPaymentRecord.user_id,
+    providerPaymentId: nextPaymentRecord.provider_payment_id,
+    providerOrderId: nextPaymentRecord.provider_order_id,
+    rawProviderStatus,
+    previousLocalStatus: previousPaymentStatus,
+    newLocalStatus: effectiveMappedStatus
   });
   logNowPayments('payment.settlement-eligibility', {
     source: options.source || 'webhook',
