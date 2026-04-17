@@ -39,9 +39,9 @@ export default function TeamPage() {
         <TeamSummaryPanel me={me} teamSummary={teamSummary} children={directChildren} />
       )}
 
-      <section className="rounded-[20px] border border-[rgba(255,255,255,0.05)] bg-[linear-gradient(145deg,#1a1d24,#0f1115)] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.6),inset_0_0_40px_rgba(124,58,237,0.08)]">
-        <div className="flex items-start gap-3 border-b border-[var(--hope-border)] pb-3">
-          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[1rem] bg-[var(--hope-accent-soft)] text-accent">
+      <section className="rounded-[18px] border border-[rgba(255,255,255,0.05)] bg-[linear-gradient(145deg,#1a1d24,#0f1115)] p-3 shadow-[0_10px_30px_rgba(0,0,0,0.6),inset_0_0_40px_rgba(124,58,237,0.08)] sm:p-4">
+        <div className="flex items-start gap-2.5 border-b border-[var(--hope-border)] pb-2.5 sm:gap-3 sm:pb-3">
+          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[0.9rem] bg-[var(--hope-accent-soft)] text-accent sm:h-8 sm:w-8 sm:rounded-[1rem]">
             <GitBranchPlus size={16} />
           </span>
           <div>
@@ -50,15 +50,15 @@ export default function TeamPage() {
         </div>
 
         {treeRootQuery.isError && !root ? (
-          <div className="mt-3.5">
+          <div className="mt-3">
             <ErrorState message="Team tree is temporarily unavailable." onRetry={treeRootQuery.refetch} />
           </div>
         ) : root ? (
-          <div className="mt-3.5">
+          <div className="mt-3">
             <BinaryTreeExplorer root={root} />
           </div>
         ) : (
-          <div className="mt-3.5">
+          <div className="mt-3">
             <EmptyState title="No team yet" description="Start referring users to build your binary tree." action={<Link href="/profile" className="hope-button">Start referring users</Link>} />
           </div>
         )}
