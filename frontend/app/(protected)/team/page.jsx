@@ -15,15 +15,15 @@ import { PageLoadingState } from '@/components/ui/PageLoadingState';
 
 export default function TeamPage() {
   const sessionUser = useSessionUser();
-  const teamSummaryQuery = useQuery({ queryKey: queryKeys.teamSummary, queryFn: getTeamSummary, placeholderData: (previousData) => previousData, refetchOnWindowFocus: false, refetchOnReconnect: false });
-  const treeRootQuery = useQuery({ queryKey: queryKeys.teamTreeRoot, queryFn: getTeamTreeRoot, placeholderData: (previousData) => previousData, refetchOnWindowFocus: false, refetchOnReconnect: false });
+  const teamSummaryQuery = useQuery({ queryKey: queryKeys.teamSummary, queryFn: getTeamSummary, placeholderData: (previousData) => previousData, retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false });
+  const treeRootQuery = useQuery({ queryKey: queryKeys.teamTreeRoot, queryFn: getTeamTreeRoot, placeholderData: (previousData) => previousData, retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false });
 
   const me = sessionUser.data || {};
   const teamSummary = teamSummaryQuery.data || {};
   const root = treeRootQuery.data || null;
   const directChildren = useMemo(() => [root?.children?.left, root?.children?.right].filter(Boolean), [root]);
 
-  const isLoadingTeam = sessionUser.isPending || (teamSummaryQuery.isPending && !teamSummaryQuery.data) || (treeRootQuery.isPending && !treeRootQuery.data);
+  const isLoadingTeam = (teamSummaryQuery.isPending && !teamSummaryQuery.data) || (treeRootQuery.isPending && !treeRootQuery.data);
 
   if (isLoadingTeam) return <PageLoadingState title="Team Overview" subtitle="Loading your summary and binary team tree." />;
 

@@ -8,6 +8,15 @@ import { queryKeys } from '@/lib/query/queryKeys';
 import { useAuthStore } from '@/lib/store/authStore';
 import { applyTheme } from '@/lib/utils/theme';
 
+const CURRENT_USER_BOOTSTRAP_TIMEOUT_MS = 8_000;
+
+function createCurrentUserTimeoutError() {
+  const error = new Error('Unable to load your account');
+  error.status = 408;
+  error.details = { reason: 'current_user_timeout' };
+  return error;
+}
+
 function AuthBootstrap() {
   const queryClient = useQueryClient();
   const hydrate = useAuthStore((state) => state.hydrate);
@@ -39,7 +48,11 @@ function AuthBootstrap() {
     let cancelled = false;
     setCurrentUserState({ status: 'loading', error: null, initialized: false });
 
-    getMe()
+    const timeoutPromise = new Promise((_, reject) => {
+      window.setTimeout(() => reject(createCurrentUserTimeoutError()), CURRENT_USER_BOOTSTRAP_TIMEOUT_MS);
+    });
+
+    Promise.race([getMe(), timeoutPromise])
       .then((currentUser) => {
         if (cancelled) return;
         queryClient.setQueryData(queryKeys.me, currentUser);
