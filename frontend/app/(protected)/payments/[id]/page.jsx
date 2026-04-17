@@ -7,6 +7,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import QRCode from 'qrcode';
 import toast from 'react-hot-toast';
 import { Copy, RefreshCw } from 'lucide-react';
+import { DepositSuccessCelebration, hasSeenDepositSuccess, isDepositSuccessStatus, markDepositSuccessSeen } from '@/components/payments/DepositSuccessCelebration';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Badge } from '@/components/ui/Badge';
@@ -67,6 +68,7 @@ export default function PaymentStatusPage() {
   const paymentId = params?.id;
   const returnTo = searchParams.get('returnTo') || '';
   const [qrImage, setQrImage] = useState('');
+  const [showSuccessCelebration, setShowSuccessCelebration] = useState(false);
 
   const paymentQuery = useQuery({
     queryKey: queryKeys.paymentDetail(paymentId),
@@ -89,6 +91,15 @@ export default function PaymentStatusPage() {
 
   const payment = paymentQuery.data?.data || null;
   const paymentExpired = Boolean(payment?.is_expired) || String(payment?.user_facing_status || '').toLowerCase() === 'expired';
+
+  useEffect(() => {
+    if (!payment?.id) return;
+    if (!isDepositSuccessStatus(payment.payment_status)) return;
+    if (hasSeenDepositSuccess(payment.id)) return;
+
+    markDepositSuccessSeen(payment.id);
+    setShowSuccessCelebration(true);
+  }, [payment?.id, payment?.payment_status]);
 
   useEffect(() => {
     let cancelled = false;
@@ -121,6 +132,14 @@ export default function PaymentStatusPage() {
 
   return (
     <div className="space-y-4">
+      <DepositSuccessCelebration
+        open={showSuccessCelebration}
+        paymentId={payment?.id}
+        amount={Number(payment?.deposit_amount || payment?.requested_amount || 0)}
+        walletHref="/wallet"
+        onClose={() => setShowSuccessCelebration(false)}
+      />
+
       <SectionHeader
         title="Payment Status"
         subtitle="Track your NOWPayments deposit and wait for the wallet credit confirmation."

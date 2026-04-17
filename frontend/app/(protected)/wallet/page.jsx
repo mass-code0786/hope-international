@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { ArrowRightLeft, HandCoins, LockKeyhole, Wallet as WalletIcon } from 'lucide-react';
+import { DepositSuccessCelebration, hasSeenDepositSuccess, isDepositSuccessStatus, markDepositSuccessSeen } from '@/components/payments/DepositSuccessCelebration';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { StatCard } from '@/components/ui/StatCard';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -11,7 +12,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { Badge } from '@/components/ui/Badge';
 import BtctCoinLogo from '@/components/common/BtctCoinLogo';
 import { queryKeys } from '@/lib/query/queryKeys';
-import { createWalletTransfer, getBtctStakingSummary, getWallet, startBtctStaking } from '@/lib/services/walletService';
+import { createWalletTransfer, getBtctStakingSummary, getDepositHistory, getWallet, startBtctStaking } from '@/lib/services/walletService';
 import { currency, dateTime, formatLabel, number } from '@/lib/utils/format';
 
 const walletChoices = [
@@ -27,6 +28,8 @@ const transferTargetsBySource = {
 export default function WalletPage() {
   const queryClient = useQueryClient();
   const [stakingAmount, setStakingAmount] = useState('');
+  const [showSuccessCelebration, setShowSuccessCelebration] = useState(false);
+  const [celebrationDeposit, setCelebrationDeposit] = useState(null);
   const [transferForm, setTransferForm] = useState({
     fromWallet: 'income_wallet',
     toWallet: 'deposit_wallet',
@@ -34,6 +37,19 @@ export default function WalletPage() {
   });
   const walletQuery = useQuery({ queryKey: queryKeys.wallet, queryFn: getWallet, placeholderData: (previousData) => previousData });
   const stakingQuery = useQuery({ queryKey: queryKeys.walletStaking, queryFn: getBtctStakingSummary, placeholderData: (previousData) => previousData });
+  const depositsQuery = useQuery({
+    queryKey: queryKeys.walletDeposits,
+    queryFn: getDepositHistory,
+    refetchInterval: (query) => {
+      const rows = Array.isArray(query.state.data?.data) ? query.state.data.data : [];
+      const hasPending = rows.some((item) => {
+        const status = String(item?.payment_status || '').trim().toLowerCase();
+        return !isDepositSuccessStatus(status) && !['failed', 'expired'].includes(status);
+      });
+      return hasPending ? 10000 : false;
+    },
+    placeholderData: (previousData) => previousData
+  });
 
   const startStakingMutation = useMutation({
     mutationFn: (payload) => startBtctStaking(payload),
@@ -69,6 +85,7 @@ export default function WalletPage() {
   if (stakingQuery.isError && !stakingQuery.data) return <ErrorState message="BTCT staking data could not be loaded." onRetry={stakingQuery.refetch} />;
 
   const data = walletQuery.data || {};
+  const depositRows = useMemo(() => (Array.isArray(depositsQuery.data?.data) ? depositsQuery.data.data : []), [depositsQuery.data]);
   const wallet = data.wallet || {};
   const transactions = Array.isArray(data.transactions) ? data.transactions : [];
   const staking = stakingQuery.data?.data || {};
@@ -126,6 +143,20 @@ export default function WalletPage() {
 
   const stakingValidationError = getStakingValidationError();
 
+  useEffect(() => {
+    const nextCelebrationDeposit = depositRows.find((item) => {
+      const successId = item?.payment_record_id || item?.id;
+      return successId && isDepositSuccessStatus(item?.payment_status) && !hasSeenDepositSuccess(successId);
+    });
+
+    if (!nextCelebrationDeposit) return;
+
+    const successId = nextCelebrationDeposit.payment_record_id || nextCelebrationDeposit.id;
+    markDepositSuccessSeen(successId);
+    setCelebrationDeposit(nextCelebrationDeposit);
+    setShowSuccessCelebration(true);
+  }, [depositRows]);
+
   function handleStartStaking() {
     if (startStakingMutation.isPending) return;
 
@@ -176,6 +207,17 @@ export default function WalletPage() {
 
   return (
     <div className="space-y-3">
+      <DepositSuccessCelebration
+        open={showSuccessCelebration}
+        paymentId={celebrationDeposit?.payment_record_id || celebrationDeposit?.id}
+        amount={Number(celebrationDeposit?.amount || 0)}
+        walletHref="/wallet"
+        onClose={() => {
+          setShowSuccessCelebration(false);
+          setCelebrationDeposit(null);
+        }}
+      />
+
       <SectionHeader title={formatLabel('Wallet Overview')} />
 
       <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 xl:grid-cols-6">
