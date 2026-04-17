@@ -28,7 +28,7 @@ export async function createNowPaymentsPayment(payload) {
 }
 
 export async function getPaymentDetail(id) {
-  return toEnvelope(await apiFetch(`/payments/${id}`));
+  return toEnvelope(await apiFetch(`/wallet/deposits/nowpayments/${id}`));
 }
 
 export async function syncPaymentDetail(id) {

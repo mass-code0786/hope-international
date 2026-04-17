@@ -521,6 +521,33 @@ async function syncNowPaymentsPayment(paymentId) {
   return withTransaction((client) => syncNowPaymentsPaymentWithClient(client, paymentId));
 }
 
+async function getNowPaymentsPaymentForUserById(paymentId, userId) {
+  const paymentRecord = await paymentRepository.getNowPaymentsPaymentById(null, paymentId);
+  if (!paymentRecord) {
+    logNowPayments('status-page.lookup-miss', { lookupId: paymentId, userId, scope: 'wallet.nowpayments' });
+    throw new ApiError(404, 'Payment not found');
+  }
+  if (String(paymentRecord.user_id) !== String(userId)) {
+    logNowPayments('status-page.lookup-denied', {
+      lookupId: paymentId,
+      paymentRecordId: paymentRecord.id,
+      paymentUserId: paymentRecord.user_id,
+      userId,
+      scope: 'wallet.nowpayments'
+    });
+    throw new ApiError(404, 'Payment not found');
+  }
+  logNowPayments('status-page.lookup-hit', {
+    lookupId: paymentId,
+    paymentRecordId: paymentRecord.id,
+    depositId: paymentRecord.deposit_id,
+    userId: paymentRecord.user_id,
+    paymentStatus: paymentRecord.payment_status,
+    scope: 'wallet.nowpayments'
+  });
+  return normalizePaymentRecord(paymentRecord);
+}
+
 async function getPaymentForUser(paymentId, userId, options = {}) {
   const paymentRecord = await resolveNowPaymentsPaymentRecord(null, paymentId);
   if (!paymentRecord) {
@@ -573,6 +600,7 @@ module.exports = {
   processNowPaymentsPayloadWithClient,
   syncNowPaymentsPayment,
   syncNowPaymentsPaymentWithClient,
+  getNowPaymentsPaymentForUserById,
   getPaymentForUser,
   listAdminNowPaymentsPayments,
   getAdminNowPaymentsPayment,

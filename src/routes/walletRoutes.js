@@ -6,6 +6,7 @@ const {
   walletAdjustSchema,
   walletBindSchema,
   nowPaymentsCreateSchema,
+  paymentIdParamSchema,
   walletTransferSchema,
   walletWithdrawalSchema,
   walletP2pSchema,
@@ -18,6 +19,7 @@ router.get('/', auth(), walletController.summary);
 router.get('/history', auth(), walletController.history);
 router.get('/deposits', auth(), walletController.depositList);
 router.post('/deposits/nowpayments', auth(), validate(nowPaymentsCreateSchema), walletController.depositCreateNowPayments);
+router.get('/deposits/nowpayments/:id', auth(), validate(paymentIdParamSchema), walletController.depositNowPaymentsDetail);
 router.get('/withdrawals', auth(), walletController.withdrawalList);
 router.post('/withdrawals', auth(), validate(walletWithdrawalSchema), walletController.withdrawalCreate);
 router.post('/transfer', auth(), validate(walletTransferSchema), walletController.transferCreate);

@@ -132,6 +132,15 @@ const depositCreateNowPayments = asyncHandler(async (req, res) => {
   });
 });
 
+const depositNowPaymentsDetail = asyncHandler(async (req, res) => {
+  const paymentService = require('../services/paymentService');
+  const data = await paymentService.getNowPaymentsPaymentForUserById(req.params.id, req.user.sub);
+  return success(res, {
+    data,
+    message: 'NOWPayments deposit fetched successfully'
+  });
+});
+
 const depositList = asyncHandler(async (req, res) => {
   const data = (await walletRepository.listDepositRequests(null, req.user.sub, 300))
     .map(normalizeDepositRecord)
@@ -221,6 +230,7 @@ module.exports = {
   history,
   bindWallet,
   depositCreateNowPayments,
+  depositNowPaymentsDetail,
   depositList,
   withdrawalCreate,
   withdrawalList,
