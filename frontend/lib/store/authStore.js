@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { clearStoredToken, getRememberedLoginPreference, getStoredToken, setRememberedUsername, setStoredToken } from '@/lib/utils/tokenStorage';
 
 const REGISTRATION_SUMMARY_KEY = 'hope_registration_summary';
+const SESSION_PERSIST_DELAY_MS = 75;
 
 function readRegistrationSummary() {
   if (typeof window === 'undefined') return null;
@@ -29,8 +30,11 @@ export const useAuthStore = create((set, get) => ({
   isLoggingOut: false,
   registrationSummary: null,
   rememberMe: false,
-  setSession: ({ token, user, rememberMe = false, username = '' }) => {
-    if (token) setStoredToken(token, { rememberMe });
+  setSession: async ({ token, user, rememberMe = false, username = '' }) => {
+    if (token) {
+      setStoredToken(token, { rememberMe });
+      await new Promise((resolve) => window.setTimeout(resolve, SESSION_PERSIST_DELAY_MS));
+    }
     setRememberedUsername(username || user?.username || '', true);
     set({ token, user, rememberMe, isLoggingOut: false });
   },

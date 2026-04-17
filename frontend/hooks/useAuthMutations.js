@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { login, register } from '@/lib/services/authService';
+import { getMe, login, register } from '@/lib/services/authService';
 import { useAuthStore } from '@/lib/store/authStore';
 import { queryKeys } from '@/lib/query/queryKeys';
 
@@ -34,6 +34,7 @@ function buildRegistrationSummary(user) {
 export function useAuthMutations() {
   const queryClient = useQueryClient();
   const setSession = useAuthStore((s) => s.setSession);
+  const setUser = useAuthStore((s) => s.setUser);
   const setRegistrationSummary = useAuthStore((s) => s.setRegistrationSummary);
   const [error, setError] = useState('');
 
@@ -50,7 +51,14 @@ export function useAuthMutations() {
     queryClient.removeQueries({ queryKey: queryKeys.teamChildren });
     queryClient.removeQueries({ queryKey: queryKeys.teamSummary });
     queryClient.removeQueries({ queryKey: queryKeys.teamTreeRoot });
-    queryClient.setQueryData(queryKeys.me, user);
+    const currentUser = await queryClient.fetchQuery({
+      queryKey: queryKeys.me,
+      queryFn: getMe,
+      staleTime: 0
+    }).catch(() => user);
+    setUser(currentUser);
+    queryClient.setQueryData(queryKeys.me, currentUser);
+    return currentUser;
   }
 
   const loginMutation = useMutation({
@@ -59,7 +67,7 @@ export function useAuthMutations() {
       if (process.env.NODE_ENV !== 'production') {
         console.info('[frontend.auth.login] response role', { username: data?.user?.username, role: data?.user?.role });
       }
-      setSession({ token: data.token, user: data.user, rememberMe: Boolean(data?.rememberMe), username: data?.user?.username });
+      await setSession({ token: data.token, user: data.user, rememberMe: Boolean(data?.rememberMe), username: data?.user?.username });
       await refreshCoreQueries(data.user);
     },
     onError: (err) => setError(err.message)
@@ -72,7 +80,7 @@ export function useAuthMutations() {
         console.info('[frontend.auth.register] response role', { username: data?.user?.username, role: data?.user?.role });
       }
       setRegistrationSummary(data?.registrationSummary || buildRegistrationSummary(data?.user));
-      setSession({ token: data.token, user: data.user, rememberMe: true, username: data?.user?.username });
+      await setSession({ token: data.token, user: data.user, rememberMe: true, username: data?.user?.username });
       await refreshCoreQueries(data.user);
     },
     onError: (err) => setError(err.message)

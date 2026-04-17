@@ -1,10 +1,9 @@
-import { getStoredToken } from '@/lib/utils/tokenStorage';
-
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   'http://localhost:4000';
 const API_TIMEOUT_MS = 12_000;
+const TOKEN_KEY = 'hope_token';
 
 function extractApiErrorMessage(data) {
   const formError = data?.details?.formErrors?.find((msg) => typeof msg === 'string' && msg.trim());
@@ -25,7 +24,9 @@ function extractApiErrorMessage(data) {
 }
 
 export async function apiFetch(path, options = {}) {
-  const token = getStoredToken();
+  const token = typeof window === 'undefined'
+    ? null
+    : window.localStorage.getItem(TOKEN_KEY) || window.sessionStorage.getItem(TOKEN_KEY);
   const headers = {
     'Content-Type': 'application/json',
     ...(options.headers || {})

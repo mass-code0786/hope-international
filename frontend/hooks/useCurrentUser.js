@@ -15,8 +15,9 @@ export function useCurrentUser(options = {}) {
   } = options;
   const { token, user, hydrated, hydrate, setUser } = useAuthStore();
   const queryClient = useQueryClient();
-  const cachedUser = queryClient.getQueryData(queryKeys.me) ?? null;
-  const resolvedUser = user ?? cachedUser ?? null;
+  const canUseToken = !requireToken || Boolean(token);
+  const cachedUser = canUseToken ? (queryClient.getQueryData(queryKeys.me) ?? null) : null;
+  const resolvedUser = canUseToken ? (user ?? cachedUser ?? null) : null;
 
   useEffect(() => {
     if (!hydrated) hydrate();
@@ -25,7 +26,7 @@ export function useCurrentUser(options = {}) {
   const query = useQuery({
     queryKey: queryKeys.me,
     queryFn: getMe,
-    enabled: enabled && hydrated && (!requireToken || Boolean(token)) && !resolvedUser,
+    enabled: enabled && hydrated && canUseToken && !resolvedUser,
     retry: false,
     staleTime: CURRENT_USER_STALE_TIME,
     gcTime: 30 * 60 * 1000,

@@ -68,7 +68,7 @@ export default function LoginPage() {
     setError('');
     try {
       const data = await loginMutation.mutateAsync(form);
-      const user = data?.user || null;
+      const user = useAuthStore.getState().user || data?.user || null;
       setRememberPreference(Boolean(form.rememberMe), form.username);
       markWelcomeVoicePending();
       const nextRoute = getPostLoginRoute(user);
@@ -97,11 +97,11 @@ export default function LoginPage() {
       const assertionPayload = await getWebAuthnAssertion(optionsResponse.data || optionsResponse);
       assertionPayload.rememberMe = Boolean(form.rememberMe);
       const data = await verifyWebauthnLogin(assertionPayload);
-      setSession({ token: data.token, user: data.user, rememberMe: Boolean(form.rememberMe), username: form.username.trim() });
+      await setSession({ token: data.token, user: data.user, rememberMe: Boolean(form.rememberMe), username: form.username.trim() });
       setRememberPreference(Boolean(form.rememberMe), form.username);
-      await refreshCoreQueries(data.user);
+      const currentUser = await refreshCoreQueries(data.user);
       markWelcomeVoicePending();
-      const nextRoute = getPostLoginRoute(data.user);
+      const nextRoute = getPostLoginRoute(currentUser || data.user);
       router.prefetch(nextRoute);
       await warmPostLoginRoute(nextRoute);
       toast.success('Biometric login successful');
