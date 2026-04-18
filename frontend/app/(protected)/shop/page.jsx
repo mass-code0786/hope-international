@@ -44,6 +44,7 @@ import { clearStoredToken } from '@/lib/utils/tokenStorage';
 import { clearProtectedQueries } from '@/lib/utils/logout';
 import { getAvailableWalletBalance, hasSufficientWalletBalance } from '@/lib/utils/wallet';
 import { getProductPricing } from '@/lib/utils/pricing';
+import { SHOP_PRODUCTS_PAGE_LIMIT } from '@/lib/constants/catalog';
 
 const PurchaseAddressModal = dynamic(() => import('@/components/shop/PurchaseAddressModal').then((mod) => mod.PurchaseAddressModal));
 const PurchaseConfirmModal = dynamic(() => import('@/components/shop/PurchaseConfirmModal').then((mod) => mod.PurchaseConfirmModal));
@@ -206,7 +207,7 @@ export default function ShopPage() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage
-  } = useInfiniteProducts({ limit: 24, category: selectedCategory, includeTotal: true });
+  } = useInfiniteProducts({ limit: SHOP_PRODUCTS_PAGE_LIMIT, category: selectedCategory, includeTotal: false });
   const bannersQuery = useQuery({
     queryKey: queryKeys.homepageBanners,
     queryFn: getHomepageBanners,
@@ -225,7 +226,11 @@ export default function ShopPage() {
   const [selectedPurchaseAddress, setSelectedPurchaseAddress] = useState(null);
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
   const bannerTrackRef = useRef(null);
+  const loadMoreRef = useRef(null);
   const queryClient = useQueryClient();
+  const productPages = Array.isArray(data?.pages) ? data.pages : [];
+  const products = productPages.flatMap((page) => (Array.isArray(page?.data) ? page.data : []));
+  const primaryCatalogReady = productPages.length > 0 || isError || (!isPending && data !== undefined);
 
   useEffect(() => {
     if (!menuOpen) return undefined;
@@ -238,6 +243,8 @@ export default function ShopPage() {
   }, [menuOpen]);
 
   useEffect(() => {
+    if (!primaryCatalogReady) return undefined;
+
     let cancelled = false;
     let idleId = null;
     let timeoutId = null;
@@ -247,9 +254,9 @@ export default function ShopPage() {
     };
 
     if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
-      idleId = window.requestIdleCallback(enable, { timeout: 1200 });
+      idleId = window.requestIdleCallback(enable, { timeout: 1500 });
     } else {
-      timeoutId = window.setTimeout(enable, 250);
+      timeoutId = window.setTimeout(enable, 700);
     }
 
     return () => {
@@ -259,9 +266,11 @@ export default function ShopPage() {
       }
       if (timeoutId !== null) window.clearTimeout(timeoutId);
     };
-  }, []);
+  }, [primaryCatalogReady]);
 
   useEffect(() => {
+    if (!primaryCatalogReady) return undefined;
+
     let cancelled = false;
     let idleId = null;
     let timeoutId = null;
@@ -271,9 +280,9 @@ export default function ShopPage() {
     };
 
     if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
-      idleId = window.requestIdleCallback(enable, { timeout: 1200 });
+      idleId = window.requestIdleCallback(enable, { timeout: 1800 });
     } else {
-      timeoutId = window.setTimeout(enable, 350);
+      timeoutId = window.setTimeout(enable, 900);
     }
 
     return () => {
@@ -283,9 +292,11 @@ export default function ShopPage() {
       }
       if (timeoutId !== null) window.clearTimeout(timeoutId);
     };
-  }, []);
+  }, [primaryCatalogReady]);
 
   useEffect(() => {
+    if (!primaryCatalogReady) return undefined;
+
     let cancelled = false;
     let idleId = null;
     let timeoutId = null;
@@ -297,9 +308,9 @@ export default function ShopPage() {
     setSecondarySectionsEnabled(false);
 
     if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
-      idleId = window.requestIdleCallback(enable, { timeout: 900 });
+      idleId = window.requestIdleCallback(enable, { timeout: 1200 });
     } else {
-      timeoutId = window.setTimeout(enable, 200);
+      timeoutId = window.setTimeout(enable, 450);
     }
 
     return () => {
@@ -309,12 +320,7 @@ export default function ShopPage() {
       }
       if (timeoutId !== null) window.clearTimeout(timeoutId);
     };
-  }, [activeCategory]);
-
-  useEffect(() => {
-    if (!hasNextPage || isFetchingNextPage) return;
-    fetchNextPage();
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+  }, [activeCategory, primaryCatalogReady]);
 
   const buyMutation = useMutation({
     mutationFn: (product) => {
@@ -351,9 +357,6 @@ export default function ShopPage() {
     onSettled: () => setBuyingProductId('')
   });
 
-  const productPages = Array.isArray(data?.pages) ? data.pages : [];
-  const products = productPages.flatMap((page) => (Array.isArray(page?.data) ? page.data : []));
-  const catalogPagination = productPages[productPages.length - 1]?.pagination || null;
   const liveBanners = Array.isArray(bannersQuery.data) ? bannersQuery.data : [];
 
   const heroBanners = useMemo(() => {
@@ -417,10 +420,30 @@ export default function ShopPage() {
   const walletReady = !walletQuery.isLoading && !walletQuery.isError;
   const pendingPayableAmount = pendingPurchase ? getProductPricing(pendingPurchase, 1).lineFinalTotal : 0;
   const pendingCanAfford = pendingPurchase ? hasSufficientWalletBalance(walletQuery.data, pendingPayableAmount) : true;
-  const totalActiveItems = Number.isFinite(Number(catalogPagination?.totalItems)) ? Number(catalogPagination.totalItems) : null;
-  const categoryLabel = activeCategory === 'All' ? 'all active products' : `${activeCategory} products`;
   const reachedAllProducts = !hasNextPage;
   const visibleCatalogCount = filtered.length;
+
+  useEffect(() => {
+    if (!hasNextPage || isFetchingNextPage) return undefined;
+
+    const node = loadMoreRef.current;
+    if (!node || typeof window === 'undefined' || typeof window.IntersectionObserver !== 'function') {
+      return undefined;
+    }
+
+    const observer = new window.IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: '220px 0px' }
+    );
+
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage, visibleCatalogCount]);
 
   return (
     <>
@@ -548,10 +571,11 @@ export default function ShopPage() {
           <div>
             <SectionTitle title="Deals of the Day" count={deals.length || 0} />
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-              {visibleDeals.map((product) => (
+              {visibleDeals.map((product, index) => (
                 <ProductCard
                   key={`deal-${product.id}`}
                   product={product}
+                  prioritizeImage={index < 4}
                   onBuy={(p) => setAddressStepProduct(p)}
                   isBuying={buyMutation.isPending && buyingProductId === product.id}
                   disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
@@ -564,10 +588,11 @@ export default function ShopPage() {
           <div>
             <SectionTitle title={activeCategory === 'All' ? 'All Products' : `${activeCategory} Products`} count={recommended.length} />
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-              {visibleRecommended.map((product) => (
+              {visibleRecommended.map((product, index) => (
                 <ProductCard
                   key={`recommended-${product.id}`}
                   product={product}
+                  prioritizeImage={index < 4}
                   onBuy={(p) => setAddressStepProduct(p)}
                   isBuying={buyMutation.isPending && buyingProductId === product.id}
                   disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
@@ -575,9 +600,9 @@ export default function ShopPage() {
                 />
               ))}
             </div>
-            {!reachedAllProducts && totalActiveItems !== null ? (
+            {!reachedAllProducts ? (
               <p className="mt-2 text-center text-[10px] text-slate-500">
-                Showing {visibleCatalogCount} of {totalActiveItems} {categoryLabel}. Loading remaining products...
+                Showing {visibleCatalogCount} products. More items load as you browse.
               </p>
             ) : reachedAllProducts ? (
               <p className="mt-2 text-center text-[10px] text-slate-500">
@@ -591,10 +616,11 @@ export default function ShopPage() {
               <div>
                 <SectionTitle title="New Arrivals" count={newArrivals.length} />
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                  {newArrivals.map((product) => (
+                  {newArrivals.map((product, index) => (
                     <ProductCard
                       key={`new-${product.id}`}
                       product={product}
+                      prioritizeImage={index < 2}
                       onBuy={(p) => setAddressStepProduct(p)}
                       isBuying={buyMutation.isPending && buyingProductId === product.id}
                       disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
@@ -607,10 +633,11 @@ export default function ShopPage() {
               <div>
                 <SectionTitle title="Trending" count={trending.length} />
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                  {trending.map((product) => (
+                  {trending.map((product, index) => (
                     <ProductCard
                       key={`trending-${product.id}`}
                       product={product}
+                      prioritizeImage={index < 2}
                       onBuy={(p) => setAddressStepProduct(p)}
                       isBuying={buyMutation.isPending && buyingProductId === product.id}
                       disableBuying={walletReady && !hasSufficientWalletBalance(walletQuery.data, getProductPricing(product, 1).lineFinalTotal)}
@@ -621,6 +648,8 @@ export default function ShopPage() {
               </div>
             </>
           ) : null}
+          {hasNextPage ? <div ref={loadMoreRef} className="h-1 w-full" aria-hidden="true" /> : null}
+          {isFetchingNextPage ? <p className="text-center text-[10px] text-slate-500">Loading more products...</p> : null}
         </section>
       ) : null}
 

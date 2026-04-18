@@ -5,6 +5,12 @@ const API_BASE_URL =
 const API_TIMEOUT_MS = 12_000;
 const TOKEN_KEY = 'hope_token';
 const RETRYABLE_GET_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504]);
+const API_ERROR_REASONS = Object.freeze({
+  NETWORK: 'network',
+  TIMEOUT: 'timeout',
+  SERVER: 'server',
+  NOT_FOUND: 'not_found'
+});
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -53,6 +59,41 @@ function extractApiErrorMessage(data) {
   return data?.message || '';
 }
 
+function mergeErrorDetails(details, reason) {
+  if (!reason) {
+    return details ?? null;
+  }
+
+  if (details && typeof details === 'object' && !Array.isArray(details)) {
+    return { ...details, reason };
+  }
+
+  return { reason };
+}
+
+function createApiError(message, { status = null, details = null, reason = null, cause = null } = {}) {
+  const error = new Error(message);
+
+  if (status != null) {
+    error.status = status;
+  }
+
+  error.details = mergeErrorDetails(details, reason);
+
+  if (cause) {
+    error.cause = cause;
+  }
+
+  return error;
+}
+
+function getHttpErrorReason(status) {
+  if (status === 404) return API_ERROR_REASONS.NOT_FOUND;
+  if (status === 408) return API_ERROR_REASONS.TIMEOUT;
+  if (status >= 500) return API_ERROR_REASONS.SERVER;
+  return null;
+}
+
 export async function apiFetch(path, options = {}, attempt = 0) {
   const token = typeof window === 'undefined'
     ? null
@@ -64,6 +105,13 @@ export async function apiFetch(path, options = {}, attempt = 0) {
 
   if (token) {
     headers.Authorization = `Bearer ${token}`;
+  }
+
+  if (typeof window !== 'undefined' && window.navigator?.onLine === false) {
+    throw createApiError('Network request failed', {
+      status: 0,
+      reason: API_ERROR_REASONS.NETWORK
+    });
   }
 
   const controller = new AbortController();
@@ -83,13 +131,19 @@ export async function apiFetch(path, options = {}, attempt = 0) {
     });
   } catch (error) {
     clearTimeout(timeoutId);
-    if (error?.name === 'AbortError') {
-      const timeoutError = new Error(getDefaultStatusMessage(408));
-      timeoutError.status = 408;
-      timeoutError.details = { reason: 'timeout' };
-      throw timeoutError;
+    if (error?.name === 'AbortError' && controller.signal.aborted) {
+      throw createApiError(getDefaultStatusMessage(408), {
+        status: 408,
+        reason: API_ERROR_REASONS.TIMEOUT,
+        cause: error
+      });
     }
-    throw error;
+
+    throw createApiError('Network request failed', {
+      status: 0,
+      reason: API_ERROR_REASONS.NETWORK,
+      cause: error
+    });
   }
 
   clearTimeout(timeoutId);
@@ -106,10 +160,11 @@ export async function apiFetch(path, options = {}, attempt = 0) {
     }
 
     const message = extractApiErrorMessage(data) || getDefaultStatusMessage(response.status);
-    const error = new Error(message);
-    error.status = response.status;
-    error.details = data?.details || null;
-    throw error;
+    throw createApiError(message, {
+      status: response.status,
+      details: data?.details || null,
+      reason: getHttpErrorReason(response.status)
+    });
   }
 
   return data;

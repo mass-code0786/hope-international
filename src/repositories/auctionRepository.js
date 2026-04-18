@@ -253,6 +253,7 @@ async function listAuctionsCompat(client, filters = {}, pagination = {}) {
   try {
     const columns = await getTableColumns(client, 'auctions');
     const { limit, offset } = normalizeListPagination(pagination);
+    const includeTotal = filters.includeTotal !== false;
     const values = [filters.now || new Date().toISOString()];
     const statusCase = buildCompatStatusCase(columns, '$1');
     const displayCurrentBid = columns.has('entry_price')
@@ -299,7 +300,7 @@ async function listAuctionsCompat(client, filters = {}, pagination = {}) {
     sortParts.push(columns.has('created_at') ? 'a.created_at DESC' : '1 DESC');
     const sortSql = `ORDER BY ${sortParts.join(', ')}`;
 
-    const listValues = [...values, limit, offset];
+  const listValues = [...values, limit, offset];
     const listSql = `SELECT
       a.*,
       ${statusCase} AS computed_status,
@@ -322,16 +323,23 @@ async function listAuctionsCompat(client, filters = {}, pagination = {}) {
      LIMIT $${listValues.length - 1} OFFSET $${listValues.length}`;
     logAuctionQuery('[auction.list.compat.sql]', listSql, listValues, filters);
     const { rows } = await q(client).query(listSql, listValues);
-
-    const countSql = `SELECT COUNT(*)
+    let total = null;
+    if (includeTotal) {
+      const countSql = `SELECT COUNT(*)
      FROM auctions a
      ${where.length ? `WHERE $1::timestamptz IS NOT NULL AND ${where.join(' AND ')}` : 'WHERE $1::timestamptz IS NOT NULL'}`;
-    logAuctionQuery('[auction.list.compat.countSql]', countSql, values, filters);
-    const countResult = await q(client).query(countSql, values);
+      logAuctionQuery('[auction.list.compat.countSql]', countSql, values, filters);
+      const countResult = await q(client).query(countSql, values);
+      total = Number(countResult.rows[0]?.count || 0);
+    }
+
+    const hasMore = !includeTotal && rows.length > limit;
+    const items = includeTotal ? rows : rows.slice(0, limit);
 
     return {
-      items: rows.map(normalizeAuctionRow),
-      total: Number(countResult.rows[0]?.count || 0)
+      items: items.map(normalizeAuctionRow),
+      total,
+      hasMore
     };
   } catch (error) {
     console.error('[auctionRepository.listAuctionsCompat] failed', {
@@ -352,6 +360,7 @@ async function listAuctions(client, filters = {}, pagination = {}) {
     }
 
     const { limit, offset } = normalizeListPagination(pagination);
+    const includeTotal = filters.includeTotal !== false;
     const values = [filters.now || new Date().toISOString()];
     const statusCase = buildAuctionStatusCase('$1');
     const where = [];
@@ -390,24 +399,31 @@ async function listAuctions(client, filters = {}, pagination = {}) {
     CASE WHEN ${statusCase} = 'ended' THEN a.closed_at END DESC NULLS LAST,
     a.created_at DESC`;
 
-    const listValues = [...values, limit, offset];
+  const listValues = [...values, limit, offset];
     const listSql = `${buildAuctionListSelect('$1', includeProductJoin)}
      ${whereSql}
      ${sortSql}
      LIMIT $${listValues.length - 1} OFFSET $${listValues.length}`;
     logAuctionQuery('[auction.list.sql]', listSql, listValues, filters);
     const { rows } = await q(client).query(listSql, listValues);
-
-    const countSql = `SELECT COUNT(*)
+    let total = null;
+    if (includeTotal) {
+      const countSql = `SELECT COUNT(*)
      FROM auctions a
      ${filters.search ? 'LEFT JOIN products p ON p.id = a.product_id' : ''}
      ${where.length ? `WHERE $1::timestamptz IS NOT NULL AND ${where.join(' AND ')}` : 'WHERE $1::timestamptz IS NOT NULL'}`;
-    logAuctionQuery('[auction.list.countSql]', countSql, values, filters);
-    const countResult = await q(client).query(countSql, values);
+      logAuctionQuery('[auction.list.countSql]', countSql, values, filters);
+      const countResult = await q(client).query(countSql, values);
+      total = Number(countResult.rows[0]?.count || 0);
+    }
+
+    const hasMore = !includeTotal && rows.length > limit;
+    const items = includeTotal ? rows : rows.slice(0, limit);
 
     return {
-      items: rows.map(normalizeAuctionListRow),
-      total: Number(countResult.rows[0]?.count || 0)
+      items: items.map(normalizeAuctionListRow),
+      total,
+      hasMore
     };
   } catch (error) {
     console.error('[auctionRepository.listAuctions] failed', {

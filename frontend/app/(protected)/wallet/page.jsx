@@ -1,18 +1,20 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { ArrowRightLeft, HandCoins, LockKeyhole, Wallet as WalletIcon } from 'lucide-react';
-import { DepositSuccessCelebration, hasSeenDepositSuccess, isDepositSuccessStatus, markDepositSuccessSeen } from '@/components/payments/DepositSuccessCelebration';
+import { DepositSuccessCelebration } from '@/components/payments/DepositSuccessCelebration';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { StatCard } from '@/components/ui/StatCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Badge } from '@/components/ui/Badge';
 import BtctCoinLogo from '@/components/common/BtctCoinLogo';
+import { useOneTimeDepositSuccess } from '@/hooks/useOneTimeDepositSuccess';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { createWalletTransfer, getBtctStakingSummary, getDepositHistory, getWallet, startBtctStaking } from '@/lib/services/walletService';
+import { buildDepositSuccessAckKeys, isDepositSuccessStatus } from '@/lib/utils/depositSuccess';
 import { currency, dateTime, formatLabel, number } from '@/lib/utils/format';
 
 const walletChoices = [
@@ -25,11 +27,26 @@ const transferTargetsBySource = {
   income_wallet: ['deposit_wallet']
 };
 
+function getWalletDepositSuccessEventKey(item) {
+  if (item?.payment_record_id) return `payment:${item.payment_record_id}`;
+  if (item?.id) return `deposit:${item.id}`;
+  return '';
+}
+
+function getWalletDepositSuccessAckKeys(item) {
+  return buildDepositSuccessAckKeys({
+    paymentId: item?.payment_record_id,
+    depositId: item?.id
+  });
+}
+
+function getWalletDepositSuccessStatus(item) {
+  return item?.payment_status;
+}
+
 export default function WalletPage() {
   const queryClient = useQueryClient();
   const [stakingAmount, setStakingAmount] = useState('');
-  const [showSuccessCelebration, setShowSuccessCelebration] = useState(false);
-  const [celebrationDeposit, setCelebrationDeposit] = useState(null);
   const [transferForm, setTransferForm] = useState({
     fromWallet: 'income_wallet',
     toWallet: 'deposit_wallet',
@@ -86,6 +103,15 @@ export default function WalletPage() {
 
   const data = walletQuery.data || {};
   const depositRows = useMemo(() => (Array.isArray(depositsQuery.data?.data) ? depositsQuery.data.data : []), [depositsQuery.data]);
+  const {
+    activeDepositSuccess: celebrationDeposit,
+    showDepositSuccess: showSuccessCelebration,
+    dismissDepositSuccess
+  } = useOneTimeDepositSuccess(depositRows, {
+    getEventKey: getWalletDepositSuccessEventKey,
+    getAckKeys: getWalletDepositSuccessAckKeys,
+    getStatus: getWalletDepositSuccessStatus
+  });
   const wallet = data.wallet || {};
   const transactions = Array.isArray(data.transactions) ? data.transactions : [];
   const staking = stakingQuery.data?.data || {};
@@ -143,20 +169,6 @@ export default function WalletPage() {
 
   const stakingValidationError = getStakingValidationError();
 
-  useEffect(() => {
-    const nextCelebrationDeposit = depositRows.find((item) => {
-      const successId = item?.payment_record_id || item?.id;
-      return successId && isDepositSuccessStatus(item?.payment_status) && !hasSeenDepositSuccess(successId);
-    });
-
-    if (!nextCelebrationDeposit) return;
-
-    const successId = nextCelebrationDeposit.payment_record_id || nextCelebrationDeposit.id;
-    markDepositSuccessSeen(successId);
-    setCelebrationDeposit(nextCelebrationDeposit);
-    setShowSuccessCelebration(true);
-  }, [depositRows]);
-
   function handleStartStaking() {
     if (startStakingMutation.isPending) return;
 
@@ -212,10 +224,7 @@ export default function WalletPage() {
         paymentId={celebrationDeposit?.payment_record_id || celebrationDeposit?.id}
         amount={Number(celebrationDeposit?.amount || 0)}
         walletHref="/wallet"
-        onClose={() => {
-          setShowSuccessCelebration(false);
-          setCelebrationDeposit(null);
-        }}
+        onClose={dismissDepositSuccess}
       />
 
       <SectionHeader title={formatLabel('Wallet Overview')} />

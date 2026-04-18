@@ -27,6 +27,8 @@ function normalizeAuctionParams(params = {}) {
   next.page = Number.isInteger(page) && page > 0 ? page : 1;
   const limit = Number(params.limit);
   next.limit = Number.isInteger(limit) && limit > 0 ? Math.min(limit, 20) : 10;
+  if (params.includeTotal !== undefined) next.includeTotal = params.includeTotal;
+  if (typeof params.view === 'string' && params.view.trim()) next.view = params.view.trim().toLowerCase();
   return next;
 }
 
@@ -196,6 +198,43 @@ function normalizeAuction(auction) {
   };
 }
 
+function normalizeAuctionCard(auction) {
+  if (!auction || typeof auction !== 'object') return auction;
+
+  const status = normalizeAuctionStatus(auction.computed_status, auction.status, auction.storefront_status);
+  const coverImage = auction.cover_image_url || auction.image_url || auction.product_image_url || '';
+  const participantCount = toNumber(auction.participantCount ?? auction.participant_count ?? auction.total_entries);
+  const winnerCount = toNumber(auction.winner_count, 1);
+
+  return {
+    ...auction,
+    status,
+    computed_status: status,
+    storefront_status: status,
+    title: auction.title || auction.product_name || 'Untitled auction',
+    cover_image_url: coverImage,
+    image_url: coverImage,
+    display_price: toNumber(
+      auction.display_price
+      ?? auction.entry_price
+      ?? auction.display_current_bid
+      ?? auction.current_bid
+      ?? auction.starting_price
+      ?? 0
+    ),
+    entry_price: toNumber(auction.entry_price ?? auction.display_current_bid ?? auction.starting_price ?? 0),
+    total_entries: toNumber(auction.total_entries),
+    total_bids: toNumber(auction.total_bids),
+    participantCount,
+    winner_count: winnerCount,
+    prize_label: auction.prize_label || `${winnerCount} winner${winnerCount === 1 ? '' : 's'}`,
+    totalCapacity: toNumber(auction.totalCapacity),
+    capacityFilled: toNumber(auction.capacityFilled ?? auction.total_entries),
+    capacityRemaining: toNumber(auction.capacityRemaining),
+    capacityPercent: toNumber(auction.capacityPercent)
+  };
+}
+
 function normalizeAuctionEnvelope(envelope) {
   const data = Array.isArray(envelope.data)
     ? envelope.data.map(normalizeAuction)
@@ -209,8 +248,33 @@ function normalizeAuctionEnvelope(envelope) {
   };
 }
 
+function normalizeAuctionCardEnvelope(envelope) {
+  const data = Array.isArray(envelope.data)
+    ? envelope.data.map(normalizeAuctionCard)
+    : envelope.data && typeof envelope.data === 'object'
+      ? normalizeAuctionCard(envelope.data)
+      : envelope.data;
+
+  return {
+    ...envelope,
+    data
+  };
+}
+
 export async function getAuctions(params = {}) {
   return normalizeAuctionEnvelope(toEnvelope(await apiFetch(`/auctions${withQuery(normalizeAuctionParams(params))}`)));
+}
+
+export async function getAuctionCards(params = {}) {
+  return normalizeAuctionCardEnvelope(
+    toEnvelope(
+      await apiFetch(`/auctions${withQuery(normalizeAuctionParams({
+        ...params,
+        view: params.view || 'card',
+        includeTotal: params.includeTotal ?? false
+      }))}`)
+    )
+  );
 }
 
 export async function getAuctionDetails(id) {

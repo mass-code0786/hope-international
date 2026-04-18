@@ -7,8 +7,10 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Clock3, Search, SlidersHorizontal, Sparkles, Trophy, X } from 'lucide-react';
 import { AuctionCard } from '@/components/auctions/AuctionUi';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { getAuctions, normalizeAuctionStatus } from '@/lib/services/auctionsService';
+import { getAuctionCards, normalizeAuctionStatus } from '@/lib/services/auctionsService';
 import { queryKeys } from '@/lib/query/queryKeys';
+import { AUCTIONS_PAGE_LIMIT, LIST_SNAPSHOT_TTL_MS } from '@/lib/constants/catalog';
+import { readListSnapshot, writeListSnapshot } from '@/lib/utils/listSnapshot';
 
 const tabs = [
   { label: 'All Auctions', value: 'all' },
@@ -172,13 +174,19 @@ export default function AuctionsPage() {
   const [draftFilters, setDraftFilters] = useState(EMPTY_FILTERS);
   const requestStatus = status === 'all' ? undefined : status;
   const deferredSearch = useDeferredValue(search);
+  const snapshotKey = `auction-cards:${requestStatus || 'all'}:${deferredSearch || ''}`;
 
   const auctionsQuery = useQuery({
-    queryKey: [...queryKeys.auctions, requestStatus || 'all', deferredSearch],
-    queryFn: () => getAuctions({ status: requestStatus, search: deferredSearch, page: 1, limit: 10 }),
+    queryKey: [...queryKeys.auctions, 'cards', requestStatus || 'all', deferredSearch],
+    queryFn: async () => writeListSnapshot(
+      snapshotKey,
+      await getAuctionCards({ status: requestStatus, search: deferredSearch, page: 1, limit: AUCTIONS_PAGE_LIMIT, includeTotal: false, view: 'card' })
+    ),
+    initialData: () => readListSnapshot(snapshotKey, { maxAgeMs: LIST_SNAPSHOT_TTL_MS }) || undefined,
     placeholderData: (previousData) => previousData,
-    staleTime: 20_000,
-    refetchOnWindowFocus: false
+    staleTime: 45_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false
   });
 
   const envelope = auctionsQuery.data || {};
@@ -328,7 +336,7 @@ export default function AuctionsPage() {
 
           {!isLoadingList && !auctionsQuery.isError && filteredAuctions.length > 0 ? (
             <div className="grid grid-cols-2 gap-3">
-              {filteredAuctions.map((auction) => <AuctionCard key={auction.id} auction={auction} />)}
+              {filteredAuctions.map((auction, index) => <AuctionCard key={auction.id} auction={auction} prioritizeImage={index < 4} />)}
             </div>
           ) : null}
         </div>

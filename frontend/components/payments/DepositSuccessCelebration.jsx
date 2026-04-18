@@ -5,9 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CheckCircle2, Sparkles, Wallet } from 'lucide-react';
 import { currency } from '@/lib/utils/format';
-
-const AUTO_CLOSE_MS = 4200;
-const STORAGE_PREFIX = 'hope.deposit.success.';
+import { DEPOSIT_SUCCESS_POPUP_DURATION_MS } from '@/lib/utils/depositSuccess';
 
 function buildConfetti() {
   const palette = ['#22c55e', '#86efac', '#34d399', '#facc15', '#ffffff'];
@@ -21,32 +19,13 @@ function buildConfetti() {
   }));
 }
 
-function getStorageKey(id) {
-  return `${STORAGE_PREFIX}${id}`;
-}
-
-export function hasSeenDepositSuccess(id) {
-  if (typeof window === 'undefined' || !id) return false;
-  return window.sessionStorage.getItem(getStorageKey(id)) === '1';
-}
-
-export function markDepositSuccessSeen(id) {
-  if (typeof window === 'undefined' || !id) return;
-  window.sessionStorage.setItem(getStorageKey(id), '1');
-}
-
-export function isDepositSuccessStatus(status) {
-  const normalized = String(status || '').trim().toLowerCase();
-  return ['confirmed', 'finished', 'paid', 'completed'].includes(normalized);
-}
-
 export function DepositSuccessCelebration({ open, paymentId, amount = 0, onClose, walletHref = '/wallet' }) {
   const [visible, setVisible] = useState(open);
   const confettiPieces = useMemo(() => buildConfetti(), []);
 
   useEffect(() => {
     setVisible(open);
-  }, [open]);
+  }, [open, paymentId]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -54,10 +33,10 @@ export function DepositSuccessCelebration({ open, paymentId, amount = 0, onClose
     const timer = window.setTimeout(() => {
       setVisible(false);
       onClose?.();
-    }, AUTO_CLOSE_MS);
+    }, DEPOSIT_SUCCESS_POPUP_DURATION_MS);
 
     return () => window.clearTimeout(timer);
-  }, [onClose, open]);
+  }, [onClose, open, paymentId]);
 
   return (
     <AnimatePresence>

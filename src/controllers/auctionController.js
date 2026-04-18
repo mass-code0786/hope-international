@@ -18,7 +18,9 @@ function normalizeListQuery(query = {}) {
   return {
     filters: {
       status: safeStatus || 'all',
-      search: safeSearch
+      search: safeSearch,
+      includeTotal: query.includeTotal !== false,
+      view: query.view === 'card' ? 'card' : 'default'
     },
     pagination: {
       page: safePage,

@@ -45,7 +45,7 @@ function getProductCover(product) {
   return product?.primary_image || product?.thumbnail_url || product?.image_url || '';
 }
 
-export function ProductCard({ product, onBuy, isBuying = false, disableBuying = false, buyLabel = 'Buy' }) {
+export function ProductCard({ product, onBuy, isBuying = false, disableBuying = false, buyLabel = 'Buy', prioritizeImage = false }) {
   const safeProduct = product || {};
   const href = safeProduct?.id ? `/shop/${encodeURIComponent(String(safeProduct.id))}` : '/shop';
   const pricing = getProductPricing(safeProduct, 1);
@@ -72,7 +72,8 @@ export function ProductCard({ product, onBuy, isBuying = false, disableBuying = 
           <img
             src={cover}
             alt={safeProduct.name || 'Product'}
-            loading="lazy"
+            loading={prioritizeImage ? 'eager' : 'lazy'}
+            fetchPriority={prioritizeImage ? 'high' : 'auto'}
             decoding="async"
             onError={() => setImageFailed(true)}
             className="h-full w-full object-cover"

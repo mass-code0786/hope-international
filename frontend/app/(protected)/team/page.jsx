@@ -12,6 +12,7 @@ import { TeamSummaryPanel } from '@/components/team/TeamSummaryPanel';
 import { BinaryTreeExplorer } from '@/components/team/BinaryTreeExplorer';
 import { useSessionUser } from '@/hooks/useSessionUser';
 import { PageLoadingState } from '@/components/ui/PageLoadingState';
+import { getEmptyTeamTreeState, getTeamTreeErrorState, isEmptyTeamTree } from '@/lib/utils/teamTreeState';
 
 export default function TeamPage() {
   const sessionUser = useSessionUser();
@@ -22,6 +23,9 @@ export default function TeamPage() {
   const teamSummary = teamSummaryQuery.data || {};
   const root = treeRootQuery.data || null;
   const directChildren = useMemo(() => [root?.children?.left, root?.children?.right].filter(Boolean), [root]);
+  const treeErrorState = treeRootQuery.isError && !root ? getTeamTreeErrorState(treeRootQuery.error) : null;
+  const emptyTreeState = getEmptyTeamTreeState();
+  const shouldShowEmptyTree = !treeErrorState && !treeRootQuery.isPending && isEmptyTeamTree(root);
 
   const isLoadingTeam = (teamSummaryQuery.isPending && !teamSummaryQuery.data) || (treeRootQuery.isPending && !treeRootQuery.data);
 
@@ -49,17 +53,34 @@ export default function TeamPage() {
           </div>
         </div>
 
-        {treeRootQuery.isError && !root ? (
+        {treeErrorState ? (
           <div className="mt-3">
-            <ErrorState message="Team tree is temporarily unavailable." onRetry={treeRootQuery.refetch} />
+            {treeErrorState.kind === 'empty' ? (
+              <EmptyState
+                title={treeErrorState.title}
+                description={treeErrorState.description}
+                action={<Link href="/profile" className="hope-button">Start referring users</Link>}
+              />
+            ) : (
+              <ErrorState
+                type={treeErrorState.type}
+                label={treeErrorState.label}
+                message={treeErrorState.message}
+                onRetry={treeRootQuery.refetch}
+              />
+            )}
           </div>
-        ) : root ? (
+        ) : !shouldShowEmptyTree && root ? (
           <div className="mt-3">
             <BinaryTreeExplorer root={root} />
           </div>
         ) : (
           <div className="mt-3">
-            <EmptyState title="No team yet" description="Start referring users to build your binary tree." action={<Link href="/profile" className="hope-button">Start referring users</Link>} />
+            <EmptyState
+              title={emptyTreeState.title}
+              description={emptyTreeState.description}
+              action={<Link href="/profile" className="hope-button">Start referring users</Link>}
+            />
           </div>
         )}
       </section>

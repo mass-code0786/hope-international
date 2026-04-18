@@ -125,7 +125,7 @@ function HomeBannerCard({ banner }) {
   return <Link href={target} className="block h-full">{content}</Link>;
 }
 
-function ProductTile({ product, onBuy, isBuying, lowBalance }) {
+function ProductTile({ product, onBuy, isBuying, lowBalance, prioritizeImage = false }) {
   const href = product?.id ? `/shop/${encodeURIComponent(String(product.id))}` : '/shop';
   const pricing = getProductPricing(product, 1);
   const cover = getProductCover(product);
@@ -139,7 +139,8 @@ function ProductTile({ product, onBuy, isBuying, lowBalance }) {
             <img
               src={cover}
               alt={product?.name || 'Product'}
-              loading="lazy"
+              loading={prioritizeImage ? 'eager' : 'lazy'}
+              fetchPriority={prioritizeImage ? 'high' : 'auto'}
               decoding="async"
               className="h-full w-full object-cover"
             />
@@ -256,7 +257,12 @@ export default function DashboardPage() {
     refetchOnReconnect: false
   });
 
+  const products = Array.isArray(productData) ? productData : [];
+  const primaryCatalogReady = products.length > 0 || productsError || (!productsPending && Array.isArray(productData));
+
   useEffect(() => {
+    if (!primaryCatalogReady) return undefined;
+
     let cancelled = false;
     let idleId = null;
     let timeoutId = null;
@@ -266,9 +272,9 @@ export default function DashboardPage() {
     };
 
     if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
-      idleId = window.requestIdleCallback(enable, { timeout: 900 });
+      idleId = window.requestIdleCallback(enable, { timeout: 1200 });
     } else {
-      timeoutId = window.setTimeout(enable, 250);
+      timeoutId = window.setTimeout(enable, 500);
     }
 
     return () => {
@@ -278,7 +284,7 @@ export default function DashboardPage() {
       }
       if (timeoutId !== null) window.clearTimeout(timeoutId);
     };
-  }, []);
+  }, [primaryCatalogReady]);
 
   const buyMutation = useMutation({
     mutationFn: (product) => {
@@ -352,7 +358,6 @@ export default function DashboardPage() {
   });
 
   const address = addressQuery.data?.data?.address || null;
-  const products = Array.isArray(productData) ? productData : [];
   const homepageBanners = Array.isArray(bannersQuery.data) ? bannersQuery.data : [];
   const unreadNotificationCount = Number(notificationsCountQuery.data?.unreadCount || 0);
   const welcomeSpinStatus = welcomeSpinQuery.data?.data || null;
@@ -572,7 +577,7 @@ export default function DashboardPage() {
 
           {!productsPending && !productsError && popularProducts.length ? (
             <div className="grid grid-cols-2 gap-3">
-              {popularProducts.map((product) => {
+              {popularProducts.map((product, index) => {
                 const lineTotal = getProductPricing(product, 1).lineFinalTotal;
                 const lowBalance = !walletQuery.isError && !walletQuery.isLoading && !hasSufficientWalletBalance(walletQuery.data, lineTotal);
 
@@ -580,6 +585,7 @@ export default function DashboardPage() {
                   <ProductTile
                     key={product.id}
                     product={product}
+                    prioritizeImage={index < 4}
                     onBuy={(item) => {
                       if (!nonCriticalEnabled || addressQuery.isLoading) {
                         toast.error('Address is still loading');

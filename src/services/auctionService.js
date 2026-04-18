@@ -6,6 +6,7 @@ const walletRepository = require('../repositories/walletRepository');
 const walletService = require('./walletService');
 const notificationService = require('./notificationService');
 const { withPerfSpan } = require('../utils/perf');
+const { clearCacheEntriesByPrefix, getCacheEntry, setCacheEntry } = require('../utils/runtimeCache');
 
 const MIN_AUCTION_PRICE = 0.10;
 const MIN_REWARD_VALUE = 0.01;
@@ -16,6 +17,8 @@ const AUCTION_TYPES = ['product', 'cash_amount'];
 const AUCTION_REWARD_MODES = ['stock', 'split', 'cash'];
 const AUCTION_PRIZE_DISTRIBUTION_TYPES = ['per_winner', 'shared_pool', 'rank_wise'];
 const CASH_AUCTION_CREDIT_WALLET = 'withdrawal_wallet';
+const AUCTION_LIST_CACHE_PREFIX = 'auctions:list:';
+const AUCTION_LIST_CACHE_TTL_MS = 10_000;
 
 function isAuctionSchemaError(error) {
   return AUCTION_SCHEMA_ERROR_CODES.includes(error?.code);
@@ -688,6 +691,18 @@ function buildCapacitySummary(auction) {
   };
 }
 
+function buildAuctionListCacheKey(filters, pagination) {
+  return [
+    AUCTION_LIST_CACHE_PREFIX,
+    filters.view === 'card' ? 'card' : 'default',
+    filters.status || 'all',
+    filters.search || '',
+    filters.includeTotal === false ? 'nototal' : 'total',
+    pagination.page,
+    pagination.limit
+  ].join(':');
+}
+
 function shapeAuctionListItem(auction) {
   if (!auction) return auction;
   const capacity = buildCapacitySummary(auction);
@@ -714,6 +729,33 @@ function shapeAuctionListItem(auction) {
     capacityFilled: capacity.filledEntries,
     capacityRemaining: capacity.remainingEntries,
     capacityPercent: capacity.percentFilled
+  };
+}
+
+function shapeAuctionCardItem(auction) {
+  if (!auction) return auction;
+
+  const listItem = shapeAuctionListItem(auction);
+  return {
+    id: listItem.id,
+    title: listItem.title,
+    category: listItem.category,
+    image_url: listItem.image_url || listItem.product_image_url || null,
+    cover_image_url: listItem.image_url || listItem.product_image_url || null,
+    status: listItem.status,
+    computed_status: listItem.computed_status,
+    start_at: listItem.start_at,
+    end_at: listItem.end_at,
+    entry_price: listItem.entry_price,
+    display_price: listItem.display_current_bid,
+    participantCount: listItem.total_entries,
+    total_entries: listItem.total_entries,
+    total_bids: listItem.total_bids,
+    prize_label: `${listItem.winner_count} winner${listItem.winner_count === 1 ? '' : 's'}`,
+    totalCapacity: listItem.totalCapacity,
+    capacityFilled: listItem.capacityFilled,
+    capacityRemaining: listItem.capacityRemaining,
+    capacityPercent: listItem.capacityPercent
   };
 }
 
@@ -952,25 +994,45 @@ async function buildAuctionDetails(client, auctionId, currentUserId = null, opti
 
 async function listAuctions(_userId, filters = {}, paginationInput = {}, options = {}) {
   const pagination = normalizePagination({ ...paginationInput, limit: paginationInput.limit || 10, maxLimit: 20 });
+  const includeTotal = filters.includeTotal !== false;
+  const view = filters.view === 'card' ? 'card' : 'default';
+  const repositoryFilters = {
+    ...filters,
+    includeTotal,
+    view,
+    onlyActive: filters.onlyActive ?? false
+  };
+  const cacheKey = buildAuctionListCacheKey(repositoryFilters, pagination);
+  const cached = getCacheEntry(cacheKey);
+  if (cached) return cached;
 
   return withPerfSpan('auctions.list', async () => {
     try {
-      const result = await withTransaction((client) => auctionRepository.listAuctions(client, {
-        ...filters,
-        onlyActive: filters.onlyActive ?? false
-      }, pagination));
+      const result = await withTransaction((client) => auctionRepository.listAuctions(client, repositoryFilters, pagination));
+      const payload = {
+        data: result.items.map(view === 'card' ? shapeAuctionCardItem : shapeAuctionListItem),
+        pagination: includeTotal
+          ? buildPagination({ page: pagination.page, limit: pagination.limit, total: result.total })
+          : {
+              page: pagination.page,
+              limit: pagination.limit,
+              totalItems: undefined,
+              totalPages: undefined,
+              hasMore: Boolean(result.hasMore),
+              nextPage: result.hasMore ? pagination.page + 1 : null
+            }
+      };
 
       if (!filters.status || filters.status === 'all') {
         console.log('[auctions.list.response]', {
           count: Array.isArray(result.items) ? result.items.length : 0,
-          total: Number(result.total || 0)
+          total: Number(result.total || 0),
+          includeTotal,
+          view
         });
       }
 
-      return {
-        data: result.items.map(shapeAuctionListItem),
-        pagination: buildPagination({ page: pagination.page, limit: pagination.limit, total: result.total })
-      };
+      return setCacheEntry(cacheKey, payload, AUCTION_LIST_CACHE_TTL_MS);
     } catch (error) {
       console.error('[auctions.list] failed', {
         code: error?.code || null,
@@ -981,22 +1043,31 @@ async function listAuctions(_userId, filters = {}, paginationInput = {}, options
       });
 
       if (isAuctionSchemaError(error)) {
-        const fallback = await withTransaction((client) => auctionRepository.listAuctionsCompat(client, {
-          ...filters,
-          onlyActive: filters.onlyActive ?? false
-        }, pagination));
+        const fallback = await withTransaction((client) => auctionRepository.listAuctionsCompat(client, repositoryFilters, pagination));
+        const payload = {
+          data: fallback.items.map(view === 'card' ? shapeAuctionCardItem : shapeAuctionListItem),
+          pagination: includeTotal
+            ? buildPagination({ page: pagination.page, limit: pagination.limit, total: fallback.total })
+            : {
+                page: pagination.page,
+                limit: pagination.limit,
+                totalItems: undefined,
+                totalPages: undefined,
+                hasMore: Boolean(fallback.hasMore),
+                nextPage: fallback.hasMore ? pagination.page + 1 : null
+              }
+        };
 
         if (!filters.status || filters.status === 'all') {
           console.log('[auctions.list.response.compat]', {
             count: Array.isArray(fallback.items) ? fallback.items.length : 0,
-            total: Number(fallback.total || 0)
+            total: Number(fallback.total || 0),
+            includeTotal,
+            view
           });
         }
 
-        return {
-          data: fallback.items.map(shapeAuctionListItem),
-          pagination: buildPagination({ page: pagination.page, limit: pagination.limit, total: fallback.total })
-        };
+        return setCacheEntry(cacheKey, payload, AUCTION_LIST_CACHE_TTL_MS);
       }
 
       throw error;
@@ -1086,6 +1157,8 @@ async function placeBid(auctionId, userId, payload) {
     if (totalEntries >= Number(auction.hidden_capacity)) {
       await ensureAuctionResolved(client, auctionId);
     }
+
+    clearCacheEntriesByPrefix(AUCTION_LIST_CACHE_PREFIX);
 
     return {
       bid,

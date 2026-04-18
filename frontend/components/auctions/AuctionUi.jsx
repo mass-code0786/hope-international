@@ -66,9 +66,10 @@ export function AuctionCountdown({ startAt, endAt, status, compact = false }) {
 
   useEffect(() => {
     if (safeStatus === 'ended' || safeStatus === 'cancelled') return undefined;
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    const refreshMs = compact ? 30_000 : 1000;
+    const timer = window.setInterval(() => setNow(Date.now()), refreshMs);
     return () => window.clearInterval(timer);
-  }, [safeStatus]);
+  }, [compact, safeStatus]);
 
   const content = useMemo(() => {
     if (safeStatus === 'ended') return 'Ended';
@@ -101,6 +102,10 @@ export function AuctionCountdown({ startAt, endAt, status, compact = false }) {
 }
 
 function getAuctionImages(auction) {
+  if (auction?.cover_image_url) {
+    return [auction.cover_image_url];
+  }
+
   const ownGallery = Array.isArray(auction?.gallery) ? auction.gallery.filter(Boolean) : [];
   const productGallery = Array.isArray(auction?.product_gallery) ? auction.product_gallery.filter(Boolean) : [];
   const primary = auction?.image_url || ownGallery[0] || auction?.product_image_url || productGallery[0] || '';
@@ -114,7 +119,7 @@ function getAuctionPrice(auction) {
 
 function getAuctionCapacity(auction) {
   const totalCapacity = Number(auction?.totalCapacity ?? 0);
-  const capacityFilled = Math.max(0, Number(auction?.capacityFilled ?? auction?.total_entries ?? 0));
+  const capacityFilled = Math.max(0, Number(auction?.capacityFilled ?? auction?.participantCount ?? auction?.total_entries ?? 0));
   const safeTotalCapacity = Math.max(0, totalCapacity);
   const capacityRemaining = safeTotalCapacity > 0
     ? Math.max(0, Number(auction?.capacityRemaining ?? (safeTotalCapacity - capacityFilled)))
@@ -166,7 +171,7 @@ function getCardTheme(status) {
   };
 }
 
-export function AuctionCard({ auction }) {
+export function AuctionCard({ auction, prioritizeImage = false }) {
   const images = getAuctionImages(auction);
   const cover = images[0] || 'https://placehold.co/900x900/e2e8f0/334155?text=Auction';
   const status = normalizeAuctionStatus(auction?.storefront_status, auction?.computed_status, auction?.status);
@@ -189,7 +194,14 @@ export function AuctionCard({ auction }) {
           <div className="mx-auto mt-[-10px] flex h-[132px] w-[132px] min-w-[120px] max-w-[150px] items-center justify-center rounded-full p-[4px]" style={progressStyle}>
             <div className="flex h-full w-full items-center justify-center rounded-full bg-[#1f2937] shadow-[0_10px_24px_rgba(0,0,0,0.35)]">
               <div className="flex h-[116px] w-[116px] items-center justify-center overflow-hidden rounded-full bg-[#111827] p-[6px]">
-                <img src={cover} alt={auction?.title || 'Auction'} className="h-full w-full rounded-full object-cover" />
+                <img
+                  src={cover}
+                  alt={auction?.title || 'Auction'}
+                  loading={prioritizeImage ? 'eager' : 'lazy'}
+                  fetchPriority={prioritizeImage ? 'high' : 'auto'}
+                  decoding="async"
+                  className="h-full w-full rounded-full object-cover"
+                />
               </div>
             </div>
           </div>

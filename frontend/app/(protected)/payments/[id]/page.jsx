@@ -7,12 +7,14 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import QRCode from 'qrcode';
 import toast from 'react-hot-toast';
 import { Copy, RefreshCw } from 'lucide-react';
-import { DepositSuccessCelebration, hasSeenDepositSuccess, isDepositSuccessStatus, markDepositSuccessSeen } from '@/components/payments/DepositSuccessCelebration';
+import { DepositSuccessCelebration } from '@/components/payments/DepositSuccessCelebration';
+import { useOneTimeDepositSuccess } from '@/hooks/useOneTimeDepositSuccess';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Badge } from '@/components/ui/Badge';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { getPaymentDetail, syncPaymentDetail } from '@/lib/services/paymentsService';
+import { buildDepositSuccessAckKeys, isDepositSuccessStatus } from '@/lib/utils/depositSuccess';
 import { cryptoAmount, currency, dateTime } from '@/lib/utils/format';
 
 function statusMeta(status) {
@@ -20,6 +22,8 @@ function statusMeta(status) {
   if (normalized === 'finished') return { label: 'Finished', variant: 'success', description: 'Payment finished and wallet credit was applied.' };
   if (normalized === 'confirmed') return { label: 'Confirmed', variant: 'success', description: 'Payment confirmed and wallet credit was applied.' };
   if (normalized === 'completed') return { label: 'Completed', variant: 'success', description: 'Payment confirmed and wallet credited.' };
+  if (normalized === 'paid') return { label: 'Paid', variant: 'success', description: 'Payment was received and wallet credit was applied.' };
+  if (normalized === 'wallet_credited' || normalized === 'wallet credited') return { label: 'Wallet Credited', variant: 'success', description: 'Payment completed and your wallet balance was credited.' };
   if (normalized === 'confirming') return { label: 'Confirming', variant: 'warning', description: 'Blockchain confirmation is in progress.' };
   if (normalized === 'failed') return { label: 'Failed', variant: 'danger', description: 'Payment failed and no wallet credit was applied.' };
   if (normalized === 'expired') return { label: 'Expired', variant: 'danger', description: 'Payment expired before completion.' };
@@ -105,13 +109,29 @@ async function copyTextWithFallback(text) {
   }
 }
 
+function getPaymentSuccessEventKey(payment) {
+  if (payment?.id) return `payment:${payment.id}`;
+  if (payment?.deposit_id) return `deposit:${payment.deposit_id}`;
+  return '';
+}
+
+function getPaymentSuccessAckKeys(payment) {
+  return buildDepositSuccessAckKeys({
+    paymentId: payment?.id,
+    depositId: payment?.deposit_id
+  });
+}
+
+function getPaymentSuccessStatus(payment) {
+  return payment?.payment_status || payment?.user_facing_status;
+}
+
 export default function PaymentStatusPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const paymentId = params?.id;
   const returnTo = searchParams.get('returnTo') || '';
   const [qrImage, setQrImage] = useState('');
-  const [showSuccessCelebration, setShowSuccessCelebration] = useState(false);
 
   const paymentQuery = useQuery({
     queryKey: queryKeys.paymentDetail(paymentId),
@@ -119,7 +139,7 @@ export default function PaymentStatusPage() {
     enabled: Boolean(paymentId),
     refetchInterval: (query) => {
       const status = query.state.data?.data?.payment_status;
-      return ['confirmed', 'finished', 'failed', 'expired'].includes(String(status || '').toLowerCase()) ? false : 10000;
+      return isDepositSuccessStatus(status) || ['failed', 'expired'].includes(String(status || '').toLowerCase()) ? false : 10000;
     }
   });
 
@@ -133,20 +153,20 @@ export default function PaymentStatusPage() {
   });
 
   const payment = paymentQuery.data?.data || null;
+  const {
+    activeDepositSuccess: celebrationPayment,
+    showDepositSuccess: showSuccessCelebration,
+    dismissDepositSuccess
+  } = useOneTimeDepositSuccess(payment, {
+    getEventKey: getPaymentSuccessEventKey,
+    getAckKeys: getPaymentSuccessAckKeys,
+    getStatus: getPaymentSuccessStatus
+  });
   const providerPayable = getProviderPayableDetails(payment);
   const paymentExpired = Boolean(payment?.is_expired) || String(payment?.user_facing_status || '').toLowerCase() === 'expired';
   const partialPaidAmount = Number(payment?.actually_paid || 0);
   const partialExpectedAmount = Number(payment?.exact_payable_amount ?? payment?.pay_amount ?? payment?.expected_amount ?? 0);
   const partialRemainingAmount = Number(payment?.remaining_pay_amount ?? Math.max(0, partialExpectedAmount - partialPaidAmount));
-
-  useEffect(() => {
-    if (!payment?.id) return;
-    if (!isDepositSuccessStatus(payment.payment_status)) return;
-    if (hasSeenDepositSuccess(payment.id)) return;
-
-    markDepositSuccessSeen(payment.id);
-    setShowSuccessCelebration(true);
-  }, [payment?.id, payment?.payment_status]);
 
   useEffect(() => {
     let cancelled = false;
@@ -181,10 +201,10 @@ export default function PaymentStatusPage() {
     <div className="space-y-4">
       <DepositSuccessCelebration
         open={showSuccessCelebration}
-        paymentId={payment?.id}
-        amount={Number(payment?.deposit_amount || payment?.requested_amount || 0)}
+        paymentId={celebrationPayment?.id}
+        amount={Number(celebrationPayment?.deposit_amount || celebrationPayment?.requested_amount || 0)}
         walletHref="/wallet"
-        onClose={() => setShowSuccessCelebration(false)}
+        onClose={dismissDepositSuccess}
       />
 
       <SectionHeader

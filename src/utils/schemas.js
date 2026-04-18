@@ -359,6 +359,16 @@ const auctionListQuerySchema = z.object({
   params: z.object({}),
   query: pagingQuery.extend({
     status: auctionStatusSchema,
+    includeTotal: z.preprocess((value) => firstQueryValue(value), z.union([z.boolean(), z.string()]).optional()).transform((value) => {
+      if (value === undefined || value === null || value === '') return undefined;
+      if (typeof value === 'boolean') return value;
+      return String(value).trim().toLowerCase() !== 'false';
+    }),
+    view: z.preprocess((value) => firstQueryValue(value), z.string().optional()).transform((value) => {
+      if (value === undefined || value === null || value === '') return undefined;
+      const normalized = String(value).trim().toLowerCase();
+      return ['card', 'default'].includes(normalized) ? normalized : undefined;
+    }),
     search: z.preprocess((value) => firstQueryValue(value), z.string().optional()).transform((value) => {
       if (value === undefined || value === null) return undefined;
       const normalized = String(value).trim();

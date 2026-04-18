@@ -6,13 +6,16 @@ import { useRouter } from 'next/navigation';
 import { BottomNav } from '@/components/shell/BottomNav';
 import { Sidebar } from '@/components/shell/Sidebar';
 import { useAuthStore } from '@/lib/store/authStore';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getSellerAccess } from '@/lib/services/sellerService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { isSeller } from '@/lib/constants/access';
 import { LoginWelcomeVoice } from '@/components/shell/LoginWelcomeVoice';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { getProducts, getProductsList } from '@/lib/services/productsService';
+import { getAuctionCards } from '@/lib/services/auctionsService';
+import { AUCTIONS_PAGE_LIMIT, HOME_PRODUCTS_LIMIT, SHOP_PRODUCTS_PAGE_LIMIT } from '@/lib/constants/catalog';
 
 const LazyHopeAssistant = dynamic(
   () => import('@/components/shell/HopeAssistant').then((mod) => mod.HopeAssistant),
@@ -48,6 +51,7 @@ function ShellLoadingState() {
 
 export function AppShell({ children }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { token, hydrated, hydrate, clearSession, user, isLoggingOut } = useAuthStore();
 
   useEffect(() => {
@@ -78,6 +82,56 @@ export function AppShell({ children }) {
       router.replace('/login');
     }
   }, [clearSession, meQuery.error, meQuery.isError, resolvedUser, router]);
+
+  useEffect(() => {
+    if (!hydrated || !token || !resolvedUser) return undefined;
+
+    let cancelled = false;
+    let idleId = null;
+    let timeoutId = null;
+
+    const warmCorePages = async () => {
+      if (cancelled) return;
+
+      await Promise.allSettled([
+        queryClient.prefetchQuery({
+          queryKey: queryKeys.homeProducts,
+          queryFn: () => getProductsList({ limit: HOME_PRODUCTS_LIMIT, view: 'card', includeTotal: false }),
+          staleTime: 60_000
+        }),
+        queryClient.prefetchInfiniteQuery({
+          queryKey: [...queryKeys.products, 'infinite', true, 'all', SHOP_PRODUCTS_PAGE_LIMIT, false],
+          queryFn: ({ pageParam = 1 }) => getProducts({ active: true, page: pageParam, limit: SHOP_PRODUCTS_PAGE_LIMIT, view: 'card', includeTotal: false }),
+          initialPageParam: 1,
+          getNextPageParam: (lastPage) => lastPage?.pagination?.nextPage ?? undefined,
+          staleTime: 60_000
+        }),
+        queryClient.prefetchQuery({
+          queryKey: [...queryKeys.auctions, 'cards', 'all', ''],
+          queryFn: () => getAuctionCards({ page: 1, limit: AUCTIONS_PAGE_LIMIT, includeTotal: false, view: 'card' }),
+          staleTime: 45_000
+        })
+      ]);
+    };
+
+    if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+      idleId = window.requestIdleCallback(() => {
+        void warmCorePages();
+      }, { timeout: 1800 });
+    } else {
+      timeoutId = window.setTimeout(() => {
+        void warmCorePages();
+      }, 900);
+    }
+
+    return () => {
+      cancelled = true;
+      if (idleId !== null && typeof window !== 'undefined' && typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
+    };
+  }, [hydrated, queryClient, resolvedUser, token]);
 
   const isAuthBootstrapping = !hydrated;
   const sellerActive = sellerRoleAccess || Boolean(sellerAccessQuery.data?.canAccessDashboard);
