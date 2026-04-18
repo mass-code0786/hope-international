@@ -1,6 +1,8 @@
 const { z } = require('zod');
 const { SELLER_APPLICATION_FEE_USD } = require('../config/constants');
 
+const REFERRAL_REQUIRED_MESSAGE = 'Referral link/code is required for registration';
+
 const uuid = z.string().uuid();
 const usernameSchema = z.string().min(3).max(32).regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscore');
 
@@ -16,13 +18,13 @@ const registerSchema = z.object({
       password: z.string().min(8).max(128),
       referralCode: z.preprocess(
         (value) => (value === undefined || value === null ? '' : value),
-        z.string().trim().min(1, 'Referral code is required').max(500)
+        z.string().trim().min(1, REFERRAL_REQUIRED_MESSAGE).max(500)
       ),
       preferredLeg: z.enum(['left', 'right']).optional()
     })
     .superRefine((val, ctx) => {
       if (!String(val.referralCode || '').trim()) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Referral code is required', path: ['referralCode'] });
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: REFERRAL_REQUIRED_MESSAGE, path: ['referralCode'] });
       }
     }),
   params: z.object({}),

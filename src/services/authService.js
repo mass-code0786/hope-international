@@ -5,6 +5,8 @@ const walletRepository = require('../repositories/walletRepository');
 const { createAuthToken } = require('../utils/token');
 const { ApiError } = require('../utils/ApiError');
 
+const REFERRAL_REQUIRED_MESSAGE = 'Referral link/code is required for registration';
+
 function normalizeUsername(value) {
   return String(value || '').trim().toLowerCase();
 }
@@ -13,24 +15,44 @@ function normalizeLoginIdentifier(value) {
   return String(value || '').trim().toLowerCase();
 }
 
-function normalizeReferralCode(raw) {
+function parseReferralContext(raw) {
   const text = String(raw || '').trim();
-  if (!text) return '';
+  if (!text) {
+    return {
+      sponsorUsername: '',
+      preferredLeg: null
+    };
+  }
 
   try {
     const url = new URL(text);
     const ref = url.searchParams.get('ref') || url.searchParams.get('sponsor') || '';
-    if (ref) return normalizeUsername(ref);
+    if (ref) {
+      return {
+        sponsorUsername: normalizeUsername(ref),
+        preferredLeg: normalizePlacementSide(url.searchParams.get('side'))
+      };
+    }
   } catch (_error) {
     // Not a full URL, continue to raw parsing.
   }
 
-  if (text.includes('ref=')) {
-    const fromQuery = text.split('ref=')[1]?.split('&')[0] || '';
-    if (fromQuery) return normalizeUsername(fromQuery);
+  if (text.includes('ref=') || text.includes('sponsor=')) {
+    const queryString = text.includes('?') ? text.slice(text.indexOf('?') + 1) : text;
+    const parsed = new URLSearchParams(queryString);
+    const ref = parsed.get('ref') || parsed.get('sponsor') || '';
+    if (ref) {
+      return {
+        sponsorUsername: normalizeUsername(ref),
+        preferredLeg: normalizePlacementSide(parsed.get('side'))
+      };
+    }
   }
 
-  return normalizeUsername(text);
+  return {
+    sponsorUsername: normalizeUsername(text),
+    preferredLeg: null
+  };
 }
 
 function normalizePlacementSide(value) {
@@ -39,9 +61,9 @@ function normalizePlacementSide(value) {
 }
 
 async function resolveSponsor(client, payload) {
-  const sponsorUsername = normalizeReferralCode(payload.referralCode);
+  const sponsorUsername = parseReferralContext(payload.referralCode).sponsorUsername;
   if (!sponsorUsername) {
-    throw new ApiError(400, 'Referral code is required');
+    throw new ApiError(400, REFERRAL_REQUIRED_MESSAGE);
   }
 
   const sponsor = await userRepository.findByUsername(client, sponsorUsername);
@@ -103,10 +125,11 @@ async function resolvePlacementBySponsor(client, sponsorId, preferredLeg, strict
 }
 
 async function previewReferral(referralCode, side) {
-  const sponsorUsername = normalizeReferralCode(referralCode);
-  const normalizedSide = normalizePlacementSide(side);
+  const referralContext = parseReferralContext(referralCode);
+  const sponsorUsername = referralContext.sponsorUsername;
+  const normalizedSide = normalizePlacementSide(side) || referralContext.preferredLeg;
   if (!sponsorUsername) {
-    throw new ApiError(400, 'Referral code is required');
+    throw new ApiError(400, REFERRAL_REQUIRED_MESSAGE);
   }
 
   const sponsor = await userRepository.findByUsername(null, sponsorUsername);
@@ -128,13 +151,14 @@ async function previewReferral(referralCode, side) {
 
 async function register(payload) {
   return withTransaction(async (client) => {
+    const referralContext = parseReferralContext(payload.referralCode);
     const username = normalizeUsername(payload.username);
     const firstName = String(payload.firstName || '').trim();
     const lastName = String(payload.lastName || '').trim();
     const email = String(payload.email || '').trim().toLowerCase();
     const countryCode = String(payload.countryCode || '').trim();
     const mobileNumber = String(payload.mobileNumber || '').trim();
-    const preferredLeg = normalizePlacementSide(payload.preferredLeg);
+    const preferredLeg = normalizePlacementSide(payload.preferredLeg) || referralContext.preferredLeg;
     const strictPlacement = false;
 
     const existingEmail = await userRepository.findByEmail(client, email);

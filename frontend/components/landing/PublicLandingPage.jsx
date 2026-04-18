@@ -512,12 +512,12 @@ export default function PublicLandingPage() {
                   </button>
 
                   <Link
-                    href="#features"
+                    href="/register"
                     className="flex w-full items-center justify-between rounded-[14px] px-3 py-3 text-sm text-white transition hover:bg-white/8"
                     onClick={() => setMoreMenuOpen(false)}
                   >
-                    <span>Explore Platform</span>
-                    <span className="text-xs text-[#9ca3af]">Section</span>
+                    <span>Registration</span>
+                    <span className="text-xs text-[#9ca3af]">Referral</span>
                   </Link>
 
                   {!token ? (
@@ -561,7 +561,7 @@ export default function PublicLandingPage() {
             </div>
 
             <div className="hidden items-center gap-3 md:flex">
-              <SecondaryButton href="#features">Explore Platform</SecondaryButton>
+              <SecondaryButton href="/register">Registration</SecondaryButton>
               <PrimaryButton href="/login">Login</PrimaryButton>
             </div>
           </div>
@@ -600,8 +600,8 @@ export default function PublicLandingPage() {
                   <span>Login</span>
                   <ArrowRight size={15} />
                 </PrimaryButton>
-                <SecondaryButton href="#features">
-                  <span>Explore Platform</span>
+                <SecondaryButton href="/register">
+                  <span>Registration</span>
                 </SecondaryButton>
               </div>
 

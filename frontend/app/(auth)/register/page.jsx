@@ -1,130 +1,45 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useMemo } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowRight, Ban, CheckCircle2, CreditCard, ShieldCheck, UserPlus } from 'lucide-react';
-import toast from 'react-hot-toast';
-import { useAuthMutations } from '@/hooks/useAuthMutations';
+import { useSearchParams } from 'next/navigation';
+import { ArrowRight, CheckCircle2, CreditCard, ShieldCheck, UserPlus } from 'lucide-react';
 import Logo from '@/components/common/Logo';
 import { COUNTRY_CODE_OPTIONS } from '@/lib/constants/countryCodes';
-import { getReferralPreview } from '@/lib/services/authService';
-
-function formatSideLabel(side) {
-  if (!side) return 'Not selected';
-  return `${String(side).charAt(0).toUpperCase()}${String(side).slice(1)} side`;
-}
+import { useReferralRegistrationForm } from '@/hooks/useReferralRegistrationForm';
+import { extractReferralQueryContext, formatPlacementSideLabel } from '@/lib/utils/referralRegistration';
 
 function RegisterPageContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const { registerMutation, error, setError } = useAuthMutations();
-  const [useCustomCode, setUseCustomCode] = useState(false);
-  const [referralPreview, setReferralPreview] = useState(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewError, setPreviewError] = useState('');
-  const [form, setForm] = useState({
-    firstName: '',
-    lastName: '',
-    username: '',
-    mobileNumber: '',
-    countryCode: '+44',
-    email: '',
-    password: '',
-    referralCode: ''
+  const { referralCode: referralPrefill, requestedSide } = useMemo(
+    () => extractReferralQueryContext(searchParams),
+    [searchParams]
+  );
+  const {
+    form,
+    setForm,
+    useCustomCode,
+    setUseCustomCode,
+    error,
+    previewLoading,
+    previewError,
+    referralPreview,
+    sponsorName,
+    sponsorLocked,
+    sideLocked,
+    effectivePreferredLeg,
+    referralMissing,
+    submitRegistration,
+    isSubmitting,
+    referralRequiredMessage
+  } = useReferralRegistrationForm({
+    referralPrefill,
+    requestedSide
   });
 
-  const referralPrefill = useMemo(() => {
-    return searchParams.get('ref') || searchParams.get('sponsor') || '';
-  }, [searchParams]);
-
-  const requestedSide = useMemo(() => {
-    const side = String(searchParams.get('side') || '').trim().toLowerCase();
-    return side === 'left' || side === 'right' ? side : '';
-  }, [searchParams]);
-
-  const sponsorLocked = Boolean(referralPrefill);
-  const sideLocked = Boolean(referralPrefill && requestedSide);
-  const registrationBlocked = !referralPrefill;
-
-  useEffect(() => {
-    if (!referralPrefill) return;
-    setForm((prev) => ({ ...prev, referralCode: prev.referralCode || referralPrefill }));
-  }, [referralPrefill]);
-
-  useEffect(() => {
-    let ignore = false;
-
-    async function loadReferralPreview() {
-      if (!referralPrefill) {
-        setReferralPreview(null);
-        setPreviewError('');
-        return;
-      }
-
-      setPreviewLoading(true);
-      setPreviewError('');
-      try {
-        const data = await getReferralPreview({ ref: referralPrefill, side: requestedSide || undefined });
-        if (!ignore) setReferralPreview(data || null);
-      } catch (err) {
-        if (!ignore) {
-          setReferralPreview(null);
-          setPreviewError(err?.message || 'Referral link could not be verified.');
-        }
-      } finally {
-        if (!ignore) setPreviewLoading(false);
-      }
-    }
-
-    loadReferralPreview();
-    return () => {
-      ignore = true;
-    };
-  }, [referralPrefill, requestedSide]);
-
-  const sponsorName = useMemo(() => {
-    const sponsor = referralPreview?.sponsor;
-    if (!sponsor) return '';
-    return [sponsor.first_name, sponsor.last_name].filter(Boolean).join(' ').trim() || sponsor.username || '';
-  }, [referralPreview]);
-
-  async function onSubmit(e) {
-    e.preventDefault();
-    setError('');
-
-    if (registrationBlocked) {
-      const message = 'Registration is available only through a referral link.';
-      setError(message);
-      toast.error(message);
-      return;
-    }
-
-    if (previewError) {
-      toast.error(previewError);
-      return;
-    }
-
-    const payload = {
-      firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
-      username: form.username.trim(),
-      mobileNumber: form.mobileNumber.trim(),
-      countryCode: form.countryCode.trim(),
-      email: form.email.trim(),
-      password: form.password,
-      ...(form.referralCode.trim() ? { referralCode: form.referralCode.trim() } : {}),
-      ...(sideLocked ? { preferredLeg: requestedSide } : {})
-    };
-
-    try {
-      await registerMutation.mutateAsync(payload);
-      toast.success('Welcome to Hope International');
-      router.push('/dashboard');
-    } catch (err) {
-      toast.error(err.message || 'Registration failed');
-    }
-  }
+  const hasReferralContext = Boolean(form.referralCode.trim() || referralPrefill);
+  const showReferralPreview = hasReferralContext || previewLoading || Boolean(previewError);
+  const sponsorDisplayName = sponsorName || referralPreview?.sponsor?.username || form.referralCode.trim() || referralPrefill;
 
   return (
     <div className="card-surface overflow-hidden p-5 md:p-7">
@@ -132,75 +47,84 @@ function RegisterPageContent() {
         <div className="flex items-center gap-3">
           <Logo size={52} className="shrink-0" />
           <div>
-            <h1 className="mt-1 mb-3 bg-gradient-to-r from-[#a855f7] to-[#22c55e] bg-clip-text text-[22px] font-extrabold leading-[1.2] tracking-[1px] text-transparent antialiased md:text-[26px]">Hope International</h1>
+            <h1 className="mb-3 mt-1 bg-gradient-to-r from-[#a855f7] to-[#22c55e] bg-clip-text text-[22px] font-extrabold leading-[1.2] tracking-[1px] text-transparent antialiased md:text-[26px]">
+              Hope International
+            </h1>
           </div>
         </div>
       </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-[var(--hope-border)] bg-cardSoft p-3">
-            <ShieldCheck size={18} className="text-accent" />
-            <p className="mt-3 text-sm font-semibold text-text">Secure registration</p>
-            <p className="mt-1 text-xs leading-5 text-muted">Validation and referral placement stay intact.</p>
-          </div>
-          <div className="rounded-2xl border border-[var(--hope-border)] bg-cardSoft p-3">
-            <UserPlus size={18} className="text-accent" />
-            <p className="mt-3 text-sm font-semibold text-text">Instant account access</p>
-            <p className="mt-1 text-xs leading-5 text-muted">New members can move straight into the live product surfaces.</p>
-          </div>
-          <div className="rounded-2xl border border-[var(--hope-border)] bg-cardSoft p-3 sm:col-span-3 lg:col-span-1">
-            <CreditCard size={18} className="text-accent" />
-            <p className="mt-3 text-sm font-semibold text-text">Referral-ready profile</p>
-            <p className="mt-1 text-xs leading-5 text-muted">Referral entry and placement context are preserved during signup.</p>
-          </div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-[var(--hope-border)] bg-cardSoft p-3">
+          <ShieldCheck size={18} className="text-accent" />
+          <p className="mt-3 text-sm font-semibold text-text">Secure registration</p>
+          <p className="mt-1 text-xs leading-5 text-muted">Validation and referral placement stay intact.</p>
+        </div>
+        <div className="rounded-2xl border border-[var(--hope-border)] bg-cardSoft p-3">
+          <UserPlus size={18} className="text-accent" />
+          <p className="mt-3 text-sm font-semibold text-text">Instant account access</p>
+          <p className="mt-1 text-xs leading-5 text-muted">Create your account and move straight into the live member flow.</p>
+        </div>
+        <div className="rounded-2xl border border-[var(--hope-border)] bg-cardSoft p-3 sm:col-span-3 lg:col-span-1">
+          <CreditCard size={18} className="text-accent" />
+          <p className="mt-3 text-sm font-semibold text-text">Referral-protected signup</p>
+          <p className="mt-1 text-xs leading-5 text-muted">Referral code or referral link is mandatory for every registration.</p>
+        </div>
       </div>
 
-      {registrationBlocked ? (
+      {referralMissing ? (
         <div className="mt-5 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-amber-900 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-100">
-          <div className="flex items-start gap-3">
-            <span className="mt-0.5 inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white/80 text-amber-700 dark:bg-white/10 dark:text-amber-200">
-              <Ban size={18} />
-            </span>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-80">Referral Required</p>
-              <h2 className="mt-2 text-lg font-semibold">Registration is available only through a referral link.</h2>
-              <p className="mt-2 text-sm leading-6 opacity-90">
-                Ask your sponsor for a valid link in the format <span className="font-semibold">/register?ref=&lt;referralCode&gt;&amp;side=left</span> or <span className="font-semibold">/register?ref=&lt;referralCode&gt;&amp;side=right</span>.
-              </p>
-              <div className="mt-4 flex flex-wrap gap-3">
-                <Link href="/login" className="hope-button-secondary">Back to login</Link>
-              </div>
-            </div>
-          </div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-80">Referral Required</p>
+          <h2 className="mt-2 text-lg font-semibold">{referralRequiredMessage}</h2>
+          <p className="mt-2 text-sm leading-6 opacity-90">
+            Enter a valid sponsor username or referral link to continue. If you arrived from a referral link, it will be filled automatically and kept locked.
+          </p>
         </div>
       ) : null}
 
-      {referralPrefill ? (
+      {showReferralPreview ? (
         <div className="mt-5 rounded-3xl border border-[var(--hope-border)] bg-cardSoft p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Referral placement</p>
-              <h2 className="mt-2 text-lg font-semibold tracking-[-0.04em] text-text">{sponsorName || referralPrefill}</h2>
-              <p className="mt-1 text-sm text-muted">@{referralPreview?.sponsor?.username || referralPrefill}</p>
+              <h2 className="mt-2 text-lg font-semibold tracking-[-0.04em] text-text">{sponsorDisplayName || 'Checking referral'}</h2>
+              <p className="mt-1 text-sm text-muted">
+                {referralPreview?.sponsor?.username ? `@${referralPreview.sponsor.username}` : (form.referralCode.trim() || referralPrefill || 'Awaiting referral data')}
+              </p>
             </div>
-            {previewLoading ? <span className="inline-flex items-center gap-1 rounded-full border border-[var(--hope-border)] bg-background px-3 py-1 text-xs font-semibold text-muted">Checking...</span> : null}
-            {!previewLoading && !previewError ? <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"><CheckCircle2 size={12} /> {formatSideLabel(requestedSide)}</span> : null}
+            {previewLoading ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-[var(--hope-border)] bg-background px-3 py-1 text-xs font-semibold text-muted">
+                Checking...
+              </span>
+            ) : null}
+            {!previewLoading && !previewError && effectivePreferredLeg ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
+                <CheckCircle2 size={12} /> {formatPlacementSideLabel(effectivePreferredLeg)}
+              </span>
+            ) : null}
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-[var(--hope-border)] bg-background px-3 py-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">Sponsor</p>
-              <p className="mt-2 text-sm font-semibold text-text">{sponsorName || referralPreview?.sponsor?.username || referralPrefill}</p>
+              <p className="mt-2 text-sm font-semibold text-text">{sponsorDisplayName || 'Pending referral validation'}</p>
             </div>
             <div className="rounded-2xl border border-[var(--hope-border)] bg-background px-3 py-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">Placement Side</p>
-              <p className="mt-2 text-sm font-semibold text-text">{formatSideLabel(requestedSide)}</p>
+              <p className="mt-2 text-sm font-semibold text-text">{formatPlacementSideLabel(effectivePreferredLeg)}</p>
             </div>
           </div>
-          {previewError ? <p className="mt-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-danger dark:border-red-500/20 dark:bg-red-500/10">{previewError}</p> : null}
+          {sponsorLocked ? (
+            <p className="mt-4 text-xs text-muted">Referral field is locked because this registration was opened from a referral link.</p>
+          ) : null}
+          {previewError ? (
+            <p className="mt-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-danger dark:border-red-500/20 dark:bg-red-500/10">
+              {previewError}
+            </p>
+          ) : null}
         </div>
       ) : null}
 
-      <form onSubmit={onSubmit} className={`mt-6 space-y-5 ${registrationBlocked ? 'pointer-events-none opacity-50' : ''}`}>
+      <form onSubmit={submitRegistration} className="mt-6 space-y-5">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Profile details</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -272,24 +196,36 @@ function RegisterPageContent() {
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Referral details</p>
           <label className="mt-3 block space-y-2">
             <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">Referral Link / Referral Code</span>
-            <input className="hope-input" placeholder="username or referral link" required value={form.referralCode} readOnly={sponsorLocked} onChange={(e) => setForm((p) => ({ ...p, referralCode: e.target.value }))} />
+            <input
+              className="hope-input"
+              placeholder="username or referral link"
+              required
+              value={form.referralCode}
+              readOnly={sponsorLocked}
+              onChange={(e) => setForm((p) => ({ ...p, referralCode: e.target.value }))}
+            />
           </label>
+          {sponsorLocked ? (
+            <p className="mt-2 text-xs text-muted">Locked from the referral link that opened this registration.</p>
+          ) : null}
           {sideLocked ? (
             <div className="mt-3 rounded-2xl border border-[var(--hope-border)] bg-cardSoft px-3 py-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">Placement Side</p>
-              <p className="mt-2 text-sm font-semibold text-text">{formatSideLabel(requestedSide)}</p>
+              <p className="mt-2 text-sm font-semibold text-text">{formatPlacementSideLabel(effectivePreferredLeg)}</p>
             </div>
           ) : null}
         </div>
 
         {error ? <p className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-danger dark:border-red-500/20 dark:bg-red-500/10">{error}</p> : null}
-        <button disabled={registrationBlocked || registerMutation.isPending || previewLoading || Boolean(previewError)} className="hope-button w-full disabled:cursor-not-allowed disabled:opacity-70">
-          {registerMutation.isPending ? 'Creating account...' : 'Create Hope account'}
-          {!registerMutation.isPending ? <ArrowRight size={16} /> : null}
+        <button disabled={isSubmitting || previewLoading} className="hope-button w-full disabled:cursor-not-allowed disabled:opacity-70">
+          {isSubmitting ? 'Creating account...' : 'Create Hope account'}
+          {!isSubmitting ? <ArrowRight size={16} /> : null}
         </button>
       </form>
 
-      <p className="mt-5 text-center text-sm text-muted">Already have an account? <Link href="/login" className="font-semibold text-accent underline decoration-[var(--hope-accent-soft)] underline-offset-4">Login</Link></p>
+      <p className="mt-5 text-center text-sm text-muted">
+        Already have an account? <Link href="/login" className="font-semibold text-accent underline decoration-[var(--hope-accent-soft)] underline-offset-4">Login</Link>
+      </p>
     </div>
   );
 }
@@ -301,4 +237,3 @@ export default function RegisterPage() {
     </Suspense>
   );
 }
-
