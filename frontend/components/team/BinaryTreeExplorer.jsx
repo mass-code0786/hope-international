@@ -4,8 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  ChevronDown,
-  ChevronRight,
+  ArrowLeft,
   CircleDot,
   Loader2,
   Plus,
@@ -15,7 +14,6 @@ import { getTeamTreeNode } from '@/lib/services/teamService';
 import { queryKeys } from '@/lib/query/queryKeys';
 
 const AUTO_HIDE_MS = 10000;
-const MAX_VISIBLE_BLOCK_DEPTH = 2;
 
 function hasEmbeddedChildren(node) {
   return Boolean(node) && Object.prototype.hasOwnProperty.call(node, 'children');
@@ -23,6 +21,10 @@ function hasEmbeddedChildren(node) {
 
 function isRenderableNode(node) {
   return Boolean(node) && typeof node === 'object' && (node.id != null || node.memberId != null || node.username || node.displayName);
+}
+
+function getNodeId(node) {
+  return node?.id || node?.memberId || null;
 }
 
 function resolveChildSlots(node) {
@@ -40,6 +42,25 @@ function slotLabel(side) {
   if (side === 'left') return 'Left';
   if (side === 'right') return 'Right';
   return 'Root';
+}
+
+function subtreeSlotLabel(slot) {
+  switch (slot) {
+    case 'left':
+      return 'Left Child';
+    case 'right':
+      return 'Right Child';
+    case 'left-left':
+      return 'Left Left';
+    case 'left-right':
+      return 'Left Right';
+    case 'right-left':
+      return 'Right Left';
+    case 'right-right':
+      return 'Right Right';
+    default:
+      return 'Current Root';
+  }
 }
 
 function formatDate(value) {
@@ -78,18 +99,124 @@ function getPvValue(node, key) {
   return value == null ? null : Number(value);
 }
 
+function shouldFetchBranchNode(node) {
+  return Boolean(getNodeId(node) && node?.hasChildren && !hasEmbeddedChildren(node));
+}
+
 export function BinaryTreeExplorer({ root }) {
-  const [previewNode, setPreviewNode] = useState(null);
+  const rootId = getNodeId(root);
   const previewTimerRef = useRef(null);
+  const previousRootIdRef = useRef(rootId);
+  const [previewNode, setPreviewNode] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [activeRootId, setActiveRootId] = useState(rootId);
+  const [activeRootSeed, setActiveRootSeed] = useState(root);
+
+  function clearPreviewTimer() {
+    if (previewTimerRef.current) {
+      clearTimeout(previewTimerRef.current);
+      previewTimerRef.current = null;
+    }
+  }
+
+  function closePreview() {
+    clearPreviewTimer();
+    setPreviewNode(null);
+  }
 
   useEffect(() => () => {
-    if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+    if (previewTimerRef.current) {
+      clearTimeout(previewTimerRef.current);
+      previewTimerRef.current = null;
+    }
   }, []);
 
-  if (!root) return null;
+  useEffect(() => {
+    if (!rootId) return;
+    if (previousRootIdRef.current === rootId) return;
+    previousRootIdRef.current = rootId;
+    if (previewTimerRef.current) {
+      clearTimeout(previewTimerRef.current);
+      previewTimerRef.current = null;
+    }
+    setPreviewNode(null);
+    setHistory([]);
+    setActiveRootId(rootId);
+    setActiveRootSeed(root);
+  }, [rootId, root]);
+
+  if (!root || !rootId) return null;
+
+  const currentRootQuery = useQuery({
+    queryKey: queryKeys.teamTreeNode(activeRootId),
+    queryFn: () => getTeamTreeNode(activeRootId),
+    enabled: Boolean(activeRootId && activeRootId !== rootId),
+    staleTime: 60000,
+    placeholderData: () => {
+      if (activeRootId === rootId) return root;
+      return getNodeId(activeRootSeed) === activeRootId ? activeRootSeed : undefined;
+    }
+  });
+
+  const currentRoot = activeRootId === rootId
+    ? root
+    : currentRootQuery.data || (getNodeId(activeRootSeed) === activeRootId ? activeRootSeed : null);
+
+  const currentRootChildren = resolveChildSlots(currentRoot);
+  const loadingRootChildren = Boolean(activeRootId !== rootId && currentRootQuery.isFetching && !hasEmbeddedChildren(currentRoot));
+  const leftNode = loadingRootChildren ? null : currentRootChildren.leftNode;
+  const rightNode = loadingRootChildren ? null : currentRootChildren.rightNode;
+
+  const leftBranchQuery = useQuery({
+    queryKey: leftNode?.id ? queryKeys.teamTreeNode(leftNode.id) : ['team-tree', 'slot', activeRootId, 'left'],
+    queryFn: () => getTeamTreeNode(leftNode.id),
+    enabled: shouldFetchBranchNode(leftNode),
+    staleTime: 60000,
+    placeholderData: () => (hasEmbeddedChildren(leftNode) ? leftNode : undefined)
+  });
+
+  const rightBranchQuery = useQuery({
+    queryKey: rightNode?.id ? queryKeys.teamTreeNode(rightNode.id) : ['team-tree', 'slot', activeRootId, 'right'],
+    queryFn: () => getTeamTreeNode(rightNode.id),
+    enabled: shouldFetchBranchNode(rightNode),
+    staleTime: 60000,
+    placeholderData: () => (hasEmbeddedChildren(rightNode) ? rightNode : undefined)
+  });
+
+  const resolvedLeftNode = leftBranchQuery.data || leftNode;
+  const resolvedRightNode = rightBranchQuery.data || rightNode;
+  const leftGrandchildren = resolveChildSlots(resolvedLeftNode);
+  const rightGrandchildren = resolveChildSlots(resolvedRightNode);
+
+  const loadingLeftGrandchildren = Boolean(
+    !loadingRootChildren
+      && leftNode
+      && leftNode.hasChildren
+      && !hasEmbeddedChildren(resolvedLeftNode)
+      && (leftBranchQuery.isPending || leftBranchQuery.isFetching)
+  );
+
+  const loadingRightGrandchildren = Boolean(
+    !loadingRootChildren
+      && rightNode
+      && rightNode.hasChildren
+      && !hasEmbeddedChildren(resolvedRightNode)
+      && (rightBranchQuery.isPending || rightBranchQuery.isFetching)
+  );
+
+  const slots = {
+    root: { node: currentRoot, loading: Boolean(!currentRoot) },
+    left: { node: leftNode, loading: loadingRootChildren },
+    right: { node: rightNode, loading: loadingRootChildren },
+    'left-left': { node: loadingRootChildren ? null : leftGrandchildren.leftNode, loading: loadingRootChildren || loadingLeftGrandchildren },
+    'left-right': { node: loadingRootChildren ? null : leftGrandchildren.rightNode, loading: loadingRootChildren || loadingLeftGrandchildren },
+    'right-left': { node: loadingRootChildren ? null : rightGrandchildren.leftNode, loading: loadingRootChildren || loadingRightGrandchildren },
+    'right-right': { node: loadingRootChildren ? null : rightGrandchildren.rightNode, loading: loadingRootChildren || loadingRightGrandchildren }
+  };
 
   function queuePreview(node) {
-    if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+    if (!node) return;
+    clearPreviewTimer();
     setPreviewNode(node);
     previewTimerRef.current = setTimeout(() => {
       setPreviewNode(null);
@@ -97,24 +224,81 @@ export function BinaryTreeExplorer({ root }) {
     }, AUTO_HIDE_MS);
   }
 
-  function closePreview() {
-    if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
-    previewTimerRef.current = null;
-    setPreviewNode(null);
+  function handleExpand(node) {
+    const nextId = getNodeId(node);
+    if (!nextId || nextId === activeRootId) return;
+
+    closePreview();
+    setHistory((current) => [...current, { id: activeRootId, snapshot: currentRoot }]);
+    setActiveRootId(nextId);
+    setActiveRootSeed(node);
+  }
+
+  function handleBack() {
+    if (!history.length) return;
+
+    const previous = history[history.length - 1];
+    closePreview();
+    setHistory((current) => current.slice(0, -1));
+    setActiveRootId(previous.id);
+    setActiveRootSeed(previous.snapshot);
   }
 
   return (
     <div className="relative overflow-hidden rounded-[20px] border border-white/7 bg-[linear-gradient(180deg,rgba(16,18,24,0.92),rgba(9,11,16,0.98))] shadow-[0_20px_56px_rgba(0,0,0,0.38)]">
+      <div className="border-b border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.015))] px-3 py-3 sm:px-4">
+        <div className="flex flex-wrap items-center justify-between gap-2.5">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/42">Subtree Navigator</p>
+            <h3 className="mt-1 text-sm font-semibold tracking-[-0.03em] text-white">{displayNodeName(currentRoot)}</h3>
+            <p className="mt-1 text-[11px] text-white/48">Showing one compact 7-member binary view at a time.</p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/6 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/48">
+              <CircleDot size={10} />
+              Level {history.length}
+            </span>
+            <button
+              type="button"
+              onClick={handleBack}
+              disabled={history.length === 0}
+              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-white/10 bg-white/6 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/72 transition hover:border-white/18 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-35"
+            >
+              <ArrowLeft size={14} />
+              Back
+            </button>
+          </div>
+        </div>
+
+        {currentRootQuery.isError && activeRootId !== rootId ? (
+          <p className="mt-2 text-[11px] text-amber-200/78">Unable to refresh this subtree right now. Cached member details are still shown where available.</p>
+        ) : null}
+      </div>
+
       <div
-        className="relative overflow-auto px-2 py-2.5 sm:px-3 sm:py-3"
+        className="relative overflow-auto px-2 py-3 sm:px-3 sm:py-4"
         style={{ touchAction: 'pan-x pan-y pinch-zoom', WebkitOverflowScrolling: 'touch' }}
       >
-        <div
-          className="relative min-w-full bg-[radial-gradient(circle_at_top,rgba(124,58,237,0.12),transparent_34%),radial-gradient(circle_at_bottom,rgba(16,185,129,0.08),transparent_38%)]"
-        >
+        <div className="relative bg-[radial-gradient(circle_at_top,rgba(124,58,237,0.12),transparent_34%),radial-gradient(circle_at_bottom,rgba(16,185,129,0.08),transparent_38%)]">
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(transparent_95%,rgba(255,255,255,0.022)_96%),linear-gradient(90deg,transparent_95%,rgba(255,255,255,0.022)_96%)] bg-[length:20px_20px]" />
-          <div className="relative mx-auto w-max min-w-full px-2 py-3 sm:px-4 sm:py-4">
-            <RootBinaryTreeNode node={root} onPreview={queuePreview} />
+
+          <div className="relative mx-auto min-w-[304px] max-w-[520px] px-1 py-2 sm:min-w-[360px] sm:px-3 sm:py-3">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeRootId}
+                initial={{ opacity: 0, y: 16, scale: 0.985 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -12, scale: 0.985 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+              >
+                <SevenNodeTree
+                  slots={slots}
+                  onPreview={queuePreview}
+                  onExpand={handleExpand}
+                />
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
 
@@ -175,228 +359,209 @@ export function BinaryTreeExplorer({ root }) {
   );
 }
 
-function RootBinaryTreeNode({ node, onPreview }) {
-  const [expanded, setExpanded] = useState(true);
-  const embeddedChildren = hasEmbeddedChildren(node);
-  const shouldFetch = expanded && node?.hasChildren && !embeddedChildren;
-
-  const nodeQuery = useQuery({
-    queryKey: queryKeys.teamTreeNode(node.id),
-    queryFn: () => getTeamTreeNode(node.id),
-    enabled: shouldFetch,
-    staleTime: 60000
-  });
-
-  const resolvedNode = nodeQuery.data || node;
-  const { leftNode, rightNode } = resolveChildSlots(resolvedNode);
-  const loadingChildren = nodeQuery.isLoading && node?.hasChildren && !embeddedChildren;
-  const canExpand = Boolean(node?.hasChildren || leftNode || rightNode || loadingChildren);
-  const showInlineChildren = expanded && MAX_VISIBLE_BLOCK_DEPTH > 0;
-
+function SevenNodeTree({ slots, onPreview, onExpand }) {
   return (
-    <div className="flex w-full flex-col items-center gap-2.5">
-      <div className="relative z-10 flex flex-col items-center gap-1">
-        <TreeMemberCard node={resolvedNode} side="root" onPreview={onPreview} widthClass="w-[78px] sm:w-[88px]" />
-        <ExpandCollapseButton expanded={expanded} onClick={() => setExpanded((current) => !current)} disabled={!canExpand} />
+    <div className="flex w-full flex-col items-center">
+      <div className="grid w-full grid-cols-4 gap-x-2 gap-y-0 sm:gap-x-3">
+        <div className="col-span-4 flex justify-center">
+          <TreeSlot
+            slot="root"
+            node={slots.root.node}
+            loading={slots.root.loading}
+            isRoot
+            onPreview={onPreview}
+            onExpand={onExpand}
+          />
+        </div>
       </div>
 
-      {expanded ? (
-        <div className="relative flex w-full flex-col items-center pt-1.5">
-          <div className="absolute left-1/2 top-0 h-2 w-px -translate-x-1/2 bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
-          {showInlineChildren ? (
-            <InlineBranchLayout
-              leftNode={leftNode}
-              rightNode={rightNode}
-              loading={loadingChildren}
-              onPreview={onPreview}
-              blockDepth={1}
-            />
-          ) : null}
-          {expanded && MAX_VISIBLE_BLOCK_DEPTH === 0 ? (
-            <ContinuationSection leftNode={leftNode} rightNode={rightNode} loading={loadingChildren} onPreview={onPreview} />
-          ) : null}
+      <ConnectorLevelOne />
+
+      <div className="grid w-full grid-cols-4 gap-x-2 gap-y-0 sm:gap-x-3">
+        <div className="col-span-2 flex justify-center">
+          <TreeSlot
+            slot="left"
+            node={slots.left.node}
+            loading={slots.left.loading}
+            onPreview={onPreview}
+            onExpand={onExpand}
+          />
         </div>
-      ) : null}
-    </div>
-  );
-}
-
-function BinaryTreeNode({ node, side = 'root', defaultExpanded = false, onPreview, blockDepth = 0 }) {
-  const [expanded, setExpanded] = useState(defaultExpanded);
-  const embeddedChildren = hasEmbeddedChildren(node);
-  const shouldFetch = expanded && node?.hasChildren && !embeddedChildren;
-
-  const nodeQuery = useQuery({
-    queryKey: queryKeys.teamTreeNode(node.id),
-    queryFn: () => getTeamTreeNode(node.id),
-    enabled: shouldFetch,
-    staleTime: 60000
-  });
-
-  const resolvedNode = nodeQuery.data || node;
-  const { leftNode, rightNode } = resolveChildSlots(resolvedNode);
-  const loadingChildren = nodeQuery.isLoading && node?.hasChildren && !embeddedChildren;
-  const canExpand = Boolean(node?.hasChildren || leftNode || rightNode || loadingChildren);
-  const shouldShowInlineChildren = expanded && blockDepth < MAX_VISIBLE_BLOCK_DEPTH;
-  const shouldShowContinuation = expanded && blockDepth >= MAX_VISIBLE_BLOCK_DEPTH;
-
-  return (
-    <div className="flex w-full min-w-0 max-w-full flex-col items-center gap-1">
-      <div className="flex flex-col items-center gap-1">
-        <TreeMemberCard node={resolvedNode} side={side} onPreview={onPreview} widthClass="w-[74px] sm:w-[88px]" />
-        <ExpandCollapseButton expanded={expanded} onClick={() => setExpanded((current) => !current)} disabled={!canExpand} />
+        <div className="col-span-2 flex justify-center">
+          <TreeSlot
+            slot="right"
+            node={slots.right.node}
+            loading={slots.right.loading}
+            onPreview={onPreview}
+            onExpand={onExpand}
+          />
+        </div>
       </div>
 
-      {expanded ? (
-        <div className="relative flex w-full min-w-0 flex-col items-center pt-1.5">
-          <div className="absolute left-1/2 top-0 h-2 w-px -translate-x-1/2 bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
-          {shouldShowInlineChildren ? (
-            <InlineBranchLayout
-              leftNode={leftNode}
-              rightNode={rightNode}
-              loading={loadingChildren}
-              onPreview={onPreview}
-              blockDepth={blockDepth + 1}
-            />
-          ) : null}
-          {shouldShowContinuation ? (
-            <ContinuationSection leftNode={leftNode} rightNode={rightNode} loading={loadingChildren} onPreview={onPreview} />
-          ) : null}
+      <ConnectorLevelTwo />
+
+      <div className="grid w-full grid-cols-4 gap-x-2 gap-y-0 sm:gap-x-3">
+        <div className="flex justify-center">
+          <TreeSlot
+            slot="left-left"
+            node={slots['left-left'].node}
+            loading={slots['left-left'].loading}
+            onPreview={onPreview}
+            onExpand={onExpand}
+          />
         </div>
-      ) : null}
-    </div>
-  );
-}
-
-function InlineBranchLayout({ leftNode, rightNode, loading = false, onPreview, blockDepth }) {
-  return (
-    <div className="relative flex w-full min-w-0 flex-col items-center pt-1.5">
-      <div className="relative w-full min-w-[224px] pt-1.5 sm:min-w-[252px]">
-        <div className="absolute left-1/4 right-1/4 top-0 h-px bg-[linear-gradient(90deg,rgba(255,255,255,0.06),rgba(255,255,255,0.28),rgba(255,255,255,0.06))]" />
-        <div className="absolute left-1/4 top-0 h-2 w-px bg-[linear-gradient(180deg,rgba(255,255,255,0.32),rgba(255,255,255,0.08))]" />
-        <div className="absolute right-1/4 top-0 h-2 w-px bg-[linear-gradient(180deg,rgba(255,255,255,0.32),rgba(255,255,255,0.08))]" />
-
-        <div className="grid grid-cols-2 items-start gap-x-2 gap-y-3 sm:gap-x-3 sm:gap-y-4">
-          <BinaryTreeSlot side="left" node={leftNode} loading={loading} onPreview={onPreview} blockDepth={blockDepth} />
-          <BinaryTreeSlot side="right" node={rightNode} loading={loading} onPreview={onPreview} blockDepth={blockDepth} />
+        <div className="flex justify-center">
+          <TreeSlot
+            slot="left-right"
+            node={slots['left-right'].node}
+            loading={slots['left-right'].loading}
+            onPreview={onPreview}
+            onExpand={onExpand}
+          />
+        </div>
+        <div className="flex justify-center">
+          <TreeSlot
+            slot="right-left"
+            node={slots['right-left'].node}
+            loading={slots['right-left'].loading}
+            onPreview={onPreview}
+            onExpand={onExpand}
+          />
+        </div>
+        <div className="flex justify-center">
+          <TreeSlot
+            slot="right-right"
+            node={slots['right-right'].node}
+            loading={slots['right-right'].loading}
+            onPreview={onPreview}
+            onExpand={onExpand}
+          />
         </div>
       </div>
     </div>
   );
 }
 
-function ContinuationSection({ leftNode, rightNode, loading = false, onPreview }) {
-  return (
-    <div className="relative mt-2.5 flex w-full min-w-0 flex-col items-center pt-2">
-      <div className="absolute left-1/2 top-0 h-2 w-px -translate-x-1/2 bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
-      <div className="grid w-full min-w-[224px] items-start gap-2 sm:min-w-[252px] sm:grid-cols-2 sm:gap-3">
-          <ContinuationSlot side="left" node={leftNode} loading={loading} onPreview={onPreview} />
-          <ContinuationSlot side="right" node={rightNode} loading={loading} onPreview={onPreview} />
-      </div>
-    </div>
-  );
-}
+function TreeSlot({ slot, node, loading = false, isRoot = false, onPreview, onExpand }) {
+  const widthClass = isRoot ? 'w-[96px] sm:w-[108px]' : 'w-[72px] sm:w-[84px]';
 
-function ContinuationSlot({ side, node, loading = false, onPreview }) {
   return (
-    <div className="flex w-full min-w-0 flex-col items-center gap-1.5 rounded-[16px] border border-white/8 bg-white/[0.025] px-1.5 py-2">
-      <span className="inline-flex max-w-full items-center gap-1 rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 text-[7px] font-semibold uppercase tracking-[0.14em] text-white/44">
-        <CircleDot size={8} />
-        {slotLabel(side)} continuation
+    <div className="flex w-full flex-col items-center gap-1.5">
+      <span className="inline-flex h-6 items-center justify-center rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-white/46 sm:text-[9px]">
+        {subtreeSlotLabel(slot)}
       </span>
 
-      <div className="flex w-full min-w-0 justify-center overflow-visible">
-        {loading ? (
-          <div className="flex h-[68px] w-[74px] items-center justify-center rounded-[16px] border border-white/10 bg-[rgba(17,20,28,0.92)] text-white/55 shadow-[0_12px_24px_rgba(0,0,0,0.24)] sm:h-[76px] sm:w-[88px] sm:rounded-[18px]">
-            <Loader2 size={14} className="animate-spin" />
-          </div>
-        ) : node ? (
-          <div className="flex min-w-fit justify-center">
-            <BinaryTreeNode node={node} side={side} defaultExpanded blockDepth={0} onPreview={onPreview} />
-          </div>
-        ) : (
-          <div className="flex h-[68px] w-[74px] flex-col items-center justify-center rounded-[16px] border border-dashed border-white/12 bg-white/[0.03] px-1.5 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:h-[76px] sm:w-[88px] sm:rounded-[18px] sm:px-2">
-            <span className="inline-flex h-6 w-6 items-center justify-center rounded-[9px] border border-white/10 bg-white/5 text-white/62 sm:h-7 sm:w-7 sm:rounded-[10px]">
-              <CircleDot size={12} />
+      {loading ? (
+        <LoadingTreeCard widthClass={widthClass} />
+      ) : node ? (
+        <MemberTreeCard node={node} slot={slot} widthClass={widthClass} onPreview={onPreview} />
+      ) : (
+        <EmptyTreeCard slot={slot} widthClass={widthClass} />
+      )}
+
+      <div className="flex h-7 items-center justify-center">
+        {node ? (
+          isRoot ? (
+            <span className="inline-flex items-center rounded-full border border-emerald-400/18 bg-emerald-400/10 px-2 py-1 text-[8px] font-semibold uppercase tracking-[0.14em] text-emerald-200/75 sm:text-[9px]">
+              Current View
             </span>
-            <p className="mt-1 text-[8px] font-semibold leading-tight text-white/68 sm:text-[9px]">No further user</p>
-          </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onExpand?.(node)}
+              className="inline-flex h-7 items-center gap-1 rounded-full border border-white/10 bg-white/6 px-2.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-white/72 transition hover:border-white/18 hover:bg-white/10 sm:text-[9px]"
+            >
+              Expand
+            </button>
+          )
+        ) : (
+          <span className="h-7" aria-hidden="true" />
         )}
       </div>
     </div>
   );
 }
 
-function BinaryTreeSlot({ side, node, loading = false, onPreview, blockDepth }) {
-  return (
-    <div className="flex w-full min-w-0 flex-col items-center gap-1">
-      <span className="inline-flex max-w-full items-center gap-1 rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 text-[7px] font-semibold uppercase tracking-[0.14em] text-white/44">
-        <CircleDot size={8} />
-        {slotLabel(side)}
-      </span>
-
-      <div className="flex w-full min-w-0 justify-center overflow-visible">
-        {loading ? (
-          <div className="flex h-[68px] w-[74px] items-center justify-center rounded-[16px] border border-white/10 bg-[rgba(17,20,28,0.92)] text-white/55 shadow-[0_12px_24px_rgba(0,0,0,0.24)] sm:h-[76px] sm:w-[88px] sm:rounded-[18px]">
-            <Loader2 size={14} className="animate-spin" />
-          </div>
-        ) : node ? (
-          <div className="flex min-w-fit justify-center">
-            <BinaryTreeNode node={node} side={side} onPreview={onPreview} blockDepth={blockDepth} />
-          </div>
-        ) : (
-          <div className="flex h-[68px] w-[74px] flex-col items-center justify-center rounded-[16px] border border-dashed border-white/12 bg-white/[0.03] px-1.5 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:h-[76px] sm:w-[88px] sm:rounded-[18px] sm:px-2">
-            <span className="inline-flex h-6 w-6 items-center justify-center rounded-[9px] border border-white/10 bg-white/5 text-white/62 sm:h-7 sm:w-7 sm:rounded-[10px]">
-              <Plus size={13} />
-            </span>
-            <p className="mt-1 text-[8px] font-semibold leading-tight text-white/68 sm:text-[9px]">Empty slot</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function TreeMemberCard({ node, side, onPreview, widthClass }) {
+function MemberTreeCard({ node, slot, widthClass, onPreview }) {
   return (
     <button
       type="button"
       data-tree-node
       onClick={() => onPreview?.(node)}
-      className={`group relative flex ${widthClass} min-w-0 flex-col items-center overflow-hidden rounded-[16px] border border-white/10 bg-[linear-gradient(180deg,rgba(25,29,39,0.94),rgba(13,15,21,0.98))] px-1.5 py-1.5 text-center shadow-[0_12px_28px_rgba(0,0,0,0.3)] transition duration-200 hover:-translate-y-0.5 hover:border-white/18 sm:rounded-[18px] sm:px-2 sm:py-2`}
+      aria-label={`Preview ${displayNodeName(node)} in the ${subtreeSlotLabel(slot)} slot`}
+      className={`group relative flex ${widthClass} min-h-[88px] min-w-0 flex-col items-center overflow-hidden rounded-[16px] border border-white/10 bg-[linear-gradient(180deg,rgba(25,29,39,0.94),rgba(13,15,21,0.98))] px-2 py-2 text-center shadow-[0_12px_28px_rgba(0,0,0,0.3)] transition duration-200 hover:-translate-y-0.5 hover:border-white/18 sm:min-h-[96px] sm:rounded-[18px]`}
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(124,58,237,0.16),transparent_45%),radial-gradient(circle_at_bottom,rgba(16,185,129,0.12),transparent_45%)] opacity-80" />
-      <span className="relative inline-flex h-7 w-7 items-center justify-center rounded-[10px] border border-white/12 bg-white/7 text-[10px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] sm:h-8 sm:w-8 sm:rounded-[11px] sm:text-[11px]">
+      <span className="relative inline-flex h-8 w-8 items-center justify-center rounded-[11px] border border-white/12 bg-white/7 text-[10px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] sm:h-9 sm:w-9 sm:text-[11px]">
         {node?.avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={node.avatarUrl} alt={displayNodeName(node)} className="h-full w-full rounded-[10px] object-cover sm:rounded-[11px]" />
+          <img src={node.avatarUrl} alt={displayNodeName(node)} className="h-full w-full rounded-[11px] object-cover" />
         ) : (
           nodeInitials(node)
         )}
       </span>
 
-      <div className="relative mt-1 w-full min-w-0 sm:mt-1.5">
-        <p className="truncate text-[9px] font-semibold tracking-[-0.02em] text-white sm:text-[10px]">{displayNodeName(node)}</p>
-        <div className="mt-0.5 flex items-center justify-center gap-1">
-          <span className={`h-1 w-1 shrink-0 rounded-full ${node?.isActive ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-          <span className="text-[7px] font-semibold uppercase tracking-[0.16em] text-white/48">{slotLabel(side)}</span>
-        </div>
+      <div className="relative mt-2 w-full min-w-0">
+        <p className="truncate text-[10px] font-semibold tracking-[-0.02em] text-white sm:text-[11px]">{displayNodeName(node)}</p>
+        <p className="mt-0.5 truncate text-[8px] text-white/48 sm:text-[9px]">@{node?.username || String(node?.memberId || node?.id || '').slice(0, 8)}</p>
+      </div>
+
+      <div className="relative mt-2 flex items-center gap-1">
+        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${node?.isActive ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+        <span className="text-[8px] font-semibold uppercase tracking-[0.14em] text-white/52">{slotLabel(node?.placementSide || 'root')}</span>
       </div>
     </button>
   );
 }
 
-function ExpandCollapseButton({ expanded, onClick, disabled = false }) {
+function EmptyTreeCard({ slot, widthClass }) {
   return (
-    <button
-      type="button"
-      onClick={disabled ? undefined : onClick}
-      disabled={disabled}
-      className="inline-flex h-6 items-center gap-1 rounded-full border border-white/10 bg-white/6 px-1.5 py-0.5 text-[7px] font-semibold uppercase tracking-[0.12em] text-white/60 transition hover:border-white/18 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40 sm:h-auto sm:gap-1 sm:px-2 sm:text-[8px] sm:tracking-[0.14em]"
+    <div
+      className={`flex ${widthClass} min-h-[88px] flex-col items-center justify-center rounded-[16px] border border-dashed border-white/12 bg-white/[0.03] px-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:min-h-[96px] sm:rounded-[18px]`}
+      aria-label={`${subtreeSlotLabel(slot)} empty slot`}
     >
-      {expanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
-      {disabled ? 'No Children' : expanded ? 'Collapse' : 'Expand'}
-    </button>
+      <span className="inline-flex h-8 w-8 items-center justify-center rounded-[11px] border border-white/10 bg-white/5 text-white/62">
+        <Plus size={14} />
+      </span>
+      <p className="mt-2 text-[10px] font-semibold text-white/70">Empty</p>
+      <p className="mt-1 text-[8px] uppercase tracking-[0.12em] text-white/34">Open Slot</p>
+    </div>
+  );
+}
+
+function LoadingTreeCard({ widthClass }) {
+  return (
+    <div className={`flex ${widthClass} min-h-[88px] items-center justify-center rounded-[16px] border border-white/10 bg-[rgba(17,20,28,0.92)] text-white/55 shadow-[0_12px_24px_rgba(0,0,0,0.24)] sm:min-h-[96px] sm:rounded-[18px]`}>
+      <Loader2 size={16} className="animate-spin" />
+    </div>
+  );
+}
+
+function ConnectorLevelOne() {
+  return (
+    <div className="relative my-1 h-6 w-full">
+      <div className="absolute left-1/2 top-0 h-2.5 w-px -translate-x-1/2 bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08))]" />
+      <div className="absolute left-[25%] right-[25%] top-2.5 h-px bg-[linear-gradient(90deg,rgba(255,255,255,0.06),rgba(255,255,255,0.28),rgba(255,255,255,0.06))]" />
+      <div className="absolute left-[25%] top-2.5 h-3.5 w-px -translate-x-1/2 bg-[linear-gradient(180deg,rgba(255,255,255,0.32),rgba(255,255,255,0.08))]" />
+      <div className="absolute left-[75%] top-2.5 h-3.5 w-px -translate-x-1/2 bg-[linear-gradient(180deg,rgba(255,255,255,0.32),rgba(255,255,255,0.08))]" />
+    </div>
+  );
+}
+
+function ConnectorLevelTwo() {
+  return (
+    <div className="relative my-1 h-6 w-full">
+      <div className="absolute left-[25%] top-0 h-2.5 w-px -translate-x-1/2 bg-[linear-gradient(180deg,rgba(255,255,255,0.32),rgba(255,255,255,0.08))]" />
+      <div className="absolute left-[75%] top-0 h-2.5 w-px -translate-x-1/2 bg-[linear-gradient(180deg,rgba(255,255,255,0.32),rgba(255,255,255,0.08))]" />
+
+      <div className="absolute left-[12.5%] top-2.5 h-px w-[25%] bg-[linear-gradient(90deg,rgba(255,255,255,0.06),rgba(255,255,255,0.28),rgba(255,255,255,0.06))]" />
+      <div className="absolute left-[62.5%] top-2.5 h-px w-[25%] bg-[linear-gradient(90deg,rgba(255,255,255,0.06),rgba(255,255,255,0.28),rgba(255,255,255,0.06))]" />
+
+      <div className="absolute left-[12.5%] top-2.5 h-3.5 w-px -translate-x-1/2 bg-[linear-gradient(180deg,rgba(255,255,255,0.32),rgba(255,255,255,0.08))]" />
+      <div className="absolute left-[37.5%] top-2.5 h-3.5 w-px -translate-x-1/2 bg-[linear-gradient(180deg,rgba(255,255,255,0.32),rgba(255,255,255,0.08))]" />
+      <div className="absolute left-[62.5%] top-2.5 h-3.5 w-px -translate-x-1/2 bg-[linear-gradient(180deg,rgba(255,255,255,0.32),rgba(255,255,255,0.08))]" />
+      <div className="absolute left-[87.5%] top-2.5 h-3.5 w-px -translate-x-1/2 bg-[linear-gradient(180deg,rgba(255,255,255,0.32),rgba(255,255,255,0.08))]" />
+    </div>
   );
 }
 
