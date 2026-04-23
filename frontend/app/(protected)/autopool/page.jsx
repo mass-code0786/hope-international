@@ -183,23 +183,21 @@ export default function AutopoolPage() {
 
   return (
     <div className="mx-auto max-w-xl rounded-[34px] bg-[linear-gradient(180deg,#12141a,#0f1115)] p-4 sm:p-5">
-      <section className="rounded-[30px] border border-white/8 bg-[#1a1d24] p-5 shadow-[0_24px_56px_rgba(0,0,0,0.38)] sm:p-6">
+      <div className="px-1">
         <h1 className="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-[30px]">Global Autopool</h1>
+      </div>
 
-        <div className="mt-4 flex items-end justify-between gap-4">
+      <section className="mt-4 rounded-[30px] border border-white/8 bg-[#1a1d24] p-5 shadow-[0_24px_56px_rgba(0,0,0,0.38)] sm:p-6">
+        <div className="mt-1">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9ca3af]">Earnings</p>
             <p className="mt-1 text-[28px] font-semibold tracking-[-0.05em] text-white sm:text-[34px]">{currency(earnings)}</p>
           </div>
-
-          <span className="shrink-0 rounded-full border border-white/8 bg-[#12141a] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-[#cbd5e1]">
-            Entry {currency(config.entryAmount || 2)}
-          </span>
         </div>
 
         <div
           className={[
-            'mt-5 rounded-[26px] border border-white/10 bg-[rgba(255,255,255,0.05)] p-4 backdrop-blur-xl transition-all duration-500',
+            'mt-5 rounded-[26px] border border-white/10 bg-[rgba(255,255,255,0.05)] p-4 backdrop-blur-xl transition-all duration-500 sm:mt-6',
             completionEffectActive
               ? 'ring-1 ring-blue-400/60 shadow-[0_20px_48px_rgba(37,99,235,0.24)]'
               : 'shadow-[0_18px_40px_rgba(0,0,0,0.26)]'
