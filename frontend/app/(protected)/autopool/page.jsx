@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { ArrowRight, RefreshCcw } from 'lucide-react';
+import { RefreshCcw, ShoppingCart } from 'lucide-react';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { enterAutopool, getAutopoolDashboard } from '@/lib/services/autopoolService';
@@ -105,6 +105,7 @@ export default function AutopoolPage() {
   const actualFilledSlots = clampFilledSlots(currentEntry?.filledSlotsCount ?? stats.currentFillCount ?? 0);
   const cycleNumber = Number(currentEntry?.cycleNumber || stats.currentCycleNumber || 0);
   const recycleCount = Number(currentEntry?.recycleCount || stats.currentRecycleCount || 0);
+  const purchaseEntries = Number(stats.purchaseEntries || 0);
   const earnings = Number(stats.totalEarnings || 0);
 
   useEffect(() => {
@@ -182,19 +183,7 @@ export default function AutopoolPage() {
   return (
     <div className="mx-auto max-w-xl rounded-[34px] bg-[linear-gradient(180deg,#12141a,#0f1115)] p-4 sm:p-5">
       <section className="rounded-[30px] border border-white/8 bg-[#1a1d24] p-5 shadow-[0_24px_56px_rgba(0,0,0,0.38)] sm:p-6">
-        <div className="flex items-start justify-between gap-4">
-          <h1 className="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-[30px]">Global Autopool</h1>
-
-          <button
-            type="button"
-            onClick={() => enterMutation.mutate({ requestId: createRequestId() })}
-            disabled={enterMutation.isPending || !canAfford}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-[18px] bg-[linear-gradient(135deg,#2563eb,#1d4ed8)] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_16px_34px_rgba(37,99,235,0.32)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:bg-[#334155] disabled:shadow-none"
-          >
-            {enterMutation.isPending ? <RefreshCcw size={16} className="animate-spin" /> : <ArrowRight size={16} />}
-            {enterMutation.isPending ? 'Processing...' : 'Buy Pool'}
-          </button>
-        </div>
+        <h1 className="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-[30px]">Global Autopool</h1>
 
         <div className="mt-4 flex items-end justify-between gap-4">
           <div>
@@ -227,9 +216,22 @@ export default function AutopoolPage() {
           </div>
         </div>
 
-        <div className="mt-4 flex items-center justify-center gap-2 text-sm font-semibold text-[#d1d5db]">
-          <span aria-hidden="true" className="text-base">♻️</span>
-          <span>{recycleCount}</span>
+        <button
+          type="button"
+          onClick={() => enterMutation.mutate({ requestId: createRequestId() })}
+          disabled={enterMutation.isPending || !canAfford}
+          className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-[20px] bg-[linear-gradient(135deg,#2563eb,#1d4ed8)] px-5 py-4 text-base font-semibold text-white shadow-[0_18px_36px_rgba(37,99,235,0.32)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:bg-[#334155] disabled:shadow-none"
+        >
+          {enterMutation.isPending ? <RefreshCcw size={18} className="animate-spin" /> : <ShoppingCart size={18} />}
+          <span>{enterMutation.isPending ? 'Processing...' : `Buy Pool ${currency(config.entryAmount || 2)}`}</span>
+        </button>
+
+        <div className="mt-4 flex items-center justify-between gap-4 text-sm">
+          <p className="text-[#cbd5e1]">My Entry: {purchaseEntries}</p>
+          <div className="flex items-center gap-1.5 font-semibold text-[#86efac]">
+            <span aria-hidden="true" className="text-base">{'\u267B\uFE0F'}</span>
+            <span>{recycleCount}</span>
+          </div>
         </div>
       </section>
     </div>

@@ -392,6 +392,7 @@ async function getUserStats(client, userId) {
     q(client).query(
       `SELECT
          COUNT(*)::int AS total_entries,
+         COUNT(*) FILTER (WHERE entry_source = 'purchase')::int AS purchase_entries,
          COUNT(*) FILTER (WHERE status = 'active')::int AS active_entries,
          COUNT(*) FILTER (WHERE status = 'completed')::int AS completed_cycles,
          COALESCE(MAX(recycle_count), 0)::int AS total_recycles
@@ -416,6 +417,7 @@ async function getUserStats(client, userId) {
 
   return {
     totalEntries: Number(entries.total_entries || 0),
+    purchaseEntries: Number(entries.purchase_entries || 0),
     activeEntries: Number(entries.active_entries || 0),
     completedCycles: Number(entries.completed_cycles || 0),
     totalRecycles: Number(entries.total_recycles || 0),
