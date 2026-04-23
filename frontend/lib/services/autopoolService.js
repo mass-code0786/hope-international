@@ -60,6 +60,7 @@ function normalizeEntry(entry) {
 
   return {
     ...entry,
+    packageAmount: toNumber(entry.packageAmount),
     matrixType: entry.matrixType || '1x3',
     cycleNumber: toNumber(entry.cycleNumber),
     recycleCount: toNumber(entry.recycleCount),
@@ -77,6 +78,7 @@ function normalizeEntry(entry) {
       : null,
     children: children.map((child, index) => ({
       ...child,
+      packageAmount: toNumber(child.packageAmount, toNumber(entry.packageAmount)),
       slotPosition: toNumber(child.slotPosition || (index + 1)),
       cycleNumber: child.cycleNumber === null || child.cycleNumber === undefined ? null : toNumber(child.cycleNumber),
       recycleCount: toNumber(child.recycleCount),
@@ -88,68 +90,90 @@ function normalizeEntry(entry) {
   };
 }
 
+function normalizePackage(item) {
+  if (!item || typeof item !== 'object') return null;
+  return {
+    ...item,
+    amount: toNumber(item.amount),
+    entryAmount: toNumber(item.entryAmount, toNumber(item.amount)),
+    earnings: toNumber(item.earnings),
+    myEntry: toNumber(item.myEntry),
+    recycleCount: toNumber(item.recycleCount),
+    totalEntries: toNumber(item.totalEntries),
+    activeEntries: toNumber(item.activeEntries),
+    completedCycles: toNumber(item.completedCycles),
+    totalBonus: toNumber(item.totalBonus),
+    ownerEarnings: toNumber(item.ownerEarnings),
+    uplineEarnings: toNumber(item.uplineEarnings),
+    currentCycleNumber: toNumber(item.currentCycleNumber),
+    currentRecycleCount: toNumber(item.currentRecycleCount),
+    currentFillCount: toNumber(item.currentFillCount),
+    currentFillProgress: normalizeFillProgress(item.currentFillProgress, item.currentFillCount),
+    currentEntry: normalizeEntry(item.currentEntry)
+  };
+}
+
 function normalizeHistoryItem(item) {
   if (!item || typeof item !== 'object') return item;
   return {
     ...item,
     amount: toNumber(item.amount),
+    package_amount: toNumber(item.package_amount),
     cycle_number: item.cycle_number === null || item.cycle_number === undefined ? null : toNumber(item.cycle_number),
     recycle_count: item.recycle_count === null || item.recycle_count === undefined ? null : toNumber(item.recycle_count),
     metadata: item.metadata && typeof item.metadata === 'object' ? item.metadata : {}
   };
 }
 
+function normalizeDashboardData(data) {
+  const packages = Array.isArray(data?.packages) ? data.packages.map(normalizePackage).filter(Boolean) : [];
+  const currentEntry = normalizeEntry(data?.currentEntry);
+  return {
+    config: data?.config || null,
+    packages,
+    stats: {
+      ...(data?.stats || {}),
+      myEntry: toNumber(data?.stats?.myEntry),
+      recycle: toNumber(data?.stats?.recycle),
+      purchaseEntries: toNumber(data?.stats?.purchaseEntries),
+      totalRecycles: toNumber(data?.stats?.totalRecycles),
+      completedCycles: toNumber(data?.stats?.completedCycles),
+      totalEarnings: toNumber(data?.stats?.totalEarnings),
+      currentCycleNumber: toNumber(data?.stats?.currentCycleNumber),
+      currentRecycleCount: toNumber(data?.stats?.currentRecycleCount),
+      currentFillCount: toNumber(data?.stats?.currentFillCount),
+      currentFillProgress: normalizeFillProgress(data?.stats?.currentFillProgress, data?.stats?.currentFillCount)
+    },
+    currentEntry,
+    activeEntries: Array.isArray(data?.activeEntries) ? data.activeEntries.map(normalizeEntry).filter(Boolean) : []
+  };
+}
+
 export async function getAutopoolDashboard() {
-  const envelope = toEnvelope(await apiFetch('/autopool'));
-  const data = envelope.data || {};
+  const envelope = toEnvelope(await apiFetch('/autopool/me'));
   return {
     ...envelope,
-    data: {
-      config: data.config || null,
-      stats: {
-        ...(data.stats || {}),
-        myEntry: toNumber(data.stats?.myEntry),
-        recycle: toNumber(data.stats?.recycle),
-        purchaseEntries: toNumber(data.stats?.purchaseEntries),
-        totalRecycles: toNumber(data.stats?.totalRecycles),
-        completedCycles: toNumber(data.stats?.completedCycles),
-        currentCycleNumber: toNumber(data.stats?.currentCycleNumber),
-        currentRecycleCount: toNumber(data.stats?.currentRecycleCount),
-        currentFillCount: toNumber(data.stats?.currentFillCount),
-        currentFillProgress: normalizeFillProgress(data.stats?.currentFillProgress, data.stats?.currentFillCount)
-      },
-      currentEntry: normalizeEntry(data.currentEntry),
-      activeEntries: Array.isArray(data.activeEntries) ? data.activeEntries.map(normalizeEntry) : []
-    }
+    data: normalizeDashboardData(envelope.data || {})
   };
 }
 
 export async function enterAutopool(payload = {}) {
   const envelope = toEnvelope(
-    await apiFetch('/autopool/enter', {
+    await apiFetch('/autopool/buy', {
       method: 'POST',
       body: JSON.stringify(payload)
     })
   );
-  const data = envelope.data || {};
+
   return {
     ...envelope,
     data: {
-      ...data,
-      stats: {
-        ...(data.stats || {}),
-        myEntry: toNumber(data.stats?.myEntry),
-        recycle: toNumber(data.stats?.recycle),
-        purchaseEntries: toNumber(data.stats?.purchaseEntries),
-        totalRecycles: toNumber(data.stats?.totalRecycles),
-        completedCycles: toNumber(data.stats?.completedCycles),
-        currentCycleNumber: toNumber(data.stats?.currentCycleNumber),
-        currentRecycleCount: toNumber(data.stats?.currentRecycleCount),
-        currentFillCount: toNumber(data.stats?.currentFillCount),
-        currentFillProgress: normalizeFillProgress(data.stats?.currentFillProgress, data.stats?.currentFillCount)
-      },
-      currentEntry: normalizeEntry(data.currentEntry),
-      activeEntries: Array.isArray(data.activeEntries) ? data.activeEntries.map(normalizeEntry) : []
+      ...normalizeDashboardData(envelope.data || {}),
+      placement: envelope.data?.placement || null,
+      duplicateRequest: Boolean(envelope.data?.duplicateRequest),
+      requestId: envelope.data?.requestId || null,
+      packageAmount: toNumber(envelope.data?.packageAmount),
+      events: Array.isArray(envelope.data?.events) ? envelope.data.events : []
     }
   };
 }

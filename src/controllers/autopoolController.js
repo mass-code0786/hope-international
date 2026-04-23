@@ -10,6 +10,14 @@ const summary = asyncHandler(async (req, res) => {
   });
 });
 
+const me = asyncHandler(async (req, res) => {
+  const data = await autopoolService.getPackagesOverview(req.user.sub);
+  return success(res, {
+    data,
+    message: 'Autopool package overview fetched successfully'
+  });
+});
+
 const history = asyncHandler(async (req, res) => {
   const result = await autopoolService.getHistory(req.user.sub, req.query);
   return success(res, {
@@ -29,8 +37,19 @@ const enter = asyncHandler(async (req, res) => {
   });
 });
 
+const buy = asyncHandler(async (req, res) => {
+  const data = await autopoolService.buyAutopoolPackage(req.user.sub, req.body);
+  return success(res, {
+    data,
+    statusCode: data.duplicateRequest ? 200 : 201,
+    message: data.duplicateRequest ? 'Autopool package purchase already processed' : 'Autopool package entry created successfully'
+  });
+});
+
 module.exports = {
   summary,
+  me,
   history,
-  enter
+  enter,
+  buy
 };

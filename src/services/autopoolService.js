@@ -7,14 +7,11 @@ const autopoolProcessor = require('../jobs/autopoolProcessor');
 const { normalizePagination, buildPagination } = require('../utils/pagination');
 const { ApiError } = require('../utils/ApiError');
 
-const ENTRY_AMOUNT = 2;
+const DEFAULT_PACKAGE_AMOUNT = 2;
 const MATRIX_SLOTS = 3;
 const MATRIX_TYPE = '1x3';
-const OWNER_PAYOUT = 1.5;
-const UPLINE_PAYOUT = 0.5;
-const AUCTION_SHARE = 2;
-const RECYCLE_AMOUNT = 2;
-const AUCTIONS_WALLET_TYPE = 'auction_bonus';
+const EARNING_WALLET_TYPE = 'earning_wallet';
+const BONUS_WALLET_TYPE = 'bonus_wallet';
 const RECYCLE_CONFIRMATION = 'Recycle creates a new entry and repeats the same process in global FIFO order from left to right.';
 const SLOT_ORDER = Object.freeze([
   { position: 1, label: 'LEFT' },
@@ -22,12 +19,74 @@ const SLOT_ORDER = Object.freeze([
   { position: 3, label: 'RIGHT' }
 ]);
 
+const AUTOPOOL_CONFIG = Object.freeze({
+  2: Object.freeze({ amount: 2, entryAmount: 2, self: 1.5, upline: 0.5, bonus: 2, recycle: 2 }),
+  99: Object.freeze({ amount: 99, entryAmount: 99, self: 74.25, upline: 24.75, bonus: 99, recycle: 99 }),
+  313: Object.freeze({ amount: 313, entryAmount: 313, self: 235, upline: 78, bonus: 313, recycle: 313 }),
+  786: Object.freeze({ amount: 786, entryAmount: 786, self: 596, upline: 190, bonus: 786, recycle: 786 })
+});
+
+const PACKAGE_AMOUNTS = Object.freeze(
+  Object.keys(AUTOPOOL_CONFIG)
+    .map((value) => Number(value))
+    .sort((left, right) => left - right)
+);
+
 function toMoney(value) {
   return Number(Number(value || 0).toFixed(2));
 }
 
 function formatMoney(value) {
   return `$${toMoney(value).toFixed(2)}`;
+}
+
+function normalizePackageAmount(value, fallback = DEFAULT_PACKAGE_AMOUNT) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? toMoney(parsed) : toMoney(fallback);
+}
+
+function getPackageConfig(packageAmount = DEFAULT_PACKAGE_AMOUNT) {
+  const normalizedAmount = normalizePackageAmount(packageAmount);
+  const config = AUTOPOOL_CONFIG[normalizedAmount];
+  if (!config) {
+    throw new ApiError(400, `Unsupported autopool package amount: ${normalizedAmount}`);
+  }
+  return config;
+}
+
+function buildPackageConfig(packageAmount) {
+  const config = getPackageConfig(packageAmount);
+  return {
+    amount: config.amount,
+    entryAmount: config.entryAmount,
+    matrixType: MATRIX_TYPE,
+    slotsPerEntry: MATRIX_SLOTS,
+    distribution: {
+      upline: config.upline,
+      self: config.self,
+      bonus: config.bonus,
+      recycle: config.recycle
+    },
+    walletTypes: {
+      earning: EARNING_WALLET_TYPE,
+      bonus: BONUS_WALLET_TYPE
+    }
+  };
+}
+
+function buildOverviewConfig() {
+  return {
+    matrixType: MATRIX_TYPE,
+    slotsPerEntry: MATRIX_SLOTS,
+    queueRule: 'OLDEST_ACTIVE_MATRIX_FIFO',
+    fillDirection: 'TOP_TO_BOTTOM_LEFT_TO_RIGHT',
+    recycleCreatesNewEntry: true,
+    recycleWalletCreditApplied: false,
+    recycleConfirmation: RECYCLE_CONFIRMATION,
+    bonusWalletLabel: 'Bonus Wallet',
+    packages: PACKAGE_AMOUNTS.map(buildPackageConfig),
+    slotOrder: SLOT_ORDER
+  };
 }
 
 function getSlotLabel(slotPosition) {
@@ -50,7 +109,7 @@ function buildUser(row, prefix = '') {
   const displayName = [firstName, lastName].filter(Boolean).join(' ').trim() || username || 'Member';
 
   return {
-    id: row?.[`${prefix}user_id`] || row?.id || null,
+    id: row?.[`${prefix}user_id`] || row?.user_id || row?.id || null,
     username,
     firstName: firstName || null,
     lastName: lastName || null,
@@ -60,6 +119,7 @@ function buildUser(row, prefix = '') {
 
 function buildEntrySummary(entry, children = []) {
   if (!entry) return null;
+
   const fillProgress = buildFillProgress(entry.filled_slots_count);
   const childrenBySlot = new Map(
     children.map((child) => {
@@ -70,6 +130,7 @@ function buildEntrySummary(entry, children = []) {
           slotPosition: Number(child.slot_position),
           slotLabel: getSlotLabel(child.slot_position),
           entryId: child.entry_id || child.id,
+          packageAmount: normalizePackageAmount(child.package_amount),
           status: child.status,
           filledSlotsCount: Number(child.filled_slots_count || 0),
           fillProgress: childFillProgress,
@@ -85,6 +146,7 @@ function buildEntrySummary(entry, children = []) {
 
   return {
     id: entry.id,
+    packageAmount: normalizePackageAmount(entry.package_amount),
     status: entry.status,
     entrySource: entry.entry_source,
     matrixType: MATRIX_TYPE,
@@ -111,6 +173,7 @@ function buildEntrySummary(entry, children = []) {
         slotPosition,
         slotLabel: getSlotLabel(slotPosition),
         entryId: null,
+        packageAmount: normalizePackageAmount(entry.package_amount),
         status: 'empty',
         filledSlotsCount: 0,
         fillProgress: buildFillProgress(0),
@@ -127,9 +190,11 @@ function buildEntrySummary(entry, children = []) {
 
 function buildActiveEntrySummary(entry) {
   if (!entry) return null;
+
   const fillProgress = buildFillProgress(entry.filled_slots_count);
   return {
     id: entry.id,
+    packageAmount: normalizePackageAmount(entry.package_amount),
     status: entry.status,
     entrySource: entry.entry_source,
     matrixType: MATRIX_TYPE,
@@ -152,23 +217,29 @@ function buildActiveEntrySummary(entry) {
   };
 }
 
-function buildConfig() {
+function buildPackageSummary(packageAmount, stats = {}, currentEntry = null) {
+  const fillProgress = currentEntry?.fillProgress || buildFillProgress(0);
+
   return {
-    entryAmount: ENTRY_AMOUNT,
+    amount: normalizePackageAmount(packageAmount),
+    entryAmount: normalizePackageAmount(packageAmount),
     matrixType: MATRIX_TYPE,
-    slotsPerEntry: MATRIX_SLOTS,
-    ownerPayout: OWNER_PAYOUT,
-    uplinePayout: UPLINE_PAYOUT,
-    auctionShare: AUCTION_SHARE,
-    auctionWalletType: AUCTIONS_WALLET_TYPE,
-    auctionWalletLabel: 'Auctions Wallet',
-    recycleAmount: RECYCLE_AMOUNT,
-    recycleCreatesNewEntry: true,
-    recycleWalletCreditApplied: false,
-    recycleConfirmation: RECYCLE_CONFIRMATION,
-    queueRule: 'OLDEST_ACTIVE_MATRIX_FIFO',
-    fillDirection: 'TOP_TO_BOTTOM_LEFT_TO_RIGHT',
-    slotOrder: SLOT_ORDER
+    earnings: toMoney(stats.totalEarnings || 0),
+    myEntry: Number(stats.myEntry || 0),
+    recycleCount: Number(stats.totalRecycles || stats.recycle || stats.completedCycles || 0),
+    totalEntries: Number(stats.totalEntries || 0),
+    activeEntries: Number(stats.activeEntries || 0),
+    completedCycles: Number(stats.completedCycles || stats.totalRecycles || 0),
+    totalBonus: toMoney(stats.totalBonusShare || 0),
+    ownerEarnings: toMoney(stats.ownerEarnings || 0),
+    uplineEarnings: toMoney(stats.uplineEarnings || 0),
+    currentEntry,
+    currentMatrix: currentEntry?.matrixType || MATRIX_TYPE,
+    currentCycleNumber: Number(currentEntry?.cycleNumber || 0),
+    currentRecycleCount: Number(currentEntry?.recycleCount || 0),
+    currentFillCount: Number(currentEntry?.filledSlotsCount || 0),
+    currentFillLabel: currentEntry?.fillLabel || fillProgress.label,
+    currentFillProgress: fillProgress
   };
 }
 
@@ -178,6 +249,12 @@ function assertValidSlotPosition(slotPosition) {
     throw new ApiError(500, 'Autopool queue returned an invalid slot position');
   }
   return normalized;
+}
+
+function buildAutopoolEventKey(kind, packageAmount, entryId, suffix = '') {
+  const normalizedAmount = normalizePackageAmount(packageAmount).toString().replace('.', '_');
+  const extra = suffix ? `:${suffix}` : '';
+  return `autopool:${kind}:${normalizedAmount}:${entryId}${extra}`;
 }
 
 async function getWalletTransaction(client, userId, source, referenceId) {
@@ -198,73 +275,111 @@ async function createAutopoolNotification(client, payload) {
   });
 }
 
+async function createAutopoolTransactionOnce(client, payload) {
+  if (payload.eventKey) {
+    const existing = await autopoolRepository.getTransactionByEventKey(client, payload.eventKey);
+    if (existing) {
+      return existing;
+    }
+  }
+
+  return autopoolRepository.createTransaction(client, payload);
+}
+
+async function creditAutopoolWalletOnce(client, payload) {
+  if (toMoney(payload.amount) <= 0) {
+    return null;
+  }
+
+  const existingAutopoolTransaction = payload.eventKey
+    ? await autopoolRepository.getTransactionByEventKey(client, payload.eventKey)
+    : null;
+
+  let walletTransaction = await getWalletTransaction(client, payload.userId, payload.walletSource, payload.entryId);
+  if (!walletTransaction) {
+    const credited = await walletService.creditWithTransaction(
+      client,
+      payload.userId,
+      payload.amount,
+      payload.walletSource,
+      payload.entryId,
+      {
+        walletType: payload.walletType,
+        walletLedgerType: payload.walletType,
+        source: 'autopool',
+        packageAmount: normalizePackageAmount(payload.packageAmount),
+        entryId: payload.entryId,
+        cycleNumber: Number(payload.cycleNumber || 0),
+        ...(payload.walletMetadata || {})
+      }
+    );
+    walletTransaction = credited.transaction;
+  }
+
+  const autopoolTransaction = existingAutopoolTransaction || await createAutopoolTransactionOnce(client, {
+    userId: payload.userId,
+    entryId: payload.entryId,
+    type: payload.transactionType,
+    amount: payload.amount,
+    packageAmount: payload.packageAmount,
+    sourceUserId: payload.sourceUserId || null,
+    walletTransactionId: walletTransaction?.id || null,
+    eventKey: payload.eventKey || null,
+    metadata: {
+      source: 'autopool',
+      walletType: payload.walletType,
+      packageAmount: normalizePackageAmount(payload.packageAmount),
+      entryId: payload.entryId,
+      cycleNumber: Number(payload.cycleNumber || 0),
+      ...(payload.autopoolMetadata || {})
+    }
+  });
+
+  if (payload.notificationTitle && payload.notificationMessage) {
+    await createAutopoolNotification(client, {
+      userId: payload.userId,
+      title: payload.notificationTitle,
+      message: payload.notificationMessage,
+      sourceKey: payload.eventKey || buildAutopoolEventKey('notify', payload.packageAmount, payload.entryId, payload.notificationTitle),
+      metadata: {
+        packageAmount: normalizePackageAmount(payload.packageAmount),
+        entryId: payload.entryId,
+        cycleNumber: Number(payload.cycleNumber || 0),
+        amount: toMoney(payload.amount),
+        walletType: payload.walletType
+      }
+    });
+  }
+
+  return {
+    walletTransaction,
+    autopoolTransaction
+  };
+}
+
 async function createNextEntryForUser(client, userId, options = {}) {
-  const latestEntry = await autopoolRepository.getLatestUserEntry(client, userId);
+  const packageConfig = getPackageConfig(options.packageAmount);
+  const latestEntry = await autopoolRepository.getLatestUserEntry(client, userId, {
+    packageAmount: packageConfig.amount
+  });
   const cycleNumber = Number(latestEntry?.cycle_number || 0) + 1 || 1;
   const recycleCount = options.recycleCount === undefined
-    ? Number(latestEntry?.recycle_count || 0)
+    ? (options.entrySource === 'recycle' ? Number(latestEntry?.recycle_count || 0) : 0)
     : Number(options.recycleCount || 0);
 
   return autopoolRepository.createEntry(client, {
     userId,
+    packageAmount: packageConfig.amount,
     cycleNumber,
     recycleCount,
     entrySource: options.entrySource || 'purchase'
   });
 }
 
-async function getDashboardWithClient(client, userId) {
-  const [stats, autopoolStats, focusEntry, activeEntries] = await Promise.all([
-    autopoolRepository.getUserStats(client, userId),
-    autopoolRepository.getAutopoolStats(client, userId),
-    autopoolRepository.getCurrentUserFocusEntry(client, userId),
-    autopoolRepository.listUserActiveEntries(client, userId, 12)
-  ]);
-
-  const children = focusEntry ? await autopoolRepository.listEntryChildren(client, focusEntry.id) : [];
-  const currentEntry = buildEntrySummary(focusEntry, children);
-
-  return {
-    config: buildConfig(),
-    stats: {
-      ...stats,
-      myEntry: Number(autopoolStats.myEntry || 0),
-      recycle: Number(autopoolStats.recycle || 0),
-      purchaseEntries: Number(autopoolStats.myEntry || 0),
-      totalRecycles: Number(autopoolStats.recycle || 0),
-      completedCycles: Number(autopoolStats.recycle || stats.completedCycles || 0),
-      currentMatrix: currentEntry?.matrixType || MATRIX_TYPE,
-      currentCycleNumber: Number(currentEntry?.cycleNumber || 0),
-      currentRecycleCount: Number(currentEntry?.recycleCount || 0),
-      currentFillCount: Number(currentEntry?.filledSlotsCount || 0),
-      currentFillLabel: currentEntry?.fillLabel || `0/${MATRIX_SLOTS}`,
-      currentFillProgress: currentEntry?.fillProgress || buildFillProgress(0)
-    },
-    currentEntry,
-    activeEntries: activeEntries.map(buildActiveEntrySummary)
-  };
-}
-
-function buildHistorySummary(items = []) {
-  return items.reduce((summary, item) => {
-    const amount = toMoney(item.amount || 0);
-    if (item.type === 'EARN') summary.ownerEarnings = toMoney(summary.ownerEarnings + amount);
-    if (item.type === 'UPLINE') summary.uplineEarnings = toMoney(summary.uplineEarnings + amount);
-    if (item.type === 'RECYCLE') summary.recycleAmount = toMoney(summary.recycleAmount + amount);
-    if (item.type === 'AUCTION') summary.auctionAmount = toMoney(summary.auctionAmount + amount);
-    if (item.type === 'ENTRY') summary.entryAmount = toMoney(summary.entryAmount + amount);
-    return summary;
-  }, {
-    ownerEarnings: 0,
-    uplineEarnings: 0,
-    recycleAmount: 0,
-    auctionAmount: 0,
-    entryAmount: 0
-  });
-}
-
 async function placeEntryInQueue(client, entry, context) {
+  const packageAmount = normalizePackageAmount(entry.package_amount || context.packageAmount || DEFAULT_PACKAGE_AMOUNT);
   const parentEntry = await autopoolRepository.getNextQueueParentForUpdate(client, {
+    packageAmount,
     excludeEntryId: entry.id
   });
 
@@ -272,10 +387,12 @@ async function placeEntryInQueue(client, entry, context) {
     await autopoolRepository.enqueueEntry(client, entry.id, entry.created_at);
     context.events.push({
       type: 'ROOT_ENTRY',
+      packageAmount,
       entryId: entry.id,
       userId: entry.user_id
     });
     return {
+      packageAmount,
       entryId: entry.id,
       parentEntryId: null,
       parentUserId: null,
@@ -297,6 +414,7 @@ async function placeEntryInQueue(client, entry, context) {
 
   context.events.push({
     type: 'PLACED',
+    packageAmount,
     entryId: entry.id,
     userId: entry.user_id,
     parentEntryId: parentEntry.id,
@@ -308,10 +426,11 @@ async function placeEntryInQueue(client, entry, context) {
 
   await createAutopoolNotification(client, {
     userId: parentEntry.user_id,
-    title: 'New autopool slot filled',
-    message: `${getSlotLabel(slotPosition) || `Slot ${slotPosition}`} was filled in cycle #${Number(parentEntry.cycle_number || 0)}.`,
-    sourceKey: `autopool:slot:${parentEntry.id}:${slotPosition}`,
+    title: 'Autopool slot filled',
+    message: `${getSlotLabel(slotPosition) || `Slot ${slotPosition}`} was filled in your ${formatMoney(packageAmount)} package matrix.`,
+    sourceKey: buildAutopoolEventKey('slot', packageAmount, parentEntry.id, slotPosition),
     metadata: {
+      packageAmount,
       entryId: parentEntry.id,
       childEntryId: entry.id,
       slotPosition,
@@ -325,6 +444,7 @@ async function placeEntryInQueue(client, entry, context) {
   }
 
   return {
+    packageAmount,
     entryId: entry.id,
     parentEntryId: parentEntry.id,
     parentUserId: parentEntry.user_id,
@@ -335,184 +455,142 @@ async function placeEntryInQueue(client, entry, context) {
 }
 
 async function completeEntryAndRecycle(client, completedEntry, triggerEntry, context) {
+  const packageConfig = getPackageConfig(completedEntry.package_amount);
+  const packageAmount = packageConfig.amount;
+  const cycleNumber = Number(completedEntry.cycle_number || 0);
   const nextRecycleCount = Number(completedEntry.recycle_count || 0) + 1;
+  const completionEventKey = buildAutopoolEventKey('complete', packageAmount, completedEntry.id, cycleNumber);
+  const existingCompletion = await autopoolRepository.getTransactionByEventKey(client, `${completionEventKey}:owner`);
+
+  if (existingCompletion) {
+    return;
+  }
+
   const markedEntry = await autopoolRepository.markEntryCompleted(client, completedEntry.id, nextRecycleCount);
-  await autopoolRepository.removeQueuedEntry(client, completedEntry.id);
+  await autopoolRepository.removeQueuedEntry(client, markedEntry.id);
 
   const uplineEntry = markedEntry.parent_entry_id
     ? await autopoolRepository.getEntryById(client, markedEntry.parent_entry_id)
     : null;
 
-  await walletService.credit(
-    client,
-    markedEntry.user_id,
-    OWNER_PAYOUT,
-    'autopool_matrix_income',
-    markedEntry.id,
-    {
-      cycleNumber: Number(markedEntry.cycle_number || 0),
-      note: `Autopool cycle #${Number(markedEntry.cycle_number || 0)} completed`
-    }
-  );
-
-  const ownerWalletTransaction = await getWalletTransaction(client, markedEntry.user_id, 'autopool_matrix_income', markedEntry.id);
-  await autopoolRepository.createTransaction(client, {
+  await creditAutopoolWalletOnce(client, {
     userId: markedEntry.user_id,
+    amount: packageConfig.self,
+    walletType: EARNING_WALLET_TYPE,
+    walletSource: 'autopool_matrix_income',
     entryId: markedEntry.id,
-    type: 'EARN',
-    amount: OWNER_PAYOUT,
+    packageAmount,
+    cycleNumber,
     sourceUserId: triggerEntry.user_id,
-    walletTransactionId: ownerWalletTransaction?.id || null,
-    metadata: {
+    transactionType: 'EARN',
+    eventKey: `${completionEventKey}:owner`,
+    walletMetadata: {
+      note: `Autopool cycle #${cycleNumber} completed`,
       triggerEntryId: triggerEntry.id,
-      triggerUserId: triggerEntry.user_id,
-      cycleNumber: Number(markedEntry.cycle_number || 0)
-    }
+      triggerUserId: triggerEntry.user_id
+    },
+    autopoolMetadata: {
+      triggerEntryId: triggerEntry.id,
+      triggerUserId: triggerEntry.user_id
+    },
+    notificationTitle: 'Autopool income received',
+    notificationMessage: `You earned ${formatMoney(packageConfig.self)} in your ${formatMoney(packageAmount)} Global Autopool cycle.`
   });
 
-  if (uplineEntry?.user_id) {
-    await walletService.credit(
-      client,
-      uplineEntry.user_id,
-      UPLINE_PAYOUT,
-      'autopool_upline_income',
-      markedEntry.id,
-      {
-        sourceEntryId: markedEntry.id,
-        sourceUserId: markedEntry.user_id,
-        note: `Autopool matrix parent income from cycle #${Number(markedEntry.cycle_number || 0)}`
-      }
-    );
-
-    const uplineWalletTransaction = await getWalletTransaction(client, uplineEntry.user_id, 'autopool_upline_income', markedEntry.id);
-    await autopoolRepository.createTransaction(client, {
+  if (uplineEntry?.user_id && toMoney(packageConfig.upline) > 0) {
+    await creditAutopoolWalletOnce(client, {
       userId: uplineEntry.user_id,
+      amount: packageConfig.upline,
+      walletType: EARNING_WALLET_TYPE,
+      walletSource: 'autopool_upline_income',
       entryId: markedEntry.id,
-      type: 'UPLINE',
-      amount: UPLINE_PAYOUT,
+      packageAmount,
+      cycleNumber,
       sourceUserId: markedEntry.user_id,
-      walletTransactionId: uplineWalletTransaction?.id || null,
-      metadata: {
+      transactionType: 'UPLINE',
+      eventKey: `${completionEventKey}:upline:${uplineEntry.user_id}`,
+      walletMetadata: {
         sourceEntryId: markedEntry.id,
-        sourceCycleNumber: Number(markedEntry.cycle_number || 0),
-        sourceOwnerId: markedEntry.user_id
-      }
-    });
-
-    await createAutopoolNotification(client, {
-      userId: uplineEntry.user_id,
-      title: 'Autopool matrix parent income',
-      message: `You earned ${formatMoney(UPLINE_PAYOUT)} as matrix parent income from the FIFO autopool.`,
-      sourceKey: `autopool:upline-income:${markedEntry.id}:${uplineEntry.user_id}`,
-      metadata: {
-        entryId: markedEntry.id,
-        amount: UPLINE_PAYOUT,
-        sourceUserId: markedEntry.user_id
-      }
+        sourceOwnerId: markedEntry.user_id,
+        sourceCycleNumber: cycleNumber,
+        note: `Autopool parent income from ${formatMoney(packageAmount)} package cycle #${cycleNumber}`
+      },
+      autopoolMetadata: {
+        sourceEntryId: markedEntry.id,
+        sourceOwnerId: markedEntry.user_id,
+        sourceCycleNumber: cycleNumber
+      },
+      notificationTitle: 'Autopool parent income',
+      notificationMessage: `You earned ${formatMoney(packageConfig.upline)} as autopool parent income from the ${formatMoney(packageAmount)} package.`
     });
   }
 
-  await walletService.credit(
-    client,
-    markedEntry.user_id,
-    AUCTION_SHARE,
-    'autopool_auction_share',
-    markedEntry.id,
-    {
-      walletType: AUCTIONS_WALLET_TYPE,
-      creditedTo: 'auctions_wallet',
-      note: `Autopool auctions wallet share from cycle #${Number(markedEntry.cycle_number || 0)}`
-    }
-  );
-
-  const auctionWalletTransaction = await getWalletTransaction(client, markedEntry.user_id, 'autopool_auction_share', markedEntry.id);
-  await autopoolRepository.createTransaction(client, {
+  await creditAutopoolWalletOnce(client, {
     userId: markedEntry.user_id,
+    amount: packageConfig.bonus,
+    walletType: BONUS_WALLET_TYPE,
+    walletSource: 'autopool_bonus_share',
     entryId: markedEntry.id,
-    type: 'AUCTION',
-    amount: AUCTION_SHARE,
+    packageAmount,
+    cycleNumber,
     sourceUserId: markedEntry.user_id,
-    walletTransactionId: auctionWalletTransaction?.id || null,
-    metadata: {
-      cycleNumber: Number(markedEntry.cycle_number || 0),
-      creditedTo: 'auctions_wallet',
-      walletType: AUCTIONS_WALLET_TYPE
-    }
-  });
-
-  await createAutopoolNotification(client, {
-    userId: markedEntry.user_id,
-    title: 'Auctions wallet credited',
-    message: `${formatMoney(AUCTION_SHARE)} moved to your auctions wallet from cycle #${Number(markedEntry.cycle_number || 0)}.`,
-    sourceKey: `autopool:auction-share:${markedEntry.id}`,
-    metadata: {
-      entryId: markedEntry.id,
-      amount: AUCTION_SHARE,
-      creditedTo: 'auctions_wallet',
-      walletType: AUCTIONS_WALLET_TYPE
-    }
+    transactionType: 'BONUS',
+    eventKey: `${completionEventKey}:bonus`,
+    walletMetadata: {
+      creditedTo: 'bonus_wallet',
+      note: `Autopool bonus wallet credit from ${formatMoney(packageAmount)} package cycle #${cycleNumber}`
+    },
+    autopoolMetadata: {
+      creditedTo: 'bonus_wallet'
+    },
+    notificationTitle: 'Bonus Wallet credited',
+    notificationMessage: `${formatMoney(packageConfig.bonus)} was credited to your Bonus Wallet from the ${formatMoney(packageAmount)} package cycle.`
   });
 
   await createAutopoolNotification(client, {
     userId: markedEntry.user_id,
     title: 'Matrix completed',
-    message: `Cycle #${Number(markedEntry.cycle_number || 0)} completed at ${MATRIX_SLOTS}/${MATRIX_SLOTS}.`,
-    sourceKey: `autopool:complete:${markedEntry.id}`,
+    message: `${formatMoney(packageAmount)} autopool cycle #${cycleNumber} completed at ${MATRIX_SLOTS}/${MATRIX_SLOTS}.`,
+    sourceKey: `${completionEventKey}:completed`,
     metadata: {
+      packageAmount,
       entryId: markedEntry.id,
-      cycleNumber: Number(markedEntry.cycle_number || 0)
+      cycleNumber,
+      recycleCount: nextRecycleCount
     }
   });
-
-  await createAutopoolNotification(client, {
-    userId: markedEntry.user_id,
-    title: 'Autopool income received',
-    message: `You earned ${formatMoney(OWNER_PAYOUT)} from your completed autopool matrix.`,
-    sourceKey: `autopool:owner-income:${markedEntry.id}`,
-    metadata: {
-      entryId: markedEntry.id,
-      amount: OWNER_PAYOUT
-    }
-  });
-
-  if (uplineEntry?.user_id) {
-    await createAutopoolNotification(client, {
-      userId: markedEntry.user_id,
-      title: 'Matrix parent income released',
-      message: `Your matrix parent received ${formatMoney(UPLINE_PAYOUT)} from this FIFO completion.`,
-      sourceKey: `autopool:upline-release:${markedEntry.id}`,
-      metadata: {
-        entryId: markedEntry.id,
-        uplineUserId: uplineEntry.user_id,
-        amount: UPLINE_PAYOUT
-      }
-    });
-  }
 
   context.events.push({
     type: 'COMPLETED',
+    packageAmount,
     entryId: markedEntry.id,
     userId: markedEntry.user_id,
-    cycleNumber: Number(markedEntry.cycle_number || 0),
+    cycleNumber,
     recycleCount: nextRecycleCount,
     triggerEntryId: triggerEntry.id,
     uplineUserId: uplineEntry?.user_id || null
   });
 
   const recycleEntry = await createNextEntryForUser(client, markedEntry.user_id, {
+    packageAmount,
     entrySource: 'recycle',
     recycleCount: nextRecycleCount
   });
 
-  await autopoolRepository.createTransaction(client, {
+  await createAutopoolTransactionOnce(client, {
     userId: markedEntry.user_id,
     entryId: recycleEntry.id,
     type: 'RECYCLE',
-    amount: RECYCLE_AMOUNT,
+    amount: packageConfig.recycle,
+    packageAmount,
     sourceUserId: markedEntry.user_id,
+    eventKey: `${completionEventKey}:recycle:${recycleEntry.id}`,
     metadata: {
+      source: 'autopool',
+      packageAmount,
+      walletType: null,
       completedEntryId: markedEntry.id,
-      completedCycleNumber: Number(markedEntry.cycle_number || 0),
+      completedCycleNumber: cycleNumber,
       recycleCount: nextRecycleCount,
       recycleEntryId: recycleEntry.id,
       recycleCycleNumber: Number(recycleEntry.cycle_number || 0),
@@ -525,6 +603,7 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
 
   context.events.push({
     type: 'RECYCLED',
+    packageAmount,
     completedEntryId: markedEntry.id,
     recycleEntryId: recycleEntry.id,
     userId: markedEntry.user_id,
@@ -536,35 +615,126 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
   await createAutopoolNotification(client, {
     userId: markedEntry.user_id,
     title: 'Re-entry activated',
-    message: `Cycle #${Number(recycleEntry.cycle_number || 0)} was created as a new entry. ${formatMoney(RECYCLE_AMOUNT)} was used only for automatic re-entry in the global FIFO queue.`,
-    sourceKey: `autopool:recycle:${markedEntry.id}:${recycleEntry.id}`,
+    message: `A new ${formatMoney(packageAmount)} package entry was created automatically and queued for the next cycle. ${RECYCLE_CONFIRMATION}`,
+    sourceKey: `${completionEventKey}:recycle-notify:${recycleEntry.id}`,
     metadata: {
+      packageAmount,
       completedEntryId: markedEntry.id,
       recycleEntryId: recycleEntry.id,
       recycleCount: nextRecycleCount,
       recycleCreatesNewEntry: true,
-      walletCreditApplied: false,
+      recycleWalletCreditApplied: false,
       recycleConfirmation: RECYCLE_CONFIRMATION,
       placement: recyclePlacement
     }
   });
 }
 
+async function getPackagesOverviewWithClient(client, userId) {
+  const [packageStatsMap, focusEntries, defaultActiveEntries] = await Promise.all([
+    autopoolRepository.listUserPackageStats(client, userId),
+    autopoolRepository.listUserPackageFocusEntries(client, userId),
+    autopoolRepository.listUserActiveEntries(client, userId, 12, { packageAmount: DEFAULT_PACKAGE_AMOUNT })
+  ]);
+
+  const focusEntryIds = focusEntries.map((entry) => entry.id);
+  const childEntries = focusEntryIds.length > 0
+    ? await autopoolRepository.listChildrenForParentEntries(client, focusEntryIds)
+    : [];
+
+  const focusByPackage = new Map();
+  for (const entry of focusEntries) {
+    focusByPackage.set(normalizePackageAmount(entry.package_amount), entry);
+  }
+
+  const childrenByParentEntry = new Map();
+  for (const child of childEntries) {
+    const parentEntryId = child.parent_entry_id;
+    if (!childrenByParentEntry.has(parentEntryId)) {
+      childrenByParentEntry.set(parentEntryId, []);
+    }
+    childrenByParentEntry.get(parentEntryId).push(child);
+  }
+
+  const packages = PACKAGE_AMOUNTS.map((amount) => {
+    const focusEntry = focusByPackage.get(amount) || null;
+    const currentEntry = focusEntry
+      ? buildEntrySummary(focusEntry, childrenByParentEntry.get(focusEntry.id) || [])
+      : null;
+    return buildPackageSummary(amount, packageStatsMap.get(amount) || {}, currentEntry);
+  });
+
+  const defaultPackage = packages.find((item) => item.amount === DEFAULT_PACKAGE_AMOUNT) || packages[0];
+
+  return {
+    config: buildOverviewConfig(),
+    packages,
+    stats: {
+      myEntry: Number(defaultPackage?.myEntry || 0),
+      recycle: Number(defaultPackage?.recycleCount || 0),
+      purchaseEntries: Number(defaultPackage?.myEntry || 0),
+      totalRecycles: Number(defaultPackage?.recycleCount || 0),
+      completedCycles: Number(defaultPackage?.completedCycles || defaultPackage?.recycleCount || 0),
+      totalEarnings: toMoney(defaultPackage?.earnings || 0),
+      currentMatrix: defaultPackage?.currentMatrix || MATRIX_TYPE,
+      currentCycleNumber: Number(defaultPackage?.currentCycleNumber || 0),
+      currentRecycleCount: Number(defaultPackage?.currentRecycleCount || 0),
+      currentFillCount: Number(defaultPackage?.currentFillCount || 0),
+      currentFillLabel: defaultPackage?.currentFillLabel || buildFillProgress(0).label,
+      currentFillProgress: defaultPackage?.currentFillProgress || buildFillProgress(0)
+    },
+    currentEntry: defaultPackage?.currentEntry || null,
+    activeEntries: defaultActiveEntries.map(buildActiveEntrySummary)
+  };
+}
+
+function buildHistorySummary(items = []) {
+  return items.reduce((summary, item) => {
+    const amount = toMoney(item.amount || 0);
+    if (item.type === 'EARN') summary.ownerEarnings = toMoney(summary.ownerEarnings + amount);
+    if (item.type === 'UPLINE') summary.uplineEarnings = toMoney(summary.uplineEarnings + amount);
+    if (item.type === 'RECYCLE') summary.recycleAmount = toMoney(summary.recycleAmount + amount);
+    if (item.type === 'BONUS' || item.type === 'AUCTION') summary.bonusAmount = toMoney(summary.bonusAmount + amount);
+    if (item.type === 'ENTRY') summary.entryAmount = toMoney(summary.entryAmount + amount);
+    return summary;
+  }, {
+    ownerEarnings: 0,
+    uplineEarnings: 0,
+    recycleAmount: 0,
+    bonusAmount: 0,
+    entryAmount: 0
+  });
+}
+
+async function getPackagesOverview(userId) {
+  return withTransaction((client) => getPackagesOverviewWithClient(client, userId));
+}
+
 async function getDashboard(userId) {
-  return withTransaction((client) => getDashboardWithClient(client, userId));
+  return getPackagesOverview(userId);
 }
 
 async function getHistory(userId, query = {}) {
   return withTransaction(async (client) => {
+    const packageAmount = query.packageAmount === undefined || query.packageAmount === null || query.packageAmount === ''
+      ? undefined
+      : getPackageConfig(query.packageAmount).amount;
+
     const pagination = normalizePagination({
       page: query.page || 1,
       limit: query.limit || 20,
       maxLimit: 100
     });
-    const result = await autopoolRepository.listUserTransactions(client, userId, pagination);
+    const result = await autopoolRepository.listUserTransactions(client, userId, pagination, {
+      packageAmount
+    });
+
     return {
       data: result.items,
-      summary: buildHistorySummary(result.items),
+      summary: {
+        packageAmount: packageAmount || null,
+        ...buildHistorySummary(result.items)
+      },
       pagination: buildPagination({
         page: pagination.page,
         limit: pagination.limit,
@@ -574,18 +744,21 @@ async function getHistory(userId, query = {}) {
   });
 }
 
-async function enterAutopool(userId, payload = {}) {
+async function buyAutopoolPackage(userId, payload = {}) {
   return withTransaction(async (client) => {
     await autopoolRepository.acquireGlobalQueueLock(client);
 
+    const packageConfig = getPackageConfig(payload.packageAmount || DEFAULT_PACKAGE_AMOUNT);
     const requestId = payload.requestId || null;
+
     if (requestId) {
       const existingTransaction = await autopoolRepository.getEntryTransactionByRequestId(client, userId, requestId);
       if (existingTransaction) {
         return {
-          ...(await getDashboardWithClient(client, userId)),
+          ...(await getPackagesOverviewWithClient(client, userId)),
           requestId,
           duplicateRequest: true,
+          packageAmount: packageConfig.amount,
           placement: null,
           events: []
         };
@@ -594,65 +767,85 @@ async function enterAutopool(userId, payload = {}) {
 
     const queueHealth = await autopoolProcessor.ensureQueueHealth(client);
     const entry = await createNextEntryForUser(client, userId, {
+      packageAmount: packageConfig.amount,
       entrySource: 'purchase'
     });
 
     await walletService.debit(
       client,
       userId,
-      ENTRY_AMOUNT,
+      packageConfig.entryAmount,
       'autopool_entry',
       entry.id,
       {
         requestId,
-        note: 'Global autopool entry purchase'
+        packageAmount: packageConfig.amount,
+        note: `Global autopool ${formatMoney(packageConfig.amount)} entry purchase`
       }
     );
 
     const walletTransaction = await getWalletTransaction(client, userId, 'autopool_entry', entry.id);
-    await autopoolRepository.createTransaction(client, {
+    await createAutopoolTransactionOnce(client, {
       userId,
       entryId: entry.id,
       type: 'ENTRY',
-      amount: ENTRY_AMOUNT,
+      amount: packageConfig.entryAmount,
+      packageAmount: packageConfig.amount,
       sourceUserId: userId,
       walletTransactionId: walletTransaction?.id || null,
       requestId,
+      eventKey: buildAutopoolEventKey('entry', packageConfig.amount, entry.id),
       metadata: {
-        entrySource: 'purchase',
+        source: 'autopool',
+        packageAmount: packageConfig.amount,
+        entryId: entry.id,
         cycleNumber: Number(entry.cycle_number || 0),
-        recycleCount: Number(entry.recycle_count || 0)
+        recycleCount: Number(entry.recycle_count || 0),
+        entrySource: 'purchase',
+        walletType: 'spendable'
       }
     });
 
     const context = {
       requestId,
+      packageAmount: packageConfig.amount,
       events: []
     };
+
     const placement = await placeEntryInQueue(client, entry, context);
-    const dashboard = await getDashboardWithClient(client, userId);
+    const overview = await getPackagesOverviewWithClient(client, userId);
 
     return {
-      ...dashboard,
+      ...overview,
       requestId,
       duplicateRequest: false,
       queueHealth,
+      packageAmount: packageConfig.amount,
       placement,
       events: context.events
     };
   });
 }
 
+async function enterAutopool(userId, payload = {}) {
+  return buyAutopoolPackage(userId, {
+    ...payload,
+    packageAmount: DEFAULT_PACKAGE_AMOUNT
+  });
+}
+
 module.exports = {
-  ENTRY_AMOUNT,
+  AUTOPOOL_CONFIG,
+  DEFAULT_PACKAGE_AMOUNT,
+  PACKAGE_AMOUNTS,
   MATRIX_SLOTS,
-  OWNER_PAYOUT,
-  UPLINE_PAYOUT,
-  AUCTION_SHARE,
-  RECYCLE_AMOUNT,
-  AUCTIONS_WALLET_TYPE,
+  MATRIX_TYPE,
+  EARNING_WALLET_TYPE,
+  BONUS_WALLET_TYPE,
   RECYCLE_CONFIRMATION,
+  getPackagesOverview,
   getDashboard,
   getHistory,
+  buyAutopoolPackage,
   enterAutopool
 };

@@ -129,6 +129,10 @@ function normalizeWalletBalances(wallet = {}) {
 
 function resolveCashWalletType(source, metadata = {}) {
   const requestedWalletType = String(metadata?.walletType || '').trim().toLowerCase();
+  if (requestedWalletType === 'earning_wallet' || requestedWalletType === 'earning') {
+    return 'income';
+  }
+
   if (['deposit', 'income', 'withdrawal', 'bonus', 'auction_bonus', 'deposit_wallet', 'income_wallet', 'withdrawal_wallet', 'bonus_wallet'].includes(requestedWalletType)) {
     return requestedWalletType.replace('_wallet', '');
   }

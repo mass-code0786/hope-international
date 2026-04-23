@@ -431,6 +431,21 @@ const notificationsListQuerySchema = z.object({
   params: z.object({}),
   query: pagingQuery
 });
+const AUTOPOOL_PACKAGE_AMOUNTS = [2, 99, 313, 786];
+const autopoolPackageAmountSchema = z.preprocess(
+  (value) => firstQueryValue(value),
+  z.union([z.string(), z.number()])
+).transform((value, ctx) => {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || !AUTOPOOL_PACKAGE_AMOUNTS.includes(amount)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `packageAmount must be one of ${AUTOPOOL_PACKAGE_AMOUNTS.join(', ')}`
+    });
+    return z.NEVER;
+  }
+  return amount;
+});
 const autopoolOverviewQuerySchema = z.object({
   body: z.object({}),
   params: z.object({}),
@@ -439,12 +454,22 @@ const autopoolOverviewQuerySchema = z.object({
 const autopoolHistoryQuerySchema = z.object({
   body: z.object({}),
   params: z.object({}),
-  query: pagingQuery
+  query: pagingQuery.extend({
+    packageAmount: autopoolPackageAmountSchema.optional()
+  })
 });
 const autopoolEnterSchema = z.object({
   body: z.object({
     requestId: uuid.optional()
   }).optional().default({}),
+  params: z.object({}),
+  query: z.object({})
+});
+const autopoolBuySchema = z.object({
+  body: z.object({
+    packageAmount: autopoolPackageAmountSchema,
+    requestId: uuid.optional()
+  }),
   params: z.object({}),
   query: z.object({})
 });
@@ -558,6 +583,7 @@ module.exports = {
   autopoolOverviewQuerySchema,
   autopoolHistoryQuerySchema,
   autopoolEnterSchema,
+  autopoolBuySchema,
   notificationsListQuerySchema,
   notificationIdParamSchema,
   notificationReadAllSchema,

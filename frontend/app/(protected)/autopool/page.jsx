@@ -12,11 +12,7 @@ import { currency } from '@/lib/utils/format';
 
 const MATRIX_SLOTS = 3;
 const SLOT_LABELS = ['LEFT', 'MIDDLE', 'RIGHT'];
-const PREVIEW_PACKAGES = [
-  { id: 'preview-99', amount: 99, filledSlots: 2 },
-  { id: 'preview-313', amount: 313, filledSlots: 2 },
-  { id: 'preview-786', amount: 786, filledSlots: 2 }
-];
+const DEFAULT_PACKAGE_AMOUNTS = [2, 99, 313, 786];
 
 function createRequestId() {
   if (typeof window !== 'undefined' && window.crypto?.randomUUID) {
@@ -60,66 +56,14 @@ function MatrixSlot({ filled, label, highlighted }) {
 function AutopoolCard({
   amount,
   earningsValue,
-  matrixSlots,
-  highlighted = false,
+  currentEntry,
+  currentFillCount,
   onBuy,
   isPending = false,
   disabled = false,
   myEntry,
   recycleCount
 }) {
-  return (
-    <section className="rounded-[30px] border border-white/8 bg-[#1a1d24] p-5 shadow-[0_24px_56px_rgba(0,0,0,0.38)] sm:p-6">
-      <div className="mt-1">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9ca3af]">Earnings</p>
-          <p className="mt-1 text-[28px] font-semibold tracking-[-0.05em] text-white sm:text-[34px]">{currency(earningsValue)}</p>
-        </div>
-      </div>
-
-      <div
-        className={[
-          'mt-5 rounded-[26px] border border-white/10 bg-[rgba(255,255,255,0.05)] p-4 backdrop-blur-xl transition-all duration-500 sm:mt-6',
-          highlighted
-            ? 'ring-1 ring-blue-400/60 shadow-[0_20px_48px_rgba(37,99,235,0.24)]'
-            : 'shadow-[0_18px_40px_rgba(0,0,0,0.26)]'
-        ].join(' ')}
-      >
-        <div className="mx-auto grid max-w-[260px] grid-cols-3 gap-3 sm:max-w-[292px] sm:gap-4">
-          {matrixSlots.map((slot) => (
-            <MatrixSlot
-              key={slot.label}
-              filled={slot.filled}
-              label={slot.label}
-              highlighted={highlighted && slot.filled}
-            />
-          ))}
-        </div>
-      </div>
-
-      <button
-        type="button"
-        onClick={onBuy}
-        disabled={disabled}
-        className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-[20px] bg-[linear-gradient(135deg,#2563eb,#1d4ed8)] px-5 py-4 text-base font-semibold text-white shadow-[0_18px_36px_rgba(37,99,235,0.32)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:bg-[#334155] disabled:shadow-none"
-      >
-        {isPending ? <RefreshCcw size={18} className="animate-spin" /> : <ShoppingCart size={18} />}
-        <span>{isPending ? 'Processing...' : `Buy Pool ${currency(amount)}`}</span>
-      </button>
-
-      <div className="mt-4 flex items-center justify-between gap-4 text-sm">
-        <p className="text-[#cbd5e1]">My Entry: {myEntry}</p>
-        <div className="flex items-center gap-1.5 font-semibold text-[#86efac]">
-          <span aria-hidden="true" className="text-base">{'\u267B\uFE0F'}</span>
-          <span>{recycleCount}</span>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-export default function AutopoolPage() {
-  const queryClient = useQueryClient();
   const completionTimersRef = useRef([]);
   const previousEntryRef = useRef({
     entryId: null,
@@ -127,83 +71,33 @@ export default function AutopoolPage() {
     entryRecycleCount: 0
   });
 
-  const [displayFilledSlots, setDisplayFilledSlots] = useState(0);
+  const [displayFilledSlots, setDisplayFilledSlots] = useState(clampFilledSlots(currentFillCount));
   const [completionEffectActive, setCompletionEffectActive] = useState(false);
 
-  const autopoolQuery = useQuery({
-    queryKey: queryKeys.autopool,
-    queryFn: getAutopoolDashboard,
-    placeholderData: (previousData) => previousData,
-    staleTime: 4000,
-    refetchInterval: 5000,
-    refetchOnWindowFocus: true
-  });
-
-  const walletQuery = useQuery({
-    queryKey: queryKeys.wallet,
-    queryFn: getWallet,
-    placeholderData: (previousData) => previousData
-  });
-
-  const enterMutation = useMutation({
-    mutationFn: (payload) => enterAutopool(payload),
-    onSuccess: async (result) => {
-      const placement = result.data?.placement || null;
-      if (placement?.isRoot) {
-        toast.success('Global autopool entry created');
-      } else if (placement?.slotPosition) {
-        toast.success(`Placed in ${placement.slotLabel || `slot ${placement.slotPosition}`}`);
-      } else {
-        toast.success(result.message || 'Autopool entry created');
-      }
-
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.autopool }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.wallet }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.notificationsRoot }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.notificationsUnreadCount })
-      ]);
-    },
-    onError: (error) => {
-      toast.error(error.message || 'Unable to enter autopool');
-    }
-  });
-
-  const dashboard = autopoolQuery.data?.data || {};
-  const config = dashboard.config || { entryAmount: 2, matrixType: '1x3' };
-  const stats = dashboard.stats || {};
-  const currentEntry = dashboard.currentEntry || null;
-  const walletBalance = Number(walletQuery.data?.wallet?.balance || 0);
-  const canAfford = walletQuery.isError ? true : walletBalance >= Number(config.entryAmount || 0);
-
-  const actualFilledSlots = clampFilledSlots(currentEntry?.filledSlotsCount ?? stats.currentFillCount ?? 0);
-  const cycleNumber = Number(currentEntry?.cycleNumber || stats.currentCycleNumber || 0);
-  const entryRecycleCount = Number(currentEntry?.recycleCount || stats.currentRecycleCount || 0);
-  const recycleCount = Number(stats.recycle || stats.totalRecycles || stats.completedCycles || 0);
-  const purchaseEntries = Number(stats.myEntry || stats.purchaseEntries || 0);
-  const earnings = Number(stats.totalEarnings || 0);
-  const previewEntryCount = purchaseEntries || 11;
-  const previewRecycleCount = recycleCount || 7;
+  const actualFilledSlots = clampFilledSlots(currentEntry?.filledSlotsCount ?? currentFillCount ?? 0);
+  const cycleNumber = Number(currentEntry?.cycleNumber || 0);
+  const entryRecycleCount = Number(currentEntry?.recycleCount || 0);
+  const currentEntryId = currentEntry?.id || null;
 
   useEffect(() => {
     completionTimersRef.current.forEach((timer) => clearTimeout(timer));
     completionTimersRef.current = [];
 
-    if (!currentEntry) {
+    if (!currentEntryId) {
       previousEntryRef.current = {
         entryId: null,
         cycleNumber: 0,
         entryRecycleCount: 0
       };
       setCompletionEffectActive(false);
-      setDisplayFilledSlots(0);
+      setDisplayFilledSlots(actualFilledSlots);
       return undefined;
     }
 
     const previous = previousEntryRef.current;
     const recycledIntoNextCycle = Boolean(
       previous.entryId
-      && String(previous.entryId) !== String(currentEntry.id)
+      && String(previous.entryId) !== String(currentEntryId)
       && (
         cycleNumber > Number(previous.cycleNumber || 0)
         || entryRecycleCount > Number(previous.entryRecycleCount || 0)
@@ -211,7 +105,7 @@ export default function AutopoolPage() {
     );
 
     previousEntryRef.current = {
-      entryId: currentEntry.id,
+      entryId: currentEntryId,
       cycleNumber,
       entryRecycleCount
     };
@@ -239,7 +133,7 @@ export default function AutopoolPage() {
       clearTimeout(showResetTimer);
       clearTimeout(clearEffectTimer);
     };
-  }, [actualFilledSlots, currentEntry, cycleNumber, entryRecycleCount]);
+  }, [actualFilledSlots, currentEntryId, cycleNumber, entryRecycleCount]);
 
   useEffect(() => () => {
     completionTimersRef.current.forEach((timer) => clearTimeout(timer));
@@ -249,45 +143,134 @@ export default function AutopoolPage() {
     () => buildMatrixSlots(displayFilledSlots),
     [displayFilledSlots]
   );
+
+  return (
+    <section className="rounded-[30px] border border-white/8 bg-[#1a1d24] p-5 shadow-[0_24px_56px_rgba(0,0,0,0.38)] sm:p-6">
+      <div className="mt-1">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9ca3af]">Earnings</p>
+          <p className="mt-1 text-[28px] font-semibold tracking-[-0.05em] text-white sm:text-[34px]">{currency(earningsValue)}</p>
+        </div>
+      </div>
+
+      <div
+        className={[
+          'mt-5 rounded-[26px] border border-white/10 bg-[rgba(255,255,255,0.05)] p-4 backdrop-blur-xl transition-all duration-500 sm:mt-6',
+          completionEffectActive
+            ? 'ring-1 ring-blue-400/60 shadow-[0_20px_48px_rgba(37,99,235,0.24)]'
+            : 'shadow-[0_18px_40px_rgba(0,0,0,0.26)]'
+        ].join(' ')}
+      >
+        <div className="mx-auto grid max-w-[260px] grid-cols-3 gap-3 sm:max-w-[292px] sm:gap-4">
+          {matrixSlots.map((slot) => (
+            <MatrixSlot
+              key={slot.label}
+              filled={slot.filled}
+              label={slot.label}
+              highlighted={completionEffectActive && slot.filled}
+            />
+          ))}
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={onBuy}
+        disabled={disabled}
+        className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-[20px] bg-[linear-gradient(135deg,#2563eb,#1d4ed8)] px-5 py-4 text-base font-semibold text-white shadow-[0_18px_36px_rgba(37,99,235,0.32)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:bg-[#334155] disabled:shadow-none"
+      >
+        {isPending ? <RefreshCcw size={18} className="animate-spin" /> : <ShoppingCart size={18} />}
+        <span>{isPending ? 'Processing...' : `Buy Pool ${currency(amount)}`}</span>
+      </button>
+
+      <div className="mt-4 flex items-center justify-between gap-4 text-sm">
+        <p className="text-[#cbd5e1]">My Entry: {myEntry}</p>
+        <div className="flex items-center gap-1.5 font-semibold text-[#86efac]">
+          <span aria-hidden="true" className="text-base">{'\u267B\uFE0F'}</span>
+          <span>{recycleCount}</span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function buildFallbackPackages(dataPackages = []) {
+  const packagesByAmount = new Map(
+    (Array.isArray(dataPackages) ? dataPackages : []).map((item) => [Number(item.amount || item.entryAmount || 0), item])
+  );
+
+  return DEFAULT_PACKAGE_AMOUNTS.map((amount) => {
+    const existing = packagesByAmount.get(amount);
+    if (existing) return existing;
+    return {
+      amount,
+      entryAmount: amount,
+      earnings: 0,
+      myEntry: 0,
+      recycleCount: 0,
+      currentFillCount: 0,
+      currentEntry: null
+    };
+  });
+}
+
+export default function AutopoolPage() {
+  const queryClient = useQueryClient();
+  const [pendingPackageAmount, setPendingPackageAmount] = useState(null);
+
+  const autopoolQuery = useQuery({
+    queryKey: queryKeys.autopool,
+    queryFn: getAutopoolDashboard,
+    placeholderData: (previousData) => previousData,
+    staleTime: 4000,
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true
+  });
+
+  const walletQuery = useQuery({
+    queryKey: queryKeys.wallet,
+    queryFn: getWallet,
+    placeholderData: (previousData) => previousData
+  });
+
+  const enterMutation = useMutation({
+    mutationFn: (payload) => enterAutopool(payload),
+    onMutate: (variables) => {
+      setPendingPackageAmount(Number(variables?.packageAmount || 0));
+    },
+    onSuccess: async (result, variables) => {
+      const placement = result.data?.placement || null;
+      const packageAmount = Number(variables?.packageAmount || result.data?.packageAmount || 0);
+
+      if (placement?.isRoot) {
+        toast.success(`${currency(packageAmount)} autopool entry created`);
+      } else if (placement?.slotPosition) {
+        toast.success(`${currency(packageAmount)} placed in ${placement.slotLabel || `slot ${placement.slotPosition}`}`);
+      } else {
+        toast.success(result.message || 'Autopool entry created');
+      }
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.autopool }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.wallet }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.notificationsRoot }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.notificationsUnreadCount })
+      ]);
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Unable to enter autopool');
+    },
+    onSettled: () => {
+      setPendingPackageAmount(null);
+    }
+  });
+
+  const dashboard = autopoolQuery.data?.data || {};
+  const walletBalance = Number(walletQuery.data?.wallet?.balance || 0);
+  const canAfford = (amount) => (walletQuery.isError ? true : walletBalance >= Number(amount || 0));
   const poolCards = useMemo(
-    () => [
-      {
-        id: 'live-2',
-        amount: Number(config.entryAmount || 2),
-        earningsValue: earnings,
-        matrixSlots,
-        highlighted: completionEffectActive,
-        onBuy: () => enterMutation.mutate({ requestId: createRequestId() }),
-        isPending: enterMutation.isPending,
-        disabled: enterMutation.isPending || !canAfford,
-        myEntry: purchaseEntries,
-        recycleCount
-      },
-      ...PREVIEW_PACKAGES.map((pkg) => ({
-        id: pkg.id,
-        amount: pkg.amount,
-        earningsValue: pkg.amount,
-        matrixSlots: buildMatrixSlots(pkg.filledSlots),
-        highlighted: false,
-        onBuy: () => {},
-        isPending: false,
-        disabled: false,
-        myEntry: previewEntryCount,
-        recycleCount: previewRecycleCount
-      }))
-    ],
-    [
-      canAfford,
-      completionEffectActive,
-      config.entryAmount,
-      earnings,
-      enterMutation,
-      matrixSlots,
-      previewEntryCount,
-      previewRecycleCount,
-      purchaseEntries,
-      recycleCount
-    ]
+    () => buildFallbackPackages(dashboard.packages).sort((left, right) => Number(left.amount || 0) - Number(right.amount || 0)),
+    [dashboard.packages]
   );
 
   if (autopoolQuery.isError && !autopoolQuery.data) {
@@ -301,9 +284,25 @@ export default function AutopoolPage() {
       </div>
 
       <div className="mt-4 space-y-4 sm:space-y-5">
-        {poolCards.map((card) => (
-          <AutopoolCard key={card.id} {...card} />
-        ))}
+        {poolCards.map((card) => {
+          const amount = Number(card.amount || card.entryAmount || 0);
+          const isPending = enterMutation.isPending && pendingPackageAmount === amount;
+
+          return (
+            <AutopoolCard
+              key={amount}
+              amount={amount}
+              earningsValue={Number(card.earnings || 0)}
+              currentEntry={card.currentEntry}
+              currentFillCount={Number(card.currentFillCount || card.currentEntry?.filledSlotsCount || 0)}
+              onBuy={() => enterMutation.mutate({ packageAmount: amount, requestId: createRequestId() })}
+              isPending={isPending}
+              disabled={enterMutation.isPending || !canAfford(amount)}
+              myEntry={Number(card.myEntry || 0)}
+              recycleCount={Number(card.recycleCount || 0)}
+            />
+          );
+        })}
       </div>
     </div>
   );
