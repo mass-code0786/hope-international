@@ -146,39 +146,32 @@ async function setChild(client, parentId, side, childId) {
   return rowCount === 1;
 }
 
-async function findFirstAvailablePlacementInSubtree(client, rootUserId, rootLeg) {
+async function findFirstAvailablePlacementInLegChain(client, rootUserId, rootLeg) {
   const { rows } = await q(client).query(
-    `WITH RECURSIVE sponsor AS (
-       SELECT id, left_child_id, right_child_id
+    `WITH RECURSIVE leg_chain AS (
+       SELECT id, left_child_id, right_child_id, 0 AS depth
        FROM users
        WHERE id = $1
-     ),
-     subtree_root AS (
-       SELECT CASE WHEN $2 = 'left' THEN left_child_id ELSE right_child_id END AS id
-       FROM sponsor
-     ),
-     tree AS (
-       SELECT u.id, u.left_child_id, u.right_child_id, u.created_at, 0 AS depth
-       FROM users u
-       JOIN subtree_root sr ON sr.id = u.id
 
        UNION ALL
 
-       SELECT child.id, child.left_child_id, child.right_child_id, child.created_at, tree.depth + 1
-       FROM tree
-       JOIN LATERAL (VALUES (tree.left_child_id), (tree.right_child_id)) AS v(child_id)
-         ON v.child_id IS NOT NULL
-       JOIN users child ON child.id = v.child_id
+       SELECT child.id, child.left_child_id, child.right_child_id, leg_chain.depth + 1
+       FROM leg_chain
+       JOIN users child
+         ON child.id = CASE
+           WHEN $2 = 'left' THEN leg_chain.left_child_id
+           ELSE leg_chain.right_child_id
+         END
      )
      SELECT
        id AS parent_id,
-       CASE
-         WHEN left_child_id IS NULL THEN 'left'::placement_side
-         ELSE 'right'::placement_side
-       END AS placement_side
-     FROM tree
-     WHERE left_child_id IS NULL OR right_child_id IS NULL
-     ORDER BY depth ASC, created_at ASC, id ASC
+       $2::placement_side AS placement_side
+     FROM leg_chain
+     WHERE CASE
+       WHEN $2 = 'left' THEN left_child_id IS NULL
+       ELSE right_child_id IS NULL
+     END
+     ORDER BY depth ASC, id ASC
      LIMIT 1`,
     [rootUserId, rootLeg]
   );
@@ -451,7 +444,7 @@ module.exports = {
   getWelcomeSpinState,
   markWelcomeSpinClaimed,
   setChild,
-  findFirstAvailablePlacementInSubtree,
+  findFirstAvailablePlacementInLegChain,
   getBinaryNode,
   getTeamTreeNode,
   getTeamTreeNodesByIds,

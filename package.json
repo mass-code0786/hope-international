@@ -13,7 +13,9 @@
     "reset:dev": "node src/db/resetDev.js",
     "reseed:dev": "npm run reset:dev && npm run migrate && npm run seed:dev",
     "full-reset:dev": "npm run reseed:dev",
-    "admin:bootstrap": "node src/scripts/bootstrapAdmin.js"
+    "admin:bootstrap": "node src/scripts/bootstrapAdmin.js",
+    "binary-tree:repair": "node src/scripts/repairBinaryTree.js",
+    "binary-tree:repair:apply": "node src/scripts/repairBinaryTree.js --apply"
   },
   "keywords": [],
   "author": "",

@@ -100,15 +100,7 @@ async function resolvePlacementBySponsor(client, sponsorId, preferredLeg, strict
   }
 
   for (const leg of legs) {
-    const directChildId = leg === 'left' ? sponsor.left_child_id : sponsor.right_child_id;
-    if (!directChildId) {
-      return {
-        parentId: sponsor.id,
-        placementSide: leg
-      };
-    }
-
-    const slot = await userRepository.findFirstAvailablePlacementInSubtree(client, sponsorId, leg);
+    const slot = await userRepository.findFirstAvailablePlacementInLegChain(client, sponsorId, leg);
     if (slot) {
       return {
         parentId: slot.parent_id,
@@ -118,10 +110,10 @@ async function resolvePlacementBySponsor(client, sponsorId, preferredLeg, strict
   }
 
   if (preferredLeg) {
-    throw new ApiError(409, `No available ${preferredLeg} slot in sponsor subtree`);
+    throw new ApiError(409, `No available ${preferredLeg} slot in sponsor leg chain`);
   }
 
-  throw new ApiError(409, 'No available slot in sponsor subtree');
+  throw new ApiError(409, 'No available slot in sponsor leg chain');
 }
 
 async function previewReferral(referralCode, side) {
