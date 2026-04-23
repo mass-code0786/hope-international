@@ -214,8 +214,9 @@ async function createNextEntryForUser(client, userId, options = {}) {
 }
 
 async function getDashboardWithClient(client, userId) {
-  const [stats, focusEntry, activeEntries] = await Promise.all([
+  const [stats, autopoolStats, focusEntry, activeEntries] = await Promise.all([
     autopoolRepository.getUserStats(client, userId),
+    autopoolRepository.getAutopoolStats(client, userId),
     autopoolRepository.getCurrentUserFocusEntry(client, userId),
     autopoolRepository.listUserActiveEntries(client, userId, 12)
   ]);
@@ -227,6 +228,11 @@ async function getDashboardWithClient(client, userId) {
     config: buildConfig(),
     stats: {
       ...stats,
+      myEntry: Number(autopoolStats.myEntry || 0),
+      recycle: Number(autopoolStats.recycle || 0),
+      purchaseEntries: Number(autopoolStats.myEntry || 0),
+      totalRecycles: Number(autopoolStats.recycle || 0),
+      completedCycles: Number(autopoolStats.recycle || stats.completedCycles || 0),
       currentMatrix: currentEntry?.matrixType || MATRIX_TYPE,
       currentCycleNumber: Number(currentEntry?.cycleNumber || 0),
       currentRecycleCount: Number(currentEntry?.recycleCount || 0),

@@ -108,7 +108,11 @@ export async function getAutopoolDashboard() {
       config: data.config || null,
       stats: {
         ...(data.stats || {}),
+        myEntry: toNumber(data.stats?.myEntry),
+        recycle: toNumber(data.stats?.recycle),
         purchaseEntries: toNumber(data.stats?.purchaseEntries),
+        totalRecycles: toNumber(data.stats?.totalRecycles),
+        completedCycles: toNumber(data.stats?.completedCycles),
         currentCycleNumber: toNumber(data.stats?.currentCycleNumber),
         currentRecycleCount: toNumber(data.stats?.currentRecycleCount),
         currentFillCount: toNumber(data.stats?.currentFillCount),
@@ -134,7 +138,11 @@ export async function enterAutopool(payload = {}) {
       ...data,
       stats: {
         ...(data.stats || {}),
+        myEntry: toNumber(data.stats?.myEntry),
+        recycle: toNumber(data.stats?.recycle),
         purchaseEntries: toNumber(data.stats?.purchaseEntries),
+        totalRecycles: toNumber(data.stats?.totalRecycles),
+        completedCycles: toNumber(data.stats?.completedCycles),
         currentCycleNumber: toNumber(data.stats?.currentCycleNumber),
         currentRecycleCount: toNumber(data.stats?.currentRecycleCount),
         currentFillCount: toNumber(data.stats?.currentFillCount),

@@ -50,7 +50,7 @@ export default function AutopoolPage() {
   const previousEntryRef = useRef({
     entryId: null,
     cycleNumber: 0,
-    recycleCount: 0
+    entryRecycleCount: 0
   });
 
   const [displayFilledSlots, setDisplayFilledSlots] = useState(0);
@@ -104,8 +104,9 @@ export default function AutopoolPage() {
 
   const actualFilledSlots = clampFilledSlots(currentEntry?.filledSlotsCount ?? stats.currentFillCount ?? 0);
   const cycleNumber = Number(currentEntry?.cycleNumber || stats.currentCycleNumber || 0);
-  const recycleCount = Number(currentEntry?.recycleCount || stats.currentRecycleCount || 0);
-  const purchaseEntries = Number(stats.purchaseEntries || 0);
+  const entryRecycleCount = Number(currentEntry?.recycleCount || stats.currentRecycleCount || 0);
+  const recycleCount = Number(stats.recycle || stats.totalRecycles || stats.completedCycles || 0);
+  const purchaseEntries = Number(stats.myEntry || stats.purchaseEntries || 0);
   const earnings = Number(stats.totalEarnings || 0);
 
   useEffect(() => {
@@ -116,7 +117,7 @@ export default function AutopoolPage() {
       previousEntryRef.current = {
         entryId: null,
         cycleNumber: 0,
-        recycleCount: 0
+        entryRecycleCount: 0
       };
       setCompletionEffectActive(false);
       setDisplayFilledSlots(0);
@@ -129,14 +130,14 @@ export default function AutopoolPage() {
       && String(previous.entryId) !== String(currentEntry.id)
       && (
         cycleNumber > Number(previous.cycleNumber || 0)
-        || recycleCount > Number(previous.recycleCount || 0)
+        || entryRecycleCount > Number(previous.entryRecycleCount || 0)
       )
     );
 
     previousEntryRef.current = {
       entryId: currentEntry.id,
       cycleNumber,
-      recycleCount
+      entryRecycleCount
     };
 
     if (!recycledIntoNextCycle) {
@@ -162,7 +163,7 @@ export default function AutopoolPage() {
       clearTimeout(showResetTimer);
       clearTimeout(clearEffectTimer);
     };
-  }, [actualFilledSlots, currentEntry, cycleNumber, recycleCount]);
+  }, [actualFilledSlots, currentEntry, cycleNumber, entryRecycleCount]);
 
   useEffect(() => () => {
     completionTimersRef.current.forEach((timer) => clearTimeout(timer));

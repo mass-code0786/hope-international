@@ -392,10 +392,9 @@ async function getUserStats(client, userId) {
     q(client).query(
       `SELECT
          COUNT(*)::int AS total_entries,
-         COUNT(*) FILTER (WHERE entry_source = 'purchase')::int AS purchase_entries,
          COUNT(*) FILTER (WHERE status = 'active')::int AS active_entries,
          COUNT(*) FILTER (WHERE status = 'completed')::int AS completed_cycles,
-         COALESCE(MAX(recycle_count), 0)::int AS total_recycles
+         COUNT(*) FILTER (WHERE status = 'completed')::int AS total_recycles
        FROM autopool_entries
        WHERE user_id = $1`,
       [userId]
@@ -417,7 +416,6 @@ async function getUserStats(client, userId) {
 
   return {
     totalEntries: Number(entries.total_entries || 0),
-    purchaseEntries: Number(entries.purchase_entries || 0),
     activeEntries: Number(entries.active_entries || 0),
     completedCycles: Number(entries.completed_cycles || 0),
     totalRecycles: Number(entries.total_recycles || 0),
@@ -425,6 +423,24 @@ async function getUserStats(client, userId) {
     uplineEarnings: toMoney(transactions.upline_earnings || 0),
     totalEarnings: toMoney(transactions.total_earnings || 0),
     totalAuctionShare: toMoney(transactions.total_auction_share || 0)
+  };
+}
+
+async function getAutopoolStats(client, userId) {
+  const { rows } = await q(client).query(
+    `SELECT
+       COUNT(*) FILTER (WHERE entry_source = 'purchase')::int AS my_entry_count,
+       COUNT(*) FILTER (WHERE status = 'completed')::int AS recycle_count
+     FROM autopool_entries
+     WHERE user_id = $1`,
+    [userId]
+  );
+
+  const row = rows[0] || {};
+
+  return {
+    myEntry: Number(row.my_entry_count || 0),
+    recycle: Number(row.recycle_count || 0)
   };
 }
 
@@ -481,5 +497,6 @@ module.exports = {
   listEntryChildren,
   listUserActiveEntries,
   getUserStats,
+  getAutopoolStats,
   listUserTransactions
 };
