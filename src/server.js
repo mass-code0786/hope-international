@@ -1,10 +1,20 @@
 const app = require('./app');
 const env = require('./config/env');
 const landingMediaStorageService = require('./services/landingMediaStorageService');
+const autopoolProcessor = require('./jobs/autopoolProcessor');
 
 async function startServer() {
   try {
     const mediaStorage = await landingMediaStorageService.ensureMediaStorageReady();
+    let autopoolBootstrap = null;
+    try {
+      autopoolBootstrap = await autopoolProcessor.bootstrapAutopoolQueue();
+    } catch (error) {
+      console.warn('[startup.autopool]', {
+        message: error.message
+      });
+    }
+
     app.listen(env.port, () => {
       console.log(`Server running on port ${env.port}`);
       if (mediaStorage.warning) {
@@ -21,6 +31,9 @@ async function startServer() {
         publicBaseUrl: mediaStorage.publicBaseUrl || null,
         directories: mediaStorage.directories
       });
+      if (autopoolBootstrap) {
+        console.log('[startup.autopool]', autopoolBootstrap);
+      }
     });
   } catch (error) {
     console.error('[startup.media-storage]', {

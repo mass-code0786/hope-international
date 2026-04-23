@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Gavel,
   HeartPulse,
+  Network,
   PackagePlus,
   Search,
   Shirt,
@@ -66,6 +67,7 @@ const homeActions = [
   { label: 'Kids', href: '/shop', icon: Baby, tint: 'bg-[rgba(244,114,182,0.14)] text-[#f9a8d4]' },
   { label: 'Sports', href: '/shop', icon: Trophy, tint: 'bg-[rgba(34,211,238,0.14)] text-[#67e8f9]' },
   { label: 'Services', href: '/support', icon: PackagePlus, tint: 'bg-[rgba(192,199,212,0.12)] text-[#e2e8f0]' },
+  { label: 'Global Autopool', href: '/autopool', icon: Network, tint: 'bg-[rgba(34,197,94,0.16)] text-[#86efac]' },
   { label: 'Auctions', href: '/auctions', icon: Gavel, tint: 'bg-[rgba(139,61,255,0.22)] text-[#ede9fe]', featured: true }
 ];
 

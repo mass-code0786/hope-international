@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ArrowDownToLine, ArrowUpFromLine, CircleDollarSign, ClipboardList, Gavel, Headset, Home, Network, ShoppingBag, Sparkles, Store, User, Wallet } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpFromLine, CircleDollarSign, ClipboardList, Gavel, Headset, Home, Layers3, Network, ShoppingBag, Sparkles, Store, User, Wallet } from 'lucide-react';
 import { THEME } from '@/lib/constants/theme';
 import { isSeller } from '@/lib/constants/access';
 import Logo from '@/components/common/Logo';
@@ -17,6 +17,7 @@ function getGroups(user, sellerActive) {
         { href: '/auctions', label: 'Auctions', icon: Gavel },
         { href: '/shop', label: 'Shop', icon: ShoppingBag },
         { href: '/team', label: 'Team', icon: Network },
+        { href: '/autopool', label: 'Autopool', icon: Layers3 },
         { href: '/income', label: 'Income', icon: CircleDollarSign },
         { href: '/orders', label: 'Orders', icon: ClipboardList },
         { href: '/support', label: 'Support', icon: Headset }

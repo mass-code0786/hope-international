@@ -7,6 +7,8 @@ export const queryKeys = {
   sellerAccess: ['seller', 'access'],
   sellerProducts: ['seller', 'products'],
   wallet: ['wallet'],
+  autopool: ['autopool'],
+  autopoolHistory: (page = 1, limit = 10) => ['autopool', 'history', page, limit],
   walletTransactions: ['wallet', 'transactions'],
   walletDepositConfig: ['wallet', 'deposit-config'],
   walletDeposits: ['wallet', 'deposits'],

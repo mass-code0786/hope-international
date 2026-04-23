@@ -431,6 +431,23 @@ const notificationsListQuerySchema = z.object({
   params: z.object({}),
   query: pagingQuery
 });
+const autopoolOverviewQuerySchema = z.object({
+  body: z.object({}),
+  params: z.object({}),
+  query: z.object({})
+});
+const autopoolHistoryQuerySchema = z.object({
+  body: z.object({}),
+  params: z.object({}),
+  query: pagingQuery
+});
+const autopoolEnterSchema = z.object({
+  body: z.object({
+    requestId: uuid.optional()
+  }).optional().default({}),
+  params: z.object({}),
+  query: z.object({})
+});
 const notificationIdParamSchema = z.object({ body: z.object({}), params: z.object({ id: uuid }), query: z.object({}) });
 const notificationReadAllSchema = z.object({ body: z.object({}).optional().default({}), params: z.object({}), query: z.object({}) });
 const assistantChatSchema = z.object({
@@ -538,6 +555,9 @@ module.exports = {
   supportThreadCreateSchema,
   supportThreadIdParamSchema,
   supportMessageCreateSchema,
+  autopoolOverviewQuerySchema,
+  autopoolHistoryQuerySchema,
+  autopoolEnterSchema,
   notificationsListQuerySchema,
   notificationIdParamSchema,
   notificationReadAllSchema,
