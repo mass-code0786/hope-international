@@ -26,9 +26,9 @@ function clampFilledSlots(value) {
 
 function SummaryTile({ label, value }) {
   return (
-    <div className="rounded-[24px] border border-slate-200 bg-white/90 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">{label}</p>
-      <p className="mt-2 text-lg font-semibold tracking-[-0.04em] text-slate-950">{value}</p>
+    <div className="rounded-[24px] border border-white/8 bg-[#1f232b] p-4 shadow-[0_14px_30px_rgba(0,0,0,0.28)]">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#9ca3af]">{label}</p>
+      <p className="mt-2 text-lg font-semibold tracking-[-0.04em] text-white">{value}</p>
     </div>
   );
 }
@@ -40,12 +40,12 @@ function MatrixSlot({ filled, label, highlighted }) {
         className={[
           'aspect-square rounded-[24px] border transition-all duration-300',
           filled
-            ? 'border-blue-600 bg-blue-600 shadow-[0_18px_40px_rgba(37,99,235,0.28)]'
-            : 'border-slate-200 bg-white shadow-[0_12px_28px_rgba(15,23,42,0.05)]',
+            ? 'border-[#2563eb] bg-[#2563eb] shadow-[0_18px_40px_rgba(37,99,235,0.34)]'
+            : 'border-[#e5e7eb] bg-[#f5f5f5] shadow-[0_12px_28px_rgba(0,0,0,0.18)]',
           highlighted ? 'scale-[1.04] shadow-[0_22px_48px_rgba(37,99,235,0.34)]' : ''
         ].join(' ')}
       />
-      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">{label}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#9ca3af]">{label}</p>
     </div>
   );
 }
@@ -188,16 +188,16 @@ export default function AutopoolPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-4">
-      <section className="rounded-[30px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff,#eff6ff)] p-5 shadow-[0_20px_48px_rgba(15,23,42,0.08)] sm:p-6">
+    <div className="mx-auto max-w-4xl space-y-4 rounded-[36px] bg-[radial-gradient(circle_at_top,#161922,#0f1115_72%)] p-4 sm:p-5">
+      <section className="rounded-[30px] border border-white/8 bg-[#12141a] p-5 shadow-[0_24px_56px_rgba(0,0,0,0.34)] sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-[-0.05em] text-slate-950 sm:text-3xl">Global Autopool</h1>
+            <h1 className="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-3xl">Global Autopool</h1>
             <div className="mt-3 flex flex-wrap gap-2">
-              <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              <span className="rounded-full border border-white/8 bg-[#1a1d24] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#9ca3af]">
                 Entry {currency(config.entryAmount || 2)}
               </span>
-              <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              <span className="rounded-full border border-white/8 bg-[#1a1d24] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#9ca3af]">
                 Matrix {matrixType}
               </span>
             </div>
@@ -207,7 +207,7 @@ export default function AutopoolPage() {
             type="button"
             onClick={() => enterMutation.mutate({ requestId: createRequestId() })}
             disabled={enterMutation.isPending || !canAfford}
-            className="inline-flex items-center justify-center gap-2 rounded-[20px] bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="inline-flex items-center justify-center gap-2 rounded-[20px] bg-[#2563eb] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:bg-[#334155]"
           >
             {enterMutation.isPending ? <RefreshCcw size={16} className="animate-spin" /> : <ArrowRight size={16} />}
             {enterMutation.isPending ? 'Processing...' : 'Buy Pool'}
@@ -215,24 +215,24 @@ export default function AutopoolPage() {
         </div>
       </section>
 
-      <section className="rounded-[32px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff,#f8fbff)] p-5 shadow-[0_22px_54px_rgba(15,23,42,0.08)] sm:p-6">
+      <section className="rounded-[32px] border border-white/8 bg-[#1a1d24] p-5 shadow-[0_24px_60px_rgba(0,0,0,0.34)] sm:p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Matrix</p>
-            <p className="mt-2 text-4xl font-semibold tracking-[-0.06em] text-slate-950">{matrixType}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9ca3af]">Matrix</p>
+            <p className="mt-2 text-4xl font-semibold tracking-[-0.06em] text-white">{matrixType}</p>
           </div>
           <div className="text-right">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Earnings</p>
-            <p className="mt-2 text-lg font-semibold tracking-[-0.04em] text-slate-950">{currency(earnings)}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9ca3af]">Earnings</p>
+            <p className="mt-2 text-lg font-semibold tracking-[-0.04em] text-white">{currency(earnings)}</p>
           </div>
         </div>
 
         <div
           className={[
-            'mt-6 rounded-[30px] border border-slate-200 p-4 transition-all duration-500 sm:p-5',
+            'mt-6 rounded-[30px] border border-white/10 bg-[rgba(255,255,255,0.05)] p-4 backdrop-blur-xl transition-all duration-500 sm:p-5',
             completionEffectActive
-              ? 'bg-[radial-gradient(circle_at_top,#dbeafe,white_68%)] ring-2 ring-blue-200'
-              : 'bg-[radial-gradient(circle_at_top,#ffffff,#f8fafc)]'
+              ? 'ring-2 ring-blue-400/60 shadow-[0_20px_48px_rgba(37,99,235,0.22)]'
+              : 'shadow-[0_18px_44px_rgba(0,0,0,0.24)]'
           ].join(' ')}
         >
           <div className="grid grid-cols-3 gap-3 sm:gap-4">
