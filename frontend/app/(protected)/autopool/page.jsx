@@ -12,6 +12,11 @@ import { currency } from '@/lib/utils/format';
 
 const MATRIX_SLOTS = 3;
 const SLOT_LABELS = ['LEFT', 'MIDDLE', 'RIGHT'];
+const PREVIEW_PACKAGES = [
+  { id: 'preview-99', amount: 99, filledSlots: 2 },
+  { id: 'preview-313', amount: 313, filledSlots: 2 },
+  { id: 'preview-786', amount: 786, filledSlots: 2 }
+];
 
 function createRequestId() {
   if (typeof window !== 'undefined' && window.crypto?.randomUUID) {
@@ -22,6 +27,14 @@ function createRequestId() {
 
 function clampFilledSlots(value) {
   return Math.max(0, Math.min(MATRIX_SLOTS, Number(value || 0)));
+}
+
+function buildMatrixSlots(filledSlots) {
+  const safeFilledSlots = clampFilledSlots(filledSlots);
+  return Array.from({ length: MATRIX_SLOTS }, (_, index) => ({
+    label: SLOT_LABELS[index],
+    filled: index < safeFilledSlots
+  }));
 }
 
 function MatrixSlot({ filled, label, highlighted }) {
@@ -41,6 +54,67 @@ function MatrixSlot({ filled, label, highlighted }) {
         <span className="sr-only">{label}</span>
       </div>
     </div>
+  );
+}
+
+function AutopoolCard({
+  amount,
+  earningsValue,
+  matrixSlots,
+  highlighted = false,
+  onBuy,
+  isPending = false,
+  disabled = false,
+  myEntry,
+  recycleCount
+}) {
+  return (
+    <section className="rounded-[30px] border border-white/8 bg-[#1a1d24] p-5 shadow-[0_24px_56px_rgba(0,0,0,0.38)] sm:p-6">
+      <div className="mt-1">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9ca3af]">Earnings</p>
+          <p className="mt-1 text-[28px] font-semibold tracking-[-0.05em] text-white sm:text-[34px]">{currency(earningsValue)}</p>
+        </div>
+      </div>
+
+      <div
+        className={[
+          'mt-5 rounded-[26px] border border-white/10 bg-[rgba(255,255,255,0.05)] p-4 backdrop-blur-xl transition-all duration-500 sm:mt-6',
+          highlighted
+            ? 'ring-1 ring-blue-400/60 shadow-[0_20px_48px_rgba(37,99,235,0.24)]'
+            : 'shadow-[0_18px_40px_rgba(0,0,0,0.26)]'
+        ].join(' ')}
+      >
+        <div className="mx-auto grid max-w-[260px] grid-cols-3 gap-3 sm:max-w-[292px] sm:gap-4">
+          {matrixSlots.map((slot) => (
+            <MatrixSlot
+              key={slot.label}
+              filled={slot.filled}
+              label={slot.label}
+              highlighted={highlighted && slot.filled}
+            />
+          ))}
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={onBuy}
+        disabled={disabled}
+        className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-[20px] bg-[linear-gradient(135deg,#2563eb,#1d4ed8)] px-5 py-4 text-base font-semibold text-white shadow-[0_18px_36px_rgba(37,99,235,0.32)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:bg-[#334155] disabled:shadow-none"
+      >
+        {isPending ? <RefreshCcw size={18} className="animate-spin" /> : <ShoppingCart size={18} />}
+        <span>{isPending ? 'Processing...' : `Buy Pool ${currency(amount)}`}</span>
+      </button>
+
+      <div className="mt-4 flex items-center justify-between gap-4 text-sm">
+        <p className="text-[#cbd5e1]">My Entry: {myEntry}</p>
+        <div className="flex items-center gap-1.5 font-semibold text-[#86efac]">
+          <span aria-hidden="true" className="text-base">{'\u267B\uFE0F'}</span>
+          <span>{recycleCount}</span>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -108,6 +182,8 @@ export default function AutopoolPage() {
   const recycleCount = Number(stats.recycle || stats.totalRecycles || stats.completedCycles || 0);
   const purchaseEntries = Number(stats.myEntry || stats.purchaseEntries || 0);
   const earnings = Number(stats.totalEarnings || 0);
+  const previewEntryCount = purchaseEntries || 11;
+  const previewRecycleCount = recycleCount || 7;
 
   useEffect(() => {
     completionTimersRef.current.forEach((timer) => clearTimeout(timer));
@@ -170,11 +246,48 @@ export default function AutopoolPage() {
   }, []);
 
   const matrixSlots = useMemo(
-    () => Array.from({ length: MATRIX_SLOTS }, (_, index) => ({
-      label: SLOT_LABELS[index],
-      filled: index < displayFilledSlots
-    })),
+    () => buildMatrixSlots(displayFilledSlots),
     [displayFilledSlots]
+  );
+  const poolCards = useMemo(
+    () => [
+      {
+        id: 'live-2',
+        amount: Number(config.entryAmount || 2),
+        earningsValue: earnings,
+        matrixSlots,
+        highlighted: completionEffectActive,
+        onBuy: () => enterMutation.mutate({ requestId: createRequestId() }),
+        isPending: enterMutation.isPending,
+        disabled: enterMutation.isPending || !canAfford,
+        myEntry: purchaseEntries,
+        recycleCount
+      },
+      ...PREVIEW_PACKAGES.map((pkg) => ({
+        id: pkg.id,
+        amount: pkg.amount,
+        earningsValue: pkg.amount,
+        matrixSlots: buildMatrixSlots(pkg.filledSlots),
+        highlighted: false,
+        onBuy: () => {},
+        isPending: false,
+        disabled: false,
+        myEntry: previewEntryCount,
+        recycleCount: previewRecycleCount
+      }))
+    ],
+    [
+      canAfford,
+      completionEffectActive,
+      config.entryAmount,
+      earnings,
+      enterMutation,
+      matrixSlots,
+      previewEntryCount,
+      previewRecycleCount,
+      purchaseEntries,
+      recycleCount
+    ]
   );
 
   if (autopoolQuery.isError && !autopoolQuery.data) {
@@ -182,57 +295,16 @@ export default function AutopoolPage() {
   }
 
   return (
-    <div className="mx-auto max-w-xl rounded-[34px] bg-[linear-gradient(180deg,#12141a,#0f1115)] p-4 sm:p-5">
+    <div className="mx-auto max-w-xl rounded-[34px] bg-[linear-gradient(180deg,#12141a,#0f1115)] p-4 pb-28 sm:p-5 sm:pb-12">
       <div className="px-1">
         <h1 className="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-[30px]">Global Autopool</h1>
       </div>
 
-      <section className="mt-4 rounded-[30px] border border-white/8 bg-[#1a1d24] p-5 shadow-[0_24px_56px_rgba(0,0,0,0.38)] sm:p-6">
-        <div className="mt-1">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9ca3af]">Earnings</p>
-            <p className="mt-1 text-[28px] font-semibold tracking-[-0.05em] text-white sm:text-[34px]">{currency(earnings)}</p>
-          </div>
-        </div>
-
-        <div
-          className={[
-            'mt-5 rounded-[26px] border border-white/10 bg-[rgba(255,255,255,0.05)] p-4 backdrop-blur-xl transition-all duration-500 sm:mt-6',
-            completionEffectActive
-              ? 'ring-1 ring-blue-400/60 shadow-[0_20px_48px_rgba(37,99,235,0.24)]'
-              : 'shadow-[0_18px_40px_rgba(0,0,0,0.26)]'
-          ].join(' ')}
-        >
-          <div className="mx-auto grid max-w-[260px] grid-cols-3 gap-3 sm:max-w-[292px] sm:gap-4">
-            {matrixSlots.map((slot) => (
-              <MatrixSlot
-                key={slot.label}
-                filled={slot.filled}
-                label={slot.label}
-                highlighted={completionEffectActive && slot.filled}
-              />
-            ))}
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => enterMutation.mutate({ requestId: createRequestId() })}
-          disabled={enterMutation.isPending || !canAfford}
-          className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-[20px] bg-[linear-gradient(135deg,#2563eb,#1d4ed8)] px-5 py-4 text-base font-semibold text-white shadow-[0_18px_36px_rgba(37,99,235,0.32)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:bg-[#334155] disabled:shadow-none"
-        >
-          {enterMutation.isPending ? <RefreshCcw size={18} className="animate-spin" /> : <ShoppingCart size={18} />}
-          <span>{enterMutation.isPending ? 'Processing...' : `Buy Pool ${currency(config.entryAmount || 2)}`}</span>
-        </button>
-
-        <div className="mt-4 flex items-center justify-between gap-4 text-sm">
-          <p className="text-[#cbd5e1]">My Entry: {purchaseEntries}</p>
-          <div className="flex items-center gap-1.5 font-semibold text-[#86efac]">
-            <span aria-hidden="true" className="text-base">{'\u267B\uFE0F'}</span>
-            <span>{recycleCount}</span>
-          </div>
-        </div>
-      </section>
+      <div className="mt-4 space-y-4 sm:space-y-5">
+        {poolCards.map((card) => (
+          <AutopoolCard key={card.id} {...card} />
+        ))}
+      </div>
     </div>
   );
 }
