@@ -240,7 +240,7 @@ async function getNextQueueParentForUpdate(client, options = {}) {
      JOIN autopool_entries ae ON ae.id = aq.entry_id
      JOIN users u ON u.id = ae.user_id
      WHERE ${where.join(' AND ')}
-     ORDER BY aq.position ASC
+     ORDER BY ae.created_at ASC, aq.position ASC
      LIMIT 1
      FOR UPDATE OF aq, ae`,
     values

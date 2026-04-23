@@ -13,6 +13,11 @@ const OWNER_PAYOUT = 1.5;
 const UPLINE_PAYOUT = 0.5;
 const AUCTION_SHARE = 2;
 const RECYCLE_AMOUNT = 2;
+const SLOT_ORDER = Object.freeze([
+  { position: 1, label: 'LEFT' },
+  { position: 2, label: 'MIDDLE' },
+  { position: 3, label: 'RIGHT' }
+]);
 
 function toMoney(value) {
   return Number(Number(value || 0).toFixed(2));
@@ -20,6 +25,10 @@ function toMoney(value) {
 
 function formatMoney(value) {
   return `$${toMoney(value).toFixed(2)}`;
+}
+
+function getSlotLabel(slotPosition) {
+  return SLOT_ORDER.find((item) => item.position === Number(slotPosition))?.label || null;
 }
 
 function buildUser(row, prefix = '') {
@@ -44,6 +53,7 @@ function buildEntrySummary(entry, children = []) {
       Number(child.slot_position),
       {
         slotPosition: Number(child.slot_position),
+        slotLabel: getSlotLabel(child.slot_position),
         entryId: child.entry_id || child.id,
         status: child.status,
         filledSlotsCount: Number(child.filled_slots_count || 0),
@@ -65,6 +75,7 @@ function buildEntrySummary(entry, children = []) {
     filledSlotsCount: Number(entry.filled_slots_count || 0),
     fillLabel: `${Number(entry.filled_slots_count || 0)}/${MATRIX_SLOTS}`,
     slotPosition: entry.slot_position === null || entry.slot_position === undefined ? null : Number(entry.slot_position),
+    slotLabel: getSlotLabel(entry.slot_position),
     queuePosition: entry.queue_position === null || entry.queue_position === undefined ? null : Number(entry.queue_position),
     createdAt: entry.created_at,
     completedAt: entry.completed_at || null,
@@ -79,6 +90,7 @@ function buildEntrySummary(entry, children = []) {
     children: [1, 2, 3].map((slotPosition) => (
       childrenBySlot.get(slotPosition) || {
         slotPosition,
+        slotLabel: getSlotLabel(slotPosition),
         entryId: null,
         status: 'empty',
         filledSlotsCount: 0,
@@ -104,6 +116,7 @@ function buildActiveEntrySummary(entry) {
     filledSlotsCount: Number(entry.filled_slots_count || 0),
     fillLabel: `${Number(entry.filled_slots_count || 0)}/${MATRIX_SLOTS}`,
     slotPosition: entry.slot_position === null || entry.slot_position === undefined ? null : Number(entry.slot_position),
+    slotLabel: getSlotLabel(entry.slot_position),
     createdAt: entry.created_at,
     parent: entry.parent_entry_id
       ? {
@@ -123,7 +136,11 @@ function buildConfig() {
     ownerPayout: OWNER_PAYOUT,
     uplinePayout: UPLINE_PAYOUT,
     auctionShare: AUCTION_SHARE,
-    recycleAmount: RECYCLE_AMOUNT
+    recycleAmount: RECYCLE_AMOUNT,
+    recycleCreatesNewEntry: true,
+    recycleWalletCreditApplied: false,
+    fillDirection: 'TOP_TO_BOTTOM_LEFT_TO_RIGHT',
+    slotOrder: SLOT_ORDER
   };
 }
 
@@ -225,6 +242,7 @@ async function placeEntryInQueue(client, entry, context) {
       parentEntryId: null,
       parentUserId: null,
       slotPosition: null,
+      slotLabel: null,
       isRoot: true
     };
   }
@@ -246,18 +264,20 @@ async function placeEntryInQueue(client, entry, context) {
     parentEntryId: parentEntry.id,
     parentUserId: parentEntry.user_id,
     slotPosition,
+    slotLabel: getSlotLabel(slotPosition),
     parentFillCount: Number(updatedParent?.filled_slots_count || 0)
   });
 
   await createAutopoolNotification(client, {
     userId: parentEntry.user_id,
     title: 'New autopool slot filled',
-    message: `Slot ${slotPosition} of ${MATRIX_SLOTS} was filled in cycle #${Number(parentEntry.cycle_number || 0)}.`,
+    message: `${getSlotLabel(slotPosition) || `Slot ${slotPosition}`} was filled in cycle #${Number(parentEntry.cycle_number || 0)}.`,
     sourceKey: `autopool:slot:${parentEntry.id}:${slotPosition}`,
     metadata: {
       entryId: parentEntry.id,
       childEntryId: entry.id,
       slotPosition,
+      slotLabel: getSlotLabel(slotPosition),
       filledSlotsCount: Number(updatedParent?.filled_slots_count || 0)
     }
   });
@@ -271,6 +291,7 @@ async function placeEntryInQueue(client, entry, context) {
     parentEntryId: parentEntry.id,
     parentUserId: parentEntry.user_id,
     slotPosition,
+    slotLabel: getSlotLabel(slotPosition),
     isRoot: false
   };
 }
@@ -440,21 +461,35 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
       completedCycleNumber: Number(markedEntry.cycle_number || 0),
       recycleCount: nextRecycleCount,
       recycleEntryId: recycleEntry.id,
-      recycleCycleNumber: Number(recycleEntry.cycle_number || 0)
+      recycleCycleNumber: Number(recycleEntry.cycle_number || 0),
+      walletCreditApplied: false,
+      recycleCreatesNewEntry: true
     }
   });
 
   const recyclePlacement = await placeEntryInQueue(client, recycleEntry, context);
 
+  context.events.push({
+    type: 'RECYCLED',
+    completedEntryId: markedEntry.id,
+    recycleEntryId: recycleEntry.id,
+    userId: markedEntry.user_id,
+    recycleCount: nextRecycleCount,
+    recycleCycleNumber: Number(recycleEntry.cycle_number || 0),
+    placement: recyclePlacement
+  });
+
   await createAutopoolNotification(client, {
     userId: markedEntry.user_id,
     title: 'Re-entry activated',
-    message: `Cycle #${Number(recycleEntry.cycle_number || 0)} was added back into the global autopool queue.`,
+    message: `Cycle #${Number(recycleEntry.cycle_number || 0)} was created as a new entry and added back into the global FIFO queue.`,
     sourceKey: `autopool:recycle:${markedEntry.id}:${recycleEntry.id}`,
     metadata: {
       completedEntryId: markedEntry.id,
       recycleEntryId: recycleEntry.id,
       recycleCount: nextRecycleCount,
+      recycleCreatesNewEntry: true,
+      walletCreditApplied: false,
       placement: recyclePlacement
     }
   });

@@ -47,6 +47,15 @@ function historyTypeVariant(type) {
   }[type] || 'default';
 }
 
+function slotDisplayLabel(slot) {
+  if (slot?.slotLabel) return slot.slotLabel;
+  return {
+    1: 'LEFT',
+    2: 'MIDDLE',
+    3: 'RIGHT'
+  }[Number(slot?.slotPosition || 0)] || `SLOT ${slot?.slotPosition || ''}`.trim();
+}
+
 function buildHistoryToast(item) {
   if (!item) return 'Autopool updated';
   if (item.type === 'EARN') return `Autopool earnings credited: ${currency(item.amount)}`;
@@ -61,7 +70,10 @@ function SlotCard({ slot }) {
   return (
     <div className={`rounded-[24px] border p-4 ${slot?.isEmpty ? 'border-dashed border-slate-200 bg-slate-50' : 'border-slate-200 bg-white shadow-[0_10px_24px_rgba(15,23,42,0.05)]'}`}>
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Slot {slot.slotPosition}</p>
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{slotDisplayLabel(slot)}</p>
+          <p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-slate-400">Slot {slot.slotPosition}</p>
+        </div>
         <Badge variant={slot?.isEmpty ? 'default' : entryStatusVariant(slot.status)}>{slot?.isEmpty ? 'Empty' : slot.status}</Badge>
       </div>
       {slot?.isEmpty ? (
@@ -116,7 +128,7 @@ export default function AutopoolPage() {
       } else if (placement?.isRoot) {
         toast.success('Global autopool root entry created');
       } else if (placement?.slotPosition) {
-        toast.success(`Placed in slot ${placement.slotPosition} of the next FIFO matrix`);
+        toast.success(`Placed in ${placement.slotLabel || `slot ${placement.slotPosition}`} of the next FIFO matrix`);
       } else {
         toast.success(result.message || 'Autopool entry created');
       }
@@ -201,6 +213,9 @@ export default function AutopoolPage() {
               <p className="mt-1 text-sm text-slate-500">
                 Entry {currency(config.entryAmount || 0)} | Matrix {config.matrixType || '1x3'}
               </p>
+              <p className="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
+                Top to Bottom | Left to Right
+              </p>
             </div>
             <div className="rounded-[24px] border border-slate-200 bg-white px-4 py-3 text-right shadow-[0_10px_26px_rgba(15,23,42,0.05)]">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Wallet Available</p>
@@ -265,7 +280,8 @@ export default function AutopoolPage() {
 
             <div className="mt-4 space-y-3 text-sm text-slate-600">
               <p>All entries join one global queue. The oldest incomplete matrix gets the next slot every time.</p>
-              <p>When a cycle reaches 3/3, the owner earns {currency(config.ownerPayout || 1.5)}, the autopool upline earns {currency(config.uplinePayout || 0.5)}, {currency(config.auctionShare || 2)} goes to the auction wallet, and {currency(config.recycleAmount || 2)} triggers automatic re-entry.</p>
+              <p>Matrix slots always fill in this order: 1 LEFT, 2 MIDDLE, 3 RIGHT.</p>
+              <p>When a cycle reaches 3/3, the owner earns {currency(config.ownerPayout || 1.5)}, the autopool upline earns {currency(config.uplinePayout || 0.5)}, {currency(config.auctionShare || 2)} goes to the auction wallet, and {currency(config.recycleAmount || 2)} creates a brand-new recycle entry instead of crediting a wallet.</p>
             </div>
           </div>
 
@@ -287,7 +303,7 @@ export default function AutopoolPage() {
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold text-slate-900">Cycle #{entry.cycleNumber}</p>
-                        <p className="mt-1 text-xs text-slate-500">{entry.fillLabel} filled | {entry.entrySource}</p>
+                        <p className="mt-1 text-xs text-slate-500">{entry.fillLabel} filled | {entry.entrySource} | Recycles {entry.recycleCount}</p>
                       </div>
                       <Badge variant={entryStatusVariant(entry.status)}>{entry.status}</Badge>
                     </div>
