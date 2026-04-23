@@ -23,6 +23,25 @@ function toNumber(value, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function normalizeFillProgress(progress, fallbackFilled = 0) {
+  if (!progress || typeof progress !== 'object') {
+    const filled = toNumber(fallbackFilled);
+    return {
+      filled,
+      total: 3,
+      label: `${filled}/3`
+    };
+  }
+
+  const filled = toNumber(progress.filled, toNumber(fallbackFilled));
+  const total = Math.max(1, toNumber(progress.total, 3));
+  return {
+    filled,
+    total,
+    label: progress.label || `${filled}/${total}`
+  };
+}
+
 function normalizeUser(user) {
   if (!user || typeof user !== 'object') return null;
   const firstName = String(user.firstName || '').trim();
@@ -41,10 +60,13 @@ function normalizeEntry(entry) {
 
   return {
     ...entry,
+    matrixType: entry.matrixType || '1x3',
     cycleNumber: toNumber(entry.cycleNumber),
     recycleCount: toNumber(entry.recycleCount),
     filledSlotsCount: toNumber(entry.filledSlotsCount),
+    fillProgress: normalizeFillProgress(entry.fillProgress, entry.filledSlotsCount),
     slotPosition: entry.slotPosition === null || entry.slotPosition === undefined ? null : toNumber(entry.slotPosition),
+    queuePosition: entry.queuePosition === null || entry.queuePosition === undefined ? null : toNumber(entry.queuePosition),
     user: normalizeUser(entry.user),
     parent: entry.parent
       ? {
@@ -59,6 +81,7 @@ function normalizeEntry(entry) {
       cycleNumber: child.cycleNumber === null || child.cycleNumber === undefined ? null : toNumber(child.cycleNumber),
       recycleCount: toNumber(child.recycleCount),
       filledSlotsCount: toNumber(child.filledSlotsCount),
+      fillProgress: normalizeFillProgress(child.fillProgress, child.filledSlotsCount),
       user: normalizeUser(child.user),
       isEmpty: Boolean(child.isEmpty)
     }))
@@ -83,7 +106,13 @@ export async function getAutopoolDashboard() {
     ...envelope,
     data: {
       config: data.config || null,
-      stats: data.stats || {},
+      stats: {
+        ...(data.stats || {}),
+        currentCycleNumber: toNumber(data.stats?.currentCycleNumber),
+        currentRecycleCount: toNumber(data.stats?.currentRecycleCount),
+        currentFillCount: toNumber(data.stats?.currentFillCount),
+        currentFillProgress: normalizeFillProgress(data.stats?.currentFillProgress, data.stats?.currentFillCount)
+      },
       currentEntry: normalizeEntry(data.currentEntry),
       activeEntries: Array.isArray(data.activeEntries) ? data.activeEntries.map(normalizeEntry) : []
     }
@@ -102,6 +131,13 @@ export async function enterAutopool(payload = {}) {
     ...envelope,
     data: {
       ...data,
+      stats: {
+        ...(data.stats || {}),
+        currentCycleNumber: toNumber(data.stats?.currentCycleNumber),
+        currentRecycleCount: toNumber(data.stats?.currentRecycleCount),
+        currentFillCount: toNumber(data.stats?.currentFillCount),
+        currentFillProgress: normalizeFillProgress(data.stats?.currentFillProgress, data.stats?.currentFillCount)
+      },
       currentEntry: normalizeEntry(data.currentEntry),
       activeEntries: Array.isArray(data.activeEntries) ? data.activeEntries.map(normalizeEntry) : []
     }

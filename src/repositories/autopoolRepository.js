@@ -108,6 +108,7 @@ async function getLatestUserEntry(client, userId, options = {}) {
 async function getCurrentUserFocusEntry(client, userId) {
   const { rows } = await q(client).query(
     `SELECT ae.*,
+            aq.position AS queue_position,
             u.username,
             u.first_name,
             u.last_name,
@@ -118,10 +119,12 @@ async function getCurrentUserFocusEntry(client, userId) {
             parent_user.last_name AS parent_last_name
      FROM autopool_entries ae
      JOIN users u ON u.id = ae.user_id
+     LEFT JOIN autopool_queue aq ON aq.entry_id = ae.id
      LEFT JOIN autopool_entries parent ON parent.id = ae.parent_entry_id
      LEFT JOIN users parent_user ON parent_user.id = parent.user_id
      WHERE ae.user_id = $1
      ORDER BY CASE WHEN ae.status = 'active' THEN 0 ELSE 1 END,
+              CASE WHEN ae.status = 'active' THEN aq.position END ASC NULLS LAST,
               CASE WHEN ae.status = 'active' THEN ae.created_at END ASC NULLS LAST,
               ae.created_at DESC
      LIMIT 1`,
@@ -240,7 +243,7 @@ async function getNextQueueParentForUpdate(client, options = {}) {
      JOIN autopool_entries ae ON ae.id = aq.entry_id
      JOIN users u ON u.id = ae.user_id
      WHERE ${where.join(' AND ')}
-     ORDER BY ae.created_at ASC, aq.position ASC
+     ORDER BY aq.position ASC, aq.queued_at ASC, ae.created_at ASC, ae.id ASC
      LIMIT 1
      FOR UPDATE OF aq, ae`,
     values
@@ -365,17 +368,19 @@ async function listEntryChildren(client, parentEntryId) {
 async function listUserActiveEntries(client, userId, limit = 20) {
   const { rows } = await q(client).query(
     `SELECT ae.*,
+            aq.position AS queue_position,
             parent.user_id AS parent_user_id,
             parent.cycle_number AS parent_cycle_number,
             parent_user.username AS parent_username,
             parent_user.first_name AS parent_first_name,
             parent_user.last_name AS parent_last_name
      FROM autopool_entries ae
+     LEFT JOIN autopool_queue aq ON aq.entry_id = ae.id
      LEFT JOIN autopool_entries parent ON parent.id = ae.parent_entry_id
      LEFT JOIN users parent_user ON parent_user.id = parent.user_id
      WHERE ae.user_id = $1
        AND ae.status = 'active'
-     ORDER BY ae.created_at ASC
+     ORDER BY aq.position ASC NULLS LAST, ae.created_at ASC, ae.id ASC
      LIMIT $2`,
     [userId, Number(limit)]
   );

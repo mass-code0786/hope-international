@@ -9,10 +9,13 @@ const { ApiError } = require('../utils/ApiError');
 
 const ENTRY_AMOUNT = 2;
 const MATRIX_SLOTS = 3;
+const MATRIX_TYPE = '1x3';
 const OWNER_PAYOUT = 1.5;
 const UPLINE_PAYOUT = 0.5;
 const AUCTION_SHARE = 2;
 const RECYCLE_AMOUNT = 2;
+const AUCTIONS_WALLET_TYPE = 'auction_bonus';
+const RECYCLE_CONFIRMATION = 'Recycle creates a new entry and repeats the same process in global FIFO order from left to right.';
 const SLOT_ORDER = Object.freeze([
   { position: 1, label: 'LEFT' },
   { position: 2, label: 'MIDDLE' },
@@ -29,6 +32,15 @@ function formatMoney(value) {
 
 function getSlotLabel(slotPosition) {
   return SLOT_ORDER.find((item) => item.position === Number(slotPosition))?.label || null;
+}
+
+function buildFillProgress(filledSlotsCount = 0) {
+  const filled = Math.max(0, Math.min(MATRIX_SLOTS, Number(filledSlotsCount || 0)));
+  return {
+    filled,
+    total: MATRIX_SLOTS,
+    label: `${filled}/${MATRIX_SLOTS}`
+  };
 }
 
 function buildUser(row, prefix = '') {
@@ -48,32 +60,39 @@ function buildUser(row, prefix = '') {
 
 function buildEntrySummary(entry, children = []) {
   if (!entry) return null;
+  const fillProgress = buildFillProgress(entry.filled_slots_count);
   const childrenBySlot = new Map(
-    children.map((child) => [
-      Number(child.slot_position),
-      {
-        slotPosition: Number(child.slot_position),
-        slotLabel: getSlotLabel(child.slot_position),
-        entryId: child.entry_id || child.id,
-        status: child.status,
-        filledSlotsCount: Number(child.filled_slots_count || 0),
-        fillLabel: `${Number(child.filled_slots_count || 0)}/${MATRIX_SLOTS}`,
-        recycleCount: Number(child.recycle_count || 0),
-        cycleNumber: Number(child.cycle_number || 0),
-        createdAt: child.created_at,
-        user: buildUser(child)
-      }
-    ])
+    children.map((child) => {
+      const childFillProgress = buildFillProgress(child.filled_slots_count);
+      return [
+        Number(child.slot_position),
+        {
+          slotPosition: Number(child.slot_position),
+          slotLabel: getSlotLabel(child.slot_position),
+          entryId: child.entry_id || child.id,
+          status: child.status,
+          filledSlotsCount: Number(child.filled_slots_count || 0),
+          fillProgress: childFillProgress,
+          fillLabel: childFillProgress.label,
+          recycleCount: Number(child.recycle_count || 0),
+          cycleNumber: Number(child.cycle_number || 0),
+          createdAt: child.created_at,
+          user: buildUser(child)
+        }
+      ];
+    })
   );
 
   return {
     id: entry.id,
     status: entry.status,
     entrySource: entry.entry_source,
+    matrixType: MATRIX_TYPE,
     cycleNumber: Number(entry.cycle_number || 0),
     recycleCount: Number(entry.recycle_count || 0),
     filledSlotsCount: Number(entry.filled_slots_count || 0),
-    fillLabel: `${Number(entry.filled_slots_count || 0)}/${MATRIX_SLOTS}`,
+    fillProgress,
+    fillLabel: fillProgress.label,
     slotPosition: entry.slot_position === null || entry.slot_position === undefined ? null : Number(entry.slot_position),
     slotLabel: getSlotLabel(entry.slot_position),
     queuePosition: entry.queue_position === null || entry.queue_position === undefined ? null : Number(entry.queue_position),
@@ -94,6 +113,7 @@ function buildEntrySummary(entry, children = []) {
         entryId: null,
         status: 'empty',
         filledSlotsCount: 0,
+        fillProgress: buildFillProgress(0),
         fillLabel: '0/3',
         recycleCount: 0,
         cycleNumber: null,
@@ -107,16 +127,20 @@ function buildEntrySummary(entry, children = []) {
 
 function buildActiveEntrySummary(entry) {
   if (!entry) return null;
+  const fillProgress = buildFillProgress(entry.filled_slots_count);
   return {
     id: entry.id,
     status: entry.status,
     entrySource: entry.entry_source,
+    matrixType: MATRIX_TYPE,
     cycleNumber: Number(entry.cycle_number || 0),
     recycleCount: Number(entry.recycle_count || 0),
     filledSlotsCount: Number(entry.filled_slots_count || 0),
-    fillLabel: `${Number(entry.filled_slots_count || 0)}/${MATRIX_SLOTS}`,
+    fillProgress,
+    fillLabel: fillProgress.label,
     slotPosition: entry.slot_position === null || entry.slot_position === undefined ? null : Number(entry.slot_position),
     slotLabel: getSlotLabel(entry.slot_position),
+    queuePosition: entry.queue_position === null || entry.queue_position === undefined ? null : Number(entry.queue_position),
     createdAt: entry.created_at,
     parent: entry.parent_entry_id
       ? {
@@ -131,14 +155,18 @@ function buildActiveEntrySummary(entry) {
 function buildConfig() {
   return {
     entryAmount: ENTRY_AMOUNT,
-    matrixType: '1x3',
+    matrixType: MATRIX_TYPE,
     slotsPerEntry: MATRIX_SLOTS,
     ownerPayout: OWNER_PAYOUT,
     uplinePayout: UPLINE_PAYOUT,
     auctionShare: AUCTION_SHARE,
+    auctionWalletType: AUCTIONS_WALLET_TYPE,
+    auctionWalletLabel: 'Auctions Wallet',
     recycleAmount: RECYCLE_AMOUNT,
     recycleCreatesNewEntry: true,
     recycleWalletCreditApplied: false,
+    recycleConfirmation: RECYCLE_CONFIRMATION,
+    queueRule: 'OLDEST_ACTIVE_MATRIX_FIFO',
     fillDirection: 'TOP_TO_BOTTOM_LEFT_TO_RIGHT',
     slotOrder: SLOT_ORDER
   };
@@ -199,8 +227,12 @@ async function getDashboardWithClient(client, userId) {
     config: buildConfig(),
     stats: {
       ...stats,
+      currentMatrix: currentEntry?.matrixType || MATRIX_TYPE,
+      currentCycleNumber: Number(currentEntry?.cycleNumber || 0),
+      currentRecycleCount: Number(currentEntry?.recycleCount || 0),
       currentFillCount: Number(currentEntry?.filledSlotsCount || 0),
-      currentFillLabel: currentEntry?.fillLabel || `0/${MATRIX_SLOTS}`
+      currentFillLabel: currentEntry?.fillLabel || `0/${MATRIX_SLOTS}`,
+      currentFillProgress: currentEntry?.fillProgress || buildFillProgress(0)
     },
     currentEntry,
     activeEntries: activeEntries.map(buildActiveEntrySummary)
@@ -342,7 +374,7 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
       {
         sourceEntryId: markedEntry.id,
         sourceUserId: markedEntry.user_id,
-        note: `Autopool upline income from cycle #${Number(markedEntry.cycle_number || 0)}`
+        note: `Autopool matrix parent income from cycle #${Number(markedEntry.cycle_number || 0)}`
       }
     );
 
@@ -363,8 +395,8 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
 
     await createAutopoolNotification(client, {
       userId: uplineEntry.user_id,
-      title: 'Autopool upline income',
-      message: `You earned ${formatMoney(UPLINE_PAYOUT)} as autopool upline income.`,
+      title: 'Autopool matrix parent income',
+      message: `You earned ${formatMoney(UPLINE_PAYOUT)} as matrix parent income from the FIFO autopool.`,
       sourceKey: `autopool:upline-income:${markedEntry.id}:${uplineEntry.user_id}`,
       metadata: {
         entryId: markedEntry.id,
@@ -381,8 +413,9 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
     'autopool_auction_share',
     markedEntry.id,
     {
-      walletType: 'bonus',
-      note: `Autopool auction share from cycle #${Number(markedEntry.cycle_number || 0)}`
+      walletType: AUCTIONS_WALLET_TYPE,
+      creditedTo: 'auctions_wallet',
+      note: `Autopool auctions wallet share from cycle #${Number(markedEntry.cycle_number || 0)}`
     }
   );
 
@@ -395,7 +428,22 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
     sourceUserId: markedEntry.user_id,
     walletTransactionId: auctionWalletTransaction?.id || null,
     metadata: {
-      cycleNumber: Number(markedEntry.cycle_number || 0)
+      cycleNumber: Number(markedEntry.cycle_number || 0),
+      creditedTo: 'auctions_wallet',
+      walletType: AUCTIONS_WALLET_TYPE
+    }
+  });
+
+  await createAutopoolNotification(client, {
+    userId: markedEntry.user_id,
+    title: 'Auctions wallet credited',
+    message: `${formatMoney(AUCTION_SHARE)} moved to your auctions wallet from cycle #${Number(markedEntry.cycle_number || 0)}.`,
+    sourceKey: `autopool:auction-share:${markedEntry.id}`,
+    metadata: {
+      entryId: markedEntry.id,
+      amount: AUCTION_SHARE,
+      creditedTo: 'auctions_wallet',
+      walletType: AUCTIONS_WALLET_TYPE
     }
   });
 
@@ -424,8 +472,8 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
   if (uplineEntry?.user_id) {
     await createAutopoolNotification(client, {
       userId: markedEntry.user_id,
-      title: 'Upline income released',
-      message: `Your autopool upline received ${formatMoney(UPLINE_PAYOUT)} from this completion.`,
+      title: 'Matrix parent income released',
+      message: `Your matrix parent received ${formatMoney(UPLINE_PAYOUT)} from this FIFO completion.`,
       sourceKey: `autopool:upline-release:${markedEntry.id}`,
       metadata: {
         entryId: markedEntry.id,
@@ -482,7 +530,7 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
   await createAutopoolNotification(client, {
     userId: markedEntry.user_id,
     title: 'Re-entry activated',
-    message: `Cycle #${Number(recycleEntry.cycle_number || 0)} was created as a new entry and added back into the global FIFO queue.`,
+    message: `Cycle #${Number(recycleEntry.cycle_number || 0)} was created as a new entry. ${formatMoney(RECYCLE_AMOUNT)} was used only for automatic re-entry in the global FIFO queue.`,
     sourceKey: `autopool:recycle:${markedEntry.id}:${recycleEntry.id}`,
     metadata: {
       completedEntryId: markedEntry.id,
@@ -490,6 +538,7 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
       recycleCount: nextRecycleCount,
       recycleCreatesNewEntry: true,
       walletCreditApplied: false,
+      recycleConfirmation: RECYCLE_CONFIRMATION,
       placement: recyclePlacement
     }
   });
@@ -595,6 +644,8 @@ module.exports = {
   UPLINE_PAYOUT,
   AUCTION_SHARE,
   RECYCLE_AMOUNT,
+  AUCTIONS_WALLET_TYPE,
+  RECYCLE_CONFIRMATION,
   getDashboard,
   getHistory,
   enterAutopool
