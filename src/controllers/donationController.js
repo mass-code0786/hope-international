@@ -13,10 +13,9 @@ const createDonation = asyncHandler(async (req, res) => {
 
 const myDonations = asyncHandler(async (req, res) => {
   const result = await donationService.listUserDonations(req.user.sub, req.query);
-  return success(res, {
-    data: result.data,
-    pagination: result.pagination,
-    message: 'Donations fetched successfully'
+  return res.status(200).json({
+    items: result.items,
+    pagination: result.pagination
   });
 });
 

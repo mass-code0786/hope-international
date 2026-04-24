@@ -29,7 +29,16 @@ function buildPagination({ page, limit, total }) {
   };
 }
 
+function buildListPagination({ page, limit, total }) {
+  return {
+    page: toPositiveInteger(page, 1),
+    limit: toPositiveInteger(limit, 10),
+    total: Math.max(0, Number(total || 0))
+  };
+}
+
 module.exports = {
   normalizePagination,
-  buildPagination
+  buildPagination,
+  buildListPagination
 };

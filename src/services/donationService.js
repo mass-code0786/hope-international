@@ -1,6 +1,6 @@
 const { withTransaction } = require('../db/pool');
 const { ApiError } = require('../utils/ApiError');
-const { normalizePagination, buildPagination } = require('../utils/pagination');
+const { normalizePagination, buildListPagination } = require('../utils/pagination');
 const donationRepository = require('../repositories/donationRepository');
 const walletService = require('./walletService');
 
@@ -54,8 +54,8 @@ async function listUserDonations(userId, paginationInput = {}) {
   const result = await donationRepository.listUserDonations(null, userId, pagination);
 
   return {
-    data: await Promise.all(result.items.map(mapDonation)),
-    pagination: buildPagination({
+    items: await Promise.all(result.items.map(mapDonation)),
+    pagination: buildListPagination({
       page: pagination.page,
       limit: pagination.limit,
       total: result.total

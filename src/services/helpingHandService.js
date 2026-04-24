@@ -1,6 +1,6 @@
 const { withTransaction } = require('../db/pool');
 const { ApiError } = require('../utils/ApiError');
-const { normalizePagination, buildPagination } = require('../utils/pagination');
+const { normalizePagination, buildListPagination } = require('../utils/pagination');
 const helpingHandRepository = require('../repositories/helpingHandRepository');
 const landingMediaStorageService = require('./landingMediaStorageService');
 
@@ -73,8 +73,8 @@ async function listUserApplications(userId, paginationInput = {}) {
   const result = await helpingHandRepository.listUserApplications(null, userId, pagination);
 
   return {
-    data: await Promise.all(result.items.map(mapApplication)),
-    pagination: buildPagination({
+    items: await Promise.all(result.items.map(mapApplication)),
+    pagination: buildListPagination({
       page: pagination.page,
       limit: pagination.limit,
       total: result.total

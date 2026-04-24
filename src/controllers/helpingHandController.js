@@ -32,10 +32,9 @@ const createApplication = asyncHandler(async (req, res) => {
 
 const myApplications = asyncHandler(async (req, res) => {
   const result = await helpingHandService.listUserApplications(req.user.sub, req.query);
-  return success(res, {
-    data: result.data,
-    pagination: result.pagination,
-    message: 'Helping Hand applications fetched successfully'
+  return res.status(200).json({
+    items: result.items,
+    pagination: result.pagination
   });
 });
 
