@@ -53,7 +53,7 @@ END $$;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_autopool_transactions_user_request
   ON autopool_transactions(user_id, request_id)
   WHERE request_id IS NOT NULL
-    AND type::text IN ('ENTRY', 'AUTOPOOL_ENTRY');
+    AND type = 'AUTOPOOL_ENTRY'::autopool_transaction_type;
 
 CREATE INDEX IF NOT EXISTS idx_autopool_transactions_user_type_package_created
   ON autopool_transactions(user_id, type, package_amount, created_at DESC);

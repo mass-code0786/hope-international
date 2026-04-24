@@ -25,6 +25,8 @@ BEGIN
     ) INTO has_modern_autopool_type;
 
     IF has_modern_autopool_type THEN
+      DROP INDEX IF EXISTS uq_autopool_transactions_user_request;
+
       ALTER TABLE autopool_transactions
         ALTER COLUMN type TYPE TEXT
         USING type::text;
@@ -53,6 +55,11 @@ BEGIN
       ALTER TABLE autopool_transactions
         ALTER COLUMN type TYPE autopool_transaction_type
         USING type::autopool_transaction_type;
+
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_autopool_transactions_user_request
+        ON autopool_transactions(user_id, request_id)
+        WHERE request_id IS NOT NULL
+          AND type = 'ENTRY'::autopool_transaction_type;
     ELSE
       BEGIN
         ALTER TYPE autopool_transaction_type ADD VALUE IF NOT EXISTS 'BONUS';
