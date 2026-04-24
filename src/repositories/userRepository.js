@@ -64,6 +64,16 @@ async function findById(client, id) {
   return rows[0] || null;
 }
 
+async function getSponsorIdByUserId(client, userId) {
+  const { rows } = await q(client).query(
+    `SELECT sponsor_id
+     FROM users
+     WHERE id = $1`,
+    [userId]
+  );
+  return rows[0]?.sponsor_id || null;
+}
+
 async function createUser(client, payload) {
   const { rows } = await q(client).query(
     `INSERT INTO users (
@@ -438,6 +448,7 @@ module.exports = {
   findByUsername,
   findByLogin,
   findById,
+  getSponsorIdByUserId,
   findAdminUser,
   updateAdminCredentials,
   createUser,

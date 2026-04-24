@@ -15,7 +15,9 @@
     "full-reset:dev": "npm run reseed:dev",
     "admin:bootstrap": "node src/scripts/bootstrapAdmin.js",
     "binary-tree:repair": "node src/scripts/repairBinaryTree.js",
-    "binary-tree:repair:apply": "node src/scripts/repairBinaryTree.js --apply"
+    "binary-tree:repair:apply": "node src/scripts/repairBinaryTree.js --apply",
+    "autopool:sponsor-repair": "node src/scripts/repairAutopoolSponsorIncome.js",
+    "autopool:sponsor-repair:apply": "node src/scripts/repairAutopoolSponsorIncome.js --apply"
   },
   "keywords": [],
   "author": "",

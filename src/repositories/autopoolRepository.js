@@ -120,6 +120,42 @@ function normalizePackageAmount(value, fallback = 0) {
   return Number.isFinite(parsed) ? toMoney(parsed) : toMoney(fallback);
 }
 
+function buildSponsorMatrixOwnerUserIdExpression(transactionAlias = 'at', entryAlias = 'ae') {
+  return `COALESCE(
+    ${transactionAlias}.source_user_id::text,
+    ${entryAlias}.user_id::text,
+    NULLIF(${transactionAlias}.metadata->>'sourceOwnerId', ''),
+    NULLIF(${transactionAlias}.metadata->>'matrixOwnerUserId', '')
+  )`;
+}
+
+function buildExpectedSponsorUserIdExpression(transactionAlias = 'at', matrixOwnerAlias = 'matrix_owner') {
+  return `COALESCE(
+    NULLIF(${transactionAlias}.metadata->>'sponsorUserId', ''),
+    ${matrixOwnerAlias}.sponsor_id::text
+  )`;
+}
+
+function buildValidSponsorIncomePredicate(transactionAlias = 'at', entryAlias = 'ae', matrixOwnerAlias = 'matrix_owner') {
+  const matrixOwnerUserIdExpression = buildSponsorMatrixOwnerUserIdExpression(transactionAlias, entryAlias);
+  const expectedSponsorUserIdExpression = buildExpectedSponsorUserIdExpression(transactionAlias, matrixOwnerAlias);
+
+  return `(
+    ${matrixOwnerUserIdExpression} IS NOT NULL
+    AND ${expectedSponsorUserIdExpression} IS NOT NULL
+    AND ${transactionAlias}.user_id::text <> ${matrixOwnerUserIdExpression}
+    AND ${transactionAlias}.user_id::text = ${expectedSponsorUserIdExpression}
+  )`;
+}
+
+function buildSponsorIncomeInclusionPredicate(sponsorSourcesParam, transactionAlias = 'at', walletAlias = 'wt', entryAlias = 'ae', matrixOwnerAlias = 'matrix_owner') {
+  return `(
+    ${walletAlias}.source IS NULL
+    OR ${walletAlias}.source::text <> ALL(${sponsorSourcesParam})
+    OR ${buildValidSponsorIncomePredicate(transactionAlias, entryAlias, matrixOwnerAlias)}
+  )`;
+}
+
 function applyPackageFilter(values, where, packageAmount, columnName = 'package_amount') {
   if (packageAmount === undefined || packageAmount === null || packageAmount === '') {
     return;
@@ -580,6 +616,7 @@ async function getUserStats(client, userId, options = {}) {
     ...getAutopoolWalletSourceCandidates(AUTOPOOL_WALLET_SOURCES.SPONSOR)
   ]);
   const bonusTypesParam = pushTextArrayParameter(transactionValues, getAutopoolTransactionTypeCandidates(AUTOPOOL_TRANSACTION_TYPES.BONUS));
+  const validSponsorIncomePredicate = buildValidSponsorIncomePredicate('at', 'ae', 'matrix_owner');
 
   const [entryResult, transactionResult] = await Promise.all([
     q(client).query(
@@ -595,11 +632,18 @@ async function getUserStats(client, userId, options = {}) {
     q(client).query(
       `SELECT
          COALESCE(SUM(CASE WHEN wt.source::text = ANY(${incomeSourcesParam}) THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS owner_earnings,
-         COALESCE(SUM(CASE WHEN wt.source::text = ANY(${sponsorSourcesParam}) THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS sponsor_pool_income,
-         COALESCE(SUM(CASE WHEN wt.source::text = ANY(${totalIncomeSourcesParam}) THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS total_earnings,
+         COALESCE(SUM(CASE WHEN wt.source::text = ANY(${sponsorSourcesParam}) AND ${validSponsorIncomePredicate} THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS sponsor_pool_income,
+         COALESCE(SUM(CASE
+           WHEN wt.source::text = ANY(${incomeSourcesParam}) THEN at.amount
+           WHEN wt.source::text = ANY(${sponsorSourcesParam}) AND ${validSponsorIncomePredicate} THEN at.amount
+           WHEN wt.source::text = ANY(${totalIncomeSourcesParam}) AND ${validSponsorIncomePredicate} THEN at.amount
+           ELSE 0
+         END), 0)::numeric(14,2) AS total_earnings,
          COALESCE(SUM(CASE WHEN at.type::text = ANY(${bonusTypesParam}) THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS total_bonus_share
        FROM autopool_transactions at
+       LEFT JOIN autopool_entries ae ON ae.id = at.entry_id
        LEFT JOIN wallet_transactions wt ON wt.id = at.wallet_transaction_id
+       LEFT JOIN users matrix_owner ON matrix_owner.id::text = ${buildSponsorMatrixOwnerUserIdExpression('at', 'ae')}
        WHERE ${transactionWhere.map((clause) => clause.replace(/\buser_id\b/g, 'at.user_id').replace(/\bpackage_amount\b/g, 'at.package_amount')).join(' AND ')}`,
       transactionValues
     )
@@ -651,6 +695,7 @@ async function listUserPackageStats(client, userId) {
     ...getAutopoolWalletSourceCandidates(AUTOPOOL_WALLET_SOURCES.SPONSOR)
   ]);
   const bonusTypesParam = pushTextArrayParameter(transactionValues, getAutopoolTransactionTypeCandidates(AUTOPOOL_TRANSACTION_TYPES.BONUS));
+  const validSponsorIncomePredicate = buildValidSponsorIncomePredicate('at', 'ae', 'matrix_owner');
 
   const [entryResult, transactionResult] = await Promise.all([
     q(client).query(
@@ -670,11 +715,18 @@ async function listUserPackageStats(client, userId) {
       `SELECT
          at.package_amount AS package_amount,
          COALESCE(SUM(CASE WHEN wt.source::text = ANY(${incomeSourcesParam}) THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS owner_earnings,
-         COALESCE(SUM(CASE WHEN wt.source::text = ANY(${sponsorSourcesParam}) THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS sponsor_pool_income,
-         COALESCE(SUM(CASE WHEN wt.source::text = ANY(${totalIncomeSourcesParam}) THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS total_earnings,
+         COALESCE(SUM(CASE WHEN wt.source::text = ANY(${sponsorSourcesParam}) AND ${validSponsorIncomePredicate} THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS sponsor_pool_income,
+         COALESCE(SUM(CASE
+           WHEN wt.source::text = ANY(${incomeSourcesParam}) THEN at.amount
+           WHEN wt.source::text = ANY(${sponsorSourcesParam}) AND ${validSponsorIncomePredicate} THEN at.amount
+           WHEN wt.source::text = ANY(${totalIncomeSourcesParam}) AND ${validSponsorIncomePredicate} THEN at.amount
+           ELSE 0
+         END), 0)::numeric(14,2) AS total_earnings,
          COALESCE(SUM(CASE WHEN at.type::text = ANY(${bonusTypesParam}) THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS total_bonus_share
        FROM autopool_transactions at
+       LEFT JOIN autopool_entries ae ON ae.id = at.entry_id
        LEFT JOIN wallet_transactions wt ON wt.id = at.wallet_transaction_id
+       LEFT JOIN users matrix_owner ON matrix_owner.id::text = ${buildSponsorMatrixOwnerUserIdExpression('at', 'ae')}
        WHERE at.user_id = $1
        GROUP BY at.package_amount`,
       transactionValues
@@ -737,16 +789,24 @@ async function getIncomeDashboardSummary(client, userId) {
     ...getAutopoolWalletSourceCandidates(AUTOPOOL_WALLET_SOURCES.INCOME),
     ...getAutopoolWalletSourceCandidates(AUTOPOOL_WALLET_SOURCES.SPONSOR)
   ]);
+  const validSponsorIncomePredicate = buildValidSponsorIncomePredicate('at', 'ae', 'matrix_owner');
   const { rows } = await q(client).query(
     `SELECT
-       COALESCE(SUM(CASE WHEN wt.source::text = ANY(${totalIncomeSourcesParam}) THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS total_income,
+       COALESCE(SUM(CASE
+         WHEN wt.source::text = ANY(${incomeSourcesParam}) THEN at.amount
+         WHEN wt.source::text = ANY(${sponsorSourcesParam}) AND ${validSponsorIncomePredicate} THEN at.amount
+         WHEN wt.source::text = ANY(${totalIncomeSourcesParam}) AND ${validSponsorIncomePredicate} THEN at.amount
+         ELSE 0
+       END), 0)::numeric(14,2) AS total_income,
        COALESCE(SUM(CASE WHEN wt.source::text = ANY(${incomeSourcesParam}) AND at.package_amount = 2 THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS pool_2_income,
        COALESCE(SUM(CASE WHEN wt.source::text = ANY(${incomeSourcesParam}) AND at.package_amount = 99 THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS pool_99_income,
        COALESCE(SUM(CASE WHEN wt.source::text = ANY(${incomeSourcesParam}) AND at.package_amount = 313 THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS pool_313_income,
        COALESCE(SUM(CASE WHEN wt.source::text = ANY(${incomeSourcesParam}) AND at.package_amount = 786 THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS pool_786_income,
-       COALESCE(SUM(CASE WHEN wt.source::text = ANY(${sponsorSourcesParam}) THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS sponsor_pool_income
+       COALESCE(SUM(CASE WHEN wt.source::text = ANY(${sponsorSourcesParam}) AND ${validSponsorIncomePredicate} THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS sponsor_pool_income
      FROM autopool_transactions at
+     LEFT JOIN autopool_entries ae ON ae.id = at.entry_id
      LEFT JOIN wallet_transactions wt ON wt.id = at.wallet_transaction_id
+     LEFT JOIN users matrix_owner ON matrix_owner.id::text = ${buildSponsorMatrixOwnerUserIdExpression('at', 'ae')}
      WHERE at.user_id = $1`,
     values
   );
@@ -834,6 +894,8 @@ async function listUserTransactions(client, userId, pagination = {}, options = {
   applyPackageFilter(listValues, listWhere, options.packageAmount, 'at.package_amount');
   applyTransactionTypeFilter(listValues, listWhere, options.transactionTypes, 'at.type');
   applyWalletSourceFilter(listValues, listWhere, options.walletSources, 'wt.source');
+  const listSponsorSourcesParam = pushTextArrayParameter(listValues, getAutopoolWalletSourceCandidates(AUTOPOOL_WALLET_SOURCES.SPONSOR));
+  listWhere.push(buildSponsorIncomeInclusionPredicate(listSponsorSourcesParam, 'at', 'wt', 'ae', 'matrix_owner'));
   listValues.push(limit, offset);
 
   const countValues = [userId];
@@ -841,6 +903,8 @@ async function listUserTransactions(client, userId, pagination = {}, options = {
   applyPackageFilter(countValues, countWhere, options.packageAmount, 'at.package_amount');
   applyTransactionTypeFilter(countValues, countWhere, options.transactionTypes, 'at.type');
   applyWalletSourceFilter(countValues, countWhere, options.walletSources, 'wt.source');
+  const countSponsorSourcesParam = pushTextArrayParameter(countValues, getAutopoolWalletSourceCandidates(AUTOPOOL_WALLET_SOURCES.SPONSOR));
+  countWhere.push(buildSponsorIncomeInclusionPredicate(countSponsorSourcesParam, 'at', 'wt', 'ae', 'matrix_owner'));
 
   const [listResult, countResult] = await Promise.all([
     q(client).query(
@@ -858,6 +922,7 @@ async function listUserTransactions(client, userId, pagination = {}, options = {
        FROM autopool_transactions at
        LEFT JOIN autopool_entries ae ON ae.id = at.entry_id
        LEFT JOIN wallet_transactions wt ON wt.id = at.wallet_transaction_id
+       LEFT JOIN users matrix_owner ON matrix_owner.id::text = ${buildSponsorMatrixOwnerUserIdExpression('at', 'ae')}
        LEFT JOIN users source_user ON source_user.id = at.source_user_id
        WHERE ${listWhere.join(' AND ')}
        ORDER BY at.created_at DESC, at.id DESC
@@ -867,7 +932,9 @@ async function listUserTransactions(client, userId, pagination = {}, options = {
     q(client).query(
       `SELECT COUNT(*)::int AS total
        FROM autopool_transactions at
+       LEFT JOIN autopool_entries ae ON ae.id = at.entry_id
        LEFT JOIN wallet_transactions wt ON wt.id = at.wallet_transaction_id
+       LEFT JOIN users matrix_owner ON matrix_owner.id::text = ${buildSponsorMatrixOwnerUserIdExpression('at', 'ae')}
        WHERE ${countWhere.join(' AND ')}`,
       countValues
     )

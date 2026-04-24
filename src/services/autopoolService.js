@@ -1,6 +1,7 @@
 const { withTransaction } = require('../db/pool');
 const autopoolRepository = require('../repositories/autopoolRepository');
 const walletRepository = require('../repositories/walletRepository');
+const userRepository = require('../repositories/userRepository');
 const walletService = require('./walletService');
 const notificationService = require('./notificationService');
 const autopoolProcessor = require('../jobs/autopoolProcessor');
@@ -662,10 +663,8 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
 
   const markedEntry = await autopoolRepository.markEntryCompleted(client, completedEntry.id, nextRecycleCount);
   await autopoolRepository.removeQueuedEntry(client, markedEntry.id);
-
-  const sponsorEntry = markedEntry.parent_entry_id
-    ? await autopoolRepository.getEntryById(client, markedEntry.parent_entry_id)
-    : null;
+  const matrixOwnerUserId = markedEntry.user_id;
+  const sponsorUserId = await userRepository.getSponsorIdByUserId(client, matrixOwnerUserId);
 
   await creditAutopoolWalletOnce(client, {
     userId: markedEntry.user_id,
@@ -691,28 +690,34 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
     notificationMessage: `You earned ${formatMoney(packageConfig.self)} in your ${formatMoney(packageAmount)} Global Autopool cycle.`
   });
 
-  if (sponsorEntry?.user_id && toMoney(packageConfig.upline) > 0) {
+  if (sponsorUserId && sponsorUserId !== matrixOwnerUserId && toMoney(packageConfig.upline) > 0) {
     await creditAutopoolWalletOnce(client, {
-      userId: sponsorEntry.user_id,
+      userId: sponsorUserId,
       amount: packageConfig.upline,
       walletType: EARNING_WALLET_TYPE,
       walletSource: AUTOPOOL_WALLET_SOURCES.SPONSOR,
       entryId: markedEntry.id,
       packageAmount,
       cycleNumber,
-      sourceUserId: markedEntry.user_id,
+      sourceUserId: matrixOwnerUserId,
       transactionType: AUTOPOOL_TRANSACTION_TYPES.SPONSOR,
-      eventKey: `${completionEventKey}:sponsor:${sponsorEntry.user_id}`,
+      eventKey: `${completionEventKey}:sponsor:${sponsorUserId}`,
       walletMetadata: {
         sourceEntryId: markedEntry.id,
-        sourceOwnerId: markedEntry.user_id,
+        sourceOwnerId: matrixOwnerUserId,
         sourceCycleNumber: cycleNumber,
+        matrixOwnerUserId,
+        sponsorUserId,
+        sponsorRelationship: 'direct_referral',
         note: `Sponsor pool income from ${formatMoney(packageAmount)} package cycle #${cycleNumber}`
       },
       autopoolMetadata: {
         sourceEntryId: markedEntry.id,
-        sourceOwnerId: markedEntry.user_id,
-        sourceCycleNumber: cycleNumber
+        sourceOwnerId: matrixOwnerUserId,
+        matrixOwnerUserId,
+        sponsorUserId,
+        sourceCycleNumber: cycleNumber,
+        sponsorRelationship: 'direct_referral'
       },
       notificationTitle: 'Sponsor pool income',
       notificationMessage: `You earned ${formatMoney(packageConfig.upline)} as sponsor pool income from the ${formatMoney(packageAmount)} package.`
@@ -762,7 +767,7 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
     cycleNumber,
     recycleCount: nextRecycleCount,
     triggerEntryId: triggerEntry.id,
-    sponsorUserId: sponsorEntry?.user_id || null
+    sponsorUserId: sponsorUserId && sponsorUserId !== matrixOwnerUserId ? sponsorUserId : null
   });
 
   const recycleEntry = await createNextEntryForUser(client, markedEntry.user_id, {
