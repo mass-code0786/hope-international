@@ -433,6 +433,7 @@ const notificationsListQuerySchema = z.object({
 });
 const helpingHandRelationValues = ['Self', 'Neighbor', 'Relative', 'Orphan', 'Widow', 'Needy', 'Other'];
 const helpingHandCategoryValues = ['Medical', 'Education', 'Food', 'Marriage Support', 'Emergency', 'Other'];
+const donationPurposeValues = ['Orphan Support', 'Widow Support', 'Medical Help', 'Education Help', 'Food Help', 'Emergency Help', 'General Donation'];
 const helpingHandEligibilityQuerySchema = z.object({
   body: z.object({}),
   params: z.object({}),
@@ -456,6 +457,20 @@ const helpingHandApplicationCreateSchema = z.object({
   }),
   params: z.object({}),
   query: z.object({})
+});
+const donationCreateSchema = z.object({
+  body: z.object({
+    amount: z.number().positive(),
+    purpose: z.enum(donationPurposeValues),
+    note: z.string().trim().max(1000).optional()
+  }),
+  params: z.object({}),
+  query: z.object({})
+});
+const donationsListQuerySchema = z.object({
+  body: z.object({}),
+  params: z.object({}),
+  query: pagingQuery
 });
 const AUTOPOOL_PACKAGE_AMOUNTS = [2, 99, 313, 786];
 const autopoolPackageAmountSchema = z.preprocess(
@@ -613,6 +628,8 @@ module.exports = {
   helpingHandEligibilityQuerySchema,
   helpingHandApplicationsQuerySchema,
   helpingHandApplicationCreateSchema,
+  donationCreateSchema,
+  donationsListQuerySchema,
   autopoolOverviewQuerySchema,
   autopoolHistoryQuerySchema,
   autopoolEnterSchema,

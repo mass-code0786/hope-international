@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ProfileActions } from '@/components/profile/ProfileActions';
 import { HelpingHandCard } from '@/components/profile/HelpingHandCard';
+import { DonationCard } from '@/components/profile/DonationCard';
 import { BinaryReferralLinks } from '@/components/referral/BinaryReferralLinks';
 import { ErrorState } from '@/components/ui/ErrorState';
 import BtctCoinLogo from '@/components/common/BtctCoinLogo';
@@ -389,6 +390,7 @@ export default function ProfilePage() {
       </div>
 
       <HelpingHandCard />
+      <DonationCard />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="card-surface p-4">

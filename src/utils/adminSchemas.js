@@ -574,6 +574,18 @@ const adminHelpingHandApplicationStatusSchema = z.object({
   params: z.object({ id: uuid }),
   query: z.object({})
 });
+const donationStatusValues = ['completed', 'failed', 'reversed'];
+const adminDonationsQuerySchema = z.object({
+  body: z.object({}),
+  params: z.object({}),
+  query: pagingQuery.extend({
+    search: z.string().max(120).optional(),
+    status: z.enum(donationStatusValues).optional(),
+    userId: uuid.optional(),
+    dateFrom: z.string().date().optional(),
+    dateTo: z.string().date().optional()
+  })
+});
 
 module.exports = {
   adminUsersQuerySchema,
@@ -642,6 +654,7 @@ module.exports = {
   adminSupportMessageCreateSchema,
   adminSupportStatusUpdateSchema,
   adminHelpingHandApplicationsQuerySchema,
-  adminHelpingHandApplicationStatusSchema
+  adminHelpingHandApplicationStatusSchema,
+  adminDonationsQuerySchema
 };
 

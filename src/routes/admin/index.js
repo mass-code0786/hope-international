@@ -16,6 +16,7 @@ const landingRoutes = require('./landingRoutes');
 const galleryRoutes = require('./galleryRoutes');
 const supportRoutes = require('./supportRoutes');
 const helpingHandRoutes = require('./helpingHandRoutes');
+const donationsRoutes = require('./donationsRoutes');
 
 const router = express.Router();
 
@@ -37,5 +38,6 @@ router.use('/landing', landingRoutes);
 router.use('/gallery', galleryRoutes);
 router.use('/support', supportRoutes);
 router.use('/helping-hand', helpingHandRoutes);
+router.use('/donations', donationsRoutes);
 
 module.exports = router;

@@ -18,6 +18,7 @@ export const queryKeys = {
   walletHubHistory: (type = 'all') => ['wallet', 'history', type],
   helpingHandEligibility: ['helping-hand', 'eligibility'],
   helpingHandApplications: ['helping-hand', 'applications'],
+  donations: ['donations'],
   products: ['products'],
   productDetail: (id) => ['products', id],
   auctions: ['auctions'],

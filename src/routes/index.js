@@ -15,6 +15,7 @@ const galleryRoutes = require('./galleryRoutes');
 const supportRoutes = require('./supportRoutes');
 const assistantRoutes = require('./assistantRoutes');
 const helpingHandRoutes = require('./helpingHandRoutes');
+const donationRoutes = require('./donationRoutes');
 const { auth, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
@@ -34,6 +35,7 @@ router.use('/gallery', galleryRoutes);
 router.use('/support', supportRoutes);
 router.use('/assistant', assistantRoutes);
 router.use('/helping-hand', helpingHandRoutes);
+router.use('/donations', donationRoutes);
 router.use('/admin', auth(), requireAdmin, adminRoutes);
 
 module.exports = router;
