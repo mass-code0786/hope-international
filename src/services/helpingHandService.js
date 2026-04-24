@@ -37,7 +37,7 @@ async function getEligibility(userId) {
 async function assertEligible(client, userId) {
   const totalDeposit = toMoney(await helpingHandRepository.getApprovedDepositTotalForUser(client, userId));
   if (totalDeposit < REQUIRED_DEPOSIT) {
-    throw new ApiError(403, 'Minimum $1000 deposit required to apply.');
+    throw new ApiError(403, 'Minimum $1000 total deposit required.');
   }
   return totalDeposit;
 }

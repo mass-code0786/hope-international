@@ -88,14 +88,17 @@ export function HelpingHandCard() {
       toast.success('Helping Hand application submitted');
     },
     onError: (error) => {
-      toast.error(error?.message || 'Could not submit Helping Hand application');
+      const message = String(error?.message || '').trim();
+      if (message === 'Minimum $1000 total deposit required.') {
+        toast.error('Minimum $1000 total deposit required to submit this application.');
+        return;
+      }
+      toast.error(message || 'Could not submit Helping Hand application');
     }
   });
 
-  const eligibility = eligibilityQuery.data || { eligible: false, totalDeposit: 0, requiredDeposit: 1000 };
   const applications = applicationsQuery.data?.data || [];
   const inputClass = 'w-full rounded-[16px] border border-[rgba(255,255,255,0.08)] bg-[#171c26] px-3.5 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-[rgba(255,255,255,0.18)]';
-  const canApply = Boolean(eligibility.eligible);
 
   async function handleDocumentChange(event) {
     const file = event.target.files?.[0];
@@ -137,18 +140,17 @@ export function HelpingHandCard() {
   }
 
   function handleOpenForm() {
-    if (!canApply) {
-      toast.error('Minimum $1000 deposit required to apply.');
-      return;
-    }
     setIsFormOpen(true);
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
 
-    if (!canApply) {
-      toast.error('Minimum $1000 deposit required to apply.');
+    const latestEligibilityResult = await eligibilityQuery.refetch();
+    const latestEligibility = latestEligibilityResult?.data || eligibilityQuery.data || null;
+
+    if (latestEligibility && latestEligibility.eligible === false) {
+      toast.error('Minimum $1000 total deposit required to submit this application.');
       return;
     }
 
@@ -173,31 +175,21 @@ export function HelpingHandCard() {
           </span>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-text">Helping Hand</p>
-            <p className="mt-1 text-xs leading-5 text-muted">Help orphan, widow, and needy people through Hope International.</p>
-            {eligibilityQuery.isLoading ? (
-              <p className="mt-2 text-xs text-slate-400">Checking eligibility...</p>
-            ) : null}
-            {!eligibilityQuery.isLoading && !eligibilityQuery.isError && !canApply ? (
-              <p className="mt-2 text-xs font-medium text-amber-300">Minimum $1000 deposit required to apply.</p>
-            ) : null}
-            {eligibilityQuery.isError ? (
-              <p className="mt-2 text-xs text-rose-300">Eligibility could not be checked right now.</p>
-            ) : null}
+            <p className="mt-1 text-xs leading-5 text-muted">Support orphan, widow, and needy people through Hope International.</p>
+            <p className="mt-2 text-xs leading-5 text-slate-400">You can fill the form now. Submission will be allowed after completing $1000 total deposit.</p>
           </div>
         </div>
 
         <button
           type="button"
           onClick={handleOpenForm}
-          disabled={!canApply || eligibilityQuery.isLoading}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-[16px] border border-[rgba(255,255,255,0.12)] bg-[#1a1f28] px-4 text-sm font-semibold text-white transition hover:border-[rgba(255,255,255,0.2)] hover:bg-[#202631] disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex h-11 items-center justify-center rounded-[16px] border border-[rgba(255,255,255,0.12)] bg-[#1a1f28] px-4 text-sm font-semibold text-white transition hover:border-[rgba(255,255,255,0.2)] hover:bg-[#202631]"
         >
-          {eligibilityQuery.isLoading ? <LoaderCircle size={16} className="animate-spin" /> : null}
           Apply Now
         </button>
       </div>
 
-      {isFormOpen && canApply ? (
+      {isFormOpen ? (
         <form onSubmit={handleSubmit} className="mt-4 space-y-4 rounded-[24px] border border-[rgba(255,255,255,0.06)] bg-[linear-gradient(180deg,rgba(22,27,36,0.98),rgba(17,20,27,0.98))] p-4">
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Applicant Name">

@@ -1,6 +1,7 @@
 const asyncHandler = require('../utils/asyncHandler');
 const { success } = require('../utils/response');
 const helpingHandService = require('../services/helpingHandService');
+const { ApiError } = require('../utils/ApiError');
 
 const eligibility = asyncHandler(async (req, res) => {
   const data = await helpingHandService.getEligibility(req.user.sub);
@@ -11,12 +12,22 @@ const eligibility = asyncHandler(async (req, res) => {
 });
 
 const createApplication = asyncHandler(async (req, res) => {
-  const data = await helpingHandService.createApplication(req.user.sub, req.body);
-  return success(res, {
-    data,
-    statusCode: 201,
-    message: 'Helping Hand application submitted successfully'
-  });
+  try {
+    const data = await helpingHandService.createApplication(req.user.sub, req.body);
+    return success(res, {
+      data,
+      statusCode: 201,
+      message: 'Helping Hand application submitted successfully'
+    });
+  } catch (error) {
+    if (error instanceof ApiError && error.statusCode === 403 && error.message === 'Minimum $1000 total deposit required.') {
+      return res.status(403).json({
+        success: false,
+        message: 'Minimum $1000 total deposit required.'
+      });
+    }
+    throw error;
+  }
 });
 
 const myApplications = asyncHandler(async (req, res) => {
