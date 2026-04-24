@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  ArrowRight,
   Baby,
   Bell,
   ChevronRight,
@@ -67,7 +68,6 @@ const homeActions = [
   { label: 'Kids', href: '/shop', icon: Baby, tint: 'bg-[rgba(244,114,182,0.14)] text-[#f9a8d4]' },
   { label: 'Sports', href: '/shop', icon: Trophy, tint: 'bg-[rgba(34,211,238,0.14)] text-[#67e8f9]' },
   { label: 'Services', href: '/support', icon: PackagePlus, tint: 'bg-[rgba(192,199,212,0.12)] text-[#e2e8f0]' },
-  { label: 'Global Autopool', href: '/autopool', icon: Network, tint: 'bg-[rgba(34,197,94,0.16)] text-[#86efac]' },
   { label: 'Auctions', href: '/auctions', icon: Gavel, tint: 'bg-[rgba(139,61,255,0.22)] text-[#ede9fe]', featured: true }
 ];
 
@@ -125,6 +125,43 @@ function HomeBannerCard({ banner }) {
   }
 
   return <Link href={target} className="block h-full">{content}</Link>;
+}
+
+function AutopoolFeatureCard() {
+  return (
+    <Link href="/autopool" className="group block">
+      <article className="relative overflow-hidden rounded-[26px] border border-[rgba(117,100,255,0.42)] bg-[linear-gradient(135deg,rgba(10,18,40,0.96)_0%,rgba(24,31,62,0.94)_46%,rgba(55,31,93,0.94)_100%)] px-4 py-4 shadow-[0_22px_46px_rgba(12,18,38,0.48),0_0_0_1px_rgba(56,189,248,0.08),0_0_26px_rgba(118,92,255,0.2)]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(45,212,191,0.18),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(129,140,248,0.22),transparent_34%)]" />
+        <div className="absolute right-0 top-0 h-full w-[44%] bg-[radial-gradient(circle_at_80%_30%,rgba(59,130,246,0.16),transparent_62%),radial-gradient(circle_at_60%_70%,rgba(168,85,247,0.18),transparent_58%)] opacity-90" />
+        <div className="absolute right-5 top-4 h-24 w-24 rounded-full bg-[rgba(88,28,135,0.26)] blur-3xl" />
+        <div className="absolute bottom-3 right-4 h-20 w-28 bg-[radial-gradient(circle,rgba(148,163,184,0.28)_1px,transparent_1.6px)] bg-[length:12px_12px] opacity-25" />
+        <div className="absolute inset-[1px] rounded-[25px] border border-white/8" />
+
+        <div className="relative flex items-center gap-3">
+          <div className="relative shrink-0">
+            <div className="absolute inset-0 rounded-[20px] bg-[rgba(45,212,191,0.22)] blur-xl" />
+            <div className="relative flex h-14 w-14 items-center justify-center rounded-[20px] border border-[rgba(45,212,191,0.44)] bg-[linear-gradient(145deg,rgba(10,26,36,0.94),rgba(13,42,55,0.7))] shadow-[0_0_24px_rgba(45,212,191,0.16),inset_0_1px_0_rgba(255,255,255,0.08)]">
+              <div className="absolute inset-1 rounded-[18px] border border-white/6 [clip-path:polygon(25%_6%,75%_6%,94%_50%,75%_94%,25%_94%,6%_50%)]" />
+              <Network size={22} className="relative text-[#5eead4] drop-shadow-[0_0_12px_rgba(45,212,191,0.72)]" />
+            </div>
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <h2 className="text-[18px] font-semibold tracking-[-0.03em] text-white">Global Autopool</h2>
+            <p className="mt-1 text-[12px] font-medium text-slate-300">Grow, Earn &amp; Recycle</p>
+            <p className="mt-2 text-[11px] font-semibold tracking-[0.03em] text-[#5eead4]">Multiple pools. Multiple earnings.</p>
+          </div>
+
+          <div className="relative shrink-0">
+            <div className="absolute inset-0 rounded-full bg-[rgba(129,140,248,0.32)] blur-xl transition duration-300 group-hover:bg-[rgba(96,165,250,0.42)]" />
+            <span className="relative inline-flex h-12 w-12 items-center justify-center rounded-full border border-[rgba(129,140,248,0.52)] bg-[linear-gradient(135deg,rgba(76,29,149,0.88),rgba(37,99,235,0.76))] text-white shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_0_24px_rgba(99,102,241,0.34)] transition duration-300 group-hover:translate-x-0.5 group-hover:shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_0_30px_rgba(59,130,246,0.42)]">
+              <ArrowRight size={18} />
+            </span>
+          </div>
+        </div>
+      </article>
+    </Link>
+  );
 }
 
 function ProductTile({ product, onBuy, isBuying, lowBalance, prioritizeImage = false }) {
@@ -530,6 +567,10 @@ export default function DashboardPage() {
               ))}
             </div>
           ) : null}
+        </section>
+
+        <section>
+          <AutopoolFeatureCard />
         </section>
 
         <section className="rounded-[24px] bg-white p-3 shadow-[0_14px_32px_rgba(15,23,42,0.06)]">
