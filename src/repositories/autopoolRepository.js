@@ -14,11 +14,18 @@ function toMoney(value) {
 }
 
 const AUTOPOOL_TRANSACTION_TYPES = Object.freeze({
-  ENTRY: 'AUTOPOOL_ENTRY',
-  INCOME: 'AUTOPOOL_INCOME',
-  SPONSOR: 'SPONSOR_POOL_INCOME',
-  RECYCLE: 'AUTOPOOL_RECYCLE',
-  BONUS: 'AUTOPOOL_BONUS_SHARE'
+  ENTRY: 'ENTRY',
+  INCOME: 'EARN',
+  SPONSOR: 'UPLINE',
+  RECYCLE: 'RECYCLE',
+  BONUS: 'BONUS'
+});
+
+const AUTOPOOL_WALLET_SOURCES = Object.freeze({
+  ENTRY: 'autopool_entry',
+  INCOME: 'autopool_matrix_income',
+  SPONSOR: 'sponsor_pool_income',
+  BONUS: 'autopool_bonus_share'
 });
 
 function normalizePackageAmount(value, fallback = 0) {
@@ -44,6 +51,15 @@ function applyTransactionTypeFilter(values, where, transactionTypes, columnName 
   where.push(`${columnName} = ANY($${values.length}::autopool_transaction_type[])`);
 }
 
+function applyWalletSourceFilter(values, where, walletSources, columnName = 'wt.source') {
+  if (!Array.isArray(walletSources) || walletSources.length === 0) {
+    return;
+  }
+
+  values.push(walletSources);
+  where.push(`${columnName} = ANY($${values.length}::transaction_source[])`);
+}
+
 function normalizeEntry(row) {
   if (!row) return null;
   return {
@@ -65,6 +81,7 @@ function normalizeTransaction(row) {
     package_amount: normalizePackageAmount(row.package_amount),
     cycle_number: row.cycle_number === null || row.cycle_number === undefined ? null : Number(row.cycle_number),
     recycle_count: row.recycle_count === null || row.recycle_count === undefined ? null : Number(row.recycle_count),
+    wallet_source: row.wallet_source || null,
     entry_created_at: row.entry_created_at || null,
     entry_completed_at: row.entry_completed_at || null,
     metadata: row.metadata && typeof row.metadata === 'object' ? row.metadata : {}
@@ -479,12 +496,13 @@ async function getUserStats(client, userId, options = {}) {
     ),
     q(client).query(
       `SELECT
-         COALESCE(SUM(CASE WHEN type = '${AUTOPOOL_TRANSACTION_TYPES.INCOME}' THEN amount ELSE 0 END), 0)::numeric(14,2) AS owner_earnings,
-         COALESCE(SUM(CASE WHEN type = '${AUTOPOOL_TRANSACTION_TYPES.SPONSOR}' THEN amount ELSE 0 END), 0)::numeric(14,2) AS sponsor_pool_income,
-         COALESCE(SUM(CASE WHEN type IN ('${AUTOPOOL_TRANSACTION_TYPES.INCOME}', '${AUTOPOOL_TRANSACTION_TYPES.SPONSOR}') THEN amount ELSE 0 END), 0)::numeric(14,2) AS total_earnings,
-         COALESCE(SUM(CASE WHEN type = '${AUTOPOOL_TRANSACTION_TYPES.BONUS}' THEN amount ELSE 0 END), 0)::numeric(14,2) AS total_bonus_share
-       FROM autopool_transactions
-       WHERE ${transactionWhere.join(' AND ')}`,
+         COALESCE(SUM(CASE WHEN wt.source = '${AUTOPOOL_WALLET_SOURCES.INCOME}' THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS owner_earnings,
+         COALESCE(SUM(CASE WHEN wt.source = '${AUTOPOOL_WALLET_SOURCES.SPONSOR}' THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS sponsor_pool_income,
+         COALESCE(SUM(CASE WHEN wt.source IN ('${AUTOPOOL_WALLET_SOURCES.INCOME}', '${AUTOPOOL_WALLET_SOURCES.SPONSOR}') THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS total_earnings,
+         COALESCE(SUM(CASE WHEN at.type = '${AUTOPOOL_TRANSACTION_TYPES.BONUS}' THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS total_bonus_share
+       FROM autopool_transactions at
+       LEFT JOIN wallet_transactions wt ON wt.id = at.wallet_transaction_id
+       WHERE ${transactionWhere.map((clause) => clause.replace(/\buser_id\b/g, 'at.user_id').replace(/\bpackage_amount\b/g, 'at.package_amount')).join(' AND ')}`,
       transactionValues
     )
   ]);
@@ -543,14 +561,15 @@ async function listUserPackageStats(client, userId) {
     ),
     q(client).query(
       `SELECT
-         package_amount,
-         COALESCE(SUM(CASE WHEN type = '${AUTOPOOL_TRANSACTION_TYPES.INCOME}' THEN amount ELSE 0 END), 0)::numeric(14,2) AS owner_earnings,
-         COALESCE(SUM(CASE WHEN type = '${AUTOPOOL_TRANSACTION_TYPES.SPONSOR}' THEN amount ELSE 0 END), 0)::numeric(14,2) AS sponsor_pool_income,
-         COALESCE(SUM(CASE WHEN type IN ('${AUTOPOOL_TRANSACTION_TYPES.INCOME}', '${AUTOPOOL_TRANSACTION_TYPES.SPONSOR}') THEN amount ELSE 0 END), 0)::numeric(14,2) AS total_earnings,
-         COALESCE(SUM(CASE WHEN type = '${AUTOPOOL_TRANSACTION_TYPES.BONUS}' THEN amount ELSE 0 END), 0)::numeric(14,2) AS total_bonus_share
-       FROM autopool_transactions
-       WHERE user_id = $1
-       GROUP BY package_amount`,
+         at.package_amount AS package_amount,
+         COALESCE(SUM(CASE WHEN wt.source = '${AUTOPOOL_WALLET_SOURCES.INCOME}' THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS owner_earnings,
+         COALESCE(SUM(CASE WHEN wt.source = '${AUTOPOOL_WALLET_SOURCES.SPONSOR}' THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS sponsor_pool_income,
+         COALESCE(SUM(CASE WHEN wt.source IN ('${AUTOPOOL_WALLET_SOURCES.INCOME}', '${AUTOPOOL_WALLET_SOURCES.SPONSOR}') THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS total_earnings,
+         COALESCE(SUM(CASE WHEN at.type = '${AUTOPOOL_TRANSACTION_TYPES.BONUS}' THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS total_bonus_share
+       FROM autopool_transactions at
+       LEFT JOIN wallet_transactions wt ON wt.id = at.wallet_transaction_id
+       WHERE at.user_id = $1
+       GROUP BY at.package_amount`,
       [userId]
     )
   ]);
@@ -606,14 +625,15 @@ async function listUserPackageStats(client, userId) {
 async function getIncomeDashboardSummary(client, userId) {
   const { rows } = await q(client).query(
     `SELECT
-       COALESCE(SUM(CASE WHEN type IN ('${AUTOPOOL_TRANSACTION_TYPES.INCOME}', '${AUTOPOOL_TRANSACTION_TYPES.SPONSOR}') THEN amount ELSE 0 END), 0)::numeric(14,2) AS total_income,
-       COALESCE(SUM(CASE WHEN type = '${AUTOPOOL_TRANSACTION_TYPES.INCOME}' AND package_amount = 2 THEN amount ELSE 0 END), 0)::numeric(14,2) AS pool_2_income,
-       COALESCE(SUM(CASE WHEN type = '${AUTOPOOL_TRANSACTION_TYPES.INCOME}' AND package_amount = 99 THEN amount ELSE 0 END), 0)::numeric(14,2) AS pool_99_income,
-       COALESCE(SUM(CASE WHEN type = '${AUTOPOOL_TRANSACTION_TYPES.INCOME}' AND package_amount = 313 THEN amount ELSE 0 END), 0)::numeric(14,2) AS pool_313_income,
-       COALESCE(SUM(CASE WHEN type = '${AUTOPOOL_TRANSACTION_TYPES.INCOME}' AND package_amount = 786 THEN amount ELSE 0 END), 0)::numeric(14,2) AS pool_786_income,
-       COALESCE(SUM(CASE WHEN type = '${AUTOPOOL_TRANSACTION_TYPES.SPONSOR}' THEN amount ELSE 0 END), 0)::numeric(14,2) AS sponsor_pool_income
-     FROM autopool_transactions
-     WHERE user_id = $1`,
+       COALESCE(SUM(CASE WHEN wt.source IN ('${AUTOPOOL_WALLET_SOURCES.INCOME}', '${AUTOPOOL_WALLET_SOURCES.SPONSOR}') THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS total_income,
+       COALESCE(SUM(CASE WHEN wt.source = '${AUTOPOOL_WALLET_SOURCES.INCOME}' AND at.package_amount = 2 THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS pool_2_income,
+       COALESCE(SUM(CASE WHEN wt.source = '${AUTOPOOL_WALLET_SOURCES.INCOME}' AND at.package_amount = 99 THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS pool_99_income,
+       COALESCE(SUM(CASE WHEN wt.source = '${AUTOPOOL_WALLET_SOURCES.INCOME}' AND at.package_amount = 313 THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS pool_313_income,
+       COALESCE(SUM(CASE WHEN wt.source = '${AUTOPOOL_WALLET_SOURCES.INCOME}' AND at.package_amount = 786 THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS pool_786_income,
+       COALESCE(SUM(CASE WHEN wt.source = '${AUTOPOOL_WALLET_SOURCES.SPONSOR}' THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS sponsor_pool_income
+     FROM autopool_transactions at
+     LEFT JOIN wallet_transactions wt ON wt.id = at.wallet_transaction_id
+     WHERE at.user_id = $1`,
     [userId]
   );
 
@@ -699,12 +719,14 @@ async function listUserTransactions(client, userId, pagination = {}, options = {
   const listWhere = ['at.user_id = $1'];
   applyPackageFilter(listValues, listWhere, options.packageAmount, 'at.package_amount');
   applyTransactionTypeFilter(listValues, listWhere, options.transactionTypes, 'at.type');
+  applyWalletSourceFilter(listValues, listWhere, options.walletSources, 'wt.source');
   listValues.push(limit, offset);
 
   const countValues = [userId];
-  const countWhere = ['user_id = $1'];
-  applyPackageFilter(countValues, countWhere, options.packageAmount);
-  applyTransactionTypeFilter(countValues, countWhere, options.transactionTypes);
+  const countWhere = ['at.user_id = $1'];
+  applyPackageFilter(countValues, countWhere, options.packageAmount, 'at.package_amount');
+  applyTransactionTypeFilter(countValues, countWhere, options.transactionTypes, 'at.type');
+  applyWalletSourceFilter(countValues, countWhere, options.walletSources, 'wt.source');
 
   const [listResult, countResult] = await Promise.all([
     q(client).query(
@@ -715,11 +737,13 @@ async function listUserTransactions(client, userId, pagination = {}, options = {
               ae.status AS entry_status,
               ae.created_at AS entry_created_at,
               ae.completed_at AS entry_completed_at,
+              wt.source AS wallet_source,
               source_user.username AS source_username,
               source_user.first_name AS source_first_name,
               source_user.last_name AS source_last_name
        FROM autopool_transactions at
        LEFT JOIN autopool_entries ae ON ae.id = at.entry_id
+       LEFT JOIN wallet_transactions wt ON wt.id = at.wallet_transaction_id
        LEFT JOIN users source_user ON source_user.id = at.source_user_id
        WHERE ${listWhere.join(' AND ')}
        ORDER BY at.created_at DESC, at.id DESC
@@ -728,7 +752,8 @@ async function listUserTransactions(client, userId, pagination = {}, options = {
     ),
     q(client).query(
       `SELECT COUNT(*)::int AS total
-       FROM autopool_transactions
+       FROM autopool_transactions at
+       LEFT JOIN wallet_transactions wt ON wt.id = at.wallet_transaction_id
        WHERE ${countWhere.join(' AND ')}`,
       countValues
     )

@@ -33,11 +33,11 @@ const PACKAGE_AMOUNTS = Object.freeze(
 );
 
 const AUTOPOOL_TRANSACTION_TYPES = Object.freeze({
-  ENTRY: 'AUTOPOOL_ENTRY',
-  INCOME: 'AUTOPOOL_INCOME',
-  SPONSOR: 'SPONSOR_POOL_INCOME',
-  RECYCLE: 'AUTOPOOL_RECYCLE',
-  BONUS: 'AUTOPOOL_BONUS_SHARE'
+  ENTRY: 'ENTRY',
+  INCOME: 'EARN',
+  SPONSOR: 'UPLINE',
+  RECYCLE: 'RECYCLE',
+  BONUS: 'BONUS'
 });
 
 const AUTOPOOL_WALLET_SOURCES = Object.freeze({
@@ -51,36 +51,36 @@ const AUTOPOOL_HISTORY_FILTERS = Object.freeze({
   total: Object.freeze({
     type: 'total',
     title: 'Total Income',
-    transactionTypes: [AUTOPOOL_TRANSACTION_TYPES.INCOME, AUTOPOOL_TRANSACTION_TYPES.SPONSOR]
+    walletSources: [AUTOPOOL_WALLET_SOURCES.INCOME, AUTOPOOL_WALLET_SOURCES.SPONSOR]
   }),
   pool_2: Object.freeze({
     type: 'pool_2',
     title: '$2 Pool Income',
     packageAmount: 2,
-    transactionTypes: [AUTOPOOL_TRANSACTION_TYPES.INCOME]
+    walletSources: [AUTOPOOL_WALLET_SOURCES.INCOME]
   }),
   pool_99: Object.freeze({
     type: 'pool_99',
     title: '$99 Pool Income',
     packageAmount: 99,
-    transactionTypes: [AUTOPOOL_TRANSACTION_TYPES.INCOME]
+    walletSources: [AUTOPOOL_WALLET_SOURCES.INCOME]
   }),
   pool_313: Object.freeze({
     type: 'pool_313',
     title: '$313 Pool Income',
     packageAmount: 313,
-    transactionTypes: [AUTOPOOL_TRANSACTION_TYPES.INCOME]
+    walletSources: [AUTOPOOL_WALLET_SOURCES.INCOME]
   }),
   pool_786: Object.freeze({
     type: 'pool_786',
     title: '$786 Pool Income',
     packageAmount: 786,
-    transactionTypes: [AUTOPOOL_TRANSACTION_TYPES.INCOME]
+    walletSources: [AUTOPOOL_WALLET_SOURCES.INCOME]
   }),
   sponsor_pool: Object.freeze({
     type: 'sponsor_pool',
     title: 'Sponsor Pool Income',
-    transactionTypes: [AUTOPOOL_TRANSACTION_TYPES.SPONSOR]
+    walletSources: [AUTOPOOL_WALLET_SOURCES.SPONSOR]
   })
 });
 
@@ -110,7 +110,9 @@ function resolveHistoryFilter(type = 'total') {
   return filter;
 }
 
-function historyTypeLabel(type) {
+function historyTypeLabel(type, walletSource = null) {
+  if (walletSource === AUTOPOOL_WALLET_SOURCES.SPONSOR) return 'Sponsor Pool Income';
+  if (walletSource === AUTOPOOL_WALLET_SOURCES.INCOME) return 'Autopool Income';
   if (type === AUTOPOOL_TRANSACTION_TYPES.INCOME) return 'Autopool Income';
   if (type === AUTOPOOL_TRANSACTION_TYPES.SPONSOR) return 'Sponsor Pool Income';
   if (type === AUTOPOOL_TRANSACTION_TYPES.RECYCLE) return 'Autopool Recycle';
@@ -361,7 +363,8 @@ function buildHistoryItem(item) {
     amount: toMoney(item.amount || 0),
     type: item.type,
     incomeType: item.type,
-    incomeTypeLabel: historyTypeLabel(item.type),
+    walletSource: item.wallet_source || metadata.walletSource || null,
+    incomeTypeLabel: historyTypeLabel(item.type, item.wallet_source || metadata.walletSource || null),
     poolType: packageAmount,
     packageAmount,
     createdAt: item.created_at,
@@ -464,12 +467,13 @@ async function creditAutopoolWalletOnce(client, payload) {
     sourceUserId: payload.sourceUserId || null,
     walletTransactionId: walletTransaction?.id || null,
     eventKey: payload.eventKey || null,
-    metadata: {
-      source: 'autopool',
-      walletType: payload.walletType,
-      packageAmount: normalizePackageAmount(payload.packageAmount),
-      entryId: payload.entryId,
-      cycleNumber: Number(payload.cycleNumber || 0),
+      metadata: {
+        source: 'autopool',
+        walletType: payload.walletType,
+        walletSource: payload.walletSource,
+        packageAmount: normalizePackageAmount(payload.packageAmount),
+        entryId: payload.entryId,
+        cycleNumber: Number(payload.cycleNumber || 0),
       ...(payload.autopoolMetadata || {})
     }
   });
@@ -852,7 +856,7 @@ async function getHistory(userId, query = {}) {
     });
     const result = await autopoolRepository.listUserTransactions(client, userId, pagination, {
       packageAmount: filter.packageAmount,
-      transactionTypes: filter.transactionTypes
+      walletSources: filter.walletSources
     });
 
     return {
