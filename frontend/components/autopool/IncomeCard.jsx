@@ -12,7 +12,7 @@ const cardToneByType = {
   sponsor_pool: 'border-[rgba(250,204,21,0.18)] bg-[linear-gradient(155deg,rgba(39,28,18,0.94),rgba(17,19,29,0.98))] shadow-[0_18px_38px_rgba(20,13,8,0.42)]'
 };
 
-export function IncomeCard({ title, amount, type, onClick }) {
+export function IncomeCard({ title, amount, type, onClick, loading = false }) {
   const tone = cardToneByType[type] || cardToneByType.total;
 
   return (
@@ -32,7 +32,11 @@ export function IncomeCard({ title, amount, type, onClick }) {
           </span>
         </div>
 
-        <p className="mt-4 text-[22px] font-semibold tracking-[-0.04em] text-white">{currency(amount)}</p>
+        {loading ? (
+          <span className="mt-4 block h-8 w-24 animate-pulse rounded-full bg-white/10" />
+        ) : (
+          <p className="mt-4 text-[22px] font-semibold tracking-[-0.04em] text-white">{currency(amount)}</p>
+        )}
       </div>
     </button>
   );

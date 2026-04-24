@@ -10,6 +10,19 @@ import { currency, dateTime } from '@/lib/utils/format';
 
 const PAGE_LIMIT = 10;
 
+function getHistoryMessage(error) {
+  const reason = error?.details?.reason;
+  const status = Number(error?.status || 0);
+
+  if (reason === 'network' || status === 0) {
+    return 'Please check your internet connection.';
+  }
+  if (reason === 'server' || status >= 500) {
+    return 'Server issue. Please try again.';
+  }
+  return error?.message || 'Server issue. Please try again.';
+}
+
 function formatPoolLabel(amount) {
   const value = Number(amount || 0);
   if (!Number.isFinite(value) || value <= 0) return '-';
@@ -116,8 +129,10 @@ export function AutopoolHistoryModal({ open, type, title, onClose }) {
     queryFn: () => getAutopoolHistory({ type, page, limit: PAGE_LIMIT }),
     enabled: open && Boolean(type),
     placeholderData: (previousData) => previousData,
+    retry: false,
     staleTime: 15_000,
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false
   });
 
   const items = Array.isArray(historyQuery.data?.items) ? historyQuery.data.items : [];
@@ -174,7 +189,7 @@ export function AutopoolHistoryModal({ open, type, title, onClose }) {
 
               {historyQuery.isError ? (
                 <div className="rounded-[22px] border border-rose-400/16 bg-rose-500/8 p-4 text-center">
-                  <p className="text-sm font-medium text-rose-100">{historyQuery.error?.message || 'Autopool history could not be loaded.'}</p>
+                  <p className="text-sm font-medium text-rose-100">{getHistoryMessage(historyQuery.error)}</p>
                   <button
                     type="button"
                     onClick={() => historyQuery.refetch()}
@@ -188,7 +203,7 @@ export function AutopoolHistoryModal({ open, type, title, onClose }) {
 
               {!historyQuery.isError && !historyQuery.isPending && !items.length ? (
                 <div className="rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-8 text-center text-[13px] font-medium text-slate-300">
-                  No history yet
+                  No autopool data yet.
                 </div>
               ) : null}
 

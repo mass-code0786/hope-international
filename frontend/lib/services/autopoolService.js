@@ -1,6 +1,13 @@
 import { apiFetch } from '@/lib/api/client';
 
 const DEFAULT_AUTOPOOL_ENTRY_AMOUNT = 2;
+const DEFAULT_PACKAGE_AMOUNTS = [2, 99, 313, 786];
+const AUTOPOOL_WALLET_SOURCE_ALIASES = Object.freeze({
+  autopool_entry: ['autopool_entry'],
+  autopool_matrix_income: ['autopool_matrix_income'],
+  sponsor_pool_income: ['sponsor_pool_income', 'autopool_upline_income'],
+  autopool_bonus_share: ['autopool_bonus_share', 'autopool_auction_share']
+});
 
 function toEnvelope(payload) {
   if (payload && typeof payload === 'object' && Object.prototype.hasOwnProperty.call(payload, 'data')) {
@@ -42,6 +49,28 @@ function normalizeFillProgress(progress, fallbackFilled = 0) {
     total,
     label: progress.label || `${filled}/${total}`
   };
+}
+
+function matchesWalletSource(value, aliases = []) {
+  const normalized = String(value || '').trim();
+  if (!normalized) return false;
+  return aliases.includes(normalized);
+}
+
+function normalizeWalletSource(value) {
+  if (matchesWalletSource(value, AUTOPOOL_WALLET_SOURCE_ALIASES.sponsor_pool_income)) {
+    return 'sponsor_pool_income';
+  }
+  if (matchesWalletSource(value, AUTOPOOL_WALLET_SOURCE_ALIASES.autopool_matrix_income)) {
+    return 'autopool_matrix_income';
+  }
+  if (matchesWalletSource(value, AUTOPOOL_WALLET_SOURCE_ALIASES.autopool_bonus_share)) {
+    return 'autopool_bonus_share';
+  }
+  if (matchesWalletSource(value, AUTOPOOL_WALLET_SOURCE_ALIASES.autopool_entry)) {
+    return 'autopool_entry';
+  }
+  return value || null;
 }
 
 function normalizeUser(user) {
@@ -115,6 +144,27 @@ function normalizePackage(item) {
   };
 }
 
+function buildEmptyPackage(amount) {
+  return {
+    amount,
+    entryAmount: amount,
+    earnings: 0,
+    myEntry: 0,
+    recycleCount: 0,
+    totalEntries: 0,
+    activeEntries: 0,
+    completedCycles: 0,
+    totalBonus: 0,
+    ownerEarnings: 0,
+    uplineEarnings: 0,
+    currentCycleNumber: 0,
+    currentRecycleCount: 0,
+    currentFillCount: 0,
+    currentFillProgress: normalizeFillProgress(null, 0),
+    currentEntry: null
+  };
+}
+
 function normalizeIncomeSummary(data = {}) {
   return {
     totalIncome: toNumber(data.totalIncome ?? data.total_income),
@@ -126,8 +176,39 @@ function normalizeIncomeSummary(data = {}) {
   };
 }
 
+export function buildEmptyAutopoolDashboardData() {
+  const incomeSummary = normalizeIncomeSummary();
+  return {
+    config: null,
+    packages: DEFAULT_PACKAGE_AMOUNTS.map(buildEmptyPackage),
+    incomeSummary,
+    ...incomeSummary,
+    myEntry: 0,
+    recycle: 0,
+    entries: [],
+    activeEntries: [],
+    activeMatrices: [],
+    stats: {
+      myEntry: 0,
+      recycle: 0,
+      purchaseEntries: 0,
+      totalRecycles: 0,
+      completedCycles: 0,
+      totalEarnings: 0,
+      totalIncome: incomeSummary.totalIncome,
+      sponsorPoolIncome: incomeSummary.sponsorPoolIncome,
+      currentCycleNumber: 0,
+      currentRecycleCount: 0,
+      currentFillCount: 0,
+      currentFillProgress: normalizeFillProgress(null, 0)
+    },
+    currentEntry: null
+  };
+}
+
 function normalizeHistoryItem(item) {
   if (!item || typeof item !== 'object') return item;
+  const walletSource = normalizeWalletSource(item.walletSource || item.wallet_source || item.metadata?.walletSource);
   return {
     ...item,
     amount: toNumber(item.amount),
@@ -145,6 +226,7 @@ function normalizeHistoryItem(item) {
     purchaseDate: item.purchaseDate || item.purchase_date || null,
     completedAt: item.completedAt || item.completed_at || null,
     createdAt: item.createdAt || item.created_at || null,
+    walletSource,
     walletTransactionId: item.walletTransactionId || item.wallet_transaction_id || null,
     completedEntryId: item.completedEntryId || item.completed_entry_id || null,
     recycleEntryId: item.recycleEntryId || item.recycle_entry_id || null,
@@ -154,18 +236,31 @@ function normalizeHistoryItem(item) {
 }
 
 function normalizeDashboardData(data) {
-  const packages = Array.isArray(data?.packages) ? data.packages.map(normalizePackage).filter(Boolean) : [];
-  const currentEntry = normalizeEntry(data?.currentEntry);
+  const fallback = buildEmptyAutopoolDashboardData();
+  const packages = Array.isArray(data?.packages) && data.packages.length
+    ? data.packages.map(normalizePackage).filter(Boolean)
+    : fallback.packages;
+  const currentEntry = normalizeEntry(data?.currentEntry) || fallback.currentEntry;
   const incomeSummary = normalizeIncomeSummary(data?.incomeSummary || data);
+  const activeEntries = Array.isArray(data?.activeEntries) ? data.activeEntries.map(normalizeEntry).filter(Boolean) : fallback.activeEntries;
+  const activeMatrices = Array.isArray(data?.activeMatrices) ? data.activeMatrices.map(normalizeEntry).filter(Boolean) : activeEntries;
+  const entries = Array.isArray(data?.entries) ? data.entries.map(normalizeEntry).filter(Boolean) : activeEntries;
   return {
-    config: data?.config || null,
+    ...fallback,
+    config: data?.config || fallback.config,
     packages,
     incomeSummary,
     ...incomeSummary,
+    myEntry: toNumber(data?.myEntry, toNumber(data?.stats?.myEntry)),
+    recycle: toNumber(data?.recycle, toNumber(data?.stats?.recycle)),
+    entries,
+    activeEntries,
+    activeMatrices,
     stats: {
+      ...fallback.stats,
       ...(data?.stats || {}),
-      myEntry: toNumber(data?.stats?.myEntry),
-      recycle: toNumber(data?.stats?.recycle),
+      myEntry: toNumber(data?.stats?.myEntry, toNumber(data?.myEntry)),
+      recycle: toNumber(data?.stats?.recycle, toNumber(data?.recycle)),
       purchaseEntries: toNumber(data?.stats?.purchaseEntries),
       totalRecycles: toNumber(data?.stats?.totalRecycles),
       completedCycles: toNumber(data?.stats?.completedCycles),
@@ -177,8 +272,7 @@ function normalizeDashboardData(data) {
       currentFillCount: toNumber(data?.stats?.currentFillCount),
       currentFillProgress: normalizeFillProgress(data?.stats?.currentFillProgress, data?.stats?.currentFillCount)
     },
-    currentEntry,
-    activeEntries: Array.isArray(data?.activeEntries) ? data.activeEntries.map(normalizeEntry).filter(Boolean) : []
+    currentEntry
   };
 }
 

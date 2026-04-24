@@ -7,9 +7,8 @@ import { RefreshCcw, ShoppingCart } from 'lucide-react';
 import { AutopoolHistoryModal } from '@/components/autopool/AutopoolHistoryModal';
 import { IncomeCard } from '@/components/autopool/IncomeCard';
 import { AutopoolPurchaseModal } from '@/components/autopool/AutopoolPurchaseModal';
-import { ErrorState } from '@/components/ui/ErrorState';
 import { queryKeys } from '@/lib/query/queryKeys';
-import { enterAutopool, getAutopoolDashboard } from '@/lib/services/autopoolService';
+import { buildEmptyAutopoolDashboardData, enterAutopool, getAutopoolDashboard } from '@/lib/services/autopoolService';
 import { getWallet } from '@/lib/services/walletService';
 import { currency } from '@/lib/utils/format';
 
@@ -64,6 +63,7 @@ function AutopoolCard({
   onBuy,
   isPending = false,
   disabled = false,
+  loading = false,
   myEntry,
   recycleCount
 }) {
@@ -152,7 +152,11 @@ function AutopoolCard({
       <div className="mt-1">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9ca3af]">Earnings</p>
-          <p className="mt-1 text-[28px] font-semibold tracking-[-0.05em] text-white sm:text-[34px]">{currency(earningsValue)}</p>
+          {loading ? (
+            <span className="mt-2 block h-9 w-28 animate-pulse rounded-full bg-white/10" />
+          ) : (
+            <p className="mt-1 text-[28px] font-semibold tracking-[-0.05em] text-white sm:text-[34px]">{currency(earningsValue)}</p>
+          )}
         </div>
       </div>
 
@@ -217,8 +221,76 @@ function buildFallbackPackages(dataPackages = []) {
   });
 }
 
+function getAutopoolMessage(error) {
+  const reason = error?.details?.reason;
+  const status = Number(error?.status || 0);
+
+  if (reason === 'network' || status === 0) {
+    return 'Please check your internet connection.';
+  }
+  if (reason === 'server' || status >= 500) {
+    return 'Server issue. Please try again.';
+  }
+  if (status === 404) {
+    return 'No autopool data yet.';
+  }
+  return error?.message || 'Server issue. Please try again.';
+}
+
+function hasAutopoolData(dashboard) {
+  if (dashboard?.currentEntry) return true;
+  if (Array.isArray(dashboard?.activeEntries) && dashboard.activeEntries.length > 0) return true;
+  if (Array.isArray(dashboard?.activeMatrices) && dashboard.activeMatrices.length > 0) return true;
+  if (Array.isArray(dashboard?.entries) && dashboard.entries.length > 0) return true;
+
+  const packages = Array.isArray(dashboard?.packages) ? dashboard.packages : [];
+  if (packages.some((item) => (
+    Number(item?.earnings || 0) > 0
+    || Number(item?.myEntry || 0) > 0
+    || Number(item?.recycleCount || 0) > 0
+    || Number(item?.totalEntries || 0) > 0
+    || item?.currentEntry
+  ))) {
+    return true;
+  }
+
+  return [
+    Number(dashboard?.totalIncome || dashboard?.incomeSummary?.totalIncome || 0),
+    Number(dashboard?.pool2Income || dashboard?.incomeSummary?.pool2Income || 0),
+    Number(dashboard?.pool99Income || dashboard?.incomeSummary?.pool99Income || 0),
+    Number(dashboard?.pool313Income || dashboard?.incomeSummary?.pool313Income || 0),
+    Number(dashboard?.pool786Income || dashboard?.incomeSummary?.pool786Income || 0),
+    Number(dashboard?.sponsorPoolIncome || dashboard?.incomeSummary?.sponsorPoolIncome || 0)
+  ].some((value) => value > 0);
+}
+
+function SectionNotice({ message, onRetry = null, tone = 'default' }) {
+  if (!message) return null;
+
+  const toneClassName = tone === 'danger'
+    ? 'border-rose-400/18 bg-rose-500/8 text-rose-100'
+    : 'border-white/8 bg-white/[0.04] text-slate-300';
+
+  return (
+    <div className={`mt-3 flex items-center justify-between gap-3 rounded-[18px] border px-3.5 py-3 text-[12px] font-medium ${toneClassName}`}>
+      <span>{message}</span>
+      {onRetry ? (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="inline-flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[11px] font-semibold text-white"
+        >
+          <RefreshCcw size={12} />
+          Retry
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 export default function AutopoolPage() {
   const queryClient = useQueryClient();
+  const emptyDashboard = useMemo(() => buildEmptyAutopoolDashboardData(), []);
   const [pendingPackageAmount, setPendingPackageAmount] = useState(null);
   const [historyState, setHistoryState] = useState({ open: false, type: 'total', title: 'Total Income' });
   const [purchaseState, setPurchaseState] = useState({ open: false, amount: null });
@@ -227,9 +299,10 @@ export default function AutopoolPage() {
     queryKey: queryKeys.autopool,
     queryFn: getAutopoolDashboard,
     placeholderData: (previousData) => previousData,
-    staleTime: 4000,
-    refetchInterval: 5000,
-    refetchOnWindowFocus: true
+    retry: false,
+    staleTime: 15_000,
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: false
   });
 
   const walletQuery = useQuery({
@@ -272,7 +345,10 @@ export default function AutopoolPage() {
     }
   });
 
-  const dashboard = autopoolQuery.data?.data || {};
+  const dashboard = autopoolQuery.data?.data || emptyDashboard;
+  const dashboardLoading = autopoolQuery.isPending && !autopoolQuery.data;
+  const dashboardErrorMessage = autopoolQuery.isError ? getAutopoolMessage(autopoolQuery.error) : '';
+  const dashboardHasData = useMemo(() => hasAutopoolData(dashboard), [dashboard]);
   const walletBalance = Number(walletQuery.data?.wallet?.balance || 0);
   const canAfford = (amount) => (walletQuery.isError ? true : walletBalance >= Number(amount || 0));
   const pendingPurchaseAmount = Number(purchaseState.amount || 0);
@@ -312,10 +388,6 @@ export default function AutopoolPage() {
     });
   };
 
-  if (autopoolQuery.isError && !autopoolQuery.data) {
-    return <ErrorState message="Autopool data could not be loaded." onRetry={autopoolQuery.refetch} />;
-  }
-
   return (
     <div className="mx-auto max-w-xl rounded-[34px] bg-[linear-gradient(180deg,#12141a,#0f1115)] p-4 pb-28 sm:p-5 sm:pb-12">
       <div className="px-1">
@@ -329,10 +401,17 @@ export default function AutopoolPage() {
             title={card.title}
             amount={card.amount}
             type={card.type}
+            loading={dashboardLoading}
             onClick={() => setHistoryState({ open: true, type: card.type, title: card.title })}
           />
         ))}
       </div>
+
+      <SectionNotice
+        message={dashboardErrorMessage}
+        onRetry={dashboardErrorMessage ? autopoolQuery.refetch : null}
+        tone={dashboardErrorMessage ? 'danger' : 'default'}
+      />
 
       <div className="mt-4 space-y-4 sm:space-y-5">
         {poolCards.map((card) => {
@@ -348,6 +427,7 @@ export default function AutopoolPage() {
               currentFillCount={Number(card.currentFillCount || card.currentEntry?.filledSlotsCount || 0)}
               onBuy={() => openPurchaseModal(amount)}
               isPending={isPending}
+              loading={dashboardLoading}
               disabled={enterMutation.isPending || !canAfford(amount)}
               myEntry={Number(card.myEntry || 0)}
               recycleCount={Number(card.recycleCount || 0)}
@@ -355,6 +435,10 @@ export default function AutopoolPage() {
           );
         })}
       </div>
+
+      {!dashboardLoading && !dashboardErrorMessage && !dashboardHasData ? (
+        <SectionNotice message="No autopool data yet." />
+      ) : null}
 
       <AutopoolHistoryModal
         open={historyState.open}

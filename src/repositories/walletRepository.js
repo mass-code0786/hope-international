@@ -4,6 +4,69 @@ function q(client) {
 
 const { getCacheEntry, setCacheEntry } = require('../utils/runtimeCache');
 
+const TRANSACTION_SOURCE_CANDIDATES = Object.freeze({
+  autopool_entry: ['autopool_entry'],
+  autopool_matrix_income: ['autopool_matrix_income'],
+  sponsor_pool_income: ['sponsor_pool_income', 'autopool_upline_income'],
+  autopool_upline_income: ['autopool_upline_income', 'sponsor_pool_income'],
+  autopool_bonus_share: ['autopool_bonus_share', 'autopool_auction_share'],
+  autopool_auction_share: ['autopool_auction_share', 'autopool_bonus_share']
+});
+
+function uniqueStrings(values = []) {
+  return [...new Set(
+    values
+      .map((value) => String(value || '').trim())
+      .filter(Boolean)
+  )];
+}
+
+const TRANSACTION_SOURCE_ALIAS_LOOKUP = Object.freeze(
+  Object.values(TRANSACTION_SOURCE_CANDIDATES).reduce((lookup, candidates) => {
+    const normalizedCandidates = uniqueStrings(candidates);
+    normalizedCandidates.forEach((candidate) => {
+      lookup[candidate] = normalizedCandidates;
+    });
+    return lookup;
+  }, {})
+);
+
+function getTransactionSourceCandidates(source) {
+  return uniqueStrings(TRANSACTION_SOURCE_ALIAS_LOOKUP[source] || [source]);
+}
+
+async function getEnumLabels(client, enumName) {
+  const cacheKey = `wallet-repo:enum:${enumName}`;
+  const cached = getCacheEntry(cacheKey);
+  if (cached) return cached;
+
+  const { rows } = await q(client).query(
+    `SELECT e.enumlabel
+     FROM pg_type t
+     JOIN pg_enum e ON e.enumtypid = t.oid
+     WHERE t.typname = $1`,
+    [enumName]
+  );
+
+  return setCacheEntry(cacheKey, new Set(rows.map((row) => row.enumlabel)), 10 * 60 * 1000);
+}
+
+async function resolveTransactionSourceValue(client, source) {
+  const candidates = getTransactionSourceCandidates(source);
+  const labels = await getEnumLabels(client, 'transaction_source');
+
+  if (!labels.size) {
+    return candidates[0];
+  }
+
+  const resolved = candidates.find((candidate) => labels.has(candidate));
+  if (resolved) {
+    return resolved;
+  }
+
+  throw new Error(`Unsupported transaction source enum value: ${source}`);
+}
+
 async function getTableColumns(client, tableName) {
   const cacheKey = `wallet-repo:columns:${tableName}`;
   const cached = getCacheEntry(cacheKey);
@@ -314,6 +377,7 @@ async function listBtctTransactions(client, userId, limit = 50) {
 }
 
 async function createTransaction(client, payload) {
+  const source = await resolveTransactionSourceValue(client, payload.source);
   const { rows } = await q(client).query(
     `INSERT INTO wallet_transactions (user_id, tx_type, source, amount, reference_id, metadata, created_by_admin_id, from_wallet, to_wallet, status, reference_code)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
@@ -321,7 +385,7 @@ async function createTransaction(client, payload) {
     [
       payload.userId,
       payload.txType,
-      payload.source,
+      source,
       payload.amount,
       payload.referenceId || null,
       payload.metadata || {},
@@ -852,28 +916,30 @@ async function listIncomeTransactions(client, userId, limit = 200) {
 }
 
 async function listTransactionsBySource(client, userId, source, limit = 200) {
+  const sourceCandidates = getTransactionSourceCandidates(source);
   const { rows } = await q(client).query(
     `SELECT *
      FROM wallet_transactions
      WHERE user_id = $1
-       AND source = $2
+       AND source::text = ANY($2::text[])
      ORDER BY created_at DESC
      LIMIT $3`,
-    [userId, source, limit]
+    [userId, sourceCandidates, limit]
   );
   return rows;
 }
 
 async function getTransactionBySourceAndReference(client, userId, source, referenceId) {
+  const sourceCandidates = getTransactionSourceCandidates(source);
   const { rows } = await q(client).query(
     `SELECT *
      FROM wallet_transactions
      WHERE user_id = $1
-       AND source = $2
+       AND source::text = ANY($2::text[])
        AND reference_id = $3
      ORDER BY created_at DESC
      LIMIT 1`,
-    [userId, source, referenceId]
+    [userId, sourceCandidates, referenceId]
   );
   return rows[0] || null;
 }

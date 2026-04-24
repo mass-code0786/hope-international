@@ -2,6 +2,8 @@ function q(client) {
   return client || require('../db/pool').pool;
 }
 
+const { getCacheEntry, setCacheEntry } = require('../utils/runtimeCache');
+
 function withPaging(limit = 20, offset = 0) {
   return {
     limit: Math.max(1, Number(limit) || 20),
@@ -28,6 +30,91 @@ const AUTOPOOL_WALLET_SOURCES = Object.freeze({
   BONUS: 'autopool_bonus_share'
 });
 
+const AUTOPOOL_TRANSACTION_TYPE_CANDIDATES = Object.freeze({
+  ENTRY: ['ENTRY', 'AUTOPOOL_ENTRY'],
+  EARN: ['EARN', 'AUTOPOOL_INCOME'],
+  UPLINE: ['UPLINE', 'SPONSOR_POOL_INCOME'],
+  RECYCLE: ['RECYCLE', 'AUTOPOOL_RECYCLE'],
+  BONUS: ['BONUS', 'AUTOPOOL_BONUS_SHARE']
+});
+
+const AUTOPOOL_WALLET_SOURCE_CANDIDATES = Object.freeze({
+  autopool_entry: ['autopool_entry'],
+  autopool_matrix_income: ['autopool_matrix_income'],
+  sponsor_pool_income: ['sponsor_pool_income', 'autopool_upline_income'],
+  autopool_upline_income: ['autopool_upline_income', 'sponsor_pool_income'],
+  autopool_bonus_share: ['autopool_bonus_share', 'autopool_auction_share'],
+  autopool_auction_share: ['autopool_auction_share', 'autopool_bonus_share']
+});
+
+function uniqueStrings(values = []) {
+  return [...new Set(
+    values
+      .map((value) => String(value || '').trim())
+      .filter(Boolean)
+  )];
+}
+
+function buildAliasLookup(candidateGroups) {
+  return Object.freeze(
+    Object.values(candidateGroups).reduce((lookup, candidates) => {
+      const normalizedCandidates = uniqueStrings(candidates);
+      normalizedCandidates.forEach((candidate) => {
+        lookup[candidate] = normalizedCandidates;
+      });
+      return lookup;
+    }, {})
+  );
+}
+
+const AUTOPOOL_TRANSACTION_TYPE_ALIAS_LOOKUP = buildAliasLookup(AUTOPOOL_TRANSACTION_TYPE_CANDIDATES);
+const AUTOPOOL_WALLET_SOURCE_ALIAS_LOOKUP = buildAliasLookup(AUTOPOOL_WALLET_SOURCE_CANDIDATES);
+
+function getAutopoolTransactionTypeCandidates(type) {
+  return uniqueStrings(AUTOPOOL_TRANSACTION_TYPE_ALIAS_LOOKUP[type] || [type]);
+}
+
+function getAutopoolWalletSourceCandidates(source) {
+  return uniqueStrings(AUTOPOOL_WALLET_SOURCE_ALIAS_LOOKUP[source] || [source]);
+}
+
+function pushTextArrayParameter(values, items) {
+  values.push(uniqueStrings(items));
+  return `$${values.length}::text[]`;
+}
+
+async function getEnumLabels(client, enumName) {
+  const cacheKey = `autopool-repo:enum:${enumName}`;
+  const cached = getCacheEntry(cacheKey);
+  if (cached) return cached;
+
+  const { rows } = await q(client).query(
+    `SELECT e.enumlabel
+     FROM pg_type t
+     JOIN pg_enum e ON e.enumtypid = t.oid
+     WHERE t.typname = $1`,
+    [enumName]
+  );
+
+  return setCacheEntry(cacheKey, new Set(rows.map((row) => row.enumlabel)), 10 * 60 * 1000);
+}
+
+async function resolveAutopoolTransactionTypeValue(client, type) {
+  const candidates = getAutopoolTransactionTypeCandidates(type);
+  const labels = await getEnumLabels(client, 'autopool_transaction_type');
+
+  if (!labels.size) {
+    return candidates[0];
+  }
+
+  const resolved = candidates.find((candidate) => labels.has(candidate));
+  if (resolved) {
+    return resolved;
+  }
+
+  throw new Error(`Unsupported autopool transaction type enum value: ${type}`);
+}
+
 function normalizePackageAmount(value, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? toMoney(parsed) : toMoney(fallback);
@@ -47,8 +134,9 @@ function applyTransactionTypeFilter(values, where, transactionTypes, columnName 
     return;
   }
 
-  values.push(transactionTypes);
-  where.push(`${columnName} = ANY($${values.length}::autopool_transaction_type[])`);
+  const aliases = uniqueStrings(transactionTypes.flatMap((type) => getAutopoolTransactionTypeCandidates(type)));
+  values.push(aliases);
+  where.push(`${columnName}::text = ANY($${values.length}::text[])`);
 }
 
 function applyWalletSourceFilter(values, where, walletSources, columnName = 'wt.source') {
@@ -56,8 +144,9 @@ function applyWalletSourceFilter(values, where, walletSources, columnName = 'wt.
     return;
   }
 
-  values.push(walletSources);
-  where.push(`${columnName} = ANY($${values.length}::transaction_source[])`);
+  const aliases = uniqueStrings(walletSources.flatMap((source) => getAutopoolWalletSourceCandidates(source)));
+  values.push(aliases);
+  where.push(`${columnName}::text = ANY($${values.length}::text[])`);
 }
 
 function normalizeEntry(row) {
@@ -357,6 +446,7 @@ async function rebuildQueue(client) {
 }
 
 async function createTransaction(client, payload) {
+  const normalizedType = await resolveAutopoolTransactionTypeValue(client, payload.type);
   const { rows } = await q(client).query(
     `INSERT INTO autopool_transactions (
        user_id,
@@ -375,7 +465,7 @@ async function createTransaction(client, payload) {
     [
       payload.userId,
       payload.entryId || null,
-      payload.type,
+      normalizedType,
       payload.amount,
       normalizePackageAmount(payload.packageAmount, 2),
       payload.sourceUserId || null,
@@ -389,6 +479,7 @@ async function createTransaction(client, payload) {
 }
 
 async function getEntryTransactionByRequestId(client, userId, requestId) {
+  const entryTypes = getAutopoolTransactionTypeCandidates(AUTOPOOL_TRANSACTION_TYPES.ENTRY);
   const { rows } = await q(client).query(
     `SELECT at.*,
             ae.cycle_number,
@@ -397,9 +488,9 @@ async function getEntryTransactionByRequestId(client, userId, requestId) {
      LEFT JOIN autopool_entries ae ON ae.id = at.entry_id
      WHERE at.user_id = $1
        AND at.request_id = $2
-       AND at.type = '${AUTOPOOL_TRANSACTION_TYPES.ENTRY}'
+       AND at.type::text = ANY($3::text[])
      LIMIT 1`,
-    [userId, requestId]
+    [userId, requestId, entryTypes]
   );
   return normalizeTransaction(rows[0] || null);
 }
@@ -482,6 +573,13 @@ async function getUserStats(client, userId, options = {}) {
   const transactionValues = [userId];
   const transactionWhere = ['user_id = $1'];
   applyPackageFilter(transactionValues, transactionWhere, options.packageAmount);
+  const incomeSourcesParam = pushTextArrayParameter(transactionValues, getAutopoolWalletSourceCandidates(AUTOPOOL_WALLET_SOURCES.INCOME));
+  const sponsorSourcesParam = pushTextArrayParameter(transactionValues, getAutopoolWalletSourceCandidates(AUTOPOOL_WALLET_SOURCES.SPONSOR));
+  const totalIncomeSourcesParam = pushTextArrayParameter(transactionValues, [
+    ...getAutopoolWalletSourceCandidates(AUTOPOOL_WALLET_SOURCES.INCOME),
+    ...getAutopoolWalletSourceCandidates(AUTOPOOL_WALLET_SOURCES.SPONSOR)
+  ]);
+  const bonusTypesParam = pushTextArrayParameter(transactionValues, getAutopoolTransactionTypeCandidates(AUTOPOOL_TRANSACTION_TYPES.BONUS));
 
   const [entryResult, transactionResult] = await Promise.all([
     q(client).query(
@@ -496,10 +594,10 @@ async function getUserStats(client, userId, options = {}) {
     ),
     q(client).query(
       `SELECT
-         COALESCE(SUM(CASE WHEN wt.source = '${AUTOPOOL_WALLET_SOURCES.INCOME}' THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS owner_earnings,
-         COALESCE(SUM(CASE WHEN wt.source = '${AUTOPOOL_WALLET_SOURCES.SPONSOR}' THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS sponsor_pool_income,
-         COALESCE(SUM(CASE WHEN wt.source IN ('${AUTOPOOL_WALLET_SOURCES.INCOME}', '${AUTOPOOL_WALLET_SOURCES.SPONSOR}') THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS total_earnings,
-         COALESCE(SUM(CASE WHEN at.type = '${AUTOPOOL_TRANSACTION_TYPES.BONUS}' THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS total_bonus_share
+         COALESCE(SUM(CASE WHEN wt.source::text = ANY(${incomeSourcesParam}) THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS owner_earnings,
+         COALESCE(SUM(CASE WHEN wt.source::text = ANY(${sponsorSourcesParam}) THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS sponsor_pool_income,
+         COALESCE(SUM(CASE WHEN wt.source::text = ANY(${totalIncomeSourcesParam}) THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS total_earnings,
+         COALESCE(SUM(CASE WHEN at.type::text = ANY(${bonusTypesParam}) THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS total_bonus_share
        FROM autopool_transactions at
        LEFT JOIN wallet_transactions wt ON wt.id = at.wallet_transaction_id
        WHERE ${transactionWhere.map((clause) => clause.replace(/\buser_id\b/g, 'at.user_id').replace(/\bpackage_amount\b/g, 'at.package_amount')).join(' AND ')}`,
@@ -545,6 +643,15 @@ async function getAutopoolStats(client, userId, options = {}) {
 }
 
 async function listUserPackageStats(client, userId) {
+  const transactionValues = [userId];
+  const incomeSourcesParam = pushTextArrayParameter(transactionValues, getAutopoolWalletSourceCandidates(AUTOPOOL_WALLET_SOURCES.INCOME));
+  const sponsorSourcesParam = pushTextArrayParameter(transactionValues, getAutopoolWalletSourceCandidates(AUTOPOOL_WALLET_SOURCES.SPONSOR));
+  const totalIncomeSourcesParam = pushTextArrayParameter(transactionValues, [
+    ...getAutopoolWalletSourceCandidates(AUTOPOOL_WALLET_SOURCES.INCOME),
+    ...getAutopoolWalletSourceCandidates(AUTOPOOL_WALLET_SOURCES.SPONSOR)
+  ]);
+  const bonusTypesParam = pushTextArrayParameter(transactionValues, getAutopoolTransactionTypeCandidates(AUTOPOOL_TRANSACTION_TYPES.BONUS));
+
   const [entryResult, transactionResult] = await Promise.all([
     q(client).query(
       `SELECT
@@ -562,15 +669,15 @@ async function listUserPackageStats(client, userId) {
     q(client).query(
       `SELECT
          at.package_amount AS package_amount,
-         COALESCE(SUM(CASE WHEN wt.source = '${AUTOPOOL_WALLET_SOURCES.INCOME}' THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS owner_earnings,
-         COALESCE(SUM(CASE WHEN wt.source = '${AUTOPOOL_WALLET_SOURCES.SPONSOR}' THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS sponsor_pool_income,
-         COALESCE(SUM(CASE WHEN wt.source IN ('${AUTOPOOL_WALLET_SOURCES.INCOME}', '${AUTOPOOL_WALLET_SOURCES.SPONSOR}') THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS total_earnings,
-         COALESCE(SUM(CASE WHEN at.type = '${AUTOPOOL_TRANSACTION_TYPES.BONUS}' THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS total_bonus_share
+         COALESCE(SUM(CASE WHEN wt.source::text = ANY(${incomeSourcesParam}) THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS owner_earnings,
+         COALESCE(SUM(CASE WHEN wt.source::text = ANY(${sponsorSourcesParam}) THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS sponsor_pool_income,
+         COALESCE(SUM(CASE WHEN wt.source::text = ANY(${totalIncomeSourcesParam}) THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS total_earnings,
+         COALESCE(SUM(CASE WHEN at.type::text = ANY(${bonusTypesParam}) THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS total_bonus_share
        FROM autopool_transactions at
        LEFT JOIN wallet_transactions wt ON wt.id = at.wallet_transaction_id
        WHERE at.user_id = $1
        GROUP BY at.package_amount`,
-      [userId]
+      transactionValues
     )
   ]);
 
@@ -623,18 +730,25 @@ async function listUserPackageStats(client, userId) {
 }
 
 async function getIncomeDashboardSummary(client, userId) {
+  const values = [userId];
+  const incomeSourcesParam = pushTextArrayParameter(values, getAutopoolWalletSourceCandidates(AUTOPOOL_WALLET_SOURCES.INCOME));
+  const sponsorSourcesParam = pushTextArrayParameter(values, getAutopoolWalletSourceCandidates(AUTOPOOL_WALLET_SOURCES.SPONSOR));
+  const totalIncomeSourcesParam = pushTextArrayParameter(values, [
+    ...getAutopoolWalletSourceCandidates(AUTOPOOL_WALLET_SOURCES.INCOME),
+    ...getAutopoolWalletSourceCandidates(AUTOPOOL_WALLET_SOURCES.SPONSOR)
+  ]);
   const { rows } = await q(client).query(
     `SELECT
-       COALESCE(SUM(CASE WHEN wt.source IN ('${AUTOPOOL_WALLET_SOURCES.INCOME}', '${AUTOPOOL_WALLET_SOURCES.SPONSOR}') THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS total_income,
-       COALESCE(SUM(CASE WHEN wt.source = '${AUTOPOOL_WALLET_SOURCES.INCOME}' AND at.package_amount = 2 THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS pool_2_income,
-       COALESCE(SUM(CASE WHEN wt.source = '${AUTOPOOL_WALLET_SOURCES.INCOME}' AND at.package_amount = 99 THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS pool_99_income,
-       COALESCE(SUM(CASE WHEN wt.source = '${AUTOPOOL_WALLET_SOURCES.INCOME}' AND at.package_amount = 313 THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS pool_313_income,
-       COALESCE(SUM(CASE WHEN wt.source = '${AUTOPOOL_WALLET_SOURCES.INCOME}' AND at.package_amount = 786 THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS pool_786_income,
-       COALESCE(SUM(CASE WHEN wt.source = '${AUTOPOOL_WALLET_SOURCES.SPONSOR}' THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS sponsor_pool_income
+       COALESCE(SUM(CASE WHEN wt.source::text = ANY(${totalIncomeSourcesParam}) THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS total_income,
+       COALESCE(SUM(CASE WHEN wt.source::text = ANY(${incomeSourcesParam}) AND at.package_amount = 2 THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS pool_2_income,
+       COALESCE(SUM(CASE WHEN wt.source::text = ANY(${incomeSourcesParam}) AND at.package_amount = 99 THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS pool_99_income,
+       COALESCE(SUM(CASE WHEN wt.source::text = ANY(${incomeSourcesParam}) AND at.package_amount = 313 THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS pool_313_income,
+       COALESCE(SUM(CASE WHEN wt.source::text = ANY(${incomeSourcesParam}) AND at.package_amount = 786 THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS pool_786_income,
+       COALESCE(SUM(CASE WHEN wt.source::text = ANY(${sponsorSourcesParam}) THEN at.amount ELSE 0 END), 0)::numeric(14,2) AS sponsor_pool_income
      FROM autopool_transactions at
      LEFT JOIN wallet_transactions wt ON wt.id = at.wallet_transaction_id
      WHERE at.user_id = $1`,
-    [userId]
+    values
   );
 
   const row = rows[0] || {};

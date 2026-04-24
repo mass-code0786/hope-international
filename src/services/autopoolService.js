@@ -47,6 +47,13 @@ const AUTOPOOL_WALLET_SOURCES = Object.freeze({
   BONUS: 'autopool_bonus_share'
 });
 
+const AUTOPOOL_WALLET_SOURCE_ALIASES = Object.freeze({
+  ENTRY: [AUTOPOOL_WALLET_SOURCES.ENTRY],
+  INCOME: [AUTOPOOL_WALLET_SOURCES.INCOME],
+  SPONSOR: [AUTOPOOL_WALLET_SOURCES.SPONSOR, 'autopool_upline_income'],
+  BONUS: [AUTOPOOL_WALLET_SOURCES.BONUS, 'autopool_auction_share']
+});
+
 const AUTOPOOL_HISTORY_FILTERS = Object.freeze({
   total: Object.freeze({
     type: 'total',
@@ -110,14 +117,38 @@ function resolveHistoryFilter(type = 'total') {
   return filter;
 }
 
+function matchesWalletSource(value, sourceAliases = []) {
+  const normalizedValue = String(value || '').trim();
+  if (!normalizedValue) return false;
+  return sourceAliases.includes(normalizedValue);
+}
+
+function normalizeWalletSource(value) {
+  if (matchesWalletSource(value, AUTOPOOL_WALLET_SOURCE_ALIASES.SPONSOR)) {
+    return AUTOPOOL_WALLET_SOURCES.SPONSOR;
+  }
+  if (matchesWalletSource(value, AUTOPOOL_WALLET_SOURCE_ALIASES.INCOME)) {
+    return AUTOPOOL_WALLET_SOURCES.INCOME;
+  }
+  if (matchesWalletSource(value, AUTOPOOL_WALLET_SOURCE_ALIASES.BONUS)) {
+    return AUTOPOOL_WALLET_SOURCES.BONUS;
+  }
+  if (matchesWalletSource(value, AUTOPOOL_WALLET_SOURCE_ALIASES.ENTRY)) {
+    return AUTOPOOL_WALLET_SOURCES.ENTRY;
+  }
+  return value || null;
+}
+
 function historyTypeLabel(type, walletSource = null) {
-  if (walletSource === AUTOPOOL_WALLET_SOURCES.SPONSOR) return 'Sponsor Pool Income';
-  if (walletSource === AUTOPOOL_WALLET_SOURCES.INCOME) return 'Autopool Income';
-  if (type === AUTOPOOL_TRANSACTION_TYPES.INCOME) return 'Autopool Income';
-  if (type === AUTOPOOL_TRANSACTION_TYPES.SPONSOR) return 'Sponsor Pool Income';
-  if (type === AUTOPOOL_TRANSACTION_TYPES.RECYCLE) return 'Autopool Recycle';
-  if (type === AUTOPOOL_TRANSACTION_TYPES.ENTRY) return 'Autopool Entry';
-  if (type === AUTOPOOL_TRANSACTION_TYPES.BONUS) return 'Autopool Bonus Share';
+  const normalizedWalletSource = normalizeWalletSource(walletSource);
+  if (normalizedWalletSource === AUTOPOOL_WALLET_SOURCES.SPONSOR) return 'Sponsor Pool Income';
+  if (normalizedWalletSource === AUTOPOOL_WALLET_SOURCES.INCOME) return 'Autopool Income';
+  if (normalizedWalletSource === AUTOPOOL_WALLET_SOURCES.BONUS) return 'Autopool Bonus Share';
+  if ([AUTOPOOL_TRANSACTION_TYPES.INCOME, 'AUTOPOOL_INCOME'].includes(type)) return 'Autopool Income';
+  if ([AUTOPOOL_TRANSACTION_TYPES.SPONSOR, 'SPONSOR_POOL_INCOME'].includes(type)) return 'Sponsor Pool Income';
+  if ([AUTOPOOL_TRANSACTION_TYPES.RECYCLE, 'AUTOPOOL_RECYCLE'].includes(type)) return 'Autopool Recycle';
+  if ([AUTOPOOL_TRANSACTION_TYPES.ENTRY, 'AUTOPOOL_ENTRY'].includes(type)) return 'Autopool Entry';
+  if ([AUTOPOOL_TRANSACTION_TYPES.BONUS, 'AUTOPOOL_BONUS_SHARE'].includes(type)) return 'Autopool Bonus Share';
   return 'Autopool Transaction';
 }
 
@@ -332,10 +363,30 @@ function buildIncomeSummary(summary = {}) {
   };
 }
 
+function buildDefaultStats() {
+  return {
+    myEntry: 0,
+    recycle: 0,
+    purchaseEntries: 0,
+    totalRecycles: 0,
+    completedCycles: 0,
+    totalEarnings: 0,
+    totalIncome: 0,
+    sponsorPoolIncome: 0,
+    currentMatrix: MATRIX_TYPE,
+    currentCycleNumber: 0,
+    currentRecycleCount: 0,
+    currentFillCount: 0,
+    currentFillLabel: buildFillProgress(0).label,
+    currentFillProgress: buildFillProgress(0)
+  };
+}
+
 function buildHistoryItem(item) {
   if (!item) return null;
 
   const metadata = item.metadata && typeof item.metadata === 'object' ? item.metadata : {};
+  const walletSource = normalizeWalletSource(item.wallet_source || metadata.walletSource || null);
   const packageAmount = isPresent(item.package_amount) || isPresent(metadata.packageAmount)
     ? normalizePackageAmount(item.package_amount ?? metadata.packageAmount, 0)
     : null;
@@ -363,8 +414,8 @@ function buildHistoryItem(item) {
     amount: toMoney(item.amount || 0),
     type: item.type,
     incomeType: item.type,
-    walletSource: item.wallet_source || metadata.walletSource || null,
-    incomeTypeLabel: historyTypeLabel(item.type, item.wallet_source || metadata.walletSource || null),
+    walletSource,
+    incomeTypeLabel: historyTypeLabel(item.type, walletSource),
     poolType: packageAmount,
     packageAmount,
     createdAt: item.created_at,
@@ -774,17 +825,33 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
 }
 
 async function getPackagesOverviewWithClient(client, userId) {
-  const [packageStatsMap, incomeSummaryResult, focusEntries, defaultActiveEntries] = await Promise.all([
+  const [packageStatsResult, incomeSummaryQueryResult, focusEntriesResult, activeEntriesResult] = await Promise.allSettled([
     autopoolRepository.listUserPackageStats(client, userId),
     autopoolRepository.getIncomeDashboardSummary(client, userId),
     autopoolRepository.listUserPackageFocusEntries(client, userId),
     autopoolRepository.listUserActiveEntries(client, userId, 12, { packageAmount: DEFAULT_PACKAGE_AMOUNT })
   ]);
 
-  const focusEntryIds = focusEntries.map((entry) => entry.id);
-  const childEntries = focusEntryIds.length > 0
-    ? await autopoolRepository.listChildrenForParentEntries(client, focusEntryIds)
+  const packageStatsMap = packageStatsResult.status === 'fulfilled' && packageStatsResult.value instanceof Map
+    ? packageStatsResult.value
+    : new Map();
+  const incomeSummaryResult = incomeSummaryQueryResult.status === 'fulfilled' ? incomeSummaryQueryResult.value : {};
+  const focusEntries = focusEntriesResult.status === 'fulfilled' && Array.isArray(focusEntriesResult.value)
+    ? focusEntriesResult.value
     : [];
+  const defaultActiveEntries = activeEntriesResult.status === 'fulfilled' && Array.isArray(activeEntriesResult.value)
+    ? activeEntriesResult.value
+    : [];
+
+  const focusEntryIds = focusEntries.map((entry) => entry.id);
+  let childEntries = [];
+  if (focusEntryIds.length > 0) {
+    try {
+      childEntries = await autopoolRepository.listChildrenForParentEntries(client, focusEntryIds);
+    } catch (_error) {
+      childEntries = [];
+    }
+  }
 
   const focusByPackage = new Map();
   for (const entry of focusEntries) {
@@ -810,30 +877,37 @@ async function getPackagesOverviewWithClient(client, userId) {
 
   const defaultPackage = packages.find((item) => item.amount === DEFAULT_PACKAGE_AMOUNT) || packages[0];
   const incomeSummary = buildIncomeSummary(incomeSummaryResult);
+  const activeEntries = defaultActiveEntries.map(buildActiveEntrySummary).filter(Boolean);
+  const stats = {
+    ...buildDefaultStats(),
+    myEntry: Number(defaultPackage?.myEntry || 0),
+    recycle: Number(defaultPackage?.recycleCount || 0),
+    purchaseEntries: Number(defaultPackage?.myEntry || 0),
+    totalRecycles: Number(defaultPackage?.recycleCount || 0),
+    completedCycles: Number(defaultPackage?.completedCycles || defaultPackage?.recycleCount || 0),
+    totalEarnings: toMoney(defaultPackage?.earnings || 0),
+    totalIncome: incomeSummary.totalIncome,
+    sponsorPoolIncome: incomeSummary.sponsorPoolIncome,
+    currentMatrix: defaultPackage?.currentMatrix || MATRIX_TYPE,
+    currentCycleNumber: Number(defaultPackage?.currentCycleNumber || 0),
+    currentRecycleCount: Number(defaultPackage?.currentRecycleCount || 0),
+    currentFillCount: Number(defaultPackage?.currentFillCount || 0),
+    currentFillLabel: defaultPackage?.currentFillLabel || buildFillProgress(0).label,
+    currentFillProgress: defaultPackage?.currentFillProgress || buildFillProgress(0)
+  };
 
   return {
     config: buildOverviewConfig(),
     packages,
     incomeSummary,
     ...incomeSummary,
-    stats: {
-      myEntry: Number(defaultPackage?.myEntry || 0),
-      recycle: Number(defaultPackage?.recycleCount || 0),
-      purchaseEntries: Number(defaultPackage?.myEntry || 0),
-      totalRecycles: Number(defaultPackage?.recycleCount || 0),
-      completedCycles: Number(defaultPackage?.completedCycles || defaultPackage?.recycleCount || 0),
-      totalEarnings: toMoney(defaultPackage?.earnings || 0),
-      totalIncome: incomeSummary.totalIncome,
-      sponsorPoolIncome: incomeSummary.sponsorPoolIncome,
-      currentMatrix: defaultPackage?.currentMatrix || MATRIX_TYPE,
-      currentCycleNumber: Number(defaultPackage?.currentCycleNumber || 0),
-      currentRecycleCount: Number(defaultPackage?.currentRecycleCount || 0),
-      currentFillCount: Number(defaultPackage?.currentFillCount || 0),
-      currentFillLabel: defaultPackage?.currentFillLabel || buildFillProgress(0).label,
-      currentFillProgress: defaultPackage?.currentFillProgress || buildFillProgress(0)
-    },
+    myEntry: stats.myEntry,
+    recycle: stats.recycle,
+    entries: activeEntries,
+    activeMatrices: activeEntries,
+    stats,
     currentEntry: defaultPackage?.currentEntry || null,
-    activeEntries: defaultActiveEntries.map(buildActiveEntrySummary)
+    activeEntries
   };
 }
 
