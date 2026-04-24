@@ -9,10 +9,15 @@ const APP_ROOT = path.resolve(__dirname, '../..');
 const LEGACY_MEDIA_ROOT = path.join(APP_ROOT, 'storage');
 const MEDIA_SUBDIRECTORIES = ['landing', 'gallery', 'uploads'];
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
-const MIME_TO_EXTENSION = {
+const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
+const IMAGE_MIME_TO_EXTENSION = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
   'image/webp': 'webp'
+};
+const UPLOAD_MIME_TO_EXTENSION = {
+  ...IMAGE_MIME_TO_EXTENSION,
+  'application/pdf': 'pdf'
 };
 
 function normalizeSlotKey(slotKey) {
@@ -159,27 +164,46 @@ async function ensureMediaStorageReady() {
   };
 }
 
-function parseImageDataUrl(dataUrl) {
+function parseDataUrl(dataUrl, options = {}) {
   const normalized = String(dataUrl || '').trim();
-  const match = normalized.match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
-  if (!match) {
-    throw new ApiError(400, 'Only JPG, PNG, and WEBP image uploads are supported');
-  }
+  const match = normalized.match(/^data:([^;]+);base64,([A-Za-z0-9+/=]+)$/);
+  const allowedMimeToExtension = options.allowedMimeToExtension || IMAGE_MIME_TO_EXTENSION;
+  const unsupportedMessage = options.unsupportedMessage || 'Only JPG, PNG, and WEBP image uploads are supported';
+  if (!match || !allowedMimeToExtension[match[1]]) throw new ApiError(400, unsupportedMessage);
 
   const mimeType = match[1];
   const buffer = Buffer.from(match[2], 'base64');
   if (!buffer.length) {
     throw new ApiError(400, 'Uploaded image is empty');
   }
-  if (buffer.length > MAX_IMAGE_BYTES) {
-    throw new ApiError(400, 'Uploaded image must be 3MB or smaller');
+  const maxBytes = Number(options.maxBytes || MAX_IMAGE_BYTES);
+  if (buffer.length > maxBytes) {
+    throw new ApiError(400, options.maxSizeMessage || 'Uploaded image must be 3MB or smaller');
   }
 
   return {
     mimeType,
-    extension: MIME_TO_EXTENSION[mimeType],
+    extension: allowedMimeToExtension[mimeType],
     buffer
   };
+}
+
+function parseImageDataUrl(dataUrl) {
+  return parseDataUrl(dataUrl, {
+    allowedMimeToExtension: IMAGE_MIME_TO_EXTENSION,
+    maxBytes: MAX_IMAGE_BYTES,
+    unsupportedMessage: 'Only JPG, PNG, and WEBP image uploads are supported',
+    maxSizeMessage: 'Uploaded image must be 3MB or smaller'
+  });
+}
+
+function parseUploadDataUrl(dataUrl) {
+  return parseDataUrl(dataUrl, {
+    allowedMimeToExtension: UPLOAD_MIME_TO_EXTENSION,
+    maxBytes: MAX_UPLOAD_BYTES,
+    unsupportedMessage: 'Only JPG, PNG, WEBP, and PDF uploads are supported',
+    maxSizeMessage: 'Uploaded file must be 3MB or smaller'
+  });
 }
 
 function extractManagedRelativePath(publicUrl) {
@@ -325,6 +349,31 @@ async function saveManagedImage(folderName, slotKey, imageDataUrl) {
   return getPublicMountUrl(relativePath);
 }
 
+async function saveUploadFile(slotKey, fileDataUrl) {
+  const writableRoot = getWritableMediaRoot();
+  if (!writableRoot) {
+    throw new ApiError(500, 'Persistent media storage is not configured');
+  }
+
+  const safeSlotKey = normalizeSlotKey(slotKey);
+  if (!safeSlotKey) {
+    throw new ApiError(400, 'Invalid upload slot');
+  }
+
+  const parsed = parseUploadDataUrl(fileDataUrl);
+  const fileName = `${safeSlotKey}-${Date.now()}-${crypto.randomBytes(6).toString('hex')}.${parsed.extension}`;
+  const relativePath = normalizeRelativePath(path.posix.join('uploads', fileName));
+  const targetAbsolutePath = path.resolve(writableRoot, relativePath);
+  if (!isPathWithinRoot(path.resolve(writableRoot), targetAbsolutePath)) {
+    throw new ApiError(400, 'Invalid upload slot');
+  }
+
+  await fs.mkdir(path.dirname(targetAbsolutePath), { recursive: true });
+  await fs.writeFile(targetAbsolutePath, parsed.buffer);
+
+  return getPublicMountUrl(relativePath);
+}
+
 async function removeManagedMedia(publicUrl) {
   const relativePath = extractManagedRelativePath(publicUrl);
   if (!relativePath) return;
@@ -350,6 +399,7 @@ module.exports = {
   getPublicPrefix,
   getStaticRoots,
   resolveRenderableMediaUrl,
+  saveUploadFile,
   saveLandingMediaImage,
   saveGalleryImage,
   removeManagedMedia

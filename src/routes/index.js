@@ -14,6 +14,7 @@ const landingRoutes = require('./landingRoutes');
 const galleryRoutes = require('./galleryRoutes');
 const supportRoutes = require('./supportRoutes');
 const assistantRoutes = require('./assistantRoutes');
+const helpingHandRoutes = require('./helpingHandRoutes');
 const { auth, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
@@ -32,6 +33,7 @@ router.use('/landing', landingRoutes);
 router.use('/gallery', galleryRoutes);
 router.use('/support', supportRoutes);
 router.use('/assistant', assistantRoutes);
+router.use('/helping-hand', helpingHandRoutes);
 router.use('/admin', auth(), requireAdmin, adminRoutes);
 
 module.exports = router;

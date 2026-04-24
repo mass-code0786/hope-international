@@ -431,6 +431,32 @@ const notificationsListQuerySchema = z.object({
   params: z.object({}),
   query: pagingQuery
 });
+const helpingHandRelationValues = ['Self', 'Neighbor', 'Relative', 'Orphan', 'Widow', 'Needy', 'Other'];
+const helpingHandCategoryValues = ['Medical', 'Education', 'Food', 'Marriage Support', 'Emergency', 'Other'];
+const helpingHandEligibilityQuerySchema = z.object({
+  body: z.object({}),
+  params: z.object({}),
+  query: z.object({})
+});
+const helpingHandApplicationsQuerySchema = z.object({
+  body: z.object({}),
+  params: z.object({}),
+  query: pagingQuery
+});
+const helpingHandApplicationCreateSchema = z.object({
+  body: z.object({
+    applicantName: z.string().trim().min(2).max(255),
+    applicantPhone: z.string().trim().min(6).max(40).regex(/^[0-9+\-() ]+$/, 'Enter a valid phone number'),
+    applicantAddress: z.string().trim().min(5).max(500),
+    applicantRelation: z.enum(helpingHandRelationValues),
+    helpCategory: z.enum(helpingHandCategoryValues),
+    requestedAmount: z.number().positive(),
+    reason: z.string().trim().min(5).max(4000),
+    documentDataUrl: z.string().max(4_500_000).optional()
+  }),
+  params: z.object({}),
+  query: z.object({})
+});
 const AUTOPOOL_PACKAGE_AMOUNTS = [2, 99, 313, 786];
 const autopoolPackageAmountSchema = z.preprocess(
   (value) => firstQueryValue(value),
@@ -584,6 +610,9 @@ module.exports = {
   supportThreadCreateSchema,
   supportThreadIdParamSchema,
   supportMessageCreateSchema,
+  helpingHandEligibilityQuerySchema,
+  helpingHandApplicationsQuerySchema,
+  helpingHandApplicationCreateSchema,
   autopoolOverviewQuerySchema,
   autopoolHistoryQuerySchema,
   autopoolEnterSchema,

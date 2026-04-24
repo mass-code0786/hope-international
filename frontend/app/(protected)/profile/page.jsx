@@ -8,6 +8,7 @@ import { ArrowDownToLine, ArrowRight, ArrowUpFromLine, CircleDollarSign, Coins, 
 import toast from 'react-hot-toast';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ProfileActions } from '@/components/profile/ProfileActions';
+import { HelpingHandCard } from '@/components/profile/HelpingHandCard';
 import { BinaryReferralLinks } from '@/components/referral/BinaryReferralLinks';
 import { ErrorState } from '@/components/ui/ErrorState';
 import BtctCoinLogo from '@/components/common/BtctCoinLogo';
@@ -386,6 +387,8 @@ export default function ProfilePage() {
           {shortcuts.map((item) => <QuickLinkCard key={item.href} {...item} />)}
         </div>
       </div>
+
+      <HelpingHandCard />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="card-surface p-4">

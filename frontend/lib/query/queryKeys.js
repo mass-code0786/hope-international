@@ -16,6 +16,8 @@ export const queryKeys = {
   walletP2p: ['wallet', 'p2p'],
   walletStaking: ['wallet', 'staking'],
   walletHubHistory: (type = 'all') => ['wallet', 'history', type],
+  helpingHandEligibility: ['helping-hand', 'eligibility'],
+  helpingHandApplications: ['helping-hand', 'applications'],
   products: ['products'],
   productDetail: (id) => ['products', id],
   auctions: ['auctions'],

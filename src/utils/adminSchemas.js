@@ -554,6 +554,26 @@ const adminSupportThreadsQuerySchema = z.object({
 const adminSupportThreadIdParamSchema = z.object({ body: z.object({}), params: z.object({ id: uuid }), query: z.object({}) });
 const adminSupportMessageCreateSchema = z.object({ body: z.object({ message: z.string().min(1).max(5000) }), params: z.object({ id: uuid }), query: z.object({}) });
 const adminSupportStatusUpdateSchema = z.object({ body: z.object({ status: z.enum(supportStatuses) }), params: z.object({ id: uuid }), query: z.object({}) });
+const helpingHandStatusValues = ['pending', 'approved', 'rejected', 'donated'];
+const adminHelpingHandApplicationsQuerySchema = z.object({
+  body: z.object({}),
+  params: z.object({}),
+  query: pagingQuery.extend({
+    search: z.string().max(120).optional(),
+    status: z.enum(helpingHandStatusValues).optional(),
+    userId: uuid.optional(),
+    dateFrom: z.string().date().optional(),
+    dateTo: z.string().date().optional()
+  })
+});
+const adminHelpingHandApplicationStatusSchema = z.object({
+  body: z.object({
+    status: z.enum(helpingHandStatusValues),
+    adminNote: z.string().max(1000).optional()
+  }),
+  params: z.object({ id: uuid }),
+  query: z.object({})
+});
 
 module.exports = {
   adminUsersQuerySchema,
@@ -620,6 +640,8 @@ module.exports = {
   adminSupportThreadsQuerySchema,
   adminSupportThreadIdParamSchema,
   adminSupportMessageCreateSchema,
-  adminSupportStatusUpdateSchema
+  adminSupportStatusUpdateSchema,
+  adminHelpingHandApplicationsQuerySchema,
+  adminHelpingHandApplicationStatusSchema
 };
 
