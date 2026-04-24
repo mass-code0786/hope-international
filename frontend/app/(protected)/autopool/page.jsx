@@ -4,6 +4,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { RefreshCcw, ShoppingCart } from 'lucide-react';
+import { AutopoolHistoryModal } from '@/components/autopool/AutopoolHistoryModal';
+import { IncomeCard } from '@/components/autopool/IncomeCard';
+import { AutopoolPurchaseModal } from '@/components/autopool/AutopoolPurchaseModal';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { enterAutopool, getAutopoolDashboard } from '@/lib/services/autopoolService';
@@ -217,6 +220,8 @@ function buildFallbackPackages(dataPackages = []) {
 export default function AutopoolPage() {
   const queryClient = useQueryClient();
   const [pendingPackageAmount, setPendingPackageAmount] = useState(null);
+  const [historyState, setHistoryState] = useState({ open: false, type: 'total', title: 'Total Income' });
+  const [purchaseState, setPurchaseState] = useState({ open: false, amount: null });
 
   const autopoolQuery = useQuery({
     queryKey: queryKeys.autopool,
@@ -239,6 +244,8 @@ export default function AutopoolPage() {
       setPendingPackageAmount(Number(variables?.packageAmount || 0));
     },
     onSuccess: async (result, variables) => {
+      setPurchaseState({ open: false, amount: null });
+
       const placement = result.data?.placement || null;
       const packageAmount = Number(variables?.packageAmount || result.data?.packageAmount || 0);
 
@@ -268,10 +275,42 @@ export default function AutopoolPage() {
   const dashboard = autopoolQuery.data?.data || {};
   const walletBalance = Number(walletQuery.data?.wallet?.balance || 0);
   const canAfford = (amount) => (walletQuery.isError ? true : walletBalance >= Number(amount || 0));
+  const pendingPurchaseAmount = Number(purchaseState.amount || 0);
+  const purchaseModalPending = enterMutation.isPending && pendingPackageAmount === pendingPurchaseAmount;
   const poolCards = useMemo(
     () => buildFallbackPackages(dashboard.packages).sort((left, right) => Number(left.amount || 0) - Number(right.amount || 0)),
     [dashboard.packages]
   );
+  const incomeCards = useMemo(() => ([
+    { title: 'Total Income', amount: Number(dashboard.totalIncome || dashboard.incomeSummary?.totalIncome || 0), type: 'total' },
+    { title: '$2 Pool Income', amount: Number(dashboard.pool2Income || dashboard.incomeSummary?.pool2Income || 0), type: 'pool_2' },
+    { title: '$99 Pool Income', amount: Number(dashboard.pool99Income || dashboard.incomeSummary?.pool99Income || 0), type: 'pool_99' },
+    { title: '$313 Pool Income', amount: Number(dashboard.pool313Income || dashboard.incomeSummary?.pool313Income || 0), type: 'pool_313' },
+    { title: '$786 Pool Income', amount: Number(dashboard.pool786Income || dashboard.incomeSummary?.pool786Income || 0), type: 'pool_786' },
+    { title: 'Sponsor Pool Income', amount: Number(dashboard.sponsorPoolIncome || dashboard.incomeSummary?.sponsorPoolIncome || 0), type: 'sponsor_pool' }
+  ]), [dashboard]);
+
+  const openPurchaseModal = (amount) => {
+    if (enterMutation.isPending) return;
+    setPurchaseState({
+      open: true,
+      amount: Number(amount || 0)
+    });
+  };
+
+  const closePurchaseModal = () => {
+    if (enterMutation.isPending) return;
+    setPurchaseState({ open: false, amount: null });
+  };
+
+  const confirmPurchase = () => {
+    const packageAmount = Number(purchaseState.amount || 0);
+    if (!packageAmount || enterMutation.isPending) return;
+    enterMutation.mutate({
+      packageAmount,
+      requestId: createRequestId()
+    });
+  };
 
   if (autopoolQuery.isError && !autopoolQuery.data) {
     return <ErrorState message="Autopool data could not be loaded." onRetry={autopoolQuery.refetch} />;
@@ -281,6 +320,18 @@ export default function AutopoolPage() {
     <div className="mx-auto max-w-xl rounded-[34px] bg-[linear-gradient(180deg,#12141a,#0f1115)] p-4 pb-28 sm:p-5 sm:pb-12">
       <div className="px-1">
         <h1 className="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-[30px]">Global Autopool</h1>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        {incomeCards.map((card) => (
+          <IncomeCard
+            key={card.type}
+            title={card.title}
+            amount={card.amount}
+            type={card.type}
+            onClick={() => setHistoryState({ open: true, type: card.type, title: card.title })}
+          />
+        ))}
       </div>
 
       <div className="mt-4 space-y-4 sm:space-y-5">
@@ -295,7 +346,7 @@ export default function AutopoolPage() {
               earningsValue={Number(card.earnings || 0)}
               currentEntry={card.currentEntry}
               currentFillCount={Number(card.currentFillCount || card.currentEntry?.filledSlotsCount || 0)}
-              onBuy={() => enterMutation.mutate({ packageAmount: amount, requestId: createRequestId() })}
+              onBuy={() => openPurchaseModal(amount)}
               isPending={isPending}
               disabled={enterMutation.isPending || !canAfford(amount)}
               myEntry={Number(card.myEntry || 0)}
@@ -304,6 +355,21 @@ export default function AutopoolPage() {
           );
         })}
       </div>
+
+      <AutopoolHistoryModal
+        open={historyState.open}
+        type={historyState.type}
+        title={historyState.title}
+        onClose={() => setHistoryState((current) => ({ ...current, open: false }))}
+      />
+
+      <AutopoolPurchaseModal
+        open={purchaseState.open}
+        amount={purchaseState.amount}
+        isPending={purchaseModalPending}
+        onClose={closePurchaseModal}
+        onConfirm={confirmPurchase}
+      />
     </div>
   );
 }

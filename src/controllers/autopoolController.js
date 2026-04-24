@@ -21,9 +21,8 @@ const me = asyncHandler(async (req, res) => {
 const history = asyncHandler(async (req, res) => {
   const result = await autopoolService.getHistory(req.user.sub, req.query);
   return success(res, {
-    data: result.data,
+    data: result,
     pagination: result.pagination,
-    summary: result.summary,
     message: 'Autopool history fetched successfully'
   });
 });

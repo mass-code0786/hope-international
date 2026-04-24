@@ -451,11 +451,15 @@ const autopoolOverviewQuerySchema = z.object({
   params: z.object({}),
   query: z.object({})
 });
+const autopoolHistoryTypeSchema = z.preprocess(
+  (value) => firstQueryValue(value),
+  z.enum(['total', 'pool_2', 'pool_99', 'pool_313', 'pool_786', 'sponsor_pool']).optional()
+).transform((value) => value || 'total');
 const autopoolHistoryQuerySchema = z.object({
   body: z.object({}),
   params: z.object({}),
   query: pagingQuery.extend({
-    packageAmount: autopoolPackageAmountSchema.optional()
+    type: autopoolHistoryTypeSchema
   })
 });
 const autopoolEnterSchema = z.object({

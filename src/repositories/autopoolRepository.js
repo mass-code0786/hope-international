@@ -13,6 +13,14 @@ function toMoney(value) {
   return Number(Number(value || 0).toFixed(2));
 }
 
+const AUTOPOOL_TRANSACTION_TYPES = Object.freeze({
+  ENTRY: 'AUTOPOOL_ENTRY',
+  INCOME: 'AUTOPOOL_INCOME',
+  SPONSOR: 'SPONSOR_POOL_INCOME',
+  RECYCLE: 'AUTOPOOL_RECYCLE',
+  BONUS: 'AUTOPOOL_BONUS_SHARE'
+});
+
 function normalizePackageAmount(value, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? toMoney(parsed) : toMoney(fallback);
@@ -25,6 +33,15 @@ function applyPackageFilter(values, where, packageAmount, columnName = 'package_
 
   values.push(normalizePackageAmount(packageAmount));
   where.push(`${columnName} = $${values.length}`);
+}
+
+function applyTransactionTypeFilter(values, where, transactionTypes, columnName = 'type') {
+  if (!Array.isArray(transactionTypes) || transactionTypes.length === 0) {
+    return;
+  }
+
+  values.push(transactionTypes);
+  where.push(`${columnName} = ANY($${values.length}::autopool_transaction_type[])`);
 }
 
 function normalizeEntry(row) {
@@ -48,6 +65,8 @@ function normalizeTransaction(row) {
     package_amount: normalizePackageAmount(row.package_amount),
     cycle_number: row.cycle_number === null || row.cycle_number === undefined ? null : Number(row.cycle_number),
     recycle_count: row.recycle_count === null || row.recycle_count === undefined ? null : Number(row.recycle_count),
+    entry_created_at: row.entry_created_at || null,
+    entry_completed_at: row.entry_completed_at || null,
     metadata: row.metadata && typeof row.metadata === 'object' ? row.metadata : {}
   };
 }
@@ -361,7 +380,7 @@ async function getEntryTransactionByRequestId(client, userId, requestId) {
      LEFT JOIN autopool_entries ae ON ae.id = at.entry_id
      WHERE at.user_id = $1
        AND at.request_id = $2
-       AND at.type = 'ENTRY'
+       AND at.type = '${AUTOPOOL_TRANSACTION_TYPES.ENTRY}'
      LIMIT 1`,
     [userId, requestId]
   );
@@ -460,10 +479,10 @@ async function getUserStats(client, userId, options = {}) {
     ),
     q(client).query(
       `SELECT
-         COALESCE(SUM(CASE WHEN type = 'EARN' THEN amount ELSE 0 END), 0)::numeric(14,2) AS owner_earnings,
-         COALESCE(SUM(CASE WHEN type = 'UPLINE' THEN amount ELSE 0 END), 0)::numeric(14,2) AS upline_earnings,
-         COALESCE(SUM(CASE WHEN type IN ('EARN', 'UPLINE') THEN amount ELSE 0 END), 0)::numeric(14,2) AS total_earnings,
-         COALESCE(SUM(CASE WHEN type IN ('BONUS', 'AUCTION') THEN amount ELSE 0 END), 0)::numeric(14,2) AS total_bonus_share
+         COALESCE(SUM(CASE WHEN type = '${AUTOPOOL_TRANSACTION_TYPES.INCOME}' THEN amount ELSE 0 END), 0)::numeric(14,2) AS owner_earnings,
+         COALESCE(SUM(CASE WHEN type = '${AUTOPOOL_TRANSACTION_TYPES.SPONSOR}' THEN amount ELSE 0 END), 0)::numeric(14,2) AS sponsor_pool_income,
+         COALESCE(SUM(CASE WHEN type IN ('${AUTOPOOL_TRANSACTION_TYPES.INCOME}', '${AUTOPOOL_TRANSACTION_TYPES.SPONSOR}') THEN amount ELSE 0 END), 0)::numeric(14,2) AS total_earnings,
+         COALESCE(SUM(CASE WHEN type = '${AUTOPOOL_TRANSACTION_TYPES.BONUS}' THEN amount ELSE 0 END), 0)::numeric(14,2) AS total_bonus_share
        FROM autopool_transactions
        WHERE ${transactionWhere.join(' AND ')}`,
       transactionValues
@@ -479,7 +498,8 @@ async function getUserStats(client, userId, options = {}) {
     completedCycles: Number(entries.completed_cycles || 0),
     totalRecycles: Number(entries.total_recycles || 0),
     ownerEarnings: toMoney(transactions.owner_earnings || 0),
-    uplineEarnings: toMoney(transactions.upline_earnings || 0),
+    sponsorPoolIncome: toMoney(transactions.sponsor_pool_income || 0),
+    uplineEarnings: toMoney(transactions.sponsor_pool_income || 0),
     totalEarnings: toMoney(transactions.total_earnings || 0),
     totalBonusShare: toMoney(transactions.total_bonus_share || 0)
   };
@@ -524,10 +544,10 @@ async function listUserPackageStats(client, userId) {
     q(client).query(
       `SELECT
          package_amount,
-         COALESCE(SUM(CASE WHEN type = 'EARN' THEN amount ELSE 0 END), 0)::numeric(14,2) AS owner_earnings,
-         COALESCE(SUM(CASE WHEN type = 'UPLINE' THEN amount ELSE 0 END), 0)::numeric(14,2) AS upline_earnings,
-         COALESCE(SUM(CASE WHEN type IN ('EARN', 'UPLINE') THEN amount ELSE 0 END), 0)::numeric(14,2) AS total_earnings,
-         COALESCE(SUM(CASE WHEN type IN ('BONUS', 'AUCTION') THEN amount ELSE 0 END), 0)::numeric(14,2) AS total_bonus_share
+         COALESCE(SUM(CASE WHEN type = '${AUTOPOOL_TRANSACTION_TYPES.INCOME}' THEN amount ELSE 0 END), 0)::numeric(14,2) AS owner_earnings,
+         COALESCE(SUM(CASE WHEN type = '${AUTOPOOL_TRANSACTION_TYPES.SPONSOR}' THEN amount ELSE 0 END), 0)::numeric(14,2) AS sponsor_pool_income,
+         COALESCE(SUM(CASE WHEN type IN ('${AUTOPOOL_TRANSACTION_TYPES.INCOME}', '${AUTOPOOL_TRANSACTION_TYPES.SPONSOR}') THEN amount ELSE 0 END), 0)::numeric(14,2) AS total_earnings,
+         COALESCE(SUM(CASE WHEN type = '${AUTOPOOL_TRANSACTION_TYPES.BONUS}' THEN amount ELSE 0 END), 0)::numeric(14,2) AS total_bonus_share
        FROM autopool_transactions
        WHERE user_id = $1
        GROUP BY package_amount`,
@@ -548,6 +568,7 @@ async function listUserPackageStats(client, userId) {
       myEntry: Number(row.my_entry_count || 0),
       recycle: Number(row.total_recycles || 0),
       ownerEarnings: 0,
+      sponsorPoolIncome: 0,
       uplineEarnings: 0,
       totalEarnings: 0,
       totalBonusShare: 0
@@ -565,19 +586,47 @@ async function listUserPackageStats(client, userId) {
       myEntry: 0,
       recycle: 0,
       ownerEarnings: 0,
+      sponsorPoolIncome: 0,
       uplineEarnings: 0,
       totalEarnings: 0,
       totalBonusShare: 0
     };
 
     current.ownerEarnings = toMoney(row.owner_earnings || 0);
-    current.uplineEarnings = toMoney(row.upline_earnings || 0);
+    current.sponsorPoolIncome = toMoney(row.sponsor_pool_income || 0);
+    current.uplineEarnings = toMoney(row.sponsor_pool_income || 0);
     current.totalEarnings = toMoney(row.total_earnings || 0);
     current.totalBonusShare = toMoney(row.total_bonus_share || 0);
     packageStats.set(amount, current);
   }
 
   return packageStats;
+}
+
+async function getIncomeDashboardSummary(client, userId) {
+  const { rows } = await q(client).query(
+    `SELECT
+       COALESCE(SUM(CASE WHEN type IN ('${AUTOPOOL_TRANSACTION_TYPES.INCOME}', '${AUTOPOOL_TRANSACTION_TYPES.SPONSOR}') THEN amount ELSE 0 END), 0)::numeric(14,2) AS total_income,
+       COALESCE(SUM(CASE WHEN type = '${AUTOPOOL_TRANSACTION_TYPES.INCOME}' AND package_amount = 2 THEN amount ELSE 0 END), 0)::numeric(14,2) AS pool_2_income,
+       COALESCE(SUM(CASE WHEN type = '${AUTOPOOL_TRANSACTION_TYPES.INCOME}' AND package_amount = 99 THEN amount ELSE 0 END), 0)::numeric(14,2) AS pool_99_income,
+       COALESCE(SUM(CASE WHEN type = '${AUTOPOOL_TRANSACTION_TYPES.INCOME}' AND package_amount = 313 THEN amount ELSE 0 END), 0)::numeric(14,2) AS pool_313_income,
+       COALESCE(SUM(CASE WHEN type = '${AUTOPOOL_TRANSACTION_TYPES.INCOME}' AND package_amount = 786 THEN amount ELSE 0 END), 0)::numeric(14,2) AS pool_786_income,
+       COALESCE(SUM(CASE WHEN type = '${AUTOPOOL_TRANSACTION_TYPES.SPONSOR}' THEN amount ELSE 0 END), 0)::numeric(14,2) AS sponsor_pool_income
+     FROM autopool_transactions
+     WHERE user_id = $1`,
+    [userId]
+  );
+
+  const row = rows[0] || {};
+
+  return {
+    totalIncome: toMoney(row.total_income || 0),
+    pool2Income: toMoney(row.pool_2_income || 0),
+    pool99Income: toMoney(row.pool_99_income || 0),
+    pool313Income: toMoney(row.pool_313_income || 0),
+    pool786Income: toMoney(row.pool_786_income || 0),
+    sponsorPoolIncome: toMoney(row.sponsor_pool_income || 0)
+  };
 }
 
 async function listUserPackageFocusEntries(client, userId) {
@@ -649,17 +698,23 @@ async function listUserTransactions(client, userId, pagination = {}, options = {
   const listValues = [userId];
   const listWhere = ['at.user_id = $1'];
   applyPackageFilter(listValues, listWhere, options.packageAmount, 'at.package_amount');
+  applyTransactionTypeFilter(listValues, listWhere, options.transactionTypes, 'at.type');
   listValues.push(limit, offset);
 
   const countValues = [userId];
   const countWhere = ['user_id = $1'];
   applyPackageFilter(countValues, countWhere, options.packageAmount);
+  applyTransactionTypeFilter(countValues, countWhere, options.transactionTypes);
 
   const [listResult, countResult] = await Promise.all([
     q(client).query(
       `SELECT at.*,
               ae.cycle_number,
               ae.recycle_count,
+              ae.entry_source,
+              ae.status AS entry_status,
+              ae.created_at AS entry_created_at,
+              ae.completed_at AS entry_completed_at,
               source_user.username AS source_username,
               source_user.first_name AS source_first_name,
               source_user.last_name AS source_last_name
@@ -711,5 +766,6 @@ module.exports = {
   getAutopoolStats,
   listUserPackageStats,
   listUserPackageFocusEntries,
+  getIncomeDashboardSummary,
   listUserTransactions
 };

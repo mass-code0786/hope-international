@@ -32,6 +32,58 @@ const PACKAGE_AMOUNTS = Object.freeze(
     .sort((left, right) => left - right)
 );
 
+const AUTOPOOL_TRANSACTION_TYPES = Object.freeze({
+  ENTRY: 'AUTOPOOL_ENTRY',
+  INCOME: 'AUTOPOOL_INCOME',
+  SPONSOR: 'SPONSOR_POOL_INCOME',
+  RECYCLE: 'AUTOPOOL_RECYCLE',
+  BONUS: 'AUTOPOOL_BONUS_SHARE'
+});
+
+const AUTOPOOL_WALLET_SOURCES = Object.freeze({
+  ENTRY: 'autopool_entry',
+  INCOME: 'autopool_matrix_income',
+  SPONSOR: 'sponsor_pool_income',
+  BONUS: 'autopool_bonus_share'
+});
+
+const AUTOPOOL_HISTORY_FILTERS = Object.freeze({
+  total: Object.freeze({
+    type: 'total',
+    title: 'Total Income',
+    transactionTypes: [AUTOPOOL_TRANSACTION_TYPES.INCOME, AUTOPOOL_TRANSACTION_TYPES.SPONSOR]
+  }),
+  pool_2: Object.freeze({
+    type: 'pool_2',
+    title: '$2 Pool Income',
+    packageAmount: 2,
+    transactionTypes: [AUTOPOOL_TRANSACTION_TYPES.INCOME]
+  }),
+  pool_99: Object.freeze({
+    type: 'pool_99',
+    title: '$99 Pool Income',
+    packageAmount: 99,
+    transactionTypes: [AUTOPOOL_TRANSACTION_TYPES.INCOME]
+  }),
+  pool_313: Object.freeze({
+    type: 'pool_313',
+    title: '$313 Pool Income',
+    packageAmount: 313,
+    transactionTypes: [AUTOPOOL_TRANSACTION_TYPES.INCOME]
+  }),
+  pool_786: Object.freeze({
+    type: 'pool_786',
+    title: '$786 Pool Income',
+    packageAmount: 786,
+    transactionTypes: [AUTOPOOL_TRANSACTION_TYPES.INCOME]
+  }),
+  sponsor_pool: Object.freeze({
+    type: 'sponsor_pool',
+    title: 'Sponsor Pool Income',
+    transactionTypes: [AUTOPOOL_TRANSACTION_TYPES.SPONSOR]
+  })
+});
+
 function toMoney(value) {
   return Number(Number(value || 0).toFixed(2));
 }
@@ -40,9 +92,31 @@ function formatMoney(value) {
   return `$${toMoney(value).toFixed(2)}`;
 }
 
+function isPresent(value) {
+  return value !== undefined && value !== null && value !== '';
+}
+
 function normalizePackageAmount(value, fallback = DEFAULT_PACKAGE_AMOUNT) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? toMoney(parsed) : toMoney(fallback);
+}
+
+function resolveHistoryFilter(type = 'total') {
+  const normalizedType = String(type || 'total').trim().toLowerCase();
+  const filter = AUTOPOOL_HISTORY_FILTERS[normalizedType];
+  if (!filter) {
+    throw new ApiError(400, `Unsupported autopool history type: ${type}`);
+  }
+  return filter;
+}
+
+function historyTypeLabel(type) {
+  if (type === AUTOPOOL_TRANSACTION_TYPES.INCOME) return 'Autopool Income';
+  if (type === AUTOPOOL_TRANSACTION_TYPES.SPONSOR) return 'Sponsor Pool Income';
+  if (type === AUTOPOOL_TRANSACTION_TYPES.RECYCLE) return 'Autopool Recycle';
+  if (type === AUTOPOOL_TRANSACTION_TYPES.ENTRY) return 'Autopool Entry';
+  if (type === AUTOPOOL_TRANSACTION_TYPES.BONUS) return 'Autopool Bonus Share';
+  return 'Autopool Transaction';
 }
 
 function getPackageConfig(packageAmount = DEFAULT_PACKAGE_AMOUNT) {
@@ -219,6 +293,7 @@ function buildActiveEntrySummary(entry) {
 
 function buildPackageSummary(packageAmount, stats = {}, currentEntry = null) {
   const fillProgress = currentEntry?.fillProgress || buildFillProgress(0);
+  const sponsorPoolIncome = toMoney(stats.sponsorPoolIncome || stats.uplineEarnings || 0);
 
   return {
     amount: normalizePackageAmount(packageAmount),
@@ -232,7 +307,8 @@ function buildPackageSummary(packageAmount, stats = {}, currentEntry = null) {
     completedCycles: Number(stats.completedCycles || stats.totalRecycles || 0),
     totalBonus: toMoney(stats.totalBonusShare || 0),
     ownerEarnings: toMoney(stats.ownerEarnings || 0),
-    uplineEarnings: toMoney(stats.uplineEarnings || 0),
+    sponsorPoolIncome,
+    uplineEarnings: sponsorPoolIncome,
     currentEntry,
     currentMatrix: currentEntry?.matrixType || MATRIX_TYPE,
     currentCycleNumber: Number(currentEntry?.cycleNumber || 0),
@@ -240,6 +316,69 @@ function buildPackageSummary(packageAmount, stats = {}, currentEntry = null) {
     currentFillCount: Number(currentEntry?.filledSlotsCount || 0),
     currentFillLabel: currentEntry?.fillLabel || fillProgress.label,
     currentFillProgress: fillProgress
+  };
+}
+
+function buildIncomeSummary(summary = {}) {
+  return {
+    totalIncome: toMoney(summary.totalIncome || 0),
+    pool2Income: toMoney(summary.pool2Income || 0),
+    pool99Income: toMoney(summary.pool99Income || 0),
+    pool313Income: toMoney(summary.pool313Income || 0),
+    pool786Income: toMoney(summary.pool786Income || 0),
+    sponsorPoolIncome: toMoney(summary.sponsorPoolIncome || 0)
+  };
+}
+
+function buildHistoryItem(item) {
+  if (!item) return null;
+
+  const metadata = item.metadata && typeof item.metadata === 'object' ? item.metadata : {};
+  const packageAmount = isPresent(item.package_amount) || isPresent(metadata.packageAmount)
+    ? normalizePackageAmount(item.package_amount ?? metadata.packageAmount, 0)
+    : null;
+  const cycleNumber = item.cycle_number === null || item.cycle_number === undefined
+    ? (isPresent(metadata.cycleNumber)
+      ? Number(metadata.cycleNumber)
+      : isPresent(metadata.sourceCycleNumber)
+        ? Number(metadata.sourceCycleNumber)
+        : isPresent(metadata.recycleCycleNumber)
+          ? Number(metadata.recycleCycleNumber)
+          : null)
+    : Number(item.cycle_number);
+  const recycleCount = item.recycle_count === null || item.recycle_count === undefined
+    ? (isPresent(metadata.recycleCount) ? Number(metadata.recycleCount) : null)
+    : Number(item.recycle_count);
+  const entryId = item.entry_id
+    || metadata.entryId
+    || metadata.completedEntryId
+    || metadata.sourceEntryId
+    || metadata.recycleEntryId
+    || null;
+
+  return {
+    id: item.id,
+    amount: toMoney(item.amount || 0),
+    type: item.type,
+    incomeType: item.type,
+    incomeTypeLabel: historyTypeLabel(item.type),
+    poolType: packageAmount,
+    packageAmount,
+    createdAt: item.created_at,
+    sourceUser: item.source_user_id ? buildUser(item, 'source_') : null,
+    entryId,
+    matrixId: entryId,
+    purchaseDate: item.entry_created_at || null,
+    completedAt: item.entry_completed_at || null,
+    cycleNumber,
+    recycleCount,
+    entrySource: item.entry_source || metadata.entrySource || null,
+    entryStatus: item.entry_status || null,
+    completedEntryId: metadata.completedEntryId || entryId || null,
+    recycleEntryId: metadata.recycleEntryId || null,
+    sourceEntryId: metadata.sourceEntryId || metadata.triggerEntryId || null,
+    walletTransactionId: item.wallet_transaction_id || null,
+    metadata
   };
 }
 
@@ -469,7 +608,7 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
   const markedEntry = await autopoolRepository.markEntryCompleted(client, completedEntry.id, nextRecycleCount);
   await autopoolRepository.removeQueuedEntry(client, markedEntry.id);
 
-  const uplineEntry = markedEntry.parent_entry_id
+  const sponsorEntry = markedEntry.parent_entry_id
     ? await autopoolRepository.getEntryById(client, markedEntry.parent_entry_id)
     : null;
 
@@ -477,12 +616,12 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
     userId: markedEntry.user_id,
     amount: packageConfig.self,
     walletType: EARNING_WALLET_TYPE,
-    walletSource: 'autopool_matrix_income',
+    walletSource: AUTOPOOL_WALLET_SOURCES.INCOME,
     entryId: markedEntry.id,
     packageAmount,
     cycleNumber,
     sourceUserId: triggerEntry.user_id,
-    transactionType: 'EARN',
+    transactionType: AUTOPOOL_TRANSACTION_TYPES.INCOME,
     eventKey: `${completionEventKey}:owner`,
     walletMetadata: {
       note: `Autopool cycle #${cycleNumber} completed`,
@@ -497,31 +636,31 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
     notificationMessage: `You earned ${formatMoney(packageConfig.self)} in your ${formatMoney(packageAmount)} Global Autopool cycle.`
   });
 
-  if (uplineEntry?.user_id && toMoney(packageConfig.upline) > 0) {
+  if (sponsorEntry?.user_id && toMoney(packageConfig.upline) > 0) {
     await creditAutopoolWalletOnce(client, {
-      userId: uplineEntry.user_id,
+      userId: sponsorEntry.user_id,
       amount: packageConfig.upline,
       walletType: EARNING_WALLET_TYPE,
-      walletSource: 'autopool_upline_income',
+      walletSource: AUTOPOOL_WALLET_SOURCES.SPONSOR,
       entryId: markedEntry.id,
       packageAmount,
       cycleNumber,
       sourceUserId: markedEntry.user_id,
-      transactionType: 'UPLINE',
-      eventKey: `${completionEventKey}:upline:${uplineEntry.user_id}`,
+      transactionType: AUTOPOOL_TRANSACTION_TYPES.SPONSOR,
+      eventKey: `${completionEventKey}:sponsor:${sponsorEntry.user_id}`,
       walletMetadata: {
         sourceEntryId: markedEntry.id,
         sourceOwnerId: markedEntry.user_id,
         sourceCycleNumber: cycleNumber,
-        note: `Autopool parent income from ${formatMoney(packageAmount)} package cycle #${cycleNumber}`
+        note: `Sponsor pool income from ${formatMoney(packageAmount)} package cycle #${cycleNumber}`
       },
       autopoolMetadata: {
         sourceEntryId: markedEntry.id,
         sourceOwnerId: markedEntry.user_id,
         sourceCycleNumber: cycleNumber
       },
-      notificationTitle: 'Autopool parent income',
-      notificationMessage: `You earned ${formatMoney(packageConfig.upline)} as autopool parent income from the ${formatMoney(packageAmount)} package.`
+      notificationTitle: 'Sponsor pool income',
+      notificationMessage: `You earned ${formatMoney(packageConfig.upline)} as sponsor pool income from the ${formatMoney(packageAmount)} package.`
     });
   }
 
@@ -529,12 +668,12 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
     userId: markedEntry.user_id,
     amount: packageConfig.bonus,
     walletType: BONUS_WALLET_TYPE,
-    walletSource: 'autopool_bonus_share',
+    walletSource: AUTOPOOL_WALLET_SOURCES.BONUS,
     entryId: markedEntry.id,
     packageAmount,
     cycleNumber,
     sourceUserId: markedEntry.user_id,
-    transactionType: 'BONUS',
+    transactionType: AUTOPOOL_TRANSACTION_TYPES.BONUS,
     eventKey: `${completionEventKey}:bonus`,
     walletMetadata: {
       creditedTo: 'bonus_wallet',
@@ -568,7 +707,7 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
     cycleNumber,
     recycleCount: nextRecycleCount,
     triggerEntryId: triggerEntry.id,
-    uplineUserId: uplineEntry?.user_id || null
+    sponsorUserId: sponsorEntry?.user_id || null
   });
 
   const recycleEntry = await createNextEntryForUser(client, markedEntry.user_id, {
@@ -580,7 +719,7 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
   await createAutopoolTransactionOnce(client, {
     userId: markedEntry.user_id,
     entryId: recycleEntry.id,
-    type: 'RECYCLE',
+    type: AUTOPOOL_TRANSACTION_TYPES.RECYCLE,
     amount: packageConfig.recycle,
     packageAmount,
     sourceUserId: markedEntry.user_id,
@@ -631,8 +770,9 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
 }
 
 async function getPackagesOverviewWithClient(client, userId) {
-  const [packageStatsMap, focusEntries, defaultActiveEntries] = await Promise.all([
+  const [packageStatsMap, incomeSummaryResult, focusEntries, defaultActiveEntries] = await Promise.all([
     autopoolRepository.listUserPackageStats(client, userId),
+    autopoolRepository.getIncomeDashboardSummary(client, userId),
     autopoolRepository.listUserPackageFocusEntries(client, userId),
     autopoolRepository.listUserActiveEntries(client, userId, 12, { packageAmount: DEFAULT_PACKAGE_AMOUNT })
   ]);
@@ -665,10 +805,13 @@ async function getPackagesOverviewWithClient(client, userId) {
   });
 
   const defaultPackage = packages.find((item) => item.amount === DEFAULT_PACKAGE_AMOUNT) || packages[0];
+  const incomeSummary = buildIncomeSummary(incomeSummaryResult);
 
   return {
     config: buildOverviewConfig(),
     packages,
+    incomeSummary,
+    ...incomeSummary,
     stats: {
       myEntry: Number(defaultPackage?.myEntry || 0),
       recycle: Number(defaultPackage?.recycleCount || 0),
@@ -676,6 +819,8 @@ async function getPackagesOverviewWithClient(client, userId) {
       totalRecycles: Number(defaultPackage?.recycleCount || 0),
       completedCycles: Number(defaultPackage?.completedCycles || defaultPackage?.recycleCount || 0),
       totalEarnings: toMoney(defaultPackage?.earnings || 0),
+      totalIncome: incomeSummary.totalIncome,
+      sponsorPoolIncome: incomeSummary.sponsorPoolIncome,
       currentMatrix: defaultPackage?.currentMatrix || MATRIX_TYPE,
       currentCycleNumber: Number(defaultPackage?.currentCycleNumber || 0),
       currentRecycleCount: Number(defaultPackage?.currentRecycleCount || 0),
@@ -688,24 +833,6 @@ async function getPackagesOverviewWithClient(client, userId) {
   };
 }
 
-function buildHistorySummary(items = []) {
-  return items.reduce((summary, item) => {
-    const amount = toMoney(item.amount || 0);
-    if (item.type === 'EARN') summary.ownerEarnings = toMoney(summary.ownerEarnings + amount);
-    if (item.type === 'UPLINE') summary.uplineEarnings = toMoney(summary.uplineEarnings + amount);
-    if (item.type === 'RECYCLE') summary.recycleAmount = toMoney(summary.recycleAmount + amount);
-    if (item.type === 'BONUS' || item.type === 'AUCTION') summary.bonusAmount = toMoney(summary.bonusAmount + amount);
-    if (item.type === 'ENTRY') summary.entryAmount = toMoney(summary.entryAmount + amount);
-    return summary;
-  }, {
-    ownerEarnings: 0,
-    uplineEarnings: 0,
-    recycleAmount: 0,
-    bonusAmount: 0,
-    entryAmount: 0
-  });
-}
-
 async function getPackagesOverview(userId) {
   return withTransaction((client) => getPackagesOverviewWithClient(client, userId));
 }
@@ -716,25 +843,22 @@ async function getDashboard(userId) {
 
 async function getHistory(userId, query = {}) {
   return withTransaction(async (client) => {
-    const packageAmount = query.packageAmount === undefined || query.packageAmount === null || query.packageAmount === ''
-      ? undefined
-      : getPackageConfig(query.packageAmount).amount;
+    const filter = resolveHistoryFilter(query.type || 'total');
 
     const pagination = normalizePagination({
       page: query.page || 1,
-      limit: query.limit || 20,
+      limit: query.limit || 10,
       maxLimit: 100
     });
     const result = await autopoolRepository.listUserTransactions(client, userId, pagination, {
-      packageAmount
+      packageAmount: filter.packageAmount,
+      transactionTypes: filter.transactionTypes
     });
 
     return {
-      data: result.items,
-      summary: {
-        packageAmount: packageAmount || null,
-        ...buildHistorySummary(result.items)
-      },
+      type: filter.type,
+      title: filter.title,
+      items: result.items.map(buildHistoryItem).filter(Boolean),
       pagination: buildPagination({
         page: pagination.page,
         limit: pagination.limit,
@@ -775,7 +899,7 @@ async function buyAutopoolPackage(userId, payload = {}) {
       client,
       userId,
       packageConfig.entryAmount,
-      'autopool_entry',
+      AUTOPOOL_WALLET_SOURCES.ENTRY,
       entry.id,
       {
         requestId,
@@ -784,11 +908,11 @@ async function buyAutopoolPackage(userId, payload = {}) {
       }
     );
 
-    const walletTransaction = await getWalletTransaction(client, userId, 'autopool_entry', entry.id);
+    const walletTransaction = await getWalletTransaction(client, userId, AUTOPOOL_WALLET_SOURCES.ENTRY, entry.id);
     await createAutopoolTransactionOnce(client, {
       userId,
       entryId: entry.id,
-      type: 'ENTRY',
+      type: AUTOPOOL_TRANSACTION_TYPES.ENTRY,
       amount: packageConfig.entryAmount,
       packageAmount: packageConfig.amount,
       sourceUserId: userId,

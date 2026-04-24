@@ -1,5 +1,7 @@
 import { apiFetch } from '@/lib/api/client';
 
+const DEFAULT_AUTOPOOL_ENTRY_AMOUNT = 2;
+
 function toEnvelope(payload) {
   if (payload && typeof payload === 'object' && Object.prototype.hasOwnProperty.call(payload, 'data')) {
     return {
@@ -113,14 +115,40 @@ function normalizePackage(item) {
   };
 }
 
+function normalizeIncomeSummary(data = {}) {
+  return {
+    totalIncome: toNumber(data.totalIncome ?? data.total_income),
+    pool2Income: toNumber(data.pool2Income ?? data.pool_2_income),
+    pool99Income: toNumber(data.pool99Income ?? data.pool_99_income),
+    pool313Income: toNumber(data.pool313Income ?? data.pool_313_income),
+    pool786Income: toNumber(data.pool786Income ?? data.pool_786_income),
+    sponsorPoolIncome: toNumber(data.sponsorPoolIncome ?? data.sponsor_pool_income)
+  };
+}
+
 function normalizeHistoryItem(item) {
   if (!item || typeof item !== 'object') return item;
   return {
     ...item,
     amount: toNumber(item.amount),
-    package_amount: toNumber(item.package_amount),
-    cycle_number: item.cycle_number === null || item.cycle_number === undefined ? null : toNumber(item.cycle_number),
-    recycle_count: item.recycle_count === null || item.recycle_count === undefined ? null : toNumber(item.recycle_count),
+    packageAmount: toNumber(item.packageAmount ?? item.package_amount),
+    poolType: item.poolType === null || item.poolType === undefined ? toNumber(item.packageAmount ?? item.package_amount) : toNumber(item.poolType),
+    cycleNumber: item.cycleNumber === null || item.cycleNumber === undefined
+      ? (item.cycle_number === null || item.cycle_number === undefined ? null : toNumber(item.cycle_number))
+      : toNumber(item.cycleNumber),
+    recycleCount: item.recycleCount === null || item.recycleCount === undefined
+      ? (item.recycle_count === null || item.recycle_count === undefined ? null : toNumber(item.recycle_count))
+      : toNumber(item.recycleCount),
+    sourceUser: normalizeUser(item.sourceUser),
+    entryId: item.entryId || item.entry_id || item.matrixId || null,
+    matrixId: item.matrixId || item.entryId || item.entry_id || null,
+    purchaseDate: item.purchaseDate || item.purchase_date || null,
+    completedAt: item.completedAt || item.completed_at || null,
+    createdAt: item.createdAt || item.created_at || null,
+    walletTransactionId: item.walletTransactionId || item.wallet_transaction_id || null,
+    completedEntryId: item.completedEntryId || item.completed_entry_id || null,
+    recycleEntryId: item.recycleEntryId || item.recycle_entry_id || null,
+    sourceEntryId: item.sourceEntryId || item.source_entry_id || null,
     metadata: item.metadata && typeof item.metadata === 'object' ? item.metadata : {}
   };
 }
@@ -128,9 +156,12 @@ function normalizeHistoryItem(item) {
 function normalizeDashboardData(data) {
   const packages = Array.isArray(data?.packages) ? data.packages.map(normalizePackage).filter(Boolean) : [];
   const currentEntry = normalizeEntry(data?.currentEntry);
+  const incomeSummary = normalizeIncomeSummary(data?.incomeSummary || data);
   return {
     config: data?.config || null,
     packages,
+    incomeSummary,
+    ...incomeSummary,
     stats: {
       ...(data?.stats || {}),
       myEntry: toNumber(data?.stats?.myEntry),
@@ -139,6 +170,8 @@ function normalizeDashboardData(data) {
       totalRecycles: toNumber(data?.stats?.totalRecycles),
       completedCycles: toNumber(data?.stats?.completedCycles),
       totalEarnings: toNumber(data?.stats?.totalEarnings),
+      totalIncome: toNumber(data?.stats?.totalIncome, incomeSummary.totalIncome),
+      sponsorPoolIncome: toNumber(data?.stats?.sponsorPoolIncome, incomeSummary.sponsorPoolIncome),
       currentCycleNumber: toNumber(data?.stats?.currentCycleNumber),
       currentRecycleCount: toNumber(data?.stats?.currentRecycleCount),
       currentFillCount: toNumber(data?.stats?.currentFillCount),
@@ -150,7 +183,7 @@ function normalizeDashboardData(data) {
 }
 
 export async function getAutopoolDashboard() {
-  const envelope = toEnvelope(await apiFetch('/autopool/me'));
+  const envelope = toEnvelope(await apiFetch('/autopool'));
   return {
     ...envelope,
     data: normalizeDashboardData(envelope.data || {})
@@ -158,10 +191,17 @@ export async function getAutopoolDashboard() {
 }
 
 export async function enterAutopool(payload = {}) {
+  const packageAmount = toNumber(payload.packageAmount, DEFAULT_AUTOPOOL_ENTRY_AMOUNT);
+  const isDefaultEntry = packageAmount === DEFAULT_AUTOPOOL_ENTRY_AMOUNT;
+  const path = isDefaultEntry ? '/autopool/enter' : '/autopool/buy';
+  const requestPayload = isDefaultEntry
+    ? { requestId: payload.requestId }
+    : payload;
+
   const envelope = toEnvelope(
-    await apiFetch('/autopool/buy', {
+    await apiFetch(path, {
       method: 'POST',
-      body: JSON.stringify(payload)
+      body: JSON.stringify(requestPayload)
     })
   );
 
@@ -172,7 +212,7 @@ export async function enterAutopool(payload = {}) {
       placement: envelope.data?.placement || null,
       duplicateRequest: Boolean(envelope.data?.duplicateRequest),
       requestId: envelope.data?.requestId || null,
-      packageAmount: toNumber(envelope.data?.packageAmount),
+      packageAmount: toNumber(envelope.data?.packageAmount, packageAmount),
       events: Array.isArray(envelope.data?.events) ? envelope.data.events : []
     }
   };
@@ -186,8 +226,20 @@ export async function getAutopoolHistory(params = {}) {
   });
   const suffix = query.toString() ? `?${query.toString()}` : '';
   const envelope = toEnvelope(await apiFetch(`/autopool/history${suffix}`));
+  const payload = envelope.data && typeof envelope.data === 'object' && Array.isArray(envelope.data.items)
+    ? envelope.data
+    : {
+        type: params.type || 'total',
+        title: '',
+        items: Array.isArray(envelope.data) ? envelope.data : [],
+        pagination: envelope.pagination ?? null
+      };
+
   return {
     ...envelope,
-    data: Array.isArray(envelope.data) ? envelope.data.map(normalizeHistoryItem) : []
+    type: payload.type || params.type || 'total',
+    title: payload.title || '',
+    items: Array.isArray(payload.items) ? payload.items.map(normalizeHistoryItem) : [],
+    pagination: payload.pagination ?? envelope.pagination ?? null
   };
 }

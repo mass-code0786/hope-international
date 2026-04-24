@@ -82,6 +82,7 @@ const incomeSourceMap = {
   autopool_entry: 'Autopool Entry',
   autopool_matrix_income: 'Autopool Matrix Income',
   autopool_upline_income: 'Autopool Matrix Parent Income',
+  sponsor_pool_income: 'Sponsor Pool Income',
   autopool_auction_share: 'Autopool Auction Share',
   p2p_transfer: 'P2P Transfer',
   welcome_spin_bonus: 'Welcome Spin Bonus',
