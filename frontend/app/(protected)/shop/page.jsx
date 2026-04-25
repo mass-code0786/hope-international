@@ -26,6 +26,7 @@ import {
   ShoppingCart
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { BannerImageFrame } from '@/components/banners/BannerImageFrame';
 import { ProductFilters } from '@/components/shop/ProductFilters';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -499,19 +500,18 @@ export default function ShopPage() {
           {heroBanners.map((banner) => (
             <div key={banner.id} className="min-w-full snap-start pr-1">
               {banner.imageUrl ? (
-                <Link href={resolveBannerTarget(banner.targetLink)} className="relative block overflow-hidden rounded-xl border border-slate-200">
-                  <img
+                <Link href={resolveBannerTarget(banner.targetLink)} className="block">
+                  <BannerImageFrame
                     src={banner.imageUrl}
                     alt={banner.title || 'Offer banner'}
-                    loading="lazy"
-                    decoding="async"
-                    className="h-[132px] w-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-r from-slate-900/45 via-slate-800/20 to-transparent p-3 text-white">
-                    <p className="line-clamp-2 text-[14px] font-semibold leading-4">{banner.title}</p>
-                    {banner.subtitle ? <p className="mt-1 line-clamp-2 text-[10px] text-white/90">{banner.subtitle}</p> : null}
-                    {banner.ctaText ? <span className="mt-2 inline-flex rounded-full border border-white/50 bg-white/20 px-2.5 py-1 text-[10px] font-medium">{banner.ctaText}</span> : null}
-                  </div>
+                    className="h-[190px] overflow-hidden rounded-xl border border-slate-200 sm:h-[210px] md:h-[230px]"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-slate-950/75 via-slate-900/28 to-transparent p-3 text-white">
+                      <p className="line-clamp-2 text-[14px] font-semibold leading-4">{banner.title}</p>
+                      {banner.subtitle ? <p className="mt-1 line-clamp-2 text-[10px] text-white/90">{banner.subtitle}</p> : null}
+                      {banner.ctaText ? <span className="mt-2 inline-flex rounded-full border border-white/50 bg-white/20 px-2.5 py-1 text-[10px] font-medium">{banner.ctaText}</span> : null}
+                    </div>
+                  </BannerImageFrame>
                 </Link>
               ) : (
                 <BannerCard banner={banner} />

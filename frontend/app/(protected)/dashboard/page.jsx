@@ -23,6 +23,7 @@ import {
   UtensilsCrossed
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { BannerImageFrame } from '@/components/banners/BannerImageFrame';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { WelcomeSpinModal } from '@/components/auth/WelcomeSpinModal';
@@ -526,22 +527,21 @@ export default function DashboardPage() {
             {slides.map((banner) => (
               <div key={banner.id} className="min-w-full snap-start">
                 {banner.imageUrl ? (
-                  <Link href={resolveBannerTarget(banner.targetLink)} className="relative block h-[124px] overflow-hidden rounded-[14px] border border-slate-200 bg-white shadow-[0_10px_20px_rgba(15,23,42,0.08)]">
-                    <img
+                  <Link href={resolveBannerTarget(banner.targetLink)} className="block">
+                    <BannerImageFrame
                       src={banner.imageUrl}
                       alt={banner.title || 'Homepage banner'}
-                      loading="lazy"
-                      decoding="async"
-                      className="h-full w-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-r from-[#111217]/85 via-[#111217]/40 to-transparent p-2.5 text-white">
-                      <div className="max-w-[72%]">
-                        <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/75">Hope Marketplace</p>
-                        <h2 className="mt-1 text-[15px] font-semibold leading-4">{banner.title}</h2>
-                        {banner.subtitle ? <p className="mt-1 line-clamp-2 text-[10px] leading-3.5 text-white/90">{banner.subtitle}</p> : null}
-                        {banner.ctaText ? <span className="mt-2 inline-flex rounded-full bg-slate-900 px-2.5 py-1 text-[9px] font-semibold text-white">{banner.ctaText}</span> : null}
+                      className="h-[190px] overflow-hidden rounded-[14px] border border-slate-200 shadow-[0_10px_20px_rgba(15,23,42,0.08)] sm:h-[210px] md:h-[230px]"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-[#111217]/85 via-[#111217]/38 to-transparent p-2.5 text-white">
+                        <div className="max-w-[72%]">
+                          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/75">Hope Marketplace</p>
+                          <h2 className="mt-1 text-[15px] font-semibold leading-4">{banner.title}</h2>
+                          {banner.subtitle ? <p className="mt-1 line-clamp-2 text-[10px] leading-3.5 text-white/90">{banner.subtitle}</p> : null}
+                          {banner.ctaText ? <span className="mt-2 inline-flex rounded-full bg-slate-900 px-2.5 py-1 text-[9px] font-semibold text-white">{banner.ctaText}</span> : null}
+                        </div>
                       </div>
-                    </div>
+                    </BannerImageFrame>
                   </Link>
                 ) : (
                   <HomeBannerCard banner={banner} />
