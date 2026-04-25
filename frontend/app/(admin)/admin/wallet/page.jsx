@@ -11,6 +11,7 @@ import { ConfirmationModal } from '@/components/admin/ConfirmationModal';
 import { ErrorState } from '@/components/ui/ErrorState';
 import BtctCoinLogo from '@/components/common/BtctCoinLogo';
 import { queryKeys } from '@/lib/query/queryKeys';
+import { canAccessSuperAdminArea } from '@/lib/constants/access';
 import {
   createManualWalletAdjustment,
   freezeAdminWallet,
@@ -24,6 +25,7 @@ import {
   unfreezeAdminWallet
 } from '@/lib/services/admin';
 import { currency, formatLabel, incomeSourceLabel, number, shortDate } from '@/lib/utils/format';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 const walletOptions = [
   { value: 'deposit_wallet', label: 'Deposit Wallet', freezeKey: 'deposit_wallet_frozen' },
@@ -33,6 +35,8 @@ const walletOptions = [
 
 export default function AdminWalletPage() {
   const queryClient = useQueryClient();
+  const currentUserQuery = useCurrentUser();
+  const superAdmin = canAccessSuperAdminArea(currentUserQuery.data);
   const [filter, setFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [userPage, setUserPage] = useState(1);
@@ -154,9 +158,11 @@ export default function AdminWalletPage() {
                 {runPayoutsMutation.isPending ? 'Running payouts...' : 'Run BTCT Payouts'}
               </span>
             </button>
-            <button onClick={() => setAdjustOpen(true)} className="rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-black">
-              Wallet Adjustment
-            </button>
+            {superAdmin ? (
+              <button onClick={() => setAdjustOpen(true)} className="rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-black">
+                Wallet Adjustment
+              </button>
+            ) : null}
           </div>
         )}
       />
@@ -190,11 +196,13 @@ export default function AdminWalletPage() {
             <button
               onClick={() => {
                 setAdjustForm((prev) => ({ ...prev, userId: row.id }));
-                setAdjustOpen(true);
+                if (superAdmin) {
+                  setAdjustOpen(true);
+                }
               }}
               className="rounded-lg border border-white/10 px-2 py-1 text-xs text-text"
             >
-              Manage
+              {superAdmin ? 'Manage' : 'Select'}
             </button>
           ) }
         ]}
@@ -310,7 +318,7 @@ export default function AdminWalletPage() {
         rows={txs}
       />
 
-      {adjustOpen ? (
+      {superAdmin && adjustOpen ? (
         <div className="card-surface p-4">
           <h4 className="text-sm font-semibold text-text">Manual Wallet Adjustment</h4>
           <div className="mt-3 grid gap-2 md:grid-cols-2">
@@ -332,15 +340,17 @@ export default function AdminWalletPage() {
         </div>
       ) : null}
 
-      <ConfirmationModal
-        open={confirmOpen}
-        title="Confirm Wallet Adjustment"
-        description="This action updates a specific user wallet and writes to the admin wallet audit log."
-        onCancel={() => setConfirmOpen(false)}
-        onConfirm={() => adjustMutation.mutate()}
-        loading={adjustMutation.isPending}
-        confirmText="Apply Adjustment"
-      />
+      {superAdmin ? (
+        <ConfirmationModal
+          open={confirmOpen}
+          title="Confirm Wallet Adjustment"
+          description="This action updates a specific user wallet and writes to the admin wallet audit log."
+          onCancel={() => setConfirmOpen(false)}
+          onConfirm={() => adjustMutation.mutate()}
+          loading={adjustMutation.isPending}
+          confirmText="Apply Adjustment"
+        />
+      ) : null}
 
       <ConfirmationModal
         open={Boolean(freezeConfirm)}

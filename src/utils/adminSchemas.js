@@ -169,6 +169,49 @@ const adminFinanceListQuerySchema = z.object({
   })
 });
 
+const adminDepositStatusQueryValues = ['PENDING', 'SUCCESS', 'FAILED', 'REJECTED', 'pending', 'success', 'failed', 'rejected'];
+const adminDepositsQuerySchema = z.object({
+  body: z.object({}),
+  params: z.object({}),
+  query: pagingQuery.extend({
+    search: z.string().optional(),
+    status: z.enum(adminDepositStatusQueryValues).optional()
+  })
+});
+
+const adminDepositIdParamSchema = z.object({
+  body: z.object({}),
+  params: z.object({ id: uuid }),
+  query: z.object({})
+});
+
+const adminDepositRejectSchema = z.object({
+  body: z.object({
+    adminNote: z.string().max(1000).optional()
+  }).optional().default({}),
+  params: z.object({ id: uuid }),
+  query: z.object({})
+});
+
+const adminTransferCreateSchema = z.object({
+  body: z.object({
+    userId: uuid.optional(),
+    username: z.string().min(3).max(60).optional(),
+    amount: z.number().positive(),
+    note: z.string().min(1).max(500)
+  }).superRefine((body, ctx) => {
+    if (!body.userId && !body.username) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'username or userId is required',
+        path: ['username']
+      });
+    }
+  }),
+  params: z.object({}),
+  query: z.object({})
+});
+
 const adminWalletReviewSchema = z.object({ body: z.object({ status: z.enum(['approved', 'rejected']), adminNote: z.string().max(1000).optional() }), params: z.object({ id: uuid }), query: z.object({}) });
 const adminPaymentSyncParamSchema = z.object({ body: z.object({}), params: z.object({ id: uuid }), query: z.object({}) });
 const adminWalletBindingUpsertSchema = z.object({ body: z.object({ walletAddress: z.string().min(8).max(255), network: z.string().max(60).optional() }), params: z.object({ userId: uuid }), query: z.object({}) });
@@ -606,6 +649,10 @@ module.exports = {
   adminWalletFreezeSchema,
   adminWalletLogsQuerySchema,
   adminFinanceListQuerySchema,
+  adminDepositsQuerySchema,
+  adminDepositIdParamSchema,
+  adminDepositRejectSchema,
+  adminTransferCreateSchema,
   adminPaymentSyncParamSchema,
   adminWalletReviewSchema,
   adminWalletBindingUpsertSchema,

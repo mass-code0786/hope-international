@@ -4,6 +4,14 @@ const walletService = require('../services/walletService');
 const walletRepository = require('../repositories/walletRepository');
 const btctStakingService = require('../services/btctStakingService');
 const { success } = require('../utils/response');
+const {
+  toDepositStatus,
+  toDepositStatusKey,
+  getDepositStatusLabel,
+  getDepositStatusMessage,
+  getDepositUserFacingStatus,
+  depositRequiresAdminReview
+} = require('../utils/depositStatus');
 
 function normalizeDepositRecord(item) {
   if (!item) return null;
@@ -20,9 +28,15 @@ function normalizeDepositRecord(item) {
   const depositAmount = Number(item.amount || details.depositAmount || 0);
   const feeAmount = Number(details.feeAmount || 0);
   const totalPayableAmount = Number(details.totalPayableAmount || (depositAmount + feeAmount));
+  const status = toDepositStatus(item.status);
+  const normalizedRecord = {
+    ...item,
+    payment_status: paymentStatus,
+    status
+  };
 
   return {
-    ...item,
+    ...normalizedRecord,
     method: 'crypto',
     asset: item.asset || details.asset || 'USDT',
     network: item.network || details.network || 'BEP20',
@@ -33,7 +47,6 @@ function normalizeDepositRecord(item) {
     payment_provider: item.payment_provider || details.provider || null,
     payment_record_id: item.payment_record_id || details.paymentRecordId || null,
     payment_id: item.payment_id || details.providerPaymentId || details.paymentId || null,
-    payment_status: paymentStatus,
     order_id: item.order_id || null,
     pay_currency: item.pay_currency || details.payCurrency || null,
     pay_amount: item.pay_amount ?? details.payAmount ?? null,
@@ -45,6 +58,11 @@ function normalizeDepositRecord(item) {
     total_payable_amount: totalPayableAmount,
     is_processed: Boolean(item.is_processed),
     processed_at: item.processed_at || null,
+    status_key: toDepositStatusKey(status),
+    status_label: getDepositStatusLabel(status),
+    status_message: getDepositStatusMessage(normalizedRecord),
+    requires_super_admin_approval: depositRequiresAdminReview(normalizedRecord),
+    user_facing_status: getDepositUserFacingStatus(normalizedRecord),
     note: item.instructions || details.note || null,
     details
   };

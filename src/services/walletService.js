@@ -3,6 +3,11 @@ const userRepository = require('../repositories/userRepository');
 const notificationService = require('./notificationService');
 const { ApiError } = require('../utils/ApiError');
 const { withPerfSpan } = require('../utils/perf');
+const {
+  DEPOSIT_STATUS,
+  isRejectedDepositStatus,
+  toDepositStatus
+} = require('../utils/depositStatus');
 
 const MIN_WITHDRAWAL_AMOUNT = 10;
 const MIN_DEPOSIT_AMOUNT = 1;
@@ -138,6 +143,7 @@ function resolveCashWalletType(source, metadata = {}) {
   }
 
   if (source === 'deposit_request') return 'deposit';
+  if (source === 'admin_credit') return 'deposit';
   if (source === 'auction_win_cash') return 'withdrawal';
   if (source === 'btct_staking_payout') return 'income';
   if (['direct_income', 'matching_income', 'reward_qualification', 'direct_deposit_income', 'level_deposit_income'].includes(source)) return 'income';
@@ -242,6 +248,10 @@ async function settleDepositRequest(client, requestInput, options = {}) {
     throw new ApiError(404, 'Deposit request not found');
   }
 
+  if (isRejectedDepositStatus(request.status)) {
+    throw new ApiError(400, 'Rejected deposits cannot be settled');
+  }
+
   if (request.is_processed) {
     return {
       request,
@@ -281,6 +291,11 @@ async function settleDepositRequest(client, requestInput, options = {}) {
     options.adminNote || null
   );
 
+  const approvedAt = options.approvedAt
+    || (toDepositStatus(options.status || request.status, DEPOSIT_STATUS.SUCCESS) === DEPOSIT_STATUS.SUCCESS
+      ? new Date().toISOString()
+      : null);
+
   const nextDetails = {
     ...(request.details || {}),
     ...(options.extraDetails || {}),
@@ -289,9 +304,11 @@ async function settleDepositRequest(client, requestInput, options = {}) {
   };
 
   const updatedRequest = await walletRepository.updateDepositRequestStatus(client, request.id, {
-    status: options.status || request.status || 'approved',
+    status: toDepositStatus(options.status || request.status || DEPOSIT_STATUS.SUCCESS, DEPOSIT_STATUS.SUCCESS),
     details: nextDetails,
     reviewedBy: options.createdByAdminId || null,
+    approvedBy: options.approvedBy === undefined ? (options.createdByAdminId || null) : options.approvedBy,
+    approvedAt,
     paymentStatus: options.paymentStatus || request.payment_status || null,
     rawWebhookData: options.rawWebhookData || undefined,
     isProcessed: true,

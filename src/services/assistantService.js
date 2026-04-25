@@ -5,6 +5,7 @@ const auctionRepository = require('../repositories/auctionRepository');
 const walletService = require('./walletService');
 const sellerService = require('./sellerService');
 const { FAQS, findFaqMatch } = require('./assistantFaqService');
+const { toDepositStatusKey } = require('../utils/depositStatus');
 
 const SUPPORTED_LANGUAGES = new Set(['en', 'hi', 'ur', 'ar', 'bn', 'ps']);
 const RTL_LANGUAGES = new Set(['ur', 'ar', 'ps']);
@@ -1197,7 +1198,7 @@ function buildSmartSuggestionItems(context) {
   const activeDirects = Number((context.directChildren || []).filter((item) => item.is_active).length || 0);
   const totalTeam = Number(team.total_descendants || 0);
   const activeTeam = Number(team.active_count || 0);
-  const approvedDeposits = (context.deposits || []).filter((item) => item.status === 'approved');
+  const approvedDeposits = (context.deposits || []).filter((item) => toDepositStatusKey(item.status) === 'approved');
   const leftPv = toMoney(weekly.left_carry_pv ?? weekly.left_pv ?? profile.carry_left_pv ?? 0);
   const rightPv = toMoney(weekly.right_carry_pv ?? weekly.right_pv ?? profile.carry_right_pv ?? 0);
   const gapPv = Math.abs(leftPv - rightPv);
@@ -1288,8 +1289,8 @@ function buildAssistantData(intentResult, context, language) {
   const auctionStats = context.auctionStats || {};
   const sellerInfo = context.sellerInfo || {};
   const pendingWithdrawals = (context.withdrawals || []).filter((item) => item.status === 'pending');
-  const pendingDeposits = (context.deposits || []).filter((item) => item.status === 'pending');
-  const approvedDeposits = (context.deposits || []).filter((item) => item.status === 'approved');
+  const pendingDeposits = (context.deposits || []).filter((item) => toDepositStatusKey(item.status) === 'pending');
+  const approvedDeposits = (context.deposits || []).filter((item) => toDepositStatusKey(item.status) === 'approved');
   const latestWithdrawal = context.withdrawals?.[0] || null;
   const latestDeposit = context.deposits?.[0] || null;
   const name = displayName(profile);
@@ -1387,7 +1388,7 @@ function buildAssistantData(intentResult, context, language) {
   if (intent === 'team_summary') return { intent, data: { name, totalTeam: number(team.total_descendants), leftTeam: number(team.left_count), rightTeam: number(team.right_count), activeTeam: number(team.active_count), inactiveTeam: number(team.inactive_count) } };
   if (intent === 'level_income_summary') return { intent, data: { name, levelIncome: money(income.level), levelIncomeCount: number(income.levelCount) } };
   if (intent === 'binary_status' || intent === 'binary_summary') return { intent: 'binary_summary', data: { name, leftPv, rightPv, weakerLeg: weakerLeg(weekly), matchedPv: number(weekly.matched_pv ?? 0), binaryIncome: money(weekly.matching_income_net ?? weekly.matching_income_gross ?? 0) } };
-  if (intent === 'deposit_status') return { intent, data: { name, totalDeposits: number(context.deposits?.length || 0), approvedDeposits: money(approvedDeposits.reduce((sum, item) => sum + toMoney(item.amount), 0)), pendingDeposits: money(pendingDeposits.reduce((sum, item) => sum + toMoney(item.amount), 0)), latestDepositAmount: money(latestDeposit?.amount || 0), latestDepositStatus: localizedStatus(language, latestDeposit?.status || 'none') } };
+  if (intent === 'deposit_status') return { intent, data: { name, totalDeposits: number(context.deposits?.length || 0), approvedDeposits: money(approvedDeposits.reduce((sum, item) => sum + toMoney(item.amount), 0)), pendingDeposits: money(pendingDeposits.reduce((sum, item) => sum + toMoney(item.amount), 0)), latestDepositAmount: money(latestDeposit?.amount || 0), latestDepositStatus: localizedStatus(language, latestDeposit ? toDepositStatusKey(latestDeposit.status) : 'none') } };
   if (intent === 'withdrawal_status') return { intent, data: { name, availableWithdrawal: money(wallet.income_balance || 0), pendingWithdrawals: number(pendingWithdrawals.length), latestWithdrawalStatus: localizedStatus(language, latestWithdrawal?.status || 'none') } };
   if (intent === 'auction_summary') return { intent, data: { name, auctionsJoined: number(auctionStats.auctions_joined || 0), wonAuctions: number(auctionStats.won_auctions || 0) } };
   if (intent === 'charity_info') return { intent, data: { name, showDonateHowTo: true, donationModuleAvailable: false } };

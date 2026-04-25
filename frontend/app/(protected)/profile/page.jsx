@@ -12,9 +12,10 @@ import { HelpingHandCard } from '@/components/profile/HelpingHandCard';
 import { DonationCard } from '@/components/profile/DonationCard';
 import { BinaryReferralLinks } from '@/components/referral/BinaryReferralLinks';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { Badge } from '@/components/ui/Badge';
 import BtctCoinLogo from '@/components/common/BtctCoinLogo';
 import { getWebauthnRegisterOptions, getWebauthnStatus, removeWebauthnCredential, verifyWebauthnRegister } from '@/lib/services/authService';
-import { getWallet } from '@/lib/services/walletService';
+import { getDepositHistory, getWallet } from '@/lib/services/walletService';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { useAuthStore } from '@/lib/store/authStore';
 import { clearStoredToken } from '@/lib/utils/tokenStorage';
@@ -23,6 +24,7 @@ import { isSeller } from '@/lib/constants/access';
 import { createWebAuthnCredential, supportsWebAuthn } from '@/lib/utils/webauthn';
 import { clearProtectedQueries } from '@/lib/utils/logout';
 import { useSessionUser } from '@/hooks/useSessionUser';
+import { depositStatusLabel, depositStatusMessage } from '@/lib/utils/depositStatus';
 
 function ProfileLoadingShell() {
   return (
@@ -79,7 +81,7 @@ function WalletCard({ title, value, accent, icon: Icon, href, actionLabel, title
   );
 }
 
-function WalletSection({ walletQuery }) {
+function WalletSection({ walletQuery, depositsQuery }) {
   if (walletQuery.isLoading || (!walletQuery.data && !walletQuery.isError)) {
     return null;
   }
@@ -97,6 +99,7 @@ function WalletSection({ walletQuery }) {
   const depositBalance = Number(wallet.deposit_wallet_balance ?? wallet.deposit_balance ?? 0);
   const bonusBalance = Number(wallet.bonus_wallet_balance ?? wallet.bonus_balance ?? wallet.auction_bonus_wallet_balance ?? wallet.auction_bonus_balance ?? 0);
   const btctBalance = Number(wallet.btct_wallet_balance ?? wallet.btct_balance ?? 0);
+  const deposits = Array.isArray(depositsQuery?.data?.data) ? depositsQuery.data.data : [];
 
   return (
     <div className="space-y-3">
@@ -120,6 +123,22 @@ function WalletSection({ walletQuery }) {
           actionLabel="Wallet details"
         />
       </div>
+
+      {deposits.length ? (
+        <div className="grid gap-3 md:grid-cols-3">
+          {deposits.slice(0, 3).map((item) => (
+            <div key={item.id} className="rounded-[20px] border border-[rgba(255,255,255,0.07)] bg-[#171c26] px-4 py-3.5 shadow-[0_14px_28px_rgba(0,0,0,0.22)]">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-white">{currency(item.amount || 0)}</p>
+                <Badge variant={item.status_key === 'approved' ? 'success' : item.status_key === 'rejected' || item.status_key === 'failed' ? 'danger' : 'warning'}>
+                  {item.status_label || depositStatusLabel(item.status)}
+                </Badge>
+              </div>
+              <p className="mt-2 text-xs text-slate-400">{depositStatusMessage(item)}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -285,6 +304,7 @@ export default function ProfilePage() {
 
   const sessionUserQuery = useSessionUser();
   const walletQuery = useQuery({ queryKey: queryKeys.wallet, queryFn: getWallet, enabled: hydrated && Boolean(token) && walletEnabled, placeholderData: (previousData) => previousData });
+  const depositsQuery = useQuery({ queryKey: queryKeys.walletDeposits, queryFn: getDepositHistory, enabled: hydrated && Boolean(token) && walletEnabled, placeholderData: (previousData) => previousData });
 
   const user = sessionUserQuery.data ?? sessionUser ?? null;
   const sellerHref = isSeller(user) ? '/seller' : '/seller/apply';
@@ -374,7 +394,7 @@ export default function ProfilePage() {
           <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-[#1f2430] text-white"><WalletCards size={16} /></span>
           <p className="text-sm font-semibold text-white">{formatLabel('Wallet Overview')}</p>
         </div>
-        <WalletSection walletQuery={walletQuery} />
+        <WalletSection walletQuery={walletQuery} depositsQuery={depositsQuery} />
       </div>
 
       <BinaryReferralLinks username={user?.username} />

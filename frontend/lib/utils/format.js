@@ -75,6 +75,7 @@ const incomeSourceMap = {
   reward_qualification: 'Reward Qualification',
   cap_overflow: 'Cap Overflow',
   manual_adjustment: 'Manual Adjustment',
+  admin_credit: 'Admin Credit',
   order_purchase: 'Order Purchase',
   deposit_request: 'Deposit Request',
   withdrawal_request: 'Withdrawal Request',
@@ -168,7 +169,7 @@ export function moderationStatusLabel(status) {
 }
 
 export function statusVariant(status) {
-  if (status === 'approved' || status === 'paid' || status === 'completed' || status === 'processed') return 'success';
+  if (status === 'approved' || status === 'success' || status === 'paid' || status === 'completed' || status === 'processed') return 'success';
   if (status === 'rejected' || status === 'cancelled' || status === 'failed') return 'danger';
   if (status === 'pending' || status === 'processing') return 'warning';
   return 'default';

@@ -6,6 +6,11 @@ const walletRepository = require('../repositories/walletRepository');
 const orderRepository = require('../repositories/orderRepository');
 const supportRepository = require('../repositories/supportRepository');
 const auctionRepository = require('../repositories/auctionRepository');
+const {
+  toDepositStatus,
+  toDepositStatusKey,
+  getDepositStatusLabel
+} = require('../utils/depositStatus');
 
 const INCOME_NOTIFICATION_SOURCES = new Set([
   'direct_income',
@@ -34,24 +39,32 @@ function titleCase(value = '') {
 }
 
 function buildDepositStatusNotification(request) {
-  if (!request || !['approved', 'rejected', 'completed', 'failed'].includes(request.status)) return null;
-  const status = request.status === 'completed' ? 'approved' : request.status;
-  const actionLabel = status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : 'updated';
+  if (!request) return null;
+  const status = toDepositStatus(request.status);
+  if (!['SUCCESS', 'REJECTED', 'FAILED'].includes(status)) return null;
+  const statusKey = toDepositStatusKey(status);
+  const actionLabel = statusKey === 'approved'
+    ? 'approved'
+    : statusKey === 'rejected'
+      ? 'rejected'
+      : statusKey === 'failed'
+        ? 'failed'
+        : 'updated';
   const adminNote = request.details?.adminNote || null;
 
   return {
     userId: request.user_id,
     type: 'deposit',
-    title: `Deposit ${actionLabel}`,
+    title: `Deposit ${getDepositStatusLabel(status).toLowerCase()}`,
     message: adminNote
       ? `Your deposit request for ${formatMoney(request.amount)} was ${actionLabel}. Note: ${adminNote}`
       : `Your deposit request for ${formatMoney(request.amount)} was ${actionLabel}.`,
     route: '/history/deposit',
     createdAt: request.updated_at || request.created_at,
     metadata: {
-      sourceKey: `deposit:${request.id}:${request.status}`,
+      sourceKey: `deposit:${request.id}:${status}`,
       depositRequestId: request.id,
-      status: request.status,
+      status,
       amount: toMoney(request.amount)
     }
   };
@@ -120,6 +133,26 @@ function buildBtctTransactionNotification(transaction) {
       source: transaction.source,
       auctionId: transaction.reference_id || transaction.metadata?.auctionId || null,
       amount
+    }
+  };
+}
+
+function buildAdminTransferNotification(transfer, user) {
+  if (!transfer || !user) return null;
+
+  return {
+    userId: user.id,
+    type: 'wallet',
+    title: 'Admin sent funds',
+    message: transfer.note
+      ? `${formatMoney(transfer.amount)} was added to your deposit wallet. Note: ${transfer.note}`
+      : `${formatMoney(transfer.amount)} was added to your deposit wallet by super admin.`,
+    route: '/wallet',
+    createdAt: transfer.created_at,
+    metadata: {
+      sourceKey: `admin-transfer:${transfer.id}`,
+      adminTransferId: transfer.id,
+      amount: toMoney(transfer.amount)
     }
   };
 }
@@ -266,6 +299,7 @@ module.exports = {
   buildWithdrawalStatusNotification,
   buildWalletTransactionNotification,
   buildBtctTransactionNotification,
+  buildAdminTransferNotification,
   buildOrderStatusNotification,
   buildSupportReplyNotification,
   buildAuctionResultNotification,

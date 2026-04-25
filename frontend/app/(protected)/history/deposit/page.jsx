@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/Badge';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { getDepositHistory } from '@/lib/services/walletService';
 import { currency, dateTime, statusVariant } from '@/lib/utils/format';
+import { depositStatusLabel, depositStatusMessage } from '@/lib/utils/depositStatus';
 
 export default function DepositHistoryPage() {
   const depositsQuery = useQuery({ queryKey: queryKeys.walletDeposits, queryFn: getDepositHistory });
@@ -31,9 +32,10 @@ export default function DepositHistoryPage() {
             <article key={item.id} className="rounded-xl border border-slate-200 bg-white p-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-semibold text-slate-900">{currency(item.amount)}</p>
-                <Badge variant={statusVariant(item.is_processed ? 'completed' : item.status)}>{item.is_processed ? 'completed' : item.status}</Badge>
+                <Badge variant={statusVariant(item.status_key || item.status)}>{item.status_label || depositStatusLabel(item.status)}</Badge>
               </div>
               <p className="mt-1 text-[11px] font-medium text-slate-600">NOWPayments | {item.network || 'BSC/BEP20'} | {dateTime(item.created_at)}</p>
+              <p className="mt-1 text-[11px] text-slate-700">{item.status_message || depositStatusMessage(item)}</p>
               <p className="mt-1 text-[11px] text-slate-700">
                 Payment Status: {String(item.payment_status || 'waiting').toUpperCase()}
                 {item.pay_amount ? ` | Pay ${item.pay_amount} ${String(item.pay_currency || '').toUpperCase()}` : ''}

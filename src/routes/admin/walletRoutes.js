@@ -44,7 +44,7 @@ router.get('/staking', adminWalletController.btctStaking);
 router.post('/staking/payouts/run', validate(adminBtctStakingPayoutRunSchema), adminWalletController.runBtctStakingPayouts);
 router.get('/users/:id/financial-overview', validate(adminUserIdParamSchema), adminWalletController.userFinancialOverview);
 
-router.post('/adjust', validate(adminWalletAdjustSchema), adminWalletController.adjust);
+router.post('/adjust', requireSuperAdmin, validate(adminWalletAdjustSchema), adminWalletController.adjust);
 router.post('/freeze', validate(adminWalletFreezeSchema), adminWalletController.freeze);
 router.post('/unfreeze', validate(adminWalletFreezeSchema), adminWalletController.unfreeze);
 

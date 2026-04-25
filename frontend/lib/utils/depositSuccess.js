@@ -3,7 +3,7 @@
 export const DEPOSIT_SUCCESS_POPUP_DURATION_MS = 20_000;
 
 const STORAGE_PREFIX = 'hope.deposit.success.ack.';
-const SUCCESS_STATUSES = new Set(['confirmed', 'finished', 'paid', 'completed', 'wallet_credited']);
+const SUCCESS_STATUSES = new Set(['confirmed', 'finished', 'paid', 'completed', 'wallet_credited', 'success', 'approved']);
 
 function canUseStorage() {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';

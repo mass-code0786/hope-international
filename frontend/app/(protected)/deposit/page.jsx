@@ -15,6 +15,7 @@ import { queryKeys } from '@/lib/query/queryKeys';
 import { createNowPaymentsPayment } from '@/lib/services/paymentsService';
 import { getDepositHistory } from '@/lib/services/walletService';
 import { cryptoAmount, currency, dateTime, number, statusVariant } from '@/lib/utils/format';
+import { depositStatusLabel, depositStatusMessage } from '@/lib/utils/depositStatus';
 
 const NOWPAYMENTS_PAY_CURRENCY = 'usdt';
 const NOWPAYMENTS_NETWORK = 'BSC/BEP20';
@@ -150,6 +151,7 @@ export default function DepositPage() {
 
   const expiryState = useMemo(() => getExpiryState(activeGatewayPayment?.expires_at), [activeGatewayPayment?.expires_at, countdownTick]);
   const activePaymentExpired = Boolean(activeGatewayPayment) && expiryState.expired && !activeGatewayPayment?.is_processed;
+  const awaitingAdminApproval = Boolean(activeGatewayPayment?.requires_super_admin_approval);
   const paymentSummary = {
     depositAmount: Number(activeGatewayPayment?.deposit_amount ?? activeGatewayPayment?.amount ?? 0),
     providerDifferenceAmount: Number(activeGatewayPayment?.fee_amount ?? 0),
@@ -172,7 +174,11 @@ export default function DepositPage() {
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="accent">NOWPayments</Badge>
           <Badge variant="success">Automatic Credit</Badge>
-          {activeGatewayPayment?.payment_status ? <Badge variant={activePaymentExpired ? 'danger' : 'warning'}>{activePaymentExpired ? 'expired' : activeGatewayPayment.payment_status}</Badge> : null}
+          {activeGatewayPayment?.payment_status ? (
+            <Badge variant={awaitingAdminApproval ? 'warning' : activeGatewayPayment?.is_processed ? 'success' : activePaymentExpired ? 'danger' : 'warning'}>
+              {awaitingAdminApproval ? 'pending admin review' : activeGatewayPayment?.is_processed ? 'wallet credited' : activePaymentExpired ? 'expired' : activeGatewayPayment.payment_status}
+            </Badge>
+          ) : null}
         </div>
 
         <div className="mt-4 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
@@ -259,7 +265,9 @@ export default function DepositPage() {
               </div>
               <p className="mt-2 text-sm text-emerald-50">
                 {activeGatewayPayment
-                  ? activePaymentExpired
+                  ? awaitingAdminApproval
+                    ? 'Deposit submitted. Waiting for super admin approval.'
+                    : activePaymentExpired
                     ? 'This payment has expired. Create a new payment to continue.'
                     : activeGatewayPayment.is_processed
                     ? 'Payment confirmed and credited to your deposit wallet.'
@@ -315,7 +323,7 @@ export default function DepositPage() {
               <div key={item.id} className="space-y-1 px-3 py-3">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-slate-900">{currency(item.amount)}</p>
-                  <Badge variant={statusVariant(item.is_processed ? 'completed' : item.status)}>{item.is_processed ? 'completed' : item.status}</Badge>
+                  <Badge variant={statusVariant(item.status_key || item.status)}>{item.status_label || depositStatusLabel(item.status)}</Badge>
                 </div>
                 <p className="text-[11px] font-medium text-slate-600">
                   NOWPayments
@@ -329,6 +337,7 @@ export default function DepositPage() {
                     Status: {(item.payment_status || 'waiting').toUpperCase()}
                     {item.pay_amount ? ` | Pay ${cryptoAmount(item.pay_amount)} ${(item.pay_currency || '').toUpperCase()}` : ''}
                   </p>
+                  <p className="mt-1">{item.status_message || depositStatusMessage(item)}</p>
                   {item.payment_record_id ? <Link href={`/payments/${item.payment_record_id}`} className="mt-1 inline-flex font-semibold text-sky-700">Open payment status</Link> : null}
                 </div>
               </div>

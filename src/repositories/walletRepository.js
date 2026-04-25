@@ -3,6 +3,10 @@ function q(client) {
 }
 
 const { getCacheEntry, setCacheEntry } = require('../utils/runtimeCache');
+const {
+  DEPOSIT_STATUS,
+  toDepositStatus
+} = require('../utils/depositStatus');
 
 const TRANSACTION_SOURCE_CANDIDATES = Object.freeze({
   autopool_entry: ['autopool_entry'],
@@ -558,6 +562,21 @@ async function createAdminWalletAction(client, payload) {
   return rows[0] || null;
 }
 
+async function createAdminTransfer(client, payload) {
+  const { rows } = await q(client).query(
+    `INSERT INTO admin_transfers (admin_id, user_id, amount, note)
+     VALUES ($1, $2, $3, $4)
+     RETURNING *`,
+    [
+      payload.adminId,
+      payload.userId,
+      payload.amount,
+      payload.note || null
+    ]
+  );
+  return rows[0] || null;
+}
+
 async function createSecurityEvent(client, payload) {
   const { rows } = await q(client).query(
     `INSERT INTO security_event_logs (user_id, action_type, reason, metadata, ip_address)
@@ -1005,7 +1024,10 @@ async function createDepositRequest(client, payload) {
   addField('processed_at', payload.processedAt || null);
   addField('raw_webhook_data', JSON.stringify(payload.rawWebhookData || {}), { castJsonb: true });
   addField('details', JSON.stringify(payload.details || {}), { castJsonb: true });
-  addField('status', payload.status || 'pending');
+  addField('approved_by', payload.approvedBy || null);
+  addField('approved_at', payload.approvedAt || null);
+  addField('is_manual', payload.isManual === undefined ? false : Boolean(payload.isManual));
+  addField('status', toDepositStatus(payload.status, DEPOSIT_STATUS.PENDING));
 
   const { rows } = await q(client).query(
     `INSERT INTO wallet_deposit_requests (${fieldNames.join(', ')})
@@ -1071,8 +1093,8 @@ async function listDepositRequestsAdmin(client, filters, pagination) {
   const where = [];
 
   if (filters?.status) {
-    values.push(filters.status);
-    where.push(`d.status = $${values.length}`);
+    values.push(toDepositStatus(filters.status));
+    where.push(`UPPER(d.status) = UPPER($${values.length})`);
   }
   if (filters?.paymentProvider && columns.has('payment_provider')) {
     values.push(filters.paymentProvider);
@@ -1116,7 +1138,29 @@ async function listDepositRequestsAdmin(client, filters, pagination) {
       searchTerms.push(`COALESCE(d.details->>'walletAddress', '') ILIKE $${values.length}`);
     }
 
+    if (columns.has('payment_id')) {
+      searchTerms.push(`COALESCE(d.payment_id, '') ILIKE $${values.length}`);
+    }
+
+    if (columns.has('order_id')) {
+      searchTerms.push(`COALESCE(d.order_id, '') ILIKE $${values.length}`);
+    }
+
     where.push(`(${searchTerms.join(' OR ')})`);
+  }
+
+  if (filters?.reviewQueueOnly) {
+    const reviewPredicates = [`COALESCE(d.is_manual, FALSE) = TRUE`];
+
+    if (columns.has('payment_provider')) {
+      reviewPredicates.push(`COALESCE(d.payment_provider, '') = ''`);
+    }
+
+    if (columns.has('payment_status')) {
+      reviewPredicates.push(`LOWER(COALESCE(d.payment_status, '')) IN ('failed', 'expired')`);
+    }
+
+    where.push(`(${reviewPredicates.join(' OR ')})`);
   }
 
   const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
@@ -1146,7 +1190,7 @@ async function listDepositRequestsAdmin(client, filters, pagination) {
 async function updateDepositRequestStatus(client, id, payload) {
   const columns = await getTableColumns(client, 'wallet_deposit_requests');
   const details = payload.details && typeof payload.details === 'object' && !Array.isArray(payload.details) ? payload.details : {};
-  const values = [id, payload.status, JSON.stringify(details)];
+  const values = [id, toDepositStatus(payload.status, DEPOSIT_STATUS.PENDING), JSON.stringify(details)];
   const setClauses = [
     `status = $2`,
     `details = COALESCE(details, '{}'::jsonb) || $3::jsonb`,
@@ -1159,6 +1203,21 @@ async function updateDepositRequestStatus(client, id, payload) {
     if (columns.has('reviewed_at')) {
       setClauses.push(`reviewed_at = CASE WHEN $${values.length}::uuid IS NULL THEN reviewed_at ELSE NOW() END`);
     }
+  }
+
+  if (columns.has('approved_by') && Object.prototype.hasOwnProperty.call(payload, 'approvedBy')) {
+    values.push(payload.approvedBy || null);
+    setClauses.push(`approved_by = $${values.length}::uuid`);
+  }
+
+  if (columns.has('approved_at') && Object.prototype.hasOwnProperty.call(payload, 'approvedAt')) {
+    values.push(payload.approvedAt || null);
+    setClauses.push(`approved_at = $${values.length}`);
+  }
+
+  if (columns.has('is_manual') && Object.prototype.hasOwnProperty.call(payload, 'isManual')) {
+    values.push(Boolean(payload.isManual));
+    setClauses.push(`is_manual = $${values.length}`);
   }
 
   if (columns.has('payment_provider') && Object.prototype.hasOwnProperty.call(payload, 'paymentProvider')) {
@@ -1205,13 +1264,13 @@ async function updateDepositRequestStatus(client, id, payload) {
     }
   }
 
-  values.push(payload.expectedCurrentStatus || null);
+  values.push(payload.expectedCurrentStatus ? toDepositStatus(payload.expectedCurrentStatus) : null);
 
   const { rows } = await q(client).query(
     `UPDATE wallet_deposit_requests
      SET ${setClauses.join(',\n         ')}
      WHERE id = $1
-       AND ($${values.length}::wallet_request_status IS NULL OR status = $${values.length})
+       AND ($${values.length}::text IS NULL OR UPPER(status) = UPPER($${values.length}::text))
      RETURNING *`,
     values
   );
@@ -1538,6 +1597,7 @@ module.exports = {
   createBtctTransaction,
   transferBetweenWallets,
   createAdminWalletAction,
+  createAdminTransfer,
   createSecurityEvent,
   countRecentSecurityEvents,
   findRecentWalletTransferDuplicate,

@@ -8,6 +8,14 @@ const paymentService = require('../paymentService');
 const btctStakingRepository = require('../../repositories/btctStakingRepository');
 const btctStakingService = require('../btctStakingService');
 const notificationService = require('../notificationService');
+const {
+  toDepositStatus,
+  toDepositStatusKey,
+  getDepositStatusLabel,
+  getDepositStatusMessage,
+  getDepositUserFacingStatus,
+  depositRequiresAdminReview
+} = require('../../utils/depositStatus');
 const ADMIN_WALLET_ACTION_DUPLICATE_WINDOW_SECONDS = 30;
 const ADMIN_WALLET_ACTION_BURST_WINDOW_SECONDS = 300;
 const ADMIN_WALLET_ACTION_BURST_LIMIT = 12;
@@ -60,9 +68,14 @@ function normalizeDepositRecord(item) {
   const transactionReference = item.transaction_hash || details.transactionReference || details.txHash || null;
   const walletAddressSnapshot = item.wallet_address_snapshot || details.walletAddressSnapshot || details.walletAddress || null;
   const proofImageUrl = item.proof_image_url || details.proofImageUrl || null;
+  const status = toDepositStatus(item.status);
+  const normalizedRecord = {
+    ...item,
+    status
+  };
 
   return {
-    ...item,
+    ...normalizedRecord,
     method: 'crypto',
     asset: item.asset || details.asset || 'USDT',
     network: item.network || details.network || 'BEP20',
@@ -80,6 +93,11 @@ function normalizeDepositRecord(item) {
     payment_url: item.payment_url || details.paymentUrl || null,
     raw_webhook_data: item.raw_webhook_data || {},
     note: item.instructions || details.note || null,
+    status_key: toDepositStatusKey(status),
+    status_label: getDepositStatusLabel(status),
+    status_message: getDepositStatusMessage(normalizedRecord),
+    requires_super_admin_approval: depositRequiresAdminReview(normalizedRecord),
+    user_facing_status: getDepositUserFacingStatus(normalizedRecord),
     details
   };
 }

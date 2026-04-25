@@ -16,6 +16,7 @@ import { queryKeys } from '@/lib/query/queryKeys';
 import { createWalletTransfer, getBtctStakingSummary, getDepositHistory, getWallet, startBtctStaking } from '@/lib/services/walletService';
 import { buildDepositSuccessAckKeys, isDepositSuccessStatus } from '@/lib/utils/depositSuccess';
 import { currency, dateTime, formatLabel, number } from '@/lib/utils/format';
+import { depositStatusLabel, depositStatusMessage, depositUserFacingStatus } from '@/lib/utils/depositStatus';
 
 const walletChoices = [
   { value: 'deposit_wallet', label: 'Deposit Wallet' },
@@ -41,7 +42,7 @@ function getWalletDepositSuccessAckKeys(item) {
 }
 
 function getWalletDepositSuccessStatus(item) {
-  return item?.payment_status;
+  return depositUserFacingStatus(item);
 }
 
 export default function WalletPage() {
@@ -236,6 +237,34 @@ export default function WalletPage() {
         <StatCard compact title={formatLabel('Bonus Wallet')} value={currency(bonusBalance)} right={<HandCoins size={18} className="text-amber-500" />} uppercaseTitle={false} />
         <StatCard compact title={formatLabel('BTCT Available')} value={`${number(btctAvailable)} BTCT`} right={<BtctCoinLogo size={18} className="shrink-0" />} uppercaseTitle={false} />
         <StatCard compact title="Recent Transactions" value={transactions.length} />
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Recent Deposits</p>
+            <p className="mt-1 text-xs text-slate-500">Pending, approved, and rejected deposit states from your latest requests.</p>
+          </div>
+        </div>
+
+        {!depositRows.length ? (
+          <div className="mt-4"><EmptyState title="No deposits yet" description="Deposit requests will appear here once created." /></div>
+        ) : (
+          <div className="mt-4 space-y-3">
+            {depositRows.slice(0, 3).map((item) => (
+              <div key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-slate-900">{currency(item.amount || 0)}</p>
+                  <Badge variant={item.status_key === 'approved' ? 'success' : item.status_key === 'rejected' || item.status_key === 'failed' ? 'danger' : 'warning'}>
+                    {item.status_label || depositStatusLabel(item.status)}
+                  </Badge>
+                </div>
+                <p className="mt-1 text-[11px] font-medium text-slate-600">{dateTime(item.created_at)} | {item.network || 'BSC/BEP20'}</p>
+                <p className="mt-1 text-xs text-slate-700">{item.status_message || depositStatusMessage(item)}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4">

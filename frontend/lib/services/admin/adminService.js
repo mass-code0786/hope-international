@@ -280,6 +280,37 @@ export async function getAdminNowPaymentsDeposits(params = {}) {
   return toEnvelope(await apiFetch(`/admin/wallet/nowpayments${withQuery(params)}`));
 }
 
+export async function getAdminDeposits(params = {}) {
+  return toEnvelope(await apiFetch(`/admin/deposits${withQuery(params)}`));
+}
+
+export async function approveAdminDeposit(id) {
+  return toEnvelope(
+    await apiFetch(`/admin/deposits/${id}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({})
+    })
+  );
+}
+
+export async function rejectAdminDeposit(id, payload = {}) {
+  return toEnvelope(
+    await apiFetch(`/admin/deposits/${id}/reject`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function sendAdminFunds(payload) {
+  return toEnvelope(
+    await apiFetch('/admin/transfer', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
 export async function syncAdminNowPaymentsDeposit(id) {
   return toEnvelope(
     await apiFetch(`/admin/wallet/nowpayments/${id}/sync`, {

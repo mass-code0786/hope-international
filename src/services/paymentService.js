@@ -4,6 +4,16 @@ const paymentRepository = require('../repositories/paymentRepository');
 const walletService = require('./walletService');
 const nowPaymentsService = require('./nowPaymentsService');
 const { ApiError } = require('../utils/ApiError');
+const {
+  DEPOSIT_STATUS,
+  toDepositStatus,
+  getDepositStatusLabel,
+  getDepositStatusMessage,
+  getDepositUserFacingStatus,
+  depositRequiresAdminReview,
+  isRejectedDepositStatus,
+  isSuccessfulDepositStatus
+} = require('../utils/depositStatus');
 
 const MIN_DEPOSIT_AMOUNT = 1;
 const MAX_DEPOSIT_AMOUNT = 1000;
@@ -131,6 +141,7 @@ async function resolveNowPaymentsPaymentRecord(client, lookupId, options = {}) {
 function normalizePaymentRecord(record, options = {}) {
   if (!record) return null;
   const includeSensitive = options.includeSensitive === true;
+  const depositRequest = options.depositRequest || null;
   const requestedAmount = Number(record.requested_amount || 0);
   const totalPayableAmount = Number(record.price_amount || 0);
   const feeAmount = Math.max(0, Number((totalPayableAmount - requestedAmount).toFixed(2)));
@@ -142,6 +153,17 @@ function normalizePaymentRecord(record, options = {}) {
   const locallyExpired = !['confirmed', 'finished', 'failed', 'expired'].includes(String(record.payment_status || '').toLowerCase())
     && isExpiredAt(record.expires_at);
   const effectivePaymentStatus = locallyExpired ? 'expired' : record.payment_status;
+  let userFacingStatus = getFriendlyPaymentStatus(effectivePaymentStatus);
+
+  if (depositRequest) {
+    userFacingStatus = getDepositUserFacingStatus({
+      ...depositRequest,
+      payment_status: effectivePaymentStatus,
+      is_credited: record.is_credited,
+      wallet_credit_applied: record.wallet_credit_applied
+    });
+  }
+
   const normalized = {
     ...record,
     requested_amount: requestedAmount,
@@ -163,11 +185,29 @@ function normalizePaymentRecord(record, options = {}) {
     deposit_id: record.deposit_id || null,
     order_id: record.order_id || null,
     payment_status: effectivePaymentStatus,
-    user_facing_status: getFriendlyPaymentStatus(effectivePaymentStatus),
+    user_facing_status: userFacingStatus,
     is_terminal: ['confirmed', 'finished', 'failed', 'expired'].includes(String(effectivePaymentStatus || '').toLowerCase()),
     is_completed: ['confirmed', 'finished'].includes(String(effectivePaymentStatus || '').toLowerCase()),
     is_expired: locallyExpired || String(record.payment_status || '').toLowerCase() === 'expired'
   };
+
+  if (depositRequest) {
+    normalized.deposit_status = toDepositStatus(depositRequest.status);
+    normalized.deposit_status_label = getDepositStatusLabel(depositRequest.status);
+    normalized.deposit_status_message = getDepositStatusMessage({
+      ...depositRequest,
+      payment_status: effectivePaymentStatus,
+      is_credited: record.is_credited,
+      wallet_credit_applied: record.wallet_credit_applied
+    });
+    normalized.requires_super_admin_approval = depositRequiresAdminReview({
+      ...depositRequest,
+      payment_status: effectivePaymentStatus
+    });
+    normalized.approved_by = depositRequest.approved_by || null;
+    normalized.approved_at = depositRequest.approved_at || null;
+    normalized.is_manual = Boolean(depositRequest.is_manual);
+  }
 
   if (!includeSensitive) {
     delete normalized.raw_payload;
@@ -184,6 +224,24 @@ async function reconcileSuccessfulDepositCreditWithClient(client, paymentRecord,
 
   if (String(paymentRecord.user_id) !== String(depositRequest.user_id)) {
     throw new ApiError(500, 'NOWPayments payment user mapping mismatch');
+  }
+
+  if (isRejectedDepositStatus(depositRequest.status)) {
+    logNowPayments('wallet-credit.skipped', {
+      paymentRecordId: paymentRecord.id,
+      depositId: depositRequest.id,
+      userId: depositRequest.user_id,
+      providerPaymentId: paymentRecord.provider_payment_id,
+      providerOrderId: paymentRecord.provider_order_id || null,
+      rawProviderStatus: payload?.payment_status || null,
+      paymentStatus: options.paymentStatus || paymentRecord.payment_status || null,
+      reason: 'deposit_rejected_by_super_admin'
+    });
+    return {
+      paymentRecord,
+      alreadyCredited: false,
+      rejected: true
+    };
   }
 
   const existingCredit = await walletRepository.getTransactionBySourceAndReference(
@@ -238,9 +296,11 @@ async function reconcileSuccessfulDepositCreditWithClient(client, paymentRecord,
       paymentStatus: options.paymentStatus || paymentRecord.payment_status || null
     });
     settled = await walletService.settleDepositRequest(client, depositRequest.id, {
-      status: 'approved',
+      status: DEPOSIT_STATUS.SUCCESS,
       paymentStatus: options.paymentStatus || paymentRecord.payment_status || null,
       rawWebhookData: payload,
+      approvedBy: null,
+      approvedAt: creditedAt,
       extraDetails: {
         paymentRecordId: paymentRecord.id,
         confirmedBy: nowPaymentsService.NOWPAYMENTS_PROVIDER,
@@ -356,7 +416,7 @@ async function createNowPaymentsDepositPaymentWithClient(client, userId, payload
       paymentStatus: nowPaymentsService.mapPaymentStatus(providerPayment.payment_status || 'waiting'),
       expiresAt
     },
-    status: 'pending'
+    status: DEPOSIT_STATUS.PENDING
   });
 
   const paymentRecord = await paymentRepository.createNowPaymentsPayment(client, {
@@ -625,13 +685,17 @@ async function processNowPaymentsPayloadWithClient(client, payload, options = {}
       throw new ApiError(400, 'NOWPayments amount mismatch');
     }
 
-    const nextDepositStatus = ['failed', 'expired'].includes(effectiveMappedStatus)
-      ? 'failed'
-      : nowPaymentsService.isSuccessfulPaymentStatus(effectiveMappedStatus)
-        ? 'approved'
-        : depositRequest.status;
+    const nextDepositStatus = isRejectedDepositStatus(depositRequest.status)
+      ? DEPOSIT_STATUS.REJECTED
+      : isSuccessfulDepositStatus(depositRequest.status)
+        ? DEPOSIT_STATUS.SUCCESS
+      : ['failed', 'expired'].includes(effectiveMappedStatus)
+        ? DEPOSIT_STATUS.PENDING
+        : nowPaymentsService.isSuccessfulPaymentStatus(effectiveMappedStatus)
+          ? DEPOSIT_STATUS.SUCCESS
+          : toDepositStatus(depositRequest.status, DEPOSIT_STATUS.PENDING);
 
-    const nextDepositRequest = await walletRepository.updateDepositRequestStatus(client, depositRequest.id, {
+    const nextDepositPayload = {
       status: nextDepositStatus,
       details: {
         paymentRecordId: nextPaymentRecord.id,
@@ -653,9 +717,16 @@ async function processNowPaymentsPayloadWithClient(client, payload, options = {}
       paymentUrl: nextPaymentRecord.payment_url,
       rawWebhookData: payload,
       expectedCurrentStatus: depositRequest.status
-    });
+    };
 
-    if (settlementEligibility.eligible) {
+    if (nextDepositStatus === DEPOSIT_STATUS.SUCCESS) {
+      nextDepositPayload.approvedBy = null;
+      nextDepositPayload.approvedAt = nextPaymentRecord.credited_at || new Date().toISOString();
+    }
+
+    const nextDepositRequest = await walletRepository.updateDepositRequestStatus(client, depositRequest.id, nextDepositPayload);
+
+    if (settlementEligibility.eligible && !isRejectedDepositStatus(nextDepositRequest?.status || depositRequest.status)) {
       logNowPayments('payment.status-terminal-success', {
         source: options.source || 'webhook',
         paymentRecordId: nextPaymentRecord.id,
@@ -824,7 +895,10 @@ async function getNowPaymentsPaymentForUserById(paymentId, userId) {
     scope: 'wallet.nowpayments'
   });
   const currentPaymentRecord = await maybeAutoSyncNowPaymentsPayment(paymentRecord, { source: 'status-page-auto-sync' });
-  return normalizePaymentRecord(currentPaymentRecord);
+  const depositRequest = currentPaymentRecord?.deposit_id
+    ? await walletRepository.getDepositRequestById(null, currentPaymentRecord.deposit_id)
+    : null;
+  return normalizePaymentRecord(currentPaymentRecord, { depositRequest });
 }
 
 async function getPaymentForUser(paymentId, userId, options = {}) {
@@ -854,7 +928,13 @@ async function getPaymentForUser(paymentId, userId, options = {}) {
     paymentStatus: paymentRecord.payment_status
   });
   const currentPaymentRecord = await maybeAutoSyncNowPaymentsPayment(paymentRecord, { source: 'status-page-auto-sync' });
-  return normalizePaymentRecord(currentPaymentRecord, { includeSensitive: isSuperAdmin && !isOwner });
+  const depositRequest = currentPaymentRecord?.deposit_id
+    ? await walletRepository.getDepositRequestById(null, currentPaymentRecord.deposit_id)
+    : null;
+  return normalizePaymentRecord(currentPaymentRecord, {
+    includeSensitive: isSuperAdmin && !isOwner,
+    depositRequest
+  });
 }
 
 async function listAdminNowPaymentsPayments(filters, pagination) {
@@ -870,7 +950,10 @@ async function getAdminNowPaymentsPayment(paymentId) {
   if (!paymentRecord) {
     throw new ApiError(404, 'Payment not found');
   }
-  return normalizePaymentRecord(paymentRecord, { includeSensitive: true });
+  const depositRequest = paymentRecord.deposit_id
+    ? await walletRepository.getDepositRequestById(null, paymentRecord.deposit_id)
+    : null;
+  return normalizePaymentRecord(paymentRecord, { includeSensitive: true, depositRequest });
 }
 
 module.exports = {

@@ -1,6 +1,6 @@
 const express = require('express');
 const walletController = require('../controllers/walletController');
-const { auth, requireAdmin } = require('../middleware/auth');
+const { auth, requireSuperAdmin } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 const {
   walletAdjustSchema,
@@ -29,6 +29,6 @@ router.get('/staking', auth(), walletController.stakingSummary);
 router.post('/staking/start', auth(), validate(walletBtctStakingStartSchema), walletController.stakingStart);
 router.post('/p2p', auth(), validate(walletP2pSchema), walletController.p2pCreate);
 router.post('/bind', auth(), validate(walletBindSchema), walletController.bindWallet);
-router.post('/adjust', auth(), requireAdmin, validate(walletAdjustSchema), walletController.adjust);
+router.post('/adjust', auth(), requireSuperAdmin, validate(walletAdjustSchema), walletController.adjust);
 
 module.exports = router;

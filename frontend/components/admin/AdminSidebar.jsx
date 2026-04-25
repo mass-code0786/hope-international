@@ -17,6 +17,7 @@ export const adminNav = [
   { href: '/admin/gallery', label: 'Gallery', icon: Images },
   { href: '/admin/support', label: 'Support', icon: Headset },
   { href: '/admin/orders', label: 'Orders', icon: ShoppingCart },
+  { href: '/admin/deposits', label: 'Deposits', icon: ArrowDownCircle, superAdminOnly: true },
   { href: '/admin/nowpayments', label: 'NOWPayments', icon: ArrowDownCircle, superAdminOnly: true },
   { href: '/admin/withdrawals', label: 'Withdrawals', icon: ArrowUpCircle },
   { href: '/admin/p2p', label: 'P2P', icon: Repeat2 },
@@ -32,7 +33,7 @@ export const adminNav = [
 const adminGroups = [
   { title: 'Overview', items: ['/admin'] },
   { title: 'Commerce', items: ['/admin/products', '/admin/orders', '/admin/auctions', '/admin/banners', '/admin/landing', '/admin/gallery', '/admin/support'] },
-  { title: 'Finance', items: ['/admin/nowpayments', '/admin/withdrawals', '/admin/p2p', '/admin/wallets', '/admin/income', '/admin/wallet'] },
+  { title: 'Finance', items: ['/admin/deposits', '/admin/nowpayments', '/admin/withdrawals', '/admin/p2p', '/admin/wallets', '/admin/income', '/admin/wallet'] },
   { title: 'Network', items: ['/admin/users', '/admin/compensation', '/admin/rewards', '/admin/team', '/admin/settings'] }
 ];
 

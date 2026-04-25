@@ -19,6 +19,8 @@ import { cryptoAmount, currency, dateTime } from '@/lib/utils/format';
 
 function statusMeta(status) {
   const normalized = String(status || 'awaiting_payment').trim().toLowerCase();
+  if (normalized === 'pending_admin_review') return { label: 'Pending Admin Review', variant: 'warning', description: 'Deposit submitted. Waiting for super admin approval.' };
+  if (normalized === 'rejected') return { label: 'Rejected', variant: 'danger', description: 'This deposit was rejected by super admin and no wallet credit was applied.' };
   if (normalized === 'finished') return { label: 'Finished', variant: 'success', description: 'Payment finished and wallet credit was applied.' };
   if (normalized === 'confirmed') return { label: 'Confirmed', variant: 'success', description: 'Payment confirmed and wallet credit was applied.' };
   if (normalized === 'completed') return { label: 'Completed', variant: 'success', description: 'Payment confirmed and wallet credited.' };
@@ -123,7 +125,7 @@ function getPaymentSuccessAckKeys(payment) {
 }
 
 function getPaymentSuccessStatus(payment) {
-  return payment?.payment_status || payment?.user_facing_status;
+  return payment?.user_facing_status || payment?.payment_status;
 }
 
 export default function PaymentStatusPage() {
@@ -195,7 +197,7 @@ export default function PaymentStatusPage() {
   if (paymentQuery.isError) {
     return <ErrorState message="Payment status could not be loaded." onRetry={paymentQuery.refetch} />;
   }
-  const meta = statusMeta(payment?.user_facing_status);
+  const meta = statusMeta(payment?.user_facing_status || payment?.payment_status);
 
   return (
     <div className="space-y-4">

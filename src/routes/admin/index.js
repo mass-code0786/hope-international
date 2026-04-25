@@ -17,6 +17,8 @@ const galleryRoutes = require('./galleryRoutes');
 const supportRoutes = require('./supportRoutes');
 const helpingHandRoutes = require('./helpingHandRoutes');
 const donationsRoutes = require('./donationsRoutes');
+const depositsRoutes = require('./depositsRoutes');
+const transferRoutes = require('./transferRoutes');
 
 const router = express.Router();
 
@@ -26,6 +28,8 @@ router.use('/products', productsRoutes);
 router.use('/orders', ordersRoutes);
 router.use('/wallet', walletRoutes);
 router.use('/wallets', walletRoutes);
+router.use('/deposits', depositsRoutes);
+router.use('/transfer', transferRoutes);
 router.use('/compensation', compensationRoutes);
 router.use('/rewards', rewardsRoutes);
 router.use('/team', teamRoutes);
