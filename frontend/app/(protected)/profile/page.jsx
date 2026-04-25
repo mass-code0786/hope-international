@@ -10,6 +10,7 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ProfileActions } from '@/components/profile/ProfileActions';
 import { HelpingHandCard } from '@/components/profile/HelpingHandCard';
 import { DonationCard } from '@/components/profile/DonationCard';
+import { LoanApplicationCard } from '@/components/profile/LoanApplicationCard';
 import { BinaryReferralLinks } from '@/components/referral/BinaryReferralLinks';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Badge } from '@/components/ui/Badge';
@@ -411,6 +412,7 @@ export default function ProfilePage() {
 
       <HelpingHandCard />
       <DonationCard />
+      <LoanApplicationCard defaultFullName={[user.first_name, user.last_name].filter(Boolean).join(' ') || user.username || ''} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="card-surface p-4">
