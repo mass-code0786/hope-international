@@ -216,6 +216,13 @@ const adminWalletReviewSchema = z.object({ body: z.object({ status: z.enum(['app
 const adminPaymentSyncParamSchema = z.object({ body: z.object({}), params: z.object({ id: uuid }), query: z.object({}) });
 const adminWalletBindingUpsertSchema = z.object({ body: z.object({ walletAddress: z.string().min(8).max(255), network: z.string().max(60).optional() }), params: z.object({ userId: uuid }), query: z.object({}) });
 const adminWalletBindingParamSchema = z.object({ body: z.object({}), params: z.object({ userId: uuid }), query: z.object({}) });
+const adminAutopoolResetSchema = z.object({
+  body: z.object({
+    confirm: z.literal('RESET_AUTOPOOL')
+  }),
+  params: z.object({}),
+  query: z.object({})
+});
 const adminBtctStakingPayoutRunSchema = z.object({
   body: z.object({
     asOf: z.string().datetime().optional(),
@@ -657,6 +664,7 @@ module.exports = {
   adminWalletReviewSchema,
   adminWalletBindingUpsertSchema,
   adminWalletBindingParamSchema,
+  adminAutopoolResetSchema,
   adminBtctStakingPayoutRunSchema,
   adminWeeklyRunSchema,
   adminMonthlyRunSchema,

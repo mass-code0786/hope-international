@@ -19,6 +19,7 @@ const helpingHandRoutes = require('./helpingHandRoutes');
 const donationsRoutes = require('./donationsRoutes');
 const depositsRoutes = require('./depositsRoutes');
 const transferRoutes = require('./transferRoutes');
+const autopoolRoutes = require('./autopoolRoutes');
 
 const router = express.Router();
 
@@ -43,5 +44,6 @@ router.use('/gallery', galleryRoutes);
 router.use('/support', supportRoutes);
 router.use('/helping-hand', helpingHandRoutes);
 router.use('/donations', donationsRoutes);
+router.use('/autopool', autopoolRoutes);
 
 module.exports = router;
