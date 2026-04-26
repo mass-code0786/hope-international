@@ -140,7 +140,17 @@ function normalizePackage(item) {
     currentRecycleCount: toNumber(item.currentRecycleCount),
     currentFillCount: toNumber(item.currentFillCount),
     currentFillProgress: normalizeFillProgress(item.currentFillProgress, item.currentFillCount),
-    currentEntry: normalizeEntry(item.currentEntry)
+    currentEntry: normalizeEntry(item.currentEntry),
+    incomeTotal: toNumber(item.incomeTotal),
+    incomeCap: toNumber(item.incomeCap),
+    lastEntryDate: item.lastEntryDate || null,
+    requireReentry: Boolean(item.requireReentry),
+    requireMonthlyEntry: Boolean(item.requireMonthlyEntry),
+    hasPurchased: Boolean(item.hasPurchased),
+    isActive: Boolean(item.isActive),
+    activeStatus: item.activeStatus || 'INACTIVE',
+    inactiveReason: item.inactiveReason || null,
+    statusMessage: item.statusMessage || ''
   };
 }
 
@@ -161,7 +171,17 @@ function buildEmptyPackage(amount) {
     currentRecycleCount: 0,
     currentFillCount: 0,
     currentFillProgress: normalizeFillProgress(null, 0),
-    currentEntry: null
+    currentEntry: null,
+    incomeTotal: 0,
+    incomeCap: amount * 5,
+    lastEntryDate: null,
+    requireReentry: false,
+    requireMonthlyEntry: false,
+    hasPurchased: false,
+    isActive: false,
+    activeStatus: 'INACTIVE',
+    inactiveReason: 'not_purchased',
+    statusMessage: 'Buy this package to activate autopool income.'
   };
 }
 

@@ -2,15 +2,24 @@ const app = require('./app');
 const env = require('./config/env');
 const landingMediaStorageService = require('./services/landingMediaStorageService');
 const autopoolProcessor = require('./jobs/autopoolProcessor');
+const autopoolBonusExpiryProcessor = require('./jobs/autopoolBonusExpiryProcessor');
 
 async function startServer() {
   try {
     const mediaStorage = await landingMediaStorageService.ensureMediaStorageReady();
     let autopoolBootstrap = null;
+    let autopoolBonusExpiry = null;
     try {
       autopoolBootstrap = await autopoolProcessor.bootstrapAutopoolQueue();
     } catch (error) {
       console.warn('[startup.autopool]', {
+        message: error.message
+      });
+    }
+    try {
+      autopoolBonusExpiry = autopoolBonusExpiryProcessor.startAutopoolBonusExpiryProcessor();
+    } catch (error) {
+      console.warn('[startup.autopool.bonus-expiry]', {
         message: error.message
       });
     }
@@ -33,6 +42,9 @@ async function startServer() {
       });
       if (autopoolBootstrap) {
         console.log('[startup.autopool]', autopoolBootstrap);
+      }
+      if (autopoolBonusExpiry) {
+        console.log('[startup.autopool.bonus-expiry]', autopoolBonusExpiry);
       }
     });
   } catch (error) {

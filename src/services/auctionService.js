@@ -4,6 +4,7 @@ const { ApiError } = require('../utils/ApiError');
 const auctionRepository = require('../repositories/auctionRepository');
 const walletRepository = require('../repositories/walletRepository');
 const walletService = require('./walletService');
+const autopoolService = require('./autopoolService');
 const notificationService = require('./notificationService');
 const { withPerfSpan } = require('../utils/perf');
 const { clearCacheEntriesByPrefix, getCacheEntry, setCacheEntry } = require('../utils/runtimeCache');
@@ -1128,11 +1129,15 @@ async function placeBid(auctionId, userId, payload) {
     const entryPrice = validateAuctionRange(auction.entry_price || auction.starting_price, 'Fixed entry price');
     const totalAmount = roundMoney(entryPrice * entryCount);
 
-    await walletService.debitForAuctionEntry(client, userId, totalAmount, 'auction_entry', auctionId, {
+    const auctionDebit = await walletService.debitForAuctionEntry(client, userId, totalAmount, 'auction_entry', auctionId, {
       auctionId,
       entryCount,
       entryPrice
     });
+
+    if (Number(auctionDebit?.debitBreakdown?.bonus || 0) > 0) {
+      await autopoolService.consumeAutopoolBonusCredits(client, userId, Number(auctionDebit.debitBreakdown.bonus || 0));
+    }
 
     const bid = await auctionRepository.createBid(client, {
       auctionId,

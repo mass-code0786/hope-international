@@ -14,6 +14,8 @@ const MATRIX_TYPE = '1x3';
 const EARNING_WALLET_TYPE = 'earning_wallet';
 const BONUS_WALLET_TYPE = 'bonus_wallet';
 const RECYCLE_CONFIRMATION = 'Recycle creates a new entry and repeats the same process in global FIFO order from left to right.';
+const PACKAGE_REENTRY_MULTIPLIER = 5;
+const BONUS_WALLET_EXPIRY_HOURS = 100;
 const SLOT_ORDER = Object.freeze([
   { position: 1, label: 'LEFT' },
   { position: 2, label: 'MIDDLE' },
@@ -38,21 +40,24 @@ const AUTOPOOL_TRANSACTION_TYPES = Object.freeze({
   INCOME: 'EARN',
   SPONSOR: 'UPLINE',
   RECYCLE: 'RECYCLE',
-  BONUS: 'BONUS'
+  BONUS: 'BONUS',
+  BONUS_EXPIRED: 'BONUS_EXPIRED'
 });
 
 const AUTOPOOL_WALLET_SOURCES = Object.freeze({
   ENTRY: 'autopool_entry',
   INCOME: 'autopool_matrix_income',
   SPONSOR: 'sponsor_pool_income',
-  BONUS: 'autopool_bonus_share'
+  BONUS: 'autopool_bonus_share',
+  BONUS_EXPIRED: 'autopool_bonus_expired'
 });
 
 const AUTOPOOL_WALLET_SOURCE_ALIASES = Object.freeze({
   ENTRY: [AUTOPOOL_WALLET_SOURCES.ENTRY],
   INCOME: [AUTOPOOL_WALLET_SOURCES.INCOME],
   SPONSOR: [AUTOPOOL_WALLET_SOURCES.SPONSOR, 'autopool_upline_income'],
-  BONUS: [AUTOPOOL_WALLET_SOURCES.BONUS, 'autopool_auction_share']
+  BONUS: [AUTOPOOL_WALLET_SOURCES.BONUS, 'autopool_auction_share'],
+  BONUS_EXPIRED: [AUTOPOOL_WALLET_SOURCES.BONUS_EXPIRED]
 });
 
 const AUTOPOOL_HISTORY_FILTERS = Object.freeze({
@@ -145,11 +150,13 @@ function historyTypeLabel(type, walletSource = null) {
   if (normalizedWalletSource === AUTOPOOL_WALLET_SOURCES.SPONSOR) return 'Sponsor Pool Income';
   if (normalizedWalletSource === AUTOPOOL_WALLET_SOURCES.INCOME) return 'Autopool Income';
   if (normalizedWalletSource === AUTOPOOL_WALLET_SOURCES.BONUS) return 'Autopool Bonus Share';
+  if (normalizedWalletSource === AUTOPOOL_WALLET_SOURCES.BONUS_EXPIRED) return 'Bonus Expired';
   if ([AUTOPOOL_TRANSACTION_TYPES.INCOME, 'AUTOPOOL_INCOME'].includes(type)) return 'Autopool Income';
   if ([AUTOPOOL_TRANSACTION_TYPES.SPONSOR, 'SPONSOR_POOL_INCOME'].includes(type)) return 'Sponsor Pool Income';
   if ([AUTOPOOL_TRANSACTION_TYPES.RECYCLE, 'AUTOPOOL_RECYCLE'].includes(type)) return 'Autopool Recycle';
   if ([AUTOPOOL_TRANSACTION_TYPES.ENTRY, 'AUTOPOOL_ENTRY'].includes(type)) return 'Autopool Entry';
   if ([AUTOPOOL_TRANSACTION_TYPES.BONUS, 'AUTOPOOL_BONUS_SHARE'].includes(type)) return 'Autopool Bonus Share';
+  if ([AUTOPOOL_TRANSACTION_TYPES.BONUS_EXPIRED].includes(type)) return 'Bonus Expired';
   return 'Autopool Transaction';
 }
 
@@ -207,6 +214,68 @@ function buildFillProgress(filledSlotsCount = 0) {
     filled,
     total: MATRIX_SLOTS,
     label: `${filled}/${MATRIX_SLOTS}`
+  };
+}
+
+function addHours(dateInput, hours) {
+  const date = new Date(dateInput || Date.now());
+  date.setHours(date.getHours() + Number(hours || 0));
+  return date.toISOString();
+}
+
+function getPackageIncomeCap(packageAmount) {
+  return toMoney(normalizePackageAmount(packageAmount) * PACKAGE_REENTRY_MULTIPLIER);
+}
+
+function derivePackageStatus(_packageAmount, stats = {}, packageState = null) {
+  const hasPurchased = Boolean(packageState?.last_entry_date) || Number(stats.myEntry || 0) > 0 || Number(stats.totalEntries || 0) > 0;
+  const requireReentry = Boolean(packageState?.require_reentry);
+  const requireMonthlyEntry = Boolean(packageState?.require_monthly_entry);
+
+  if (!hasPurchased) {
+    return {
+      hasPurchased: false,
+      isActive: false,
+      activeStatus: 'INACTIVE',
+      inactiveReason: 'not_purchased',
+      statusMessage: 'Buy this package to activate autopool income.',
+      requireReentry: false,
+      requireMonthlyEntry: false
+    };
+  }
+
+  if (requireReentry) {
+    return {
+      hasPurchased: true,
+      isActive: false,
+      activeStatus: 'INACTIVE',
+      inactiveReason: 'reentry_required',
+      statusMessage: 'Re-entry required',
+      requireReentry: true,
+      requireMonthlyEntry
+    };
+  }
+
+  if (requireMonthlyEntry) {
+    return {
+      hasPurchased: true,
+      isActive: false,
+      activeStatus: 'INACTIVE',
+      inactiveReason: 'monthly_entry_required',
+      statusMessage: 'Monthly entry required',
+      requireReentry,
+      requireMonthlyEntry: true
+    };
+  }
+
+  return {
+    hasPurchased: true,
+    isActive: true,
+    activeStatus: 'ACTIVE',
+    inactiveReason: null,
+    statusMessage: 'Active',
+    requireReentry: false,
+    requireMonthlyEntry: false
   };
 }
 
@@ -325,9 +394,10 @@ function buildActiveEntrySummary(entry) {
   };
 }
 
-function buildPackageSummary(packageAmount, stats = {}, currentEntry = null) {
+function buildPackageSummary(packageAmount, stats = {}, currentEntry = null, packageState = null) {
   const fillProgress = currentEntry?.fillProgress || buildFillProgress(0);
   const sponsorPoolIncome = toMoney(stats.sponsorPoolIncome || stats.uplineEarnings || 0);
+  const conditionState = derivePackageStatus(packageAmount, stats, packageState);
 
   return {
     amount: normalizePackageAmount(packageAmount),
@@ -349,7 +419,17 @@ function buildPackageSummary(packageAmount, stats = {}, currentEntry = null) {
     currentRecycleCount: Number(currentEntry?.recycleCount || 0),
     currentFillCount: Number(currentEntry?.filledSlotsCount || 0),
     currentFillLabel: currentEntry?.fillLabel || fillProgress.label,
-    currentFillProgress: fillProgress
+    currentFillProgress: fillProgress,
+    incomeTotal: toMoney(packageState?.income_total || 0),
+    incomeCap: getPackageIncomeCap(packageAmount),
+    lastEntryDate: packageState?.last_entry_date || null,
+    requireReentry: conditionState.requireReentry,
+    requireMonthlyEntry: conditionState.requireMonthlyEntry,
+    hasPurchased: conditionState.hasPurchased,
+    isActive: conditionState.isActive,
+    activeStatus: conditionState.activeStatus,
+    inactiveReason: conditionState.inactiveReason,
+    statusMessage: conditionState.statusMessage
   };
 }
 
@@ -510,6 +590,7 @@ async function creditAutopoolWalletOnce(client, payload) {
     walletTransaction = credited.transaction;
   }
 
+  const createdAutopoolTransaction = !existingAutopoolTransaction;
   const autopoolTransaction = existingAutopoolTransaction || await createAutopoolTransactionOnce(client, {
     userId: payload.userId,
     entryId: payload.entryId,
@@ -548,8 +629,44 @@ async function creditAutopoolWalletOnce(client, payload) {
 
   return {
     walletTransaction,
-    autopoolTransaction
+    autopoolTransaction,
+    createdAutopoolTransaction
   };
+}
+
+async function getPackageEligibilityForIncome(client, userId, packageAmount) {
+  await autopoolRepository.refreshMonthlyRequirements(client, userId, packageAmount);
+  const state = await autopoolRepository.getOrHydratePackageState(client, userId, packageAmount, { forUpdate: true });
+  const status = derivePackageStatus(packageAmount, {}, state);
+  return {
+    state,
+    isActive: status.isActive,
+    reason: status.inactiveReason,
+    message: status.statusMessage
+  };
+}
+
+async function resetPackageConditionsOnManualBuy(client, userId, packageAmount, purchasedAt) {
+  return autopoolRepository.createOrResetPackageState(client, {
+    userId,
+    packageAmount,
+    lastEntryDate: purchasedAt
+  });
+}
+
+async function recordAutopoolBonusCredit(client, payload) {
+  if (!payload?.walletTransactionId || toMoney(payload.amount) <= 0) {
+    return null;
+  }
+
+  return autopoolRepository.createBonusCredit(client, {
+    userId: payload.userId,
+    entryId: payload.entryId,
+    packageAmount: payload.packageAmount,
+    walletTransactionId: payload.walletTransactionId,
+    amount: payload.amount,
+    expiresAt: addHours(payload.createdAt || Date.now(), BONUS_WALLET_EXPIRY_HOURS)
+  });
 }
 
 async function createNextEntryForUser(client, userId, options = {}) {
@@ -668,30 +785,40 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
   await autopoolRepository.removeQueuedEntry(client, markedEntry.id);
   const matrixOwnerUserId = markedEntry.user_id;
   const sponsorUserId = await userRepository.getSponsorIdByUserId(client, matrixOwnerUserId);
+  const ownerEligibility = await getPackageEligibilityForIncome(client, markedEntry.user_id, packageAmount);
+  if (ownerEligibility.isActive) {
+    const ownerCredit = await creditAutopoolWalletOnce(client, {
+      userId: markedEntry.user_id,
+      amount: packageConfig.self,
+      walletType: EARNING_WALLET_TYPE,
+      walletSource: AUTOPOOL_WALLET_SOURCES.INCOME,
+      entryId: markedEntry.id,
+      packageAmount,
+      cycleNumber,
+      sourceUserId: triggerEntry.user_id,
+      transactionType: AUTOPOOL_TRANSACTION_TYPES.INCOME,
+      eventKey: `${completionEventKey}:owner`,
+      walletMetadata: {
+        note: `Autopool cycle #${cycleNumber} completed`,
+        triggerEntryId: triggerEntry.id,
+        triggerUserId: triggerEntry.user_id
+      },
+      autopoolMetadata: {
+        triggerEntryId: triggerEntry.id,
+        triggerUserId: triggerEntry.user_id
+      },
+      notificationTitle: 'Autopool income received',
+      notificationMessage: `You earned ${formatMoney(packageConfig.self)} in your ${formatMoney(packageAmount)} Global Autopool cycle.`
+    });
 
-  await creditAutopoolWalletOnce(client, {
-    userId: markedEntry.user_id,
-    amount: packageConfig.self,
-    walletType: EARNING_WALLET_TYPE,
-    walletSource: AUTOPOOL_WALLET_SOURCES.INCOME,
-    entryId: markedEntry.id,
-    packageAmount,
-    cycleNumber,
-    sourceUserId: triggerEntry.user_id,
-    transactionType: AUTOPOOL_TRANSACTION_TYPES.INCOME,
-    eventKey: `${completionEventKey}:owner`,
-    walletMetadata: {
-      note: `Autopool cycle #${cycleNumber} completed`,
-      triggerEntryId: triggerEntry.id,
-      triggerUserId: triggerEntry.user_id
-    },
-    autopoolMetadata: {
-      triggerEntryId: triggerEntry.id,
-      triggerUserId: triggerEntry.user_id
-    },
-    notificationTitle: 'Autopool income received',
-    notificationMessage: `You earned ${formatMoney(packageConfig.self)} in your ${formatMoney(packageAmount)} Global Autopool cycle.`
-  });
+    if (ownerCredit?.createdAutopoolTransaction) {
+      await autopoolRepository.registerPackageIncomeCredit(client, {
+        userId: markedEntry.user_id,
+        packageAmount,
+        amount: packageConfig.self
+      });
+    }
+  }
 
   if (sponsorUserId && sponsorUserId !== matrixOwnerUserId && toMoney(packageConfig.upline) > 0) {
     await creditAutopoolWalletOnce(client, {
@@ -727,7 +854,7 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
     });
   }
 
-  await creditAutopoolWalletOnce(client, {
+  const bonusCredit = await creditAutopoolWalletOnce(client, {
     userId: markedEntry.user_id,
     amount: packageConfig.bonus,
     walletType: BONUS_WALLET_TYPE,
@@ -748,6 +875,17 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
     notificationTitle: 'Bonus Wallet credited',
     notificationMessage: `${formatMoney(packageConfig.bonus)} was credited to your Bonus Wallet from the ${formatMoney(packageAmount)} package cycle.`
   });
+
+  if (bonusCredit?.createdAutopoolTransaction && bonusCredit?.walletTransaction?.id) {
+    await recordAutopoolBonusCredit(client, {
+      userId: markedEntry.user_id,
+      entryId: markedEntry.id,
+      packageAmount,
+      amount: packageConfig.bonus,
+      walletTransactionId: bonusCredit.walletTransaction.id,
+      createdAt: bonusCredit.walletTransaction.created_at
+    });
+  }
 
   await createAutopoolNotification(client, {
     userId: markedEntry.user_id,
@@ -841,11 +979,14 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
 }
 
 async function getPackagesOverviewWithClient(client, userId) {
-  const [packageStatsResult, incomeSummaryQueryResult, focusEntriesResult, activeEntriesResult] = await Promise.allSettled([
+  await autopoolRepository.refreshMonthlyRequirements(client, userId);
+
+  const [packageStatsResult, incomeSummaryQueryResult, focusEntriesResult, activeEntriesResult, packageStatesResult] = await Promise.allSettled([
     autopoolRepository.listUserPackageStats(client, userId),
     autopoolRepository.getIncomeDashboardSummary(client, userId),
     autopoolRepository.listUserPackageFocusEntries(client, userId),
-    autopoolRepository.listUserActiveEntries(client, userId, 12, { packageAmount: DEFAULT_PACKAGE_AMOUNT })
+    autopoolRepository.listUserActiveEntries(client, userId, 12, { packageAmount: DEFAULT_PACKAGE_AMOUNT }),
+    autopoolRepository.listUserPackageStates(client, userId)
   ]);
 
   const packageStatsMap = packageStatsResult.status === 'fulfilled' && packageStatsResult.value instanceof Map
@@ -858,6 +999,9 @@ async function getPackagesOverviewWithClient(client, userId) {
   const defaultActiveEntries = activeEntriesResult.status === 'fulfilled' && Array.isArray(activeEntriesResult.value)
     ? activeEntriesResult.value
     : [];
+  const packageStatesMap = packageStatesResult.status === 'fulfilled' && packageStatesResult.value instanceof Map
+    ? packageStatesResult.value
+    : new Map();
 
   const focusEntryIds = focusEntries.map((entry) => entry.id);
   let childEntries = [];
@@ -888,7 +1032,7 @@ async function getPackagesOverviewWithClient(client, userId) {
     const currentEntry = focusEntry
       ? buildEntrySummary(focusEntry, childrenByParentEntry.get(focusEntry.id) || [])
       : null;
-    return buildPackageSummary(amount, packageStatsMap.get(amount) || {}, currentEntry);
+    return buildPackageSummary(amount, packageStatsMap.get(amount) || {}, currentEntry, packageStatesMap.get(amount) || null);
   });
 
   const defaultPackage = packages.find((item) => item.amount === DEFAULT_PACKAGE_AMOUNT) || packages[0];
@@ -1042,6 +1186,8 @@ async function buyAutopoolPackage(userId, payload = {}) {
       }
     });
 
+    await resetPackageConditionsOnManualBuy(client, userId, packageConfig.amount, entry.created_at || new Date().toISOString());
+
     const context = {
       requestId,
       packageAmount: packageConfig.amount,
@@ -1070,6 +1216,85 @@ async function enterAutopool(userId, payload = {}) {
   });
 }
 
+async function consumeAutopoolBonusCredits(client, userId, amount) {
+  const safeAmount = toMoney(amount || 0);
+  if (safeAmount <= 0) {
+    return {
+      consumedAmount: 0,
+      credits: []
+    };
+  }
+
+  return autopoolRepository.consumeBonusCredits(client, {
+    userId,
+    amount: safeAmount
+  });
+}
+
+async function expireAutopoolBonusCredits(client, options = {}) {
+  const expiredCredits = await autopoolRepository.listExpiredBonusCreditsForUpdate(client, options.limit || 100);
+  const results = [];
+
+  for (const credit of expiredCredits) {
+    const expireAmount = toMoney(credit.remaining_amount || 0);
+    if (expireAmount <= 0) {
+      continue;
+    }
+
+    const updatedWallet = await walletRepository.adjustWalletBalance(client, credit.user_id, 'bonus_wallet', -expireAmount);
+    if (!updatedWallet) {
+      continue;
+    }
+
+    const walletTransaction = await walletRepository.createTransaction(client, {
+      userId: credit.user_id,
+      txType: 'debit',
+      source: AUTOPOOL_WALLET_SOURCES.BONUS_EXPIRED,
+      amount: expireAmount,
+      referenceId: credit.entry_id || null,
+      metadata: {
+        walletType: 'bonus_wallet',
+        packageAmount: normalizePackageAmount(credit.package_amount),
+        autopoolBonusCreditId: credit.id,
+        note: `Autopool bonus expired after ${BONUS_WALLET_EXPIRY_HOURS} hours`
+      }
+    });
+
+    await createAutopoolTransactionOnce(client, {
+      userId: credit.user_id,
+      entryId: credit.entry_id || null,
+      type: AUTOPOOL_TRANSACTION_TYPES.BONUS_EXPIRED,
+      amount: expireAmount,
+      packageAmount: credit.package_amount,
+      sourceUserId: credit.user_id,
+      walletTransactionId: walletTransaction?.id || null,
+      eventKey: buildAutopoolEventKey('bonus-expired', credit.package_amount, credit.id, credit.wallet_transaction_id),
+      metadata: {
+        source: 'autopool',
+        walletType: BONUS_WALLET_TYPE,
+        walletSource: AUTOPOOL_WALLET_SOURCES.BONUS_EXPIRED,
+        packageAmount: normalizePackageAmount(credit.package_amount),
+        autopoolBonusCreditId: credit.id,
+        originalWalletTransactionId: credit.wallet_transaction_id,
+        expiresAt: credit.expires_at
+      }
+    });
+
+    await autopoolRepository.markBonusCreditExpired(client, credit.id, walletTransaction?.id || null);
+    results.push({
+      creditId: credit.id,
+      userId: credit.user_id,
+      amount: expireAmount
+    });
+  }
+
+  return {
+    expiredCount: results.length,
+    totalExpiredAmount: toMoney(results.reduce((sum, item) => sum + Number(item.amount || 0), 0)),
+    items: results
+  };
+}
+
 module.exports = {
   AUTOPOOL_CONFIG,
   DEFAULT_PACKAGE_AMOUNT,
@@ -1083,5 +1308,7 @@ module.exports = {
   getDashboard,
   getHistory,
   buyAutopoolPackage,
-  enterAutopool
+  enterAutopool,
+  consumeAutopoolBonusCredits,
+  expireAutopoolBonusCredits
 };

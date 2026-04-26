@@ -69,7 +69,11 @@ function AutopoolCard({
   disabled = false,
   loading = false,
   myEntry,
-  recycleCount
+  recycleCount,
+  activeStatus = 'INACTIVE',
+  statusMessage = '',
+  incomeTotal = 0,
+  incomeCap = 0
 }) {
   const completionTimersRef = useRef([]);
   const previousEntryRef = useRef({
@@ -150,17 +154,43 @@ function AutopoolCard({
     () => buildMatrixSlots(displayFilledSlots),
     [displayFilledSlots]
   );
+  const isActive = String(activeStatus || '').toUpperCase() === 'ACTIVE';
 
   return (
     <section className="rounded-[30px] border border-white/8 bg-[#1a1d24] p-5 shadow-[0_24px_56px_rgba(0,0,0,0.38)] sm:p-6">
       <div className="mt-1">
-        <div>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9ca3af]">Package</p>
+            <p className="mt-1 text-[24px] font-semibold tracking-[-0.05em] text-white sm:text-[28px]">{currency(amount)}</p>
+          </div>
+          <div className="text-right">
+            <span
+              className={[
+                'inline-flex rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]',
+                isActive
+                  ? 'border-emerald-400/30 bg-emerald-500/12 text-emerald-200'
+                  : 'border-amber-400/26 bg-amber-500/10 text-amber-100'
+              ].join(' ')}
+            >
+              {activeStatus}
+            </span>
+            <p className="mt-2 text-[11px] font-medium text-[#cbd5e1]">{statusMessage || 'Buy this package to activate autopool income.'}</p>
+          </div>
+        </div>
+
+        <div className="mt-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9ca3af]">Earnings</p>
           {loading ? (
             <span className="mt-2 block h-9 w-28 animate-pulse rounded-full bg-white/10" />
           ) : (
             <p className="mt-1 text-[28px] font-semibold tracking-[-0.05em] text-white sm:text-[34px]">{currency(earningsValue)}</p>
           )}
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-[18px] border border-white/8 bg-white/[0.03] px-3.5 py-3 text-[12px] text-slate-200">
+          <span>Cycle income</span>
+          <span className="font-semibold text-white">{currency(incomeTotal)} / {currency(incomeCap)}</span>
         </div>
       </div>
 
@@ -474,6 +504,10 @@ export default function AutopoolPage() {
               disabled={enterMutation.isPending}
               myEntry={Number(card.myEntry || 0)}
               recycleCount={Number(card.recycleCount || 0)}
+              activeStatus={card.activeStatus}
+              statusMessage={card.statusMessage}
+              incomeTotal={Number(card.incomeTotal || 0)}
+              incomeCap={Number(card.incomeCap || amount * 5)}
             />
           );
         })}

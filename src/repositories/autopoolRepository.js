@@ -20,14 +20,16 @@ const AUTOPOOL_TRANSACTION_TYPES = Object.freeze({
   INCOME: 'EARN',
   SPONSOR: 'UPLINE',
   RECYCLE: 'RECYCLE',
-  BONUS: 'BONUS'
+  BONUS: 'BONUS',
+  BONUS_EXPIRED: 'BONUS_EXPIRED'
 });
 
 const AUTOPOOL_WALLET_SOURCES = Object.freeze({
   ENTRY: 'autopool_entry',
   INCOME: 'autopool_matrix_income',
   SPONSOR: 'sponsor_pool_income',
-  BONUS: 'autopool_bonus_share'
+  BONUS: 'autopool_bonus_share',
+  BONUS_EXPIRED: 'autopool_bonus_expired'
 });
 
 const AUTOPOOL_TRANSACTION_TYPE_CANDIDATES = Object.freeze({
@@ -35,7 +37,8 @@ const AUTOPOOL_TRANSACTION_TYPE_CANDIDATES = Object.freeze({
   EARN: ['EARN', 'AUTOPOOL_INCOME'],
   UPLINE: ['UPLINE', 'SPONSOR_POOL_INCOME'],
   RECYCLE: ['RECYCLE', 'AUTOPOOL_RECYCLE'],
-  BONUS: ['BONUS', 'AUTOPOOL_BONUS_SHARE']
+  BONUS: ['BONUS', 'AUTOPOOL_BONUS_SHARE'],
+  BONUS_EXPIRED: ['BONUS_EXPIRED']
 });
 
 const AUTOPOOL_WALLET_SOURCE_CANDIDATES = Object.freeze({
@@ -44,7 +47,8 @@ const AUTOPOOL_WALLET_SOURCE_CANDIDATES = Object.freeze({
   sponsor_pool_income: ['sponsor_pool_income', 'autopool_upline_income'],
   autopool_upline_income: ['autopool_upline_income', 'sponsor_pool_income'],
   autopool_bonus_share: ['autopool_bonus_share', 'autopool_auction_share'],
-  autopool_auction_share: ['autopool_auction_share', 'autopool_bonus_share']
+  autopool_auction_share: ['autopool_auction_share', 'autopool_bonus_share'],
+  autopool_bonus_expired: ['autopool_bonus_expired']
 });
 
 function uniqueStrings(values = []) {
@@ -213,6 +217,30 @@ function normalizeTransaction(row) {
   };
 }
 
+function normalizePackageState(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    package_amount: normalizePackageAmount(row.package_amount),
+    income_total: toMoney(row.income_total || 0),
+    require_reentry: Boolean(row.require_reentry),
+    require_monthly_entry: Boolean(row.require_monthly_entry),
+    last_entry_date: row.last_entry_date || null
+  };
+}
+
+function normalizeBonusCredit(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    package_amount: normalizePackageAmount(row.package_amount),
+    original_amount: toMoney(row.original_amount || 0),
+    remaining_amount: toMoney(row.remaining_amount || 0),
+    expires_at: row.expires_at || null,
+    expired_at: row.expired_at || null
+  };
+}
+
 async function acquireGlobalQueueLock(client) {
   await q(client).query('SELECT pg_advisory_xact_lock($1, $2)', [2048, 1337]);
 }
@@ -353,6 +381,180 @@ async function getLatestUserEntry(client, userId, options = {}) {
     values
   );
   return normalizeEntry(rows[0] || null);
+}
+
+async function getLatestUserPurchaseEntry(client, userId, packageAmount, options = {}) {
+  const lockClause = options.forUpdate ? ' FOR UPDATE' : '';
+  const { rows } = await q(client).query(
+    `SELECT *
+     FROM autopool_entries
+     WHERE user_id = $1
+       AND package_amount = $2
+       AND entry_source::text = 'purchase'
+     ORDER BY created_at DESC, id DESC
+     LIMIT 1${lockClause}`,
+    [userId, normalizePackageAmount(packageAmount, 2)]
+  );
+  return normalizeEntry(rows[0] || null);
+}
+
+async function getPackageState(client, userId, packageAmount, options = {}) {
+  const lockClause = options.forUpdate ? ' FOR UPDATE' : '';
+  const { rows } = await q(client).query(
+    `SELECT *
+     FROM autopool_package_states
+     WHERE user_id = $1
+       AND package_amount = $2
+     LIMIT 1${lockClause}`,
+    [userId, normalizePackageAmount(packageAmount, 2)]
+  );
+  return normalizePackageState(rows[0] || null);
+}
+
+async function createOrResetPackageState(client, payload) {
+  const packageAmount = normalizePackageAmount(payload.packageAmount, 2);
+  const { rows } = await q(client).query(
+    `INSERT INTO autopool_package_states (
+       user_id,
+       package_amount,
+       income_total,
+       require_reentry,
+       require_monthly_entry,
+       last_entry_date
+     )
+     VALUES ($1, $2, 0, FALSE, FALSE, $3)
+     ON CONFLICT (user_id, package_amount) DO UPDATE
+       SET income_total = 0,
+           require_reentry = FALSE,
+           require_monthly_entry = FALSE,
+           last_entry_date = EXCLUDED.last_entry_date,
+           updated_at = NOW()
+     RETURNING *`,
+    [payload.userId, packageAmount, payload.lastEntryDate || new Date().toISOString()]
+  );
+  return normalizePackageState(rows[0] || null);
+}
+
+async function refreshMonthlyRequirements(client, userId = null, packageAmount = null) {
+  const values = [];
+  const where = [
+    'require_monthly_entry = FALSE',
+    'last_entry_date IS NOT NULL',
+    `last_entry_date < (NOW() - INTERVAL '30 days')`
+  ];
+
+  if (userId) {
+    values.push(userId);
+    where.push(`user_id = $${values.length}`);
+  }
+
+  if (packageAmount !== null && packageAmount !== undefined && packageAmount !== '') {
+    values.push(normalizePackageAmount(packageAmount, 2));
+    where.push(`package_amount = $${values.length}`);
+  }
+
+  await q(client).query(
+    `UPDATE autopool_package_states
+     SET require_monthly_entry = TRUE,
+         updated_at = NOW()
+     WHERE ${where.join(' AND ')}`,
+    values
+  );
+}
+
+async function hydratePackageState(client, userId, packageAmount) {
+  const latestPurchase = await getLatestUserPurchaseEntry(client, userId, packageAmount, { forUpdate: true });
+  if (!latestPurchase) {
+    return null;
+  }
+
+  const incomeTypes = getAutopoolTransactionTypeCandidates(AUTOPOOL_TRANSACTION_TYPES.INCOME);
+  const { rows } = await q(client).query(
+    `WITH income_totals AS (
+       SELECT COALESCE(SUM(at.amount), 0)::numeric(14,2) AS income_total
+       FROM autopool_transactions at
+       WHERE at.user_id = $1
+         AND at.package_amount = $2
+         AND at.created_at >= $3
+         AND at.type::text = ANY($4::text[])
+     )
+     INSERT INTO autopool_package_states (
+       user_id,
+       package_amount,
+       income_total,
+       require_reentry,
+       require_monthly_entry,
+       last_entry_date
+     )
+     SELECT
+       $1,
+       $2,
+       income_totals.income_total,
+       income_totals.income_total >= ($2 * 5),
+       $3 < (NOW() - INTERVAL '30 days'),
+       $3
+     FROM income_totals
+     ON CONFLICT (user_id, package_amount) DO UPDATE
+       SET income_total = EXCLUDED.income_total,
+           require_reentry = EXCLUDED.require_reentry,
+           require_monthly_entry = EXCLUDED.require_monthly_entry,
+           last_entry_date = COALESCE(EXCLUDED.last_entry_date, autopool_package_states.last_entry_date),
+           updated_at = NOW()
+     RETURNING *`,
+    [userId, normalizePackageAmount(packageAmount, 2), latestPurchase.created_at, incomeTypes]
+  );
+  return normalizePackageState(rows[0] || null);
+}
+
+async function getOrHydratePackageState(client, userId, packageAmount, options = {}) {
+  let state = await getPackageState(client, userId, packageAmount, options);
+  if (state) {
+    return state;
+  }
+  await hydratePackageState(client, userId, packageAmount);
+  return getPackageState(client, userId, packageAmount, options);
+}
+
+async function registerPackageIncomeCredit(client, payload) {
+  const packageAmount = normalizePackageAmount(payload.packageAmount, 2);
+  let state = await getOrHydratePackageState(client, payload.userId, packageAmount, { forUpdate: true });
+  if (!state) {
+    const latestPurchase = await getLatestUserPurchaseEntry(client, payload.userId, packageAmount, { forUpdate: true });
+    state = await createOrResetPackageState(client, {
+      userId: payload.userId,
+      packageAmount,
+      lastEntryDate: latestPurchase?.created_at || new Date().toISOString()
+    });
+  }
+
+  const creditAmount = toMoney(payload.amount || 0);
+  const { rows } = await q(client).query(
+    `UPDATE autopool_package_states
+     SET income_total = income_total + $3,
+         require_reentry = (income_total + $3) >= ($2 * 5),
+         updated_at = NOW()
+     WHERE user_id = $1
+       AND package_amount = $2
+     RETURNING *`,
+    [payload.userId, packageAmount, creditAmount]
+  );
+  return normalizePackageState(rows[0] || null);
+}
+
+async function listUserPackageStates(client, userId) {
+  const { rows } = await q(client).query(
+    `SELECT *
+     FROM autopool_package_states
+     WHERE user_id = $1`,
+    [userId]
+  );
+
+  return new Map(
+    rows.map((row) => {
+      const state = normalizePackageState(row);
+      return [state.package_amount, state];
+    })
+  );
 }
 
 async function getCurrentUserFocusEntry(client, userId, options = {}) {
@@ -580,6 +782,123 @@ async function createTransaction(client, payload) {
     ]
   );
   return normalizeTransaction(rows[0] || null);
+}
+
+async function createBonusCredit(client, payload) {
+  const { rows } = await q(client).query(
+    `INSERT INTO autopool_bonus_credits (
+       user_id,
+       entry_id,
+       package_amount,
+       wallet_transaction_id,
+       original_amount,
+       remaining_amount,
+       expires_at
+     )
+     VALUES ($1, $2, $3, $4, $5, $5, $6)
+     ON CONFLICT (wallet_transaction_id) DO NOTHING
+     RETURNING *`,
+    [
+      payload.userId,
+      payload.entryId || null,
+      normalizePackageAmount(payload.packageAmount, 2),
+      payload.walletTransactionId,
+      toMoney(payload.amount || 0),
+      payload.expiresAt
+    ]
+  );
+
+  if (rows[0]) {
+    return normalizeBonusCredit(rows[0]);
+  }
+
+  const existing = await q(client).query(
+    `SELECT *
+     FROM autopool_bonus_credits
+     WHERE wallet_transaction_id = $1
+     LIMIT 1`,
+    [payload.walletTransactionId]
+  );
+  return normalizeBonusCredit(existing.rows[0] || null);
+}
+
+async function consumeBonusCredits(client, payload) {
+  let remainingToConsume = toMoney(payload.amount || 0);
+  if (remainingToConsume <= 0) {
+    return {
+      consumedAmount: 0,
+      credits: []
+    };
+  }
+
+  const { rows } = await q(client).query(
+    `SELECT *
+     FROM autopool_bonus_credits
+     WHERE user_id = $1
+       AND expired_at IS NULL
+       AND remaining_amount > 0
+     ORDER BY expires_at ASC, created_at ASC, id ASC
+     FOR UPDATE`,
+    [payload.userId]
+  );
+
+  const consumedCredits = [];
+  for (const row of rows) {
+    if (remainingToConsume <= 0) break;
+    const credit = normalizeBonusCredit(row);
+    const consumeAmount = Math.min(remainingToConsume, Number(credit.remaining_amount || 0));
+    if (consumeAmount <= 0) continue;
+
+    const { rows: updatedRows } = await q(client).query(
+      `UPDATE autopool_bonus_credits
+       SET remaining_amount = remaining_amount - $2,
+           updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [credit.id, consumeAmount]
+    );
+    const updatedCredit = normalizeBonusCredit(updatedRows[0] || null);
+    consumedCredits.push({
+      id: credit.id,
+      consumedAmount: toMoney(consumeAmount),
+      remainingAmount: toMoney(updatedCredit?.remaining_amount || 0)
+    });
+    remainingToConsume = toMoney(remainingToConsume - consumeAmount);
+  }
+
+  return {
+    consumedAmount: toMoney((payload.amount || 0) - remainingToConsume),
+    credits: consumedCredits
+  };
+}
+
+async function listExpiredBonusCreditsForUpdate(client, limit = 100) {
+  const { rows } = await q(client).query(
+    `SELECT *
+     FROM autopool_bonus_credits
+     WHERE expired_at IS NULL
+       AND remaining_amount > 0
+       AND expires_at <= NOW()
+     ORDER BY expires_at ASC, created_at ASC, id ASC
+     LIMIT $1
+     FOR UPDATE SKIP LOCKED`,
+    [Math.max(1, Number(limit) || 100)]
+  );
+  return rows.map(normalizeBonusCredit);
+}
+
+async function markBonusCreditExpired(client, creditId, expirationWalletTransactionId) {
+  const { rows } = await q(client).query(
+    `UPDATE autopool_bonus_credits
+     SET remaining_amount = 0,
+         expired_at = NOW(),
+         expiration_wallet_transaction_id = $2,
+         updated_at = NOW()
+     WHERE id = $1
+     RETURNING *`,
+    [creditId, expirationWalletTransactionId || null]
+  );
+  return normalizeBonusCredit(rows[0] || null);
 }
 
 async function getEntryTransactionByRequestId(client, userId, requestId) {
@@ -1023,7 +1342,15 @@ module.exports = {
   getEntryByUserPackageCycle,
   getEntryById,
   getLatestUserEntry,
+  getLatestUserPurchaseEntry,
   getCurrentUserFocusEntry,
+  getPackageState,
+  createOrResetPackageState,
+  refreshMonthlyRequirements,
+  hydratePackageState,
+  getOrHydratePackageState,
+  registerPackageIncomeCredit,
+  listUserPackageStates,
   updateEntryPlacement,
   incrementFilledSlots,
   markEntryCompleted,
@@ -1035,6 +1362,10 @@ module.exports = {
   getQueueHealth,
   rebuildQueue,
   createTransaction,
+  createBonusCredit,
+  consumeBonusCredits,
+  listExpiredBonusCreditsForUpdate,
+  markBonusCreditExpired,
   getEntryTransactionByRequestId,
   getTransactionByEventKey,
   listEntryChildren,
