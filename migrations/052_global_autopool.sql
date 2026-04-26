@@ -94,8 +94,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_autopool_entries_parent_slot
   ON autopool_entries(parent_entry_id, slot_position)
   WHERE parent_entry_id IS NOT NULL;
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_autopool_entries_user_cycle
-  ON autopool_entries(user_id, cycle_number);
+DROP INDEX IF EXISTS uq_autopool_entries_user_cycle;
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_autopool_transactions_user_request
   ON autopool_transactions(user_id, request_id)
