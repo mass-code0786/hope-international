@@ -555,14 +555,15 @@ async function creditAutopoolWalletOnce(client, payload) {
 async function createNextEntryForUser(client, userId, options = {}) {
   const packageConfig = getPackageConfig(options.packageAmount);
   const latestEntry = await autopoolRepository.getLatestUserEntry(client, userId, {
-    packageAmount: packageConfig.amount
+    packageAmount: packageConfig.amount,
+    forUpdate: true
   });
   const cycleNumber = Number(latestEntry?.cycle_number || 0) + 1 || 1;
   const recycleCount = options.recycleCount === undefined
     ? (options.entrySource === 'recycle' ? Number(latestEntry?.recycle_count || 0) : 0)
     : Number(options.recycleCount || 0);
 
-  return autopoolRepository.createEntry(client, {
+  return autopoolRepository.createEntryOnce(client, {
     userId,
     packageAmount: packageConfig.amount,
     cycleNumber,
@@ -650,6 +651,8 @@ async function placeEntryInQueue(client, entry, context) {
 }
 
 async function completeEntryAndRecycle(client, completedEntry, triggerEntry, context) {
+  await autopoolRepository.acquireEntryCompletionLock(client, completedEntry.id);
+
   const packageConfig = getPackageConfig(completedEntry.package_amount);
   const packageAmount = packageConfig.amount;
   const cycleNumber = Number(completedEntry.cycle_number || 0);
@@ -770,11 +773,16 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
     sponsorUserId: sponsorUserId && sponsorUserId !== matrixOwnerUserId ? sponsorUserId : null
   });
 
-  const recycleEntry = await createNextEntryForUser(client, markedEntry.user_id, {
+  const recycleEntryResult = await createNextEntryForUser(client, markedEntry.user_id, {
     packageAmount,
     entrySource: 'recycle',
     recycleCount: nextRecycleCount
   });
+  const recycleEntry = recycleEntryResult.entry;
+
+  if (!recycleEntry) {
+    throw new ApiError(409, 'Autopool recycle entry could not be resolved');
+  }
 
   await createAutopoolTransactionOnce(client, {
     userId: markedEntry.user_id,
@@ -798,18 +806,21 @@ async function completeEntryAndRecycle(client, completedEntry, triggerEntry, con
     }
   });
 
-  const recyclePlacement = await placeEntryInQueue(client, recycleEntry, context);
+  let recyclePlacement = null;
+  if (recycleEntryResult.inserted) {
+    recyclePlacement = await placeEntryInQueue(client, recycleEntry, context);
 
-  context.events.push({
-    type: 'RECYCLED',
-    packageAmount,
-    completedEntryId: markedEntry.id,
-    recycleEntryId: recycleEntry.id,
-    userId: markedEntry.user_id,
-    recycleCount: nextRecycleCount,
-    recycleCycleNumber: Number(recycleEntry.cycle_number || 0),
-    placement: recyclePlacement
-  });
+    context.events.push({
+      type: 'RECYCLED',
+      packageAmount,
+      completedEntryId: markedEntry.id,
+      recycleEntryId: recycleEntry.id,
+      userId: markedEntry.user_id,
+      recycleCount: nextRecycleCount,
+      recycleCycleNumber: Number(recycleEntry.cycle_number || 0),
+      placement: recyclePlacement
+    });
+  }
 
   await createAutopoolNotification(client, {
     userId: markedEntry.user_id,
@@ -954,6 +965,7 @@ async function getHistory(userId, query = {}) {
 async function buyAutopoolPackage(userId, payload = {}) {
   return withTransaction(async (client) => {
     await autopoolRepository.acquireGlobalQueueLock(client);
+    await autopoolRepository.acquireUserEntryLock(client, userId);
 
     const packageConfig = getPackageConfig(payload.packageAmount || DEFAULT_PACKAGE_AMOUNT);
     const requestId = payload.requestId || null;
@@ -973,10 +985,27 @@ async function buyAutopoolPackage(userId, payload = {}) {
     }
 
     const queueHealth = await autopoolProcessor.ensureQueueHealth(client);
-    const entry = await createNextEntryForUser(client, userId, {
+    const entryResult = await createNextEntryForUser(client, userId, {
       packageAmount: packageConfig.amount,
       entrySource: 'purchase'
     });
+    const entry = entryResult.entry;
+
+    if (!entry) {
+      throw new ApiError(409, 'Autopool entry could not be resolved');
+    }
+
+    if (!entryResult.inserted) {
+      return {
+        ...(await getPackagesOverviewWithClient(client, userId)),
+        requestId,
+        duplicateRequest: true,
+        queueHealth,
+        packageAmount: packageConfig.amount,
+        placement: null,
+        events: []
+      };
+    }
 
     await walletService.debit(
       client,

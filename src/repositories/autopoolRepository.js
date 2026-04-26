@@ -217,6 +217,14 @@ async function acquireGlobalQueueLock(client) {
   await q(client).query('SELECT pg_advisory_xact_lock($1, $2)', [2048, 1337]);
 }
 
+async function acquireUserEntryLock(client, userId) {
+  await q(client).query('SELECT pg_advisory_xact_lock($1, hashtext($2))', [2048, String(userId || '')]);
+}
+
+async function acquireEntryCompletionLock(client, entryId) {
+  await q(client).query('SELECT pg_advisory_xact_lock($1, hashtext($2))', [2049, String(entryId || '')]);
+}
+
 async function createEntry(client, payload) {
   const { rows } = await q(client).query(
     `INSERT INTO autopool_entries (
@@ -247,6 +255,66 @@ async function createEntry(client, payload) {
     ]
   );
   return normalizeEntry(rows[0] || null);
+}
+
+async function getEntryByUserPackageCycle(client, userId, packageAmount, cycleNumber, options = {}) {
+  const lockClause = options.forUpdate ? ' FOR UPDATE' : '';
+  const { rows } = await q(client).query(
+    `SELECT *
+     FROM autopool_entries
+     WHERE user_id = $1
+       AND package_amount = $2
+       AND cycle_number = $3
+     LIMIT 1${lockClause}`,
+    [userId, normalizePackageAmount(packageAmount, 2), Number(cycleNumber || 1)]
+  );
+  return normalizeEntry(rows[0] || null);
+}
+
+async function createEntryOnce(client, payload) {
+  const packageAmount = normalizePackageAmount(payload.packageAmount, 2);
+  const cycleNumber = Number(payload.cycleNumber || 1);
+  const { rows } = await q(client).query(
+    `INSERT INTO autopool_entries (
+       user_id,
+       package_amount,
+       parent_entry_id,
+       slot_position,
+       filled_slots_count,
+       status,
+       entry_source,
+       recycle_count,
+       cycle_number,
+       completed_at
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     ON CONFLICT DO NOTHING
+     RETURNING *`,
+    [
+      payload.userId,
+      packageAmount,
+      payload.parentEntryId || null,
+      payload.slotPosition ?? null,
+      Number(payload.filledSlotsCount || 0),
+      payload.status || 'active',
+      payload.entrySource || 'purchase',
+      Number(payload.recycleCount || 0),
+      cycleNumber,
+      payload.completedAt || null
+    ]
+  );
+
+  if (rows[0]) {
+    return {
+      entry: normalizeEntry(rows[0]),
+      inserted: true
+    };
+  }
+
+  return {
+    entry: await getEntryByUserPackageCycle(client, payload.userId, packageAmount, cycleNumber, { forUpdate: true }),
+    inserted: false
+  };
 }
 
 async function getEntryById(client, entryId, options = {}) {
@@ -948,7 +1016,11 @@ async function listUserTransactions(client, userId, pagination = {}, options = {
 
 module.exports = {
   acquireGlobalQueueLock,
+  acquireUserEntryLock,
+  acquireEntryCompletionLock,
   createEntry,
+  createEntryOnce,
+  getEntryByUserPackageCycle,
   getEntryById,
   getLatestUserEntry,
   getCurrentUserFocusEntry,
