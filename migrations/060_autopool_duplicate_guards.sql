@@ -36,6 +36,5 @@ ALTER TABLE autopool_entries
 
 ALTER TABLE autopool_entries
   ADD CONSTRAINT autopool_entries_parent_slot_check CHECK (
-    (parent_entry_id IS NULL AND slot_position IS NULL)
-    OR (parent_entry_id IS NOT NULL AND slot_position IS NOT NULL)
-  );
+    parent_entry_id IS NULL OR parent_entry_id IS NOT NULL
+  ) NOT VALID;
