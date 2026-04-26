@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Coins, Sparkles, Trophy } from 'lucide-react';
+import { WelcomeSpinRewardPopup } from '@/components/spin/WelcomeSpinRewardPopup';
 import { currency } from '@/lib/utils/format';
 
 const SEGMENTS = [0.1, 0.2, 0.3, 0.5, 0.75, 1];
@@ -41,6 +42,7 @@ function buildConfetti() {
 }
 
 export function WelcomeSpinWheel({ status, claimPending, onClose, onGoToAuctions, onClaim, auctionBonusBalance = 0 }) {
+  const spinCompletionTimerRef = useRef(null);
   const [rotation, setRotation] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
   const [isAwaitingResult, setIsAwaitingResult] = useState(false);
@@ -49,6 +51,8 @@ export function WelcomeSpinWheel({ status, claimPending, onClose, onGoToAuctions
   const [showResult, setShowResult] = useState(Boolean(status?.claimed));
   const [celebrationActive, setCelebrationActive] = useState(false);
   const [showActions, setShowActions] = useState(Boolean(status?.claimed));
+  const [showRewardPopup, setShowRewardPopup] = useState(false);
+  const [popupRewardAmount, setPopupRewardAmount] = useState(0);
   const confettiPieces = useMemo(() => buildConfetti(), []);
   const wheelGradient = useMemo(() => buildWheelGradient(), []);
   const winningGlow = useMemo(() => buildWinningGlow(winningIndex), [winningIndex]);
@@ -65,6 +69,13 @@ export function WelcomeSpinWheel({ status, claimPending, onClose, onGoToAuctions
       setIsAwaitingResult(false);
     }
   }, [status, rewardAmount]);
+
+  useEffect(() => () => {
+    if (spinCompletionTimerRef.current) {
+      window.clearTimeout(spinCompletionTimerRef.current);
+      spinCompletionTimerRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     if (!showResult) return undefined;
@@ -101,9 +112,16 @@ export function WelcomeSpinWheel({ status, claimPending, onClose, onGoToAuctions
       setIsAwaitingResult(false);
       setRotation((previous) => previous + totalRotation);
 
-      window.setTimeout(() => {
+      if (spinCompletionTimerRef.current) {
+        window.clearTimeout(spinCompletionTimerRef.current);
+      }
+
+      spinCompletionTimerRef.current = window.setTimeout(() => {
         setIsSpinning(false);
         setShowResult(true);
+        setPopupRewardAmount(amount);
+        setShowRewardPopup(true);
+        spinCompletionTimerRef.current = null;
       }, 4200);
     } catch (_error) {
       setIsAwaitingResult(false);
@@ -116,6 +134,14 @@ export function WelcomeSpinWheel({ status, claimPending, onClose, onGoToAuctions
 
   return (
     <div className="relative">
+      <WelcomeSpinRewardPopup
+        open={showRewardPopup}
+        amount={popupRewardAmount}
+        durationMs={12_000}
+        onClose={() => setShowRewardPopup(false)}
+        onContinue={onClose}
+      />
+
       <div className="relative mx-auto mt-6 flex w-full max-w-[320px] items-center justify-center">
         <div className="absolute top-0 z-20 h-0 w-0 -translate-y-3 border-l-[16px] border-r-[16px] border-t-[26px] border-l-transparent border-r-transparent border-t-[#f8fafc] drop-shadow-[0_8px_18px_rgba(255,255,255,0.18)]" />
         <div className="relative h-[308px] w-[308px]">

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useAuthMutations } from '@/hooks/useAuthMutations';
 import { getReferralPreview } from '@/lib/services/authService';
+import { markRegistrationSuccessPending } from '@/lib/utils/registrationSuccessFlow';
 import {
   extractReferralInputContext,
   normalizePlacementSide,
@@ -158,6 +159,7 @@ export function useReferralRegistrationForm({ referralPrefill = '', requestedSid
 
     try {
       await registerMutation.mutateAsync(payload);
+      markRegistrationSuccessPending();
       toast.success('Welcome to Hope International');
 
       if (typeof onSuccess === 'function') {
@@ -165,7 +167,7 @@ export function useReferralRegistrationForm({ referralPrefill = '', requestedSid
         return;
       }
 
-      router.push('/dashboard');
+      router.replace('/welcome');
     } catch (err) {
       toast.error(err?.message || 'Registration failed');
     }

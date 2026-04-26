@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { RefreshCcw, ShoppingCart } from 'lucide-react';
+import { AutopoolFeedbackPopup } from '@/components/autopool/AutopoolFeedbackPopup';
 import { AutopoolHistoryModal } from '@/components/autopool/AutopoolHistoryModal';
 import { IncomeCard } from '@/components/autopool/IncomeCard';
 import { AutopoolPurchaseModal } from '@/components/autopool/AutopoolPurchaseModal';
@@ -15,6 +16,9 @@ import { currency } from '@/lib/utils/format';
 const MATRIX_SLOTS = 3;
 const SLOT_LABELS = ['LEFT', 'MIDDLE', 'RIGHT'];
 const DEFAULT_PACKAGE_AMOUNTS = [2, 99, 313, 786];
+const AUTOPOOL_SUCCESS_POPUP_DURATION_MS = 20_000;
+const AUTOPOOL_ERROR_POPUP_DURATION_MS = 6_500;
+const AUTOPOOL_INSUFFICIENT_BALANCE_MESSAGE = 'Insufficient balance. Please add funds.';
 
 function createRequestId() {
   if (typeof window !== 'undefined' && window.crypto?.randomUUID) {
@@ -294,6 +298,13 @@ export default function AutopoolPage() {
   const [pendingPackageAmount, setPendingPackageAmount] = useState(null);
   const [historyState, setHistoryState] = useState({ open: false, type: 'total', title: 'Total Income' });
   const [purchaseState, setPurchaseState] = useState({ open: false, amount: null });
+  const [feedbackPopup, setFeedbackPopup] = useState({
+    open: false,
+    variant: 'success',
+    amount: null,
+    durationMs: AUTOPOOL_SUCCESS_POPUP_DURATION_MS,
+    key: null
+  });
 
   const autopoolQuery = useQuery({
     queryKey: queryKeys.autopool,
@@ -311,6 +322,16 @@ export default function AutopoolPage() {
     placeholderData: (previousData) => previousData
   });
 
+  const showFeedbackPopup = ({ variant, amount = null, durationMs }) => {
+    setFeedbackPopup({
+      open: true,
+      variant,
+      amount,
+      durationMs,
+      key: `${variant}-${amount ?? 'none'}-${Date.now()}`
+    });
+  };
+
   const enterMutation = useMutation({
     mutationFn: (payload) => enterAutopool(payload),
     onMutate: (variables) => {
@@ -319,15 +340,15 @@ export default function AutopoolPage() {
     onSuccess: async (result, variables) => {
       setPurchaseState({ open: false, amount: null });
 
-      const placement = result.data?.placement || null;
       const packageAmount = Number(variables?.packageAmount || result.data?.packageAmount || 0);
-
-      if (placement?.isRoot) {
-        toast.success(`${currency(packageAmount)} autopool entry created`);
-      } else if (placement?.slotPosition) {
-        toast.success(`${currency(packageAmount)} placed in ${placement.slotLabel || `slot ${placement.slotPosition}`}`);
-      } else {
-        toast.success(result.message || 'Autopool entry created');
+      if (!result.data?.duplicateRequest) {
+        setFeedbackPopup({
+          open: true,
+          variant: 'success',
+          amount: packageAmount,
+          durationMs: AUTOPOOL_SUCCESS_POPUP_DURATION_MS,
+          key: `${result.data?.requestId || 'autopool'}-${packageAmount}`
+        });
       }
 
       await Promise.all([
@@ -338,6 +359,14 @@ export default function AutopoolPage() {
       ]);
     },
     onError: (error) => {
+      setPurchaseState({ open: false, amount: null });
+      if (String(error?.message || '').trim() === AUTOPOOL_INSUFFICIENT_BALANCE_MESSAGE) {
+        showFeedbackPopup({
+          variant: 'error',
+          durationMs: AUTOPOOL_ERROR_POPUP_DURATION_MS
+        });
+        return;
+      }
       toast.error(error.message || 'Unable to enter autopool');
     },
     onSettled: () => {
@@ -350,7 +379,6 @@ export default function AutopoolPage() {
   const dashboardErrorMessage = autopoolQuery.isError ? getAutopoolMessage(autopoolQuery.error) : '';
   const dashboardHasData = useMemo(() => hasAutopoolData(dashboard), [dashboard]);
   const walletBalance = Number(walletQuery.data?.wallet?.balance || 0);
-  const canAfford = (amount) => (walletQuery.isError ? true : walletBalance >= Number(amount || 0));
   const pendingPurchaseAmount = Number(purchaseState.amount || 0);
   const purchaseModalPending = enterMutation.isPending && pendingPackageAmount === pendingPurchaseAmount;
   const poolCards = useMemo(
@@ -368,6 +396,13 @@ export default function AutopoolPage() {
 
   const openPurchaseModal = (amount) => {
     if (enterMutation.isPending) return;
+    if (!walletQuery.isPending && !walletQuery.isError && walletBalance < Number(amount || 0)) {
+      showFeedbackPopup({
+        variant: 'error',
+        durationMs: AUTOPOOL_ERROR_POPUP_DURATION_MS
+      });
+      return;
+    }
     setPurchaseState({
       open: true,
       amount: Number(amount || 0)
@@ -382,6 +417,14 @@ export default function AutopoolPage() {
   const confirmPurchase = () => {
     const packageAmount = Number(purchaseState.amount || 0);
     if (!packageAmount || enterMutation.isPending) return;
+    if (!walletQuery.isPending && !walletQuery.isError && walletBalance < packageAmount) {
+      setPurchaseState({ open: false, amount: null });
+      showFeedbackPopup({
+        variant: 'error',
+        durationMs: AUTOPOOL_ERROR_POPUP_DURATION_MS
+      });
+      return;
+    }
     enterMutation.mutate({
       packageAmount,
       requestId: createRequestId()
@@ -428,7 +471,7 @@ export default function AutopoolPage() {
               onBuy={() => openPurchaseModal(amount)}
               isPending={isPending}
               loading={dashboardLoading}
-              disabled={enterMutation.isPending || !canAfford(amount)}
+              disabled={enterMutation.isPending}
               myEntry={Number(card.myEntry || 0)}
               recycleCount={Number(card.recycleCount || 0)}
             />
@@ -453,6 +496,15 @@ export default function AutopoolPage() {
         isPending={purchaseModalPending}
         onClose={closePurchaseModal}
         onConfirm={confirmPurchase}
+      />
+
+      <AutopoolFeedbackPopup
+        key={feedbackPopup.key || 'autopool-feedback-popup'}
+        open={feedbackPopup.open}
+        variant={feedbackPopup.variant}
+        amount={feedbackPopup.amount}
+        durationMs={feedbackPopup.durationMs}
+        onClose={() => setFeedbackPopup((current) => ({ ...current, open: false, amount: null, key: null }))}
       />
     </div>
   );

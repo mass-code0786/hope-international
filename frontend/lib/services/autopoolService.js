@@ -276,6 +276,14 @@ function normalizeDashboardData(data) {
   };
 }
 
+function normalizePurchaseError(error) {
+  const message = String(error?.message || '').trim().toLowerCase();
+  if (message.includes('insufficient wallet balance')) {
+    error.message = 'Insufficient balance. Please add funds.';
+  }
+  return error;
+}
+
 export async function getAutopoolDashboard() {
   const envelope = toEnvelope(await apiFetch('/autopool'));
   return {
@@ -292,12 +300,17 @@ export async function enterAutopool(payload = {}) {
     ? { requestId: payload.requestId }
     : payload;
 
-  const envelope = toEnvelope(
-    await apiFetch(path, {
-      method: 'POST',
-      body: JSON.stringify(requestPayload)
-    })
-  );
+  let envelope;
+  try {
+    envelope = toEnvelope(
+      await apiFetch(path, {
+        method: 'POST',
+        body: JSON.stringify(requestPayload)
+      })
+    );
+  } catch (error) {
+    throw normalizePurchaseError(error);
+  }
 
   return {
     ...envelope,
