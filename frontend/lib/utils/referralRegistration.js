@@ -1,5 +1,7 @@
 'use client';
 
+import { NORMALIZED_BASE_URL } from '@/lib/utils/referralLinks';
+
 export const REGISTRATION_REFERRAL_REQUIRED_MESSAGE = 'Referral link/code is required for registration';
 
 export function normalizePlacementSide(value) {
@@ -26,8 +28,7 @@ export function extractReferralInputContext(value) {
   }
 
   try {
-    const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
-    const parsed = new URL(text, base);
+    const parsed = new URL(text, NORMALIZED_BASE_URL);
     const referralCode = String(parsed.searchParams.get('ref') || parsed.searchParams.get('sponsor') || '').trim();
     if (referralCode) {
       return {

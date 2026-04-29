@@ -2,18 +2,12 @@
 
 import { Copy, Link2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-
-function resolveAppUrl() {
-  if (typeof window !== 'undefined' && window.location?.origin) return window.location.origin;
-  return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-}
+import { buildReferralLinks } from '@/lib/utils/referralLinks';
 
 export function BinaryReferralLinks({ username }) {
   if (!username) return null;
 
-  const appUrl = resolveAppUrl();
-  const leftLink = `${appUrl}/register?ref=${encodeURIComponent(username)}&side=left`;
-  const rightLink = `${appUrl}/register?ref=${encodeURIComponent(username)}&side=right`;
+  const { left: leftLink, right: rightLink } = buildReferralLinks(username);
 
   async function copyLink(label, value) {
     try {

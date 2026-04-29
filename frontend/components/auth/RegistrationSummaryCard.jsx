@@ -1,10 +1,13 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Copy, Download, Printer, ShieldCheck, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { ReferralSideModal } from '@/components/referral/ReferralSideModal';
 import { dateTime } from '@/lib/utils/format';
+import { buildReferralLink, buildReferralLinks } from '@/lib/utils/referralLinks';
+import { extractReferralInputContext } from '@/lib/utils/referralRegistration';
 
 function Field({ label, value, mono = false }) {
   return (
@@ -30,6 +33,12 @@ async function copyText(text, successMessage) {
 }
 
 export function RegistrationSummaryCard({ summary }) {
+  const [choosingReferralSide, setChoosingReferralSide] = useState(false);
+  const referralCode = useMemo(() => {
+    if (!summary) return '';
+    return summary.username || extractReferralInputContext(summary.referralLink).referralCode;
+  }, [summary]);
+  const referralLinks = useMemo(() => (referralCode ? buildReferralLinks(referralCode) : null), [referralCode]);
   const detailText = useMemo(() => {
     if (!summary) return '';
     return [
@@ -45,9 +54,21 @@ export function RegistrationSummaryCard({ summary }) {
       `Role: ${summary.role || '-'}`,
       `Login Username: ${summary.loginUsername || '-'}`,
       `Account Status: ${summary.accountStatus || '-'}`,
-      `Referral Link: ${summary.referralLink || '-'}`
+      `Left Referral Link: ${referralLinks?.left || '-'}`,
+      `Right Referral Link: ${referralLinks?.right || '-'}`
     ].join('\n');
-  }, [summary]);
+  }, [referralLinks, summary]);
+
+  async function copyReferralBySide(side) {
+    if (!referralCode) {
+      toast.error('Referral code is unavailable');
+      setChoosingReferralSide(false);
+      return;
+    }
+
+    await copyText(buildReferralLink(referralCode, side), 'Referral link copied successfully.');
+    setChoosingReferralSide(false);
+  }
 
   if (!summary) {
     return (
@@ -90,7 +111,10 @@ export function RegistrationSummaryCard({ summary }) {
           <Field label="Login Username" value={summary.loginUsername} mono />
           <Field label="Account Status" value={summary.accountStatus} />
           <div className="sm:col-span-2">
-            <Field label="Referral Link" value={summary.referralLink} mono />
+            <Field label="Left Referral Link" value={referralLinks?.left} mono />
+          </div>
+          <div className="sm:col-span-2">
+            <Field label="Right Referral Link" value={referralLinks?.right} mono />
           </div>
         </div>
 
@@ -101,7 +125,7 @@ export function RegistrationSummaryCard({ summary }) {
           <button onClick={() => copyText(summary.username, 'Username copied')} className="hope-button-secondary">
             <Copy size={16} /> Copy username
           </button>
-          <button onClick={() => copyText(summary.referralLink, 'Referral link copied')} className="hope-button-secondary">
+          <button onClick={() => setChoosingReferralSide(true)} className="hope-button-secondary">
             <Download size={16} /> Copy referral link
           </button>
           <button onClick={() => window.print()} className="hope-button">
@@ -109,6 +133,8 @@ export function RegistrationSummaryCard({ summary }) {
           </button>
         </div>
       </div>
+
+      <ReferralSideModal open={choosingReferralSide} onClose={() => setChoosingReferralSide(false)} onSelect={copyReferralBySide} />
     </div>
   );
 }

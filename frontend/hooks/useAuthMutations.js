@@ -5,14 +5,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { login, register } from '@/lib/services/authService';
 import { useAuthStore } from '@/lib/store/authStore';
 import { queryKeys } from '@/lib/query/queryKeys';
+import { buildReferralLinks } from '@/lib/utils/referralLinks';
 
 function buildRegistrationSummary(user) {
   if (!user) return null;
 
   const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ').trim() || user.username || 'Hope Member';
   const sponsorName = [user.sponsor_first_name, user.sponsor_last_name].filter(Boolean).join(' ').trim();
-  const appUrl = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
-  const referralLink = user.username ? `${appUrl}/register?ref=${encodeURIComponent(user.username)}` : '';
+  const referralLinks = user.username ? buildReferralLinks(user.username) : null;
 
   return {
     fullName,
@@ -27,7 +27,8 @@ function buildRegistrationSummary(user) {
     role: user.role || 'user',
     loginUsername: user.username || '',
     accountStatus: user.is_active === false ? 'Inactive' : 'Active',
-    referralLink
+    referralLink: '',
+    referralLinks
   };
 }
 

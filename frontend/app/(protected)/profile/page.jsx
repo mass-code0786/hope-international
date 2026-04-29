@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -309,12 +309,6 @@ export default function ProfilePage() {
 
   const user = sessionUserQuery.data ?? sessionUser ?? null;
   const sellerHref = isSeller(user) ? '/seller' : '/seller/apply';
-  const referralLink = useMemo(() => {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const referralCode = user?.username || '';
-    return `${appUrl}/register?ref=${encodeURIComponent(referralCode)}`;
-  }, [user?.username]);
-
   const shortcuts = [
     { href: '/wallet', title: 'Wallet Center', description: 'Balances, BTCT staking, wallet history, and payout tools.', icon: WalletCards },
     { href: '/deposit', title: 'Deposits', description: 'Create deposits and review deposit history.', icon: ArrowDownToLine },
@@ -431,7 +425,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <ProfileActions referralLink={referralLink} onLogout={onLogout} />
+      <ProfileActions referralCode={user?.username || ''} onLogout={onLogout} />
     </div>
   );
 }
