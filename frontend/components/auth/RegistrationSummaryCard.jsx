@@ -25,9 +25,15 @@ async function copyText(text, successMessage) {
   }
 
   try {
+    if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+      toast.error('Copy is not available in this browser');
+      return;
+    }
+
     await navigator.clipboard.writeText(text);
     toast.success(successMessage);
-  } catch (_error) {
+  } catch (error) {
+    console.error('[registration.summary] copy failed', error);
     toast.error('Copy failed');
   }
 }
@@ -128,7 +134,19 @@ export function RegistrationSummaryCard({ summary }) {
           <button onClick={() => setChoosingReferralSide(true)} className="hope-button-secondary">
             <Download size={16} /> Copy referral link
           </button>
-          <button onClick={() => window.print()} className="hope-button">
+          <button
+            onClick={() => {
+              try {
+                if (typeof window !== 'undefined' && typeof window.print === 'function') {
+                  window.print();
+                }
+              } catch (error) {
+                console.error('[registration.summary] print failed', error);
+                toast.error('Print is not available');
+              }
+            }}
+            className="hope-button"
+          >
             <Printer size={16} /> Print / Save
           </button>
         </div>

@@ -1,7 +1,26 @@
-const API_BASE_URL =
+const PRODUCTION_BASE_URL = 'https://www.hopeinternational.uk';
+
+function isLocalhostUrl(value) {
+  try {
+    const hostname = new URL(value).hostname;
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+  } catch (_error) {
+    return false;
+  }
+}
+
+const configuredApiBaseUrl =
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'http://localhost:4000';
+  process.env.NEXT_PUBLIC_APP_URL ||
+  PRODUCTION_BASE_URL;
+
+const rawApiBaseUrl =
+  process.env.NODE_ENV === 'production' && isLocalhostUrl(configuredApiBaseUrl)
+    ? PRODUCTION_BASE_URL
+    : configuredApiBaseUrl;
+
+const API_BASE_URL = String(rawApiBaseUrl || PRODUCTION_BASE_URL).replace(/\/+$/, '');
 const API_TIMEOUT_MS = 12_000;
 const TOKEN_KEY = 'hope_token';
 const RETRYABLE_GET_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504]);
@@ -114,12 +133,14 @@ export async function apiFetch(path, options = {}, attempt = 0) {
     });
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timeoutId = controller ? setTimeout(() => controller.abort(), API_TIMEOUT_MS) : null;
 
-  const mergedSignal = options.signal
-    ? AbortSignal.any([options.signal, controller.signal])
-    : controller.signal;
+  const mergedSignal = options.signal && controller
+    ? (typeof AbortSignal !== 'undefined' && typeof AbortSignal.any === 'function'
+      ? AbortSignal.any([options.signal, controller.signal])
+      : controller.signal)
+    : (options.signal || controller?.signal);
 
   let response;
   try {
@@ -130,8 +151,9 @@ export async function apiFetch(path, options = {}, attempt = 0) {
       signal: mergedSignal
     });
   } catch (error) {
-    clearTimeout(timeoutId);
-    if (error?.name === 'AbortError' && controller.signal.aborted) {
+    if (timeoutId !== null) clearTimeout(timeoutId);
+    console.error('[frontend.api] request failed', { path, error });
+    if (error?.name === 'AbortError' && controller?.signal.aborted) {
       throw createApiError(getDefaultStatusMessage(408), {
         status: 408,
         reason: API_ERROR_REASONS.TIMEOUT,
@@ -146,7 +168,7 @@ export async function apiFetch(path, options = {}, attempt = 0) {
     });
   }
 
-  clearTimeout(timeoutId);
+  if (timeoutId !== null) clearTimeout(timeoutId);
 
   const data = await response.json().catch(() => ({}));
 

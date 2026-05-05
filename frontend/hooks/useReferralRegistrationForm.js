@@ -30,7 +30,14 @@ export function useReferralRegistrationForm({ referralPrefill = '', requestedSid
     referralCode: ''
   });
 
-  const lockedReferralContext = useMemo(() => extractReferralInputContext(referralPrefill), [referralPrefill]);
+  const lockedReferralContext = useMemo(() => {
+    try {
+      return extractReferralInputContext(referralPrefill);
+    } catch (err) {
+      console.error('[registration.form] failed to parse locked referral context', err);
+      return { referralCode: '', preferredLeg: '' };
+    }
+  }, [referralPrefill]);
   const sponsorLocked = Boolean(lockedReferralContext.referralCode);
   const lockedPreferredLeg = normalizePlacementSide(requestedSide) || lockedReferralContext.preferredLeg;
   const sideLocked = Boolean(sponsorLocked && lockedPreferredLeg);
@@ -53,10 +60,15 @@ export function useReferralRegistrationForm({ referralPrefill = '', requestedSid
       };
     }
 
-    return extractReferralInputContext(form.referralCode);
+    try {
+      return extractReferralInputContext(form?.referralCode);
+    } catch (err) {
+      console.error('[registration.form] failed to parse referral input', err);
+      return { referralCode: '', preferredLeg: '' };
+    }
   }, [form.referralCode, lockedPreferredLeg, lockedReferralContext.referralCode, sponsorLocked]);
 
-  const effectiveReferralCode = referralContext.referralCode.trim();
+  const effectiveReferralCode = String(referralContext?.referralCode || '').trim();
   const effectivePreferredLeg = sideLocked ? lockedPreferredLeg : referralContext.preferredLeg;
   const referralMissing = !effectiveReferralCode;
 
@@ -93,6 +105,7 @@ export function useReferralRegistrationForm({ referralPrefill = '', requestedSid
         }
       } catch (err) {
         if (!ignore) {
+          console.error('[registration.form] referral preview failed', err);
           setReferralPreview(null);
           setPreviewError(err?.message || 'Referral link could not be verified.');
         }
@@ -108,6 +121,10 @@ export function useReferralRegistrationForm({ referralPrefill = '', requestedSid
       return () => {
         ignore = true;
       };
+    }
+
+    if (typeof window === 'undefined') {
+      return undefined;
     }
 
     timeoutId = window.setTimeout(() => {
@@ -146,14 +163,14 @@ export function useReferralRegistrationForm({ referralPrefill = '', requestedSid
     }
 
     const payload = {
-      firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
-      username: form.username.trim(),
-      mobileNumber: form.mobileNumber.trim(),
-      countryCode: form.countryCode.trim(),
-      email: form.email.trim(),
-      password: form.password,
-      referralCode: sponsorLocked ? lockedReferralContext.referralCode : form.referralCode.trim(),
+      firstName: String(form?.firstName || '').trim(),
+      lastName: String(form?.lastName || '').trim(),
+      username: String(form?.username || '').trim(),
+      mobileNumber: String(form?.mobileNumber || '').trim(),
+      countryCode: String(form?.countryCode || '').trim(),
+      email: String(form?.email || '').trim(),
+      password: String(form?.password || ''),
+      referralCode: sponsorLocked ? lockedReferralContext.referralCode : String(form?.referralCode || '').trim(),
       ...(effectivePreferredLeg ? { preferredLeg: effectivePreferredLeg } : {})
     };
 
@@ -169,7 +186,10 @@ export function useReferralRegistrationForm({ referralPrefill = '', requestedSid
 
       router.replace('/welcome');
     } catch (err) {
-      toast.error(err?.message || 'Registration failed');
+      console.error('[registration.form] registration failed', err);
+      const message = err?.message || 'Something went wrong. Please try again.';
+      setError(message);
+      toast.error('Something went wrong. Please try again.');
     }
   }
 

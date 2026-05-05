@@ -80,7 +80,10 @@ export function useAuthMutations() {
       await setSession({ token: data.token, user: data.user, rememberMe: Boolean(data?.rememberMe), username: data?.user?.username });
       await refreshCoreQueries(data.user);
     },
-    onError: (err) => setError(err.message)
+    onError: (err) => {
+      console.error('[frontend.auth.login] failed', err);
+      setError(err?.message || 'Something went wrong. Please try again.');
+    }
   });
 
   const registerMutation = useMutation({
@@ -93,7 +96,10 @@ export function useAuthMutations() {
       await setSession({ token: data.token, user: data.user, rememberMe: true, username: data?.user?.username });
       await refreshCoreQueries(data.user);
     },
-    onError: (err) => setError(err.message)
+    onError: (err) => {
+      console.error('[frontend.auth.register] failed', err);
+      setError(err?.message || 'Something went wrong. Please try again.');
+    }
   });
 
   return {

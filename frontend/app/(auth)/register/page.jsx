@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { ArrowRight, CheckCircle2, CreditCard, ShieldCheck, UserPlus } from 'lucide-react';
 import Logo from '@/components/common/Logo';
+import { RegisterErrorBoundary, RegistrationFallback } from '@/components/auth/RegisterErrorBoundary';
 import { COUNTRY_CODE_OPTIONS } from '@/lib/constants/countryCodes';
 import { useReferralRegistrationForm } from '@/hooks/useReferralRegistrationForm';
 import { extractReferralQueryContext, formatPlacementSideLabel } from '@/lib/utils/referralRegistration';
@@ -37,9 +38,12 @@ function RegisterPageContent() {
     requestedSide
   });
 
-  const hasReferralContext = Boolean(form.referralCode.trim() || referralPrefill);
+  if (!form) return null;
+
+  const referralCodeValue = String(form.referralCode || '');
+  const hasReferralContext = Boolean(referralCodeValue.trim() || referralPrefill);
   const showReferralPreview = hasReferralContext || previewLoading || Boolean(previewError);
-  const sponsorDisplayName = sponsorName || referralPreview?.sponsor?.username || form.referralCode.trim() || referralPrefill;
+  const sponsorDisplayName = sponsorName || referralPreview?.sponsor?.username || referralCodeValue.trim() || referralPrefill;
 
   return (
     <div className="card-surface overflow-hidden p-5 md:p-7">
@@ -89,7 +93,7 @@ function RegisterPageContent() {
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Referral placement</p>
               <h2 className="mt-2 text-lg font-semibold tracking-[-0.04em] text-text">{sponsorDisplayName || 'Checking referral'}</h2>
               <p className="mt-1 text-sm text-muted">
-                {referralPreview?.sponsor?.username ? `@${referralPreview.sponsor.username}` : (form.referralCode.trim() || referralPrefill || 'Awaiting referral data')}
+                {referralPreview?.sponsor?.username ? `@${referralPreview.sponsor.username}` : (referralCodeValue.trim() || referralPrefill || 'Awaiting referral data')}
               </p>
             </div>
             {previewLoading ? (
@@ -232,8 +236,12 @@ function RegisterPageContent() {
 
 export default function RegisterPage() {
   return (
-    <Suspense fallback={<div className="card-surface p-6 md:p-8" />}>
-      <RegisterPageContent />
-    </Suspense>
+    <RegisterErrorBoundary>
+      <Suspense fallback={<div className="card-surface p-6 md:p-8" />}>
+        <RegisterErrorBoundary fallback={<RegistrationFallback />}>
+          <RegisterPageContent />
+        </RegisterErrorBoundary>
+      </Suspense>
+    </RegisterErrorBoundary>
   );
 }
