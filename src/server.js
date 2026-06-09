@@ -16,16 +16,15 @@ async function startServer() {
         message: error.message
       });
     }
-    try {
-      autopoolBonusExpiry = autopoolBonusExpiryProcessor.startAutopoolBonusExpiryProcessor();
-    } catch (error) {
-      console.warn('[startup.autopool.bonus-expiry]', {
-        message: error.message
-      });
-    }
-
     app.listen(env.port, () => {
       console.log(`Server running on port ${env.port}`);
+      try {
+        autopoolBonusExpiry = autopoolBonusExpiryProcessor.startAutopoolBonusExpiryProcessor();
+      } catch (error) {
+        console.warn('[startup.autopool.bonus-expiry]', {
+          message: error.message
+        });
+      }
       if (mediaStorage.warning) {
         console.warn('[startup.media-storage.warning]', {
           mode: mediaStorage.mode,
