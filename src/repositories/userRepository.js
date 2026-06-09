@@ -37,15 +37,17 @@ async function findByUsername(client, username) {
 }
 
 async function findByLogin(client, identifier) {
-  const { rows } = await q(client).query(
-    `SELECT *
+  const env = require('../config/env');
+  const { rows } = await q(client).query({
+    text: `SELECT *
      FROM users
      WHERE LOWER(username) = LOWER($1)
         OR LOWER(email) = LOWER($1)
      ORDER BY CASE WHEN LOWER(username) = LOWER($1) THEN 0 ELSE 1 END
      LIMIT 1`,
-    [identifier]
-  );
+    values: [identifier],
+    query_timeout: env.loginDbQueryTimeoutMs
+  });
   return rows[0] || null;
 }
 

@@ -4,6 +4,9 @@ const userRepository = require('../repositories/userRepository');
 const walletRepository = require('../repositories/walletRepository');
 const { createAuthToken } = require('../utils/token');
 const { ApiError } = require('../utils/ApiError');
+const env = require('../config/env');
+const { nowMs } = require('../utils/perf');
+const { pool } = require('../db/pool');
 
 const REFERRAL_REQUIRED_MESSAGE = 'Referral link/code is required for registration';
 
@@ -203,19 +206,62 @@ async function register(payload) {
 }
 
 async function login(payload) {
-  const identifier = normalizeLoginIdentifier(payload.username || payload.email);
-  const user = await userRepository.findByLogin(null, identifier);
-  if (!user) {
-    throw new ApiError(401, 'Invalid username/email or password');
-  }
+  const startedAt = nowMs();
+  let timeoutId;
 
-  const ok = await bcrypt.compare(payload.password, user.password_hash);
-  if (!ok) {
-    throw new ApiError(401, 'Invalid username/email or password');
-  }
+  const loginWork = (async () => {
+    const identifier = normalizeLoginIdentifier(payload.username || payload.email);
+    const lookupStartedAt = nowMs();
+    const user = await userRepository.findByLogin(null, identifier);
+    console.info('[auth.login.stage]', {
+      stage: 'user_lookup',
+      durationMs: Number((nowMs() - lookupStartedAt).toFixed(1)),
+      found: Boolean(user)
+    });
+    if (!user) {
+      throw new ApiError(401, 'Invalid username/email or password');
+    }
 
-  const token = createAuthToken(user, { rememberMe: Boolean(payload.rememberMe) });
-  return { user, token };
+    const passwordStartedAt = nowMs();
+    const ok = await bcrypt.compare(payload.password, user.password_hash);
+    console.info('[auth.login.stage]', {
+      stage: 'password_compare',
+      durationMs: Number((nowMs() - passwordStartedAt).toFixed(1)),
+      matched: ok
+    });
+    if (!ok) {
+      throw new ApiError(401, 'Invalid username/email or password');
+    }
+
+    const token = createAuthToken(user, { rememberMe: Boolean(payload.rememberMe) });
+    return { user, token };
+  })();
+
+  const deadline = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      console.error('[auth.login.timeout]', {
+        timeoutMs: env.loginRequestTimeoutMs,
+        pool: {
+          total: pool.totalCount,
+          idle: pool.idleCount,
+          waiting: pool.waitingCount
+        }
+      });
+      const error = new ApiError(504, 'Login service timed out. Please try again.');
+      error.code = 'LOGIN_TIMEOUT';
+      reject(error);
+    }, env.loginRequestTimeoutMs);
+  });
+
+  try {
+    return await Promise.race([loginWork, deadline]);
+  } finally {
+    clearTimeout(timeoutId);
+    const durationMs = Number((nowMs() - startedAt).toFixed(1));
+    if (durationMs >= 250) {
+      console.warn('[auth.login.duration]', { durationMs });
+    }
+  }
 }
 
 module.exports = {

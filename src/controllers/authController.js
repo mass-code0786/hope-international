@@ -3,6 +3,7 @@ const authService = require('../services/authService');
 const webauthnService = require('../services/webauthnService');
 const { sanitizeUser } = require('../utils/sanitize');
 const { success } = require('../utils/response');
+const { nowMs } = require('../utils/perf');
 
 const register = asyncHandler(async (req, res) => {
   const data = await authService.register(req.body);
@@ -23,12 +24,27 @@ const previewReferral = asyncHandler(async (req, res) => {
 });
 
 const login = asyncHandler(async (req, res) => {
-  const data = await authService.login(req.body);
-  const user = sanitizeUser(data.user);
-  if (process.env.NODE_ENV !== 'production') {
-    console.info('[auth.login] response role', { username: user?.username, role: user?.role });
+  const startedAt = nowMs();
+  console.info('[auth.login.request]', { requestId: req.requestId });
+  try {
+    const data = await authService.login(req.body);
+    const user = sanitizeUser(data.user);
+    console.info('[auth.login.success]', {
+      requestId: req.requestId,
+      durationMs: Number((nowMs() - startedAt).toFixed(1)),
+      role: user?.role
+    });
+    return res.status(200).json({ user, token: data.token, rememberMe: Boolean(req.body.rememberMe) });
+  } catch (error) {
+    console.error('[auth.login.failure]', {
+      requestId: req.requestId,
+      durationMs: Number((nowMs() - startedAt).toFixed(1)),
+      code: error.code || null,
+      statusCode: error.statusCode || 500,
+      message: error.message
+    });
+    throw error;
   }
-  res.status(200).json({ user, token: data.token, rememberMe: Boolean(req.body.rememberMe) });
 });
 
 const webauthnRegisterOptions = asyncHandler(async (req, res) => {

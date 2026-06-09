@@ -1241,51 +1241,72 @@ async function expireAutopoolBonusCredits(client, options = {}) {
       continue;
     }
 
-    const updatedWallet = await walletRepository.adjustWalletBalance(client, credit.user_id, 'bonus_wallet', -expireAmount);
-    if (!updatedWallet) {
-      continue;
+    let walletId = null;
+    let queryLocation = 'walletRepository.adjustWalletBalance';
+    try {
+      const updatedWallet = await walletRepository.adjustWalletBalance(client, credit.user_id, 'bonus_wallet', -expireAmount);
+      if (!updatedWallet) {
+        continue;
+      }
+      walletId = updatedWallet.id || null;
+
+      queryLocation = 'walletRepository.createTransaction';
+      const walletTransaction = await walletRepository.createTransaction(client, {
+        userId: credit.user_id,
+        txType: 'debit',
+        source: AUTOPOOL_WALLET_SOURCES.BONUS_EXPIRED,
+        amount: expireAmount,
+        referenceId: credit.entry_id || null,
+        metadata: {
+          walletType: 'bonus_wallet',
+          packageAmount: normalizePackageAmount(credit.package_amount),
+          autopoolBonusCreditId: credit.id,
+          note: `Autopool bonus expired after ${BONUS_WALLET_EXPIRY_HOURS} hours`
+        }
+      });
+
+      queryLocation = 'autopoolService.createAutopoolTransactionOnce';
+      await createAutopoolTransactionOnce(client, {
+        userId: credit.user_id,
+        entryId: credit.entry_id || null,
+        type: AUTOPOOL_TRANSACTION_TYPES.BONUS_EXPIRED,
+        amount: expireAmount,
+        packageAmount: credit.package_amount,
+        sourceUserId: credit.user_id,
+        walletTransactionId: walletTransaction?.id || null,
+        eventKey: buildAutopoolEventKey('bonus-expired', credit.package_amount, credit.id, credit.wallet_transaction_id),
+        metadata: {
+          source: 'autopool',
+          walletType: BONUS_WALLET_TYPE,
+          walletSource: AUTOPOOL_WALLET_SOURCES.BONUS_EXPIRED,
+          packageAmount: normalizePackageAmount(credit.package_amount),
+          autopoolBonusCreditId: credit.id,
+          originalWalletTransactionId: credit.wallet_transaction_id,
+          expiresAt: credit.expires_at
+        }
+      });
+
+      queryLocation = 'autopoolRepository.markBonusCreditExpired';
+      await autopoolRepository.markBonusCreditExpired(client, credit.id, walletTransaction?.id || null);
+      results.push({
+        creditId: credit.id,
+        userId: credit.user_id,
+        amount: expireAmount
+      });
+    } catch (error) {
+      const walletContext = error.walletContext || {};
+      error.walletContext = {
+        userId: credit.user_id,
+        walletId: walletContext.walletId || walletId,
+        queryLocation: walletContext.queryLocation || queryLocation
+      };
+      console.error('[autopool.bonus-expiry.credit-failed]', {
+        ...error.walletContext,
+        creditId: credit.id,
+        message: error.message
+      });
+      throw error;
     }
-
-    const walletTransaction = await walletRepository.createTransaction(client, {
-      userId: credit.user_id,
-      txType: 'debit',
-      source: AUTOPOOL_WALLET_SOURCES.BONUS_EXPIRED,
-      amount: expireAmount,
-      referenceId: credit.entry_id || null,
-      metadata: {
-        walletType: 'bonus_wallet',
-        packageAmount: normalizePackageAmount(credit.package_amount),
-        autopoolBonusCreditId: credit.id,
-        note: `Autopool bonus expired after ${BONUS_WALLET_EXPIRY_HOURS} hours`
-      }
-    });
-
-    await createAutopoolTransactionOnce(client, {
-      userId: credit.user_id,
-      entryId: credit.entry_id || null,
-      type: AUTOPOOL_TRANSACTION_TYPES.BONUS_EXPIRED,
-      amount: expireAmount,
-      packageAmount: credit.package_amount,
-      sourceUserId: credit.user_id,
-      walletTransactionId: walletTransaction?.id || null,
-      eventKey: buildAutopoolEventKey('bonus-expired', credit.package_amount, credit.id, credit.wallet_transaction_id),
-      metadata: {
-        source: 'autopool',
-        walletType: BONUS_WALLET_TYPE,
-        walletSource: AUTOPOOL_WALLET_SOURCES.BONUS_EXPIRED,
-        packageAmount: normalizePackageAmount(credit.package_amount),
-        autopoolBonusCreditId: credit.id,
-        originalWalletTransactionId: credit.wallet_transaction_id,
-        expiresAt: credit.expires_at
-      }
-    });
-
-    await autopoolRepository.markBonusCreditExpired(client, credit.id, walletTransaction?.id || null);
-    results.push({
-      creditId: credit.id,
-      userId: credit.user_id,
-      amount: expireAmount
-    });
   }
 
   return {

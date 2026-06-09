@@ -1,4 +1,4 @@
-function errorHandler(err, _req, res, _next) {
+function errorHandler(err, req, res, _next) {
   const status = err.statusCode || 500;
   const payload = {
     message: err.message || 'Internal server error'
@@ -9,10 +9,20 @@ function errorHandler(err, _req, res, _next) {
   }
 
   if (status >= 500) {
-    console.error(err);
+    console.error('[request.error]', {
+      requestId: req.requestId || null,
+      method: req.method,
+      path: req.originalUrl,
+      statusCode: status,
+      code: err.code || null,
+      message: err.message,
+      stack: err.stack
+    });
   }
 
-  res.status(status).json(payload);
+  if (!res.headersSent) {
+    res.status(status).json(payload);
+  }
 }
 
 module.exports = errorHandler;

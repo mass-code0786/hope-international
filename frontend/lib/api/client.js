@@ -1,4 +1,4 @@
-const PRODUCTION_BASE_URL = 'https://www.hopeinternational.uk';
+const PRODUCTION_BASE_URL = 'https://api.hopeinternational.uk';
 
 function isLocalhostUrl(value) {
   try {
@@ -114,6 +114,9 @@ function getHttpErrorReason(status) {
 }
 
 export async function apiFetch(path, options = {}, attempt = 0) {
+  const requestStartedAt = Date.now();
+  const method = String(options.method || 'GET').toUpperCase();
+  const requestUrl = `${API_BASE_URL}${path}`;
   const token = typeof window === 'undefined'
     ? null
     : window.localStorage.getItem(TOKEN_KEY) || window.sessionStorage.getItem(TOKEN_KEY);
@@ -144,15 +147,43 @@ export async function apiFetch(path, options = {}, attempt = 0) {
 
   let response;
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
+    response = await fetch(requestUrl, {
       ...options,
       headers,
       cache: 'no-store',
       signal: mergedSignal
     });
+    const data = await response.json().catch((error) => {
+      if (error?.name === 'AbortError') throw error;
+      return {};
+    });
+
+    if (!response.ok) {
+      if (method === 'GET' && attempt < 2 && RETRYABLE_GET_STATUS_CODES.has(response.status)) {
+        const retryAfterMs = parseRetryAfterMs(response);
+        const backoffMs = retryAfterMs ?? (response.status === 429 ? 1200 * (attempt + 1) : 500 * (attempt + 1));
+        await sleep(backoffMs);
+        return apiFetch(path, options, attempt + 1);
+      }
+
+      const message = extractApiErrorMessage(data) || getDefaultStatusMessage(response.status);
+      throw createApiError(message, {
+        status: response.status,
+        details: data?.details || null,
+        reason: getHttpErrorReason(response.status)
+      });
+    }
+
+    return data;
   } catch (error) {
-    if (timeoutId !== null) clearTimeout(timeoutId);
-    console.error('[frontend.api] request failed', { path, error });
+    console.error('[frontend.api] request failed', {
+      method,
+      url: requestUrl,
+      durationMs: Date.now() - requestStartedAt,
+      status: error?.status || null,
+      reason: error?.details?.reason || null,
+      message: error?.message || 'Unknown error'
+    });
     if (error?.name === 'AbortError' && controller?.signal.aborted) {
       throw createApiError(getDefaultStatusMessage(408), {
         status: 408,
@@ -161,35 +192,18 @@ export async function apiFetch(path, options = {}, attempt = 0) {
       });
     }
 
+    if (error?.status != null) {
+      throw error;
+    }
+
     throw createApiError('Network request failed', {
       status: 0,
       reason: API_ERROR_REASONS.NETWORK,
       cause: error
     });
+  } finally {
+    if (timeoutId !== null) clearTimeout(timeoutId);
   }
-
-  if (timeoutId !== null) clearTimeout(timeoutId);
-
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    const method = String(options.method || 'GET').toUpperCase();
-    if (method === 'GET' && attempt < 2 && RETRYABLE_GET_STATUS_CODES.has(response.status)) {
-      const retryAfterMs = parseRetryAfterMs(response);
-      const backoffMs = retryAfterMs ?? (response.status === 429 ? 1200 * (attempt + 1) : 500 * (attempt + 1));
-      await sleep(backoffMs);
-      return apiFetch(path, options, attempt + 1);
-    }
-
-    const message = extractApiErrorMessage(data) || getDefaultStatusMessage(response.status);
-    throw createApiError(message, {
-      status: response.status,
-      details: data?.details || null,
-      reason: getHttpErrorReason(response.status)
-    });
-  }
-
-  return data;
 }
 
 export { API_BASE_URL };

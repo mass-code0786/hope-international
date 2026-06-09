@@ -23,7 +23,11 @@ function startAutopoolBonusExpiryProcessor() {
         console.log('[autopool.bonus-expiry]', result);
       }
     } catch (error) {
+      const walletContext = error.walletContext || {};
       console.warn('[autopool.bonus-expiry]', {
+        userId: walletContext.userId || null,
+        walletId: walletContext.walletId || null,
+        queryLocation: walletContext.queryLocation || 'autopoolBonusExpiryProcessor.runBonusExpiryPass',
         message: error.message
       });
     }

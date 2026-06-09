@@ -412,6 +412,10 @@ async function transferBetweenWallets(client, userId, fromWallet, toWallet, amou
     throw new Error('Unsupported wallet transfer mapping');
   }
 
+  if (fromColumn === toColumn) {
+    throw new Error('Source and destination wallet columns must be different');
+  }
+
   const { rows } = await q(client).query(
     `WITH current_wallet AS (
         SELECT user_id,
@@ -477,7 +481,6 @@ async function adjustWalletBalance(client, userId, walletType, amountDelta, opti
 
   const currentIncome = Number(currentWallet.income_balance || 0);
   const currentDeposit = Number(currentWallet.deposit_balance || 0);
-  const currentBonus = Number(currentWallet.auction_bonus_balance || 0);
   const currentTarget = Number(currentWallet[targetColumn] || 0);
   const nextTarget = Number((currentTarget + safeAmount).toFixed(2));
 
@@ -487,18 +490,32 @@ async function adjustWalletBalance(client, userId, walletType, amountDelta, opti
 
   const nextIncome = targetColumn === 'income_balance' ? nextTarget : currentIncome;
   const nextDeposit = targetColumn === 'deposit_balance' ? nextTarget : currentDeposit;
-  const nextBonus = targetColumn === 'auction_bonus_balance' ? nextTarget : currentBonus;
 
-  const { rows } = await q(client).query(
-    `UPDATE wallets
-     SET ${targetColumn} = $2,
-         balance = $3,
-         auction_bonus_balance = $4
-     WHERE user_id = $1
-     RETURNING *`,
-    [userId, nextTarget, Number((nextIncome + nextDeposit).toFixed(2)), nextBonus]
-  );
-  return rows[0] || null;
+  const queryLocation = 'walletRepository.adjustWalletBalance';
+  try {
+    const { rows } = await q(client).query(
+      `UPDATE wallets
+       SET ${targetColumn} = $2,
+           balance = $3
+       WHERE user_id = $1
+       RETURNING *`,
+      [userId, nextTarget, Number((nextIncome + nextDeposit).toFixed(2))]
+    );
+    return rows[0] || null;
+  } catch (error) {
+    error.walletContext = {
+      userId,
+      walletId: currentWallet.id || null,
+      queryLocation
+    };
+    console.error('[wallet.adjust-balance.failed]', {
+      ...error.walletContext,
+      walletType,
+      targetColumn,
+      message: error.message
+    });
+    throw error;
+  }
 }
 
 async function debitDepositBalanceIfSufficient(client, userId, amount) {

@@ -3,6 +3,7 @@ const helmet = require('helmet');
 const cors = require('cors');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+const { randomUUID } = require('crypto');
 
 const routes = require('./routes');
 const webhooksRoutes = require('./routes/webhooksRoutes');
@@ -52,6 +53,8 @@ app.use('/api', webhooksRoutes);
 app.use(express.json({ limit: '5mb' }));
 app.use(morgan('combined'));
 app.use((req, res, next) => {
+  req.requestId = req.get('x-request-id') || randomUUID();
+  res.setHeader('x-request-id', req.requestId);
   trackRequestBurst(req);
   const startedAt = nowMs();
   res.on('finish', () => {
@@ -62,7 +65,8 @@ app.use((req, res, next) => {
         method: req.method,
         path: req.originalUrl,
         statusCode: res.statusCode,
-        durationMs
+        durationMs,
+        requestId: req.requestId
       });
     }
   });

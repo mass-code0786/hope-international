@@ -17,6 +17,8 @@ module.exports = {
   jwtSecret: getEnv('JWT_SECRET'),
   jwtExpiresIn: getEnv('JWT_EXPIRES_IN', '7d'),
   jwtRememberMeExpiresIn: getEnv('JWT_REMEMBER_ME_EXPIRES_IN', '30d'),
+  loginRequestTimeoutMs: Number(getEnv('LOGIN_REQUEST_TIMEOUT_MS', 10000)),
+  loginDbQueryTimeoutMs: Number(getEnv('LOGIN_DB_QUERY_TIMEOUT_MS', 7000)),
   webAuthnRpName: getEnv('WEBAUTHN_RP_NAME', 'Hope International'),
   webAuthnRpId: process.env.WEBAUTHN_RP_ID || '',
   webAuthnOrigin: process.env.WEBAUTHN_ORIGIN || '',
