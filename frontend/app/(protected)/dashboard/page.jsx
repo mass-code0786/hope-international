@@ -165,6 +165,91 @@ function AutopoolFeatureCard() {
   );
 }
 
+const millionairePackages = [3, 10, 25];
+
+function MatrixDiagram() {
+  return (
+    <div className="relative mx-auto h-[74px] w-[150px]" aria-label="One by three matrix diagram">
+      <svg
+        viewBox="0 0 150 74"
+        aria-hidden="true"
+        className="absolute inset-0 h-full w-full overflow-visible"
+      >
+        <defs>
+          <linearGradient id="millionaire-matrix-line" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#60a5fa" />
+            <stop offset="100%" stopColor="#c084fc" />
+          </linearGradient>
+        </defs>
+        <path d="M75 29 L25 55 M75 29 L75 55 M75 29 L125 55" fill="none" stroke="url(#millionaire-matrix-line)" strokeWidth="1.5" strokeLinecap="round" opacity="0.9" />
+      </svg>
+
+      <span className="absolute left-1/2 top-0 inline-flex h-8 w-12 -translate-x-1/2 items-center justify-center rounded-[10px] border border-blue-300/50 bg-[linear-gradient(145deg,rgba(37,99,235,0.58),rgba(109,40,217,0.56))] text-[9px] font-bold tracking-[0.08em] text-white shadow-[0_0_18px_rgba(96,165,250,0.28)]">
+        YOU
+      </span>
+      {[25, 75, 125].map((left, index) => (
+        <span
+          key={left}
+          className="absolute top-[51px] inline-flex h-6 w-8 -translate-x-1/2 items-center justify-center rounded-[8px] border border-violet-300/40 bg-[rgba(15,23,42,0.78)] text-[8px] font-semibold text-violet-100 shadow-[0_0_12px_rgba(139,92,246,0.2)]"
+          style={{ left }}
+        >
+          {String.fromCharCode(65 + index)}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function HopeMillionaireCard() {
+  return (
+    <article className="group relative overflow-hidden rounded-[26px] border border-[rgba(117,100,255,0.42)] bg-[linear-gradient(135deg,rgba(10,18,40,0.96)_0%,rgba(24,31,62,0.94)_46%,rgba(55,31,93,0.94)_100%)] px-4 py-4 shadow-[0_22px_46px_rgba(12,18,38,0.48),0_0_0_1px_rgba(56,189,248,0.08),0_0_26px_rgba(118,92,255,0.2)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_26px_52px_rgba(12,18,38,0.56),0_0_0_1px_rgba(96,165,250,0.14),0_0_34px_rgba(118,92,255,0.28)] active:scale-[0.995]">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.2),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(168,85,247,0.24),transparent_38%)]" />
+      <div className="absolute right-0 top-0 h-full w-[50%] bg-[radial-gradient(circle_at_80%_25%,rgba(59,130,246,0.18),transparent_60%),radial-gradient(circle_at_60%_75%,rgba(168,85,247,0.2),transparent_58%)]" />
+      <div className="absolute right-5 top-4 h-28 w-28 rounded-full bg-[rgba(88,28,135,0.28)] blur-3xl" />
+      <div className="absolute bottom-3 right-4 h-20 w-28 bg-[radial-gradient(circle,rgba(148,163,184,0.28)_1px,transparent_1.6px)] bg-[length:12px_12px] opacity-25" />
+      <div className="absolute inset-[1px] rounded-[25px] border border-white/8" />
+
+      <div className="relative">
+        <div className="flex items-center gap-3">
+          <div className="relative shrink-0">
+            <div className="absolute inset-0 rounded-[20px] bg-[rgba(96,165,250,0.24)] blur-xl" />
+            <div className="relative flex h-14 w-14 items-center justify-center rounded-[20px] border border-[rgba(96,165,250,0.48)] bg-[linear-gradient(145deg,rgba(17,38,75,0.94),rgba(76,29,149,0.72))] shadow-[0_0_24px_rgba(96,165,250,0.18),inset_0_1px_0_rgba(255,255,255,0.1)]">
+              <Network size={23} className="text-[#93c5fd] drop-shadow-[0_0_12px_rgba(129,140,248,0.75)]" />
+            </div>
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-[18px] font-semibold tracking-[-0.03em] text-white">Hope Millionaire</h2>
+            <p className="mt-1 text-[12px] font-medium text-slate-300">Build Your Future &amp; Earn Together</p>
+            <p className="mt-2 text-[11px] font-semibold tracking-[0.03em] text-[#a5b4fc]">3 Packages &bull; 1&times;3 Matrix System</p>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {millionairePackages.map((amount) => (
+            <section
+              key={amount}
+              className="relative overflow-hidden rounded-[20px] border border-[rgba(129,140,248,0.36)] bg-[linear-gradient(145deg,rgba(15,23,42,0.76),rgba(76,29,149,0.34))] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_12px_28px_rgba(2,6,23,0.24)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-blue-300/55 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_16px_34px_rgba(30,64,175,0.22)]"
+            >
+              <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-blue-300/80 to-transparent" />
+              <h3 className="text-center text-[15px] font-bold tracking-[-0.02em] text-white">${amount} Package</h3>
+              <p className="mt-0.5 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-200">1&times;3 Matrix</p>
+              <div className="mt-2">
+                <MatrixDiagram />
+              </div>
+              <button
+                type="button"
+                className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-[12px] border border-blue-300/45 bg-[linear-gradient(135deg,rgba(37,99,235,0.9),rgba(109,40,217,0.92))] text-[11px] font-bold text-white shadow-[0_8px_20px_rgba(37,99,235,0.24),inset_0_1px_0_rgba(255,255,255,0.18)] transition duration-200 hover:brightness-110 active:scale-[0.97]"
+              >
+                Join Now
+              </button>
+            </section>
+          ))}
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function ProductTile({ product, onBuy, isBuying, lowBalance, prioritizeImage = false }) {
   const href = product?.id ? `/shop/${encodeURIComponent(String(product.id))}` : '/shop';
   const pricing = getProductPricing(product, 1);
@@ -571,6 +656,10 @@ export default function DashboardPage() {
 
         <section>
           <AutopoolFeatureCard />
+        </section>
+
+        <section>
+          <HopeMillionaireCard />
         </section>
 
         <section className="rounded-[24px] bg-white p-3 shadow-[0_14px_32px_rgba(15,23,42,0.06)]">
