@@ -20,7 +20,8 @@ import {
   Sparkles,
   Store,
   Trophy,
-  UtensilsCrossed
+  UtensilsCrossed,
+  X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { BannerImageFrame } from '@/components/banners/BannerImageFrame';
@@ -167,7 +168,9 @@ function AutopoolFeatureCard() {
 
 const millionairePackages = [3, 10, 25];
 
-function MatrixDiagram() {
+function MatrixDiagram({ id }) {
+  const gradientId = `millionaire-matrix-line-${id}`;
+
   return (
     <div className="relative mx-auto h-[74px] w-[150px]" aria-label="One by three matrix diagram">
       <svg
@@ -176,12 +179,12 @@ function MatrixDiagram() {
         className="absolute inset-0 h-full w-full overflow-visible"
       >
         <defs>
-          <linearGradient id="millionaire-matrix-line" x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="#60a5fa" />
             <stop offset="100%" stopColor="#c084fc" />
           </linearGradient>
         </defs>
-        <path d="M75 29 L25 55 M75 29 L75 55 M75 29 L125 55" fill="none" stroke="url(#millionaire-matrix-line)" strokeWidth="1.5" strokeLinecap="round" opacity="0.9" />
+        <path d="M75 29 L25 55 M75 29 L75 55 M75 29 L125 55" fill="none" stroke={`url(#${gradientId})`} strokeWidth="1.5" strokeLinecap="round" opacity="0.9" />
       </svg>
 
       <span className="absolute left-1/2 top-0 inline-flex h-8 w-12 -translate-x-1/2 items-center justify-center rounded-[10px] border border-blue-300/50 bg-[linear-gradient(145deg,rgba(37,99,235,0.58),rgba(109,40,217,0.56))] text-[9px] font-bold tracking-[0.08em] text-white shadow-[0_0_18px_rgba(96,165,250,0.28)]">
@@ -200,17 +203,17 @@ function MatrixDiagram() {
   );
 }
 
-function HopeMillionaireCard() {
+function HopeMillionaireCard({ onOpen }) {
   return (
-    <article className="group relative overflow-hidden rounded-[26px] border border-[rgba(117,100,255,0.42)] bg-[linear-gradient(135deg,rgba(10,18,40,0.96)_0%,rgba(24,31,62,0.94)_46%,rgba(55,31,93,0.94)_100%)] px-4 py-4 shadow-[0_22px_46px_rgba(12,18,38,0.48),0_0_0_1px_rgba(56,189,248,0.08),0_0_26px_rgba(118,92,255,0.2)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_26px_52px_rgba(12,18,38,0.56),0_0_0_1px_rgba(96,165,250,0.14),0_0_34px_rgba(118,92,255,0.28)] active:scale-[0.995]">
+    <button type="button" onClick={onOpen} className="group block w-full text-left" aria-label="Open Hope Millionaire packages">
+      <article className="relative overflow-hidden rounded-[26px] border border-[rgba(117,100,255,0.42)] bg-[linear-gradient(135deg,rgba(10,18,40,0.96)_0%,rgba(24,31,62,0.94)_46%,rgba(55,31,93,0.94)_100%)] px-4 py-4 shadow-[0_22px_46px_rgba(12,18,38,0.48),0_0_0_1px_rgba(56,189,248,0.08),0_0_26px_rgba(118,92,255,0.2)] transition duration-300 group-hover:-translate-y-0.5 group-active:scale-[0.995]">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.2),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(168,85,247,0.24),transparent_38%)]" />
-      <div className="absolute right-0 top-0 h-full w-[50%] bg-[radial-gradient(circle_at_80%_25%,rgba(59,130,246,0.18),transparent_60%),radial-gradient(circle_at_60%_75%,rgba(168,85,247,0.2),transparent_58%)]" />
-      <div className="absolute right-5 top-4 h-28 w-28 rounded-full bg-[rgba(88,28,135,0.28)] blur-3xl" />
+      <div className="absolute right-0 top-0 h-full w-[44%] bg-[radial-gradient(circle_at_80%_30%,rgba(59,130,246,0.18),transparent_62%),radial-gradient(circle_at_60%_70%,rgba(168,85,247,0.2),transparent_58%)]" />
+      <div className="absolute right-5 top-4 h-24 w-24 rounded-full bg-[rgba(88,28,135,0.28)] blur-3xl" />
       <div className="absolute bottom-3 right-4 h-20 w-28 bg-[radial-gradient(circle,rgba(148,163,184,0.28)_1px,transparent_1.6px)] bg-[length:12px_12px] opacity-25" />
       <div className="absolute inset-[1px] rounded-[25px] border border-white/8" />
 
-      <div className="relative">
-        <div className="flex items-center gap-3">
+        <div className="relative flex items-center gap-3">
           <div className="relative shrink-0">
             <div className="absolute inset-0 rounded-[20px] bg-[rgba(96,165,250,0.24)] blur-xl" />
             <div className="relative flex h-14 w-14 items-center justify-center rounded-[20px] border border-[rgba(96,165,250,0.48)] bg-[linear-gradient(145deg,rgba(17,38,75,0.94),rgba(76,29,149,0.72))] shadow-[0_0_24px_rgba(96,165,250,0.18),inset_0_1px_0_rgba(255,255,255,0.1)]">
@@ -222,9 +225,48 @@ function HopeMillionaireCard() {
             <p className="mt-1 text-[12px] font-medium text-slate-300">Build Your Future &amp; Earn Together</p>
             <p className="mt-2 text-[11px] font-semibold tracking-[0.03em] text-[#a5b4fc]">3 Packages &bull; 1&times;3 Matrix System</p>
           </div>
-        </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="relative shrink-0">
+            <div className="absolute inset-0 rounded-full bg-[rgba(129,140,248,0.32)] blur-xl transition duration-300 group-hover:bg-[rgba(96,165,250,0.42)]" />
+            <span className="relative inline-flex h-12 w-12 items-center justify-center rounded-full border border-[rgba(129,140,248,0.52)] bg-[linear-gradient(135deg,rgba(76,29,149,0.88),rgba(37,99,235,0.76))] text-white shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_0_24px_rgba(99,102,241,0.34)] transition duration-300 group-hover:translate-x-0.5">
+              <ArrowRight size={18} />
+            </span>
+          </div>
+        </div>
+      </article>
+    </button>
+  );
+}
+
+function HopeMillionaireModal({ open, onClose }) {
+  useEffect(() => {
+    if (!open) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/75 p-0 backdrop-blur-sm sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="hope-millionaire-title" onMouseDown={onClose}>
+      <div className="relative max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-t-[28px] border border-violet-400/35 bg-[linear-gradient(145deg,rgba(8,15,35,0.98),rgba(38,24,72,0.98))] p-4 shadow-[0_28px_70px_rgba(2,6,23,0.72),0_0_40px_rgba(99,102,241,0.2)] sm:rounded-[28px] sm:p-6" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="absolute inset-0 overflow-hidden rounded-[inherit] bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.18),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(168,85,247,0.2),transparent_38%)]" />
+        <div className="relative">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-300">Build Your Future &amp; Earn Together</p>
+              <h2 id="hope-millionaire-title" className="mt-1 text-[24px] font-semibold tracking-[-0.04em] text-white">Hope Millionaire</h2>
+              <p className="mt-1 text-[12px] text-slate-300">Choose a package and explore its 1&times;3 matrix.</p>
+            </div>
+            <button type="button" onClick={onClose} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white transition hover:bg-white/15 active:scale-95" aria-label="Close Hope Millionaire packages">
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
           {millionairePackages.map((amount) => (
             <section
               key={amount}
@@ -234,7 +276,7 @@ function HopeMillionaireCard() {
               <h3 className="text-center text-[15px] font-bold tracking-[-0.02em] text-white">${amount} Package</h3>
               <p className="mt-0.5 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-200">1&times;3 Matrix</p>
               <div className="mt-2">
-                <MatrixDiagram />
+                <MatrixDiagram id={amount} />
               </div>
               <button
                 type="button"
@@ -244,9 +286,10 @@ function HopeMillionaireCard() {
               </button>
             </section>
           ))}
+          </div>
         </div>
       </div>
-    </article>
+    </div>
   );
 }
 
@@ -372,6 +415,7 @@ export default function DashboardPage() {
   const [buyingProductId, setBuyingProductId] = useState('');
   const [pendingPurchase, setPendingPurchase] = useState(null);
   const [welcomeSpinOpen, setWelcomeSpinOpen] = useState(false);
+  const [millionaireOpen, setMillionaireOpen] = useState(false);
   const welcomeSpinQuery = useQuery({
     queryKey: queryKeys.welcomeSpinStatus,
     queryFn: getWelcomeSpinStatus,
@@ -659,7 +703,7 @@ export default function DashboardPage() {
         </section>
 
         <section>
-          <HopeMillionaireCard />
+          <HopeMillionaireCard onOpen={() => setMillionaireOpen(true)} />
         </section>
 
         <section className="rounded-[24px] bg-white p-3 shadow-[0_14px_32px_rgba(15,23,42,0.06)]">
@@ -774,6 +818,7 @@ export default function DashboardPage() {
           }
         }}
       />
+      <HopeMillionaireModal open={millionaireOpen} onClose={() => setMillionaireOpen(false)} />
       <PurchaseConfirmModal
         open={Boolean(pendingPurchase)}
         product={pendingPurchase}
