@@ -150,12 +150,13 @@ export default function WalletPage() {
                 ? 'Insufficient balance'
                 : '';
   const requestedAmount = Number(stakingAmount || 0);
-  const blockSize = Number(eligibility.blockSizeBtct || 5000);
-  const minimumBtct = Number(eligibility.minimumBtct || blockSize || 5000);
+  const blockSize = Number(eligibility.blockSizeBtct || 1000);
+  const minimumBtct = Number(eligibility.minimumBtct || blockSize || 1000);
+  const payoutUsdPerBlock = Number(eligibility.payoutUsdPerBlock || 3);
+  const payoutIntervalDays = Number(eligibility.payoutIntervalDays || 10);
   const requestedBlocks = requestedAmount > 0 ? Math.floor(requestedAmount / blockSize) : Number(eligibility.eligibleBlocks || 0);
-  const requestedCyclePayout = requestedBlocks * Number(eligibility.payoutUsdPerBlock || 10);
-  const canSubmitStaking = !startStakingMutation.isPending && !stakingPlan;
-  const stakingRuleLabel = `Minimum ${number(minimumBtct)} BTCT required in ${number(blockSize)} BTCT blocks`;
+  const requestedCyclePayout = requestedBlocks * payoutUsdPerBlock;
+  const stakingRuleLabel = `Minimum ${number(minimumBtct)} BTCT required`;
 
   function getStakingValidationError() {
     if (stakingPlan) return 'BTCT staking is already active';
@@ -169,6 +170,7 @@ export default function WalletPage() {
   }
 
   const stakingValidationError = getStakingValidationError();
+  const canSubmitStaking = !startStakingMutation.isPending && !stakingPlan && !stakingValidationError;
 
   function handleStartStaking() {
     if (startStakingMutation.isPending) return;
@@ -372,10 +374,10 @@ export default function WalletPage() {
             <input
               value={stakingAmount}
               onChange={(event) => setStakingAmount(event.target.value)}
-              placeholder={String(eligibility.autoStakeAmountBtct || eligibility.minimumBtct || 5000)}
+              placeholder={String(eligibility.autoStakeAmountBtct || eligibility.minimumBtct || 1000)}
               type="number"
               step={blockSize}
-              min={eligibility.minimumBtct || 5000}
+              min={eligibility.minimumBtct || 1000}
               disabled={Boolean(stakingPlan)}
               className="mt-1 w-full rounded-lg border border-slate-200 bg-white p-2 text-xs"
             />
@@ -383,6 +385,7 @@ export default function WalletPage() {
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
             <p className="text-[11px] text-slate-500">{formatLabel('Expected Payout')}</p>
             <p className="mt-1 text-sm font-semibold text-slate-900">{currency(stakingPlan?.payout_per_cycle_usd ?? (stakingAmount ? requestedCyclePayout : eligibility.autoPayoutPerCycleUsd || 0))}</p>
+            <p className="mt-1 text-[10px] text-slate-500">{number(minimumBtct)} BTCT Stake = {currency(payoutUsdPerBlock)} every {number(payoutIntervalDays)} days</p>
           </div>
         </div>
 

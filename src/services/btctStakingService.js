@@ -4,8 +4,9 @@ const walletRepository = require('../repositories/walletRepository');
 const stakingRepository = require('../repositories/btctStakingRepository');
 const walletService = require('./walletService');
 
-const STAKING_BLOCK_BTCT = 5000;
-const STAKING_PAYOUT_USD_PER_BLOCK = 10;
+const STAKING_BLOCK_BTCT = 1000;
+const STAKING_PAYOUT_USD_PER_BLOCK = 3;
+const STAKING_PAYOUT_INTERVAL_DAYS = 10;
 const STAKING_PAYOUT_DAYS = [10, 20, 30];
 const STAKING_SCHEDULE_CODE = 'fixed_month_days_10_20_30';
 
@@ -83,6 +84,7 @@ function normalizeStakingPlan(plan, wallet = null, payouts = []) {
       minimumBtct: STAKING_BLOCK_BTCT,
       blockSizeBtct: STAKING_BLOCK_BTCT,
       payoutUsdPerBlock: STAKING_PAYOUT_USD_PER_BLOCK,
+      payoutIntervalDays: STAKING_PAYOUT_INTERVAL_DAYS,
       payoutDays: STAKING_PAYOUT_DAYS,
       availableBtctBalance,
       lockedBtctBalance,
@@ -135,7 +137,7 @@ async function startStaking(userId, payload = {}) {
       stakedBlocks,
       rewardAmountUsd: payoutPerCycleUsd,
       payoutPerCycleUsd,
-      payoutIntervalDays: 10,
+      payoutIntervalDays: STAKING_PAYOUT_INTERVAL_DAYS,
       scheduleCode: STAKING_SCHEDULE_CODE,
       startedAt,
       nextPayoutAt: getNextScheduledPayoutDate(startedAt),
@@ -231,6 +233,7 @@ async function runDuePayouts({ asOf = new Date().toISOString(), limit = 100 } = 
 module.exports = {
   STAKING_BLOCK_BTCT,
   STAKING_PAYOUT_USD_PER_BLOCK,
+  STAKING_PAYOUT_INTERVAL_DAYS,
   STAKING_PAYOUT_DAYS,
   getUserStakingSummary,
   startStaking,
