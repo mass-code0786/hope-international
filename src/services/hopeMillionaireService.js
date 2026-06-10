@@ -175,13 +175,15 @@ async function getDashboardWithClient(client, userId, options = {}) {
     }
   }
 
-  const [states, entries, transactions] = await Promise.all([
+  const [states, entries, reentryCounts, transactions] = await Promise.all([
     hopeMillionaireRepository.listPackageStates(client, userId),
     hopeMillionaireRepository.listCurrentEntries(client, userId),
+    hopeMillionaireRepository.listAutomaticReentryCounts(client, userId),
     hopeMillionaireRepository.listTransactions(client, userId, 30)
   ]);
   const statesByAmount = new Map(states.map((state) => [Number(state.package_amount), state]));
   const entriesByAmount = new Map(entries.map((entry) => [Number(entry.package_amount), entry]));
+  const reentryCountsByAmount = new Map(reentryCounts.map((row) => [Number(row.package_amount), Number(row.reentry_count)]));
 
   return {
     packages: PACKAGE_AMOUNTS.map((amount) => {
@@ -200,7 +202,8 @@ async function getDashboardWithClient(client, userId, options = {}) {
         reactivationReason: state?.reactivation_reason || null,
         currentEntryId: entry?.id || null,
         filledSlots,
-        fillLabel: `${filledSlots}/3`
+        fillLabel: `${filledSlots}/3`,
+        reentryCount: reentryCountsByAmount.get(amount) || 0
       };
     }),
     transactions: transactions.map((transaction) => ({

@@ -309,6 +309,10 @@ function HopeMillionaireModal({ open, onClose, dashboard, loading, joiningAmount
                   <span className="text-slate-400">Remaining Positions</span>
                   <span className="font-bold text-white">{remainingSlots}</span>
                 </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-slate-400">♻️ Re-entry:</span>
+                  <span className="font-bold text-violet-200">{Number(pkg.reentryCount) || 0}</span>
+                </div>
               </div>
               <p className="mt-1 text-center text-[10px] text-slate-400">Period earnings {currency(pkg.periodEarnings || 0)} / {currency(pkg.incomeCap || pkg.amount * 3)}</p>
               <button

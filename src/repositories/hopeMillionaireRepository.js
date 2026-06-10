@@ -222,6 +222,17 @@ async function listCurrentEntries(client, userId) {
   return rows;
 }
 
+async function listAutomaticReentryCounts(client, userId) {
+  const { rows } = await q(client).query(
+    `SELECT package_amount, COUNT(*)::INTEGER AS reentry_count
+     FROM hope_millionaire_entries
+     WHERE user_id = $1 AND entry_source = 'automatic_reentry'
+     GROUP BY package_amount`,
+    [userId]
+  );
+  return rows;
+}
+
 async function listTransactions(client, userId, limit = 30) {
   const { rows } = await q(client).query(
     `SELECT t.*, source_user.username AS source_username
@@ -252,5 +263,6 @@ module.exports = {
   getTransactionByEventKey,
   listPackageStates,
   listCurrentEntries,
+  listAutomaticReentryCounts,
   listTransactions
 };
