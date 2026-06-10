@@ -51,6 +51,19 @@ async function activatePackage(client, userId, packageAmount, payload = {}) {
   return rows[0];
 }
 
+async function recordAdditionalPurchase(client, userId, packageAmount, purchasedAt) {
+  const { rows } = await q(client).query(
+    `UPDATE hope_millionaire_package_states
+     SET has_purchased = TRUE,
+         last_purchase_at = $3,
+         updated_at = NOW()
+     WHERE user_id = $1 AND package_amount = $2
+     RETURNING *`,
+    [userId, packageAmount, purchasedAt]
+  );
+  return rows[0] || null;
+}
+
 async function addEarnings(client, userId, packageAmount, amount, incomeCap) {
   const { rows } = await q(client).query(
     `INSERT INTO hope_millionaire_package_states (
@@ -227,6 +240,7 @@ module.exports = {
   acquireUserLock,
   getPackageState,
   activatePackage,
+  recordAdditionalPurchase,
   addEarnings,
   findQualifyingReferral,
   findEntryByRequestId,

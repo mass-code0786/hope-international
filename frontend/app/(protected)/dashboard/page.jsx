@@ -28,6 +28,7 @@ import { BannerImageFrame } from '@/components/banners/BannerImageFrame';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { WelcomeSpinModal } from '@/components/auth/WelcomeSpinModal';
+import { HopeMillionairePurchaseModal } from '@/components/hope-millionaire/HopeMillionairePurchaseModal';
 import { PurchaseConfirmModal } from '@/components/shop/PurchaseConfirmModal';
 import { getHomepageBanners } from '@/lib/services/bannersService';
 import { createOrder } from '@/lib/services/ordersService';
@@ -312,11 +313,11 @@ function HopeMillionaireModal({ open, onClose, dashboard, loading, joiningAmount
               <p className="mt-1 text-center text-[10px] text-slate-400">Period earnings {currency(pkg.periodEarnings || 0)} / {currency(pkg.incomeCap || pkg.amount * 3)}</p>
               <button
                 type="button"
-                disabled={loading || pkg.isActive || joiningAmount === pkg.amount}
+                disabled={loading || joiningAmount === pkg.amount}
                 onClick={() => onJoin(pkg.amount)}
                 className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-[12px] border border-blue-300/45 bg-[linear-gradient(135deg,rgba(37,99,235,0.9),rgba(109,40,217,0.92))] text-[11px] font-bold text-white shadow-[0_8px_20px_rgba(37,99,235,0.24),inset_0_1px_0_rgba(255,255,255,0.18)] transition duration-200 hover:brightness-110 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {joiningAmount === pkg.amount ? 'Joining...' : pkg.isActive ? 'Active' : pkg.hasPurchased ? 'Reactivate Package' : 'Join Now'}
+                {joiningAmount === pkg.amount ? 'Buying...' : 'Buy'}
               </button>
             </section>
             );
@@ -470,6 +471,7 @@ export default function DashboardPage() {
   const [pendingPurchase, setPendingPurchase] = useState(null);
   const [welcomeSpinOpen, setWelcomeSpinOpen] = useState(false);
   const [millionaireOpen, setMillionaireOpen] = useState(false);
+  const [pendingMillionairePurchase, setPendingMillionairePurchase] = useState(null);
   const welcomeSpinQuery = useQuery({
     queryKey: queryKeys.welcomeSpinStatus,
     queryFn: getWelcomeSpinStatus,
@@ -489,13 +491,18 @@ export default function DashboardPage() {
   const hopeMillionaireMutation = useMutation({
     mutationFn: joinHopeMillionairePackage,
     onSuccess: async (result) => {
-      toast.success(result.message || 'Hope Millionaire package joined');
+      const amount = Number(hopeMillionaireMutation.variables || pendingMillionairePurchase || 0);
+      toast.success(`Congratulations\nYour $${amount} Hope Millionaire package has been purchased successfully.`);
+      setPendingMillionairePurchase(null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.hopeMillionaire }),
         queryClient.invalidateQueries({ queryKey: queryKeys.wallet })
       ]);
     },
-    onError: (error) => toast.error(error.message || 'Unable to join Hope Millionaire package')
+    onError: (error) => {
+      const message = error?.message || '';
+      toast.error(/insufficient.*balance/i.test(message) ? 'Insufficient balance. Please add funds.' : message || 'Unable to buy Hope Millionaire package');
+    }
   });
 
   const products = Array.isArray(productData) ? productData : [];
@@ -896,7 +903,17 @@ export default function DashboardPage() {
         dashboard={hopeMillionaireQuery.data?.data || null}
         loading={hopeMillionaireQuery.isPending}
         joiningAmount={hopeMillionaireMutation.isPending ? Number(hopeMillionaireMutation.variables || 0) : null}
-        onJoin={(amount) => hopeMillionaireMutation.mutate(amount)}
+        onJoin={(amount) => setPendingMillionairePurchase(Number(amount))}
+      />
+      <HopeMillionairePurchaseModal
+        open={pendingMillionairePurchase !== null}
+        amount={pendingMillionairePurchase}
+        isPending={hopeMillionaireMutation.isPending}
+        onClose={() => setPendingMillionairePurchase(null)}
+        onConfirm={() => {
+          if (pendingMillionairePurchase === null || hopeMillionaireMutation.isPending) return;
+          hopeMillionaireMutation.mutate(pendingMillionairePurchase);
+        }}
       />
       <PurchaseConfirmModal
         open={Boolean(pendingPurchase)}

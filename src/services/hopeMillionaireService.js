@@ -233,9 +233,6 @@ async function joinPackage(userId, payload = {}) {
     }
 
     const state = await syncReferralReactivation(client, userId, config.amount);
-    if (state?.is_active) {
-      throw new ApiError(409, 'This Hope Millionaire package is already active');
-    }
 
     const entry = await hopeMillionaireRepository.createEntry(client, {
       userId,
@@ -264,11 +261,16 @@ async function joinPackage(userId, payload = {}) {
       entry.id
     );
 
-    await hopeMillionaireRepository.activatePackage(client, userId, config.amount, {
-      hasPurchased: true,
-      lastPurchaseAt: new Date().toISOString(),
-      reason: state ? 'repurchase' : 'purchase'
-    });
+    const purchasedAt = new Date().toISOString();
+    if (state?.is_active) {
+      await hopeMillionaireRepository.recordAdditionalPurchase(client, userId, config.amount, purchasedAt);
+    } else {
+      await hopeMillionaireRepository.activatePackage(client, userId, config.amount, {
+        hasPurchased: true,
+        lastPurchaseAt: purchasedAt,
+        reason: state ? 'repurchase' : 'purchase'
+      });
+    }
     await recordTransaction(client, {
       userId,
       entryId: entry.id,
