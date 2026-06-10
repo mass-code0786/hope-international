@@ -88,7 +88,9 @@ const incomeSourceMap = {
   p2p_transfer: 'P2P Transfer',
   welcome_spin_bonus: 'Welcome Spin Bonus',
   auction_loss_compensation: 'Auction BTCT Reward',
-  btct_staking_payout: 'BTCT Staking Payout'
+  btct_staking_payout: 'BTCT Staking Payout',
+  hope_millionaire_member_income: 'Hope Millionaire Income',
+  hope_millionaire_upline_income: 'Hope Millionaire Income'
 };
 
 const txTypeMap = {

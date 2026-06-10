@@ -16,7 +16,8 @@ const filters = [
   { key: 'direct', label: 'Direct' },
   { key: 'level', label: 'Level' },
   { key: 'matching', label: 'Matching' },
-  { key: 'rewards', label: 'Rewards' }
+  { key: 'rewards', label: 'Rewards' },
+  { key: 'hope_millionaire', label: 'Hope Millionaire' }
 ];
 
 function matchesFilter(item, filter) {
@@ -25,6 +26,7 @@ function matchesFilter(item, filter) {
   if (filter === 'level') return item?.source === 'level_deposit_income';
   if (filter === 'matching') return item?.source === 'matching_income';
   if (filter === 'rewards') return item?.source === 'reward_qualification';
+  if (filter === 'hope_millionaire') return ['hope_millionaire_member_income', 'hope_millionaire_upline_income'].includes(item?.source);
   return true;
 }
 
@@ -80,6 +82,8 @@ export default function IncomeHistoryPage() {
             const sourceName = item.source_username || item.metadata?.sourceUsername || '-';
             const depositAmount = item.source_deposit_amount || item.metadata?.baseAmount || 0;
             const levelNumber = item.level_number || item.metadata?.levelNumber || null;
+            const isHopeMillionaire = ['hope_millionaire_member_income', 'hope_millionaire_upline_income'].includes(item.source);
+            const packageAmount = item.package_amount || item.metadata?.packageAmount || 0;
 
             return (
               <article key={item.id} className="rounded-xl border border-slate-200 bg-white p-3">
@@ -97,12 +101,12 @@ export default function IncomeHistoryPage() {
                     <p className="mt-0.5 font-medium text-slate-800">{sourceName}</p>
                   </div>
                   <div>
-                    <p className="text-slate-400">Level Number</p>
-                    <p className="mt-0.5 font-medium text-slate-800">{levelNumber ? `Level ${levelNumber}` : '-'}</p>
+                    <p className="text-slate-400">{isHopeMillionaire ? 'Upline Number' : 'Level Number'}</p>
+                    <p className="mt-0.5 font-medium text-slate-800">{levelNumber ? `${isHopeMillionaire ? 'Upline' : 'Level'} ${levelNumber}` : '-'}</p>
                   </div>
                   <div>
-                    <p className="text-slate-400">Deposit Amount</p>
-                    <p className="mt-0.5 font-medium text-slate-800">{depositAmount ? currency(depositAmount) : '-'}</p>
+                    <p className="text-slate-400">{isHopeMillionaire ? 'Package Amount' : 'Deposit Amount'}</p>
+                    <p className="mt-0.5 font-medium text-slate-800">{isHopeMillionaire ? currency(packageAmount) : depositAmount ? currency(depositAmount) : '-'}</p>
                   </div>
                   <div>
                     <p className="text-slate-400">Credited Date/Time</p>

@@ -926,21 +926,33 @@ async function listTransactions(client, userId, limit = 50) {
 }
 
 async function listIncomeTransactions(client, userId, limit = 200) {
-  const incomeSources = ['direct_income', 'matching_income', 'reward_qualification', 'direct_deposit_income', 'level_deposit_income'];
+  const incomeSources = [
+    'direct_income',
+    'matching_income',
+    'reward_qualification',
+    'direct_deposit_income',
+    'level_deposit_income',
+    'hope_millionaire_member_income',
+    'hope_millionaire_upline_income'
+  ];
   const { rows } = await q(client).query(
     `SELECT wt.*,
-            dtil.source_user_id,
-            su.username AS source_username,
+            COALESCE(dtil.source_user_id, hmt.source_user_id) AS source_user_id,
+            COALESCE(deposit_source.username, millionaire_source.username) AS source_username,
             dtil.source_deposit_id,
             dtil.base_amount AS source_deposit_amount,
-            dtil.level_number,
+            COALESCE(dtil.level_number, hmt.upline_level) AS level_number,
             dtil.credited_amount AS ledger_income_amount,
-            dtil.income_type AS ledger_income_type,
-            dtil.source_type,
-            dtil.status AS ledger_status
+            COALESCE(dtil.income_type::text, wt.source::text) AS ledger_income_type,
+            COALESCE(dtil.source_type, CASE WHEN hmt.id IS NOT NULL THEN 'hope_millionaire' END) AS source_type,
+            COALESCE(dtil.status, CASE WHEN hmt.id IS NOT NULL THEN 'approved' END) AS ledger_status,
+            hmt.package_amount,
+            hmt.transaction_type AS hope_millionaire_transaction_type
      FROM wallet_transactions wt
      LEFT JOIN deposit_team_income_ledger dtil ON dtil.wallet_transaction_id = wt.id
-     LEFT JOIN users su ON su.id = dtil.source_user_id
+     LEFT JOIN users deposit_source ON deposit_source.id = dtil.source_user_id
+     LEFT JOIN hope_millionaire_transactions hmt ON hmt.wallet_transaction_id = wt.id
+     LEFT JOIN users millionaire_source ON millionaire_source.id = hmt.source_user_id
      WHERE wt.user_id = $1
        AND wt.tx_type = 'credit'
        AND wt.source = ANY($2::transaction_source[])
