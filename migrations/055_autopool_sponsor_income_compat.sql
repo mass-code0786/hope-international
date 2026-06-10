@@ -49,12 +49,16 @@ BEGIN
         'UPLINE',
         'RECYCLE',
         'AUCTION',
-        'BONUS'
+        'BONUS',
+        'BONUS_EXPIRED'
       );
 
       ALTER TABLE autopool_transactions
         ALTER COLUMN type TYPE autopool_transaction_type
-        USING type::autopool_transaction_type;
+        USING CASE
+          WHEN type::text = 'BONUS_EXPIRED' THEN 'BONUS_EXPIRED'::autopool_transaction_type
+          ELSE type::text::autopool_transaction_type
+        END;
 
       CREATE UNIQUE INDEX IF NOT EXISTS uq_autopool_transactions_user_request
         ON autopool_transactions(user_id, request_id)

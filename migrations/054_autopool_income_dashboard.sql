@@ -41,12 +41,16 @@ BEGIN
       'AUTOPOOL_INCOME',
       'SPONSOR_POOL_INCOME',
       'AUTOPOOL_RECYCLE',
-      'AUTOPOOL_BONUS_SHARE'
+      'AUTOPOOL_BONUS_SHARE',
+      'BONUS_EXPIRED'
     );
 
     ALTER TABLE autopool_transactions
       ALTER COLUMN type TYPE autopool_transaction_type
-      USING type::autopool_transaction_type;
+      USING CASE
+        WHEN type::text = 'BONUS_EXPIRED' THEN 'BONUS_EXPIRED'::autopool_transaction_type
+        ELSE type::text::autopool_transaction_type
+      END;
   END IF;
 END $$;
 
