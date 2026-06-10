@@ -5,12 +5,6 @@ BEGIN
       ALTER TYPE transaction_source ADD VALUE IF NOT EXISTS 'autopool_bonus_expired';
     EXCEPTION WHEN duplicate_object THEN NULL; END;
   END IF;
-
-  IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'autopool_transaction_type') THEN
-    BEGIN
-      ALTER TYPE autopool_transaction_type ADD VALUE IF NOT EXISTS 'BONUS_EXPIRED';
-    EXCEPTION WHEN duplicate_object THEN NULL; END;
-  END IF;
 END $$;
 
 CREATE TABLE IF NOT EXISTS autopool_package_states (
