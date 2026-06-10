@@ -18,6 +18,9 @@ const WALLET_TRANSFER_BURST_LIMIT = 5;
 const WITHDRAWAL_DUPLICATE_WINDOW_SECONDS = 300;
 const WITHDRAWAL_BURST_WINDOW_SECONDS = 900;
 const WITHDRAWAL_BURST_LIMIT = 3;
+const WITHDRAWAL_ADMIN_FEE_RATE = 0.10;
+const WITHDRAWAL_AUCTION_BONUS_RATE = 0.10;
+const WITHDRAWAL_FEE_VERSION = 2;
 const WELCOME_SPIN_ATTEMPT_WINDOW_SECONDS = 300;
 const WELCOME_SPIN_ATTEMPT_LIMIT = 5;
 const BTCT_USD_PRICE = 0.10;
@@ -67,6 +70,15 @@ function roundBtct(value) {
 
 function toMoney(value) {
   return Number(Number(value || 0).toFixed(2));
+}
+
+function calculateWithdrawalAmounts(amount) {
+  const withdrawalAmount = toMoney(amount);
+  const adminFee = toMoney(withdrawalAmount * WITHDRAWAL_ADMIN_FEE_RATE);
+  const auctionBonusCredit = toMoney(withdrawalAmount * WITHDRAWAL_AUCTION_BONUS_RATE);
+  const netPaidAmount = toMoney(withdrawalAmount - adminFee - auctionBonusCredit);
+
+  return { withdrawalAmount, adminFee, auctionBonusCredit, netPaidAmount };
 }
 
 function sanitizeRequestMeta(meta = {}) {
@@ -565,6 +577,8 @@ async function createWithdrawalRequest(client, userId, payload) {
   if (!Number.isFinite(amount) || amount < MIN_WITHDRAWAL_AMOUNT) {
     throw new ApiError(400, `Minimum withdrawal is ${MIN_WITHDRAWAL_AMOUNT}`);
   }
+  const withdrawalAmounts = calculateWithdrawalAmounts(amount);
+  const withdrawalAmount = withdrawalAmounts.withdrawalAmount;
 
   await walletRepository.createWallet(client, userId);
   const wallet = normalizeWalletBalances(await walletRepository.getWalletForUpdate(client, userId));
@@ -578,13 +592,13 @@ async function createWithdrawalRequest(client, userId, payload) {
     }, 403, 'Income wallet is frozen');
   }
   const withdrawableBalance = toMoney((wallet?.income_balance ?? wallet?.income_wallet_balance ?? 0) + (wallet?.withdrawal_balance ?? wallet?.withdrawal_wallet_balance ?? 0));
-  if (!wallet || withdrawableBalance < amount) {
+  if (!wallet || withdrawableBalance < withdrawalAmount) {
     await blockWithSecurityLog(client, {
       userId,
       actionType: 'withdrawal_blocked',
       reason: 'insufficient_balance',
       ipAddress: requestMeta.ipAddress,
-      metadata: { amount: toMoney(amount), incomeBalance: withdrawableBalance }
+      metadata: { amount: withdrawalAmount, incomeBalance: withdrawableBalance }
     }, 400, 'Insufficient balance.');
   }
 
@@ -596,7 +610,6 @@ async function createWithdrawalRequest(client, userId, payload) {
 
   const network = String(payload.network || binding?.network || '').trim();
   const notes = String(payload.notes || '').trim();
-
   const recentWithdrawalCount = await walletRepository.countRecentWithdrawalRequests(client, userId, WITHDRAWAL_BURST_WINDOW_SECONDS);
   if (recentWithdrawalCount >= WITHDRAWAL_BURST_LIMIT) {
     await blockWithSecurityLog(client, {
@@ -610,7 +623,7 @@ async function createWithdrawalRequest(client, userId, payload) {
 
   const duplicateRequest = await walletRepository.findRecentWithdrawalDuplicate(client, {
     userId,
-    amount: toMoney(amount),
+    amount: withdrawalAmount,
     walletAddress,
     withinSeconds: WITHDRAWAL_DUPLICATE_WINDOW_SECONDS
   });
@@ -620,28 +633,32 @@ async function createWithdrawalRequest(client, userId, payload) {
       actionType: 'withdrawal_duplicate',
       reason: 'already_processed',
       ipAddress: requestMeta.ipAddress,
-      metadata: { duplicateRequestId: duplicateRequest.id, amount: toMoney(amount), walletAddress }
+      metadata: { duplicateRequestId: duplicateRequest.id, amount: withdrawalAmount, walletAddress }
     });
     throw new ApiError(409, 'This action was already processed.');
   }
 
   const request = await walletRepository.createWithdrawalRequest(client, {
     userId,
-    amount,
+    amount: withdrawalAmounts.withdrawalAmount,
+    adminFee: withdrawalAmounts.adminFee,
+    auctionBonusCredit: withdrawalAmounts.auctionBonusCredit,
+    netPaidAmount: withdrawalAmounts.netPaidAmount,
+    feeVersion: WITHDRAWAL_FEE_VERSION,
     walletAddress,
     network: network || null,
     notes: notes || null,
     status: 'pending'
   });
 
-  const updatedWallet = await walletRepository.debitWithdrawableBalanceIfSufficient(client, userId, amount);
+  const updatedWallet = await walletRepository.debitWithdrawableBalanceIfSufficient(client, userId, withdrawalAmount);
   if (!updatedWallet) {
     await blockWithSecurityLog(client, {
       userId,
       actionType: 'withdrawal_blocked',
       reason: 'insufficient_balance_race',
       ipAddress: requestMeta.ipAddress,
-      metadata: { amount: toMoney(amount) }
+      metadata: { amount: withdrawalAmount }
     }, 400, 'Insufficient balance.');
   }
 
@@ -649,11 +666,16 @@ async function createWithdrawalRequest(client, userId, payload) {
     userId,
     txType: 'debit',
     source: 'withdrawal_request',
-    amount,
+    amount: withdrawalAmount,
     referenceId: request.id,
     metadata: {
       withdrawalRequestId: request.id,
       status: 'pending',
+      withdrawalAmount: withdrawalAmounts.withdrawalAmount,
+      adminFee: withdrawalAmounts.adminFee,
+      auctionBonusCredit: withdrawalAmounts.auctionBonusCredit,
+      netPaidAmount: withdrawalAmounts.netPaidAmount,
+      feeVersion: WITHDRAWAL_FEE_VERSION,
       walletType: 'withdrawal',
       walletBreakdown: {
         withdrawal: toMoney(updatedWallet.debited_withdrawal_balance || 0),
@@ -1002,6 +1024,7 @@ async function getHubHistory(client, userId) {
 module.exports = {
   MIN_DEPOSIT_AMOUNT,
   MIN_WITHDRAWAL_AMOUNT,
+  calculateWithdrawalAmounts,
   credit,
   creditWithTransaction,
   debit,

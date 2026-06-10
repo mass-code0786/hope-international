@@ -1296,8 +1296,11 @@ async function updateDepositRequestStatus(client, id, payload) {
 
 async function createWithdrawalRequest(client, payload) {
   const { rows } = await q(client).query(
-    `INSERT INTO wallet_withdrawal_requests (user_id, amount, wallet_address, network, notes, status)
-     VALUES ($1, $2, $3, $4, $5, $6)
+    `INSERT INTO wallet_withdrawal_requests (
+       user_id, amount, wallet_address, network, notes, status,
+       admin_fee, auction_bonus_credit, net_paid_amount, fee_version
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      RETURNING *`,
     [
       payload.userId,
@@ -1305,7 +1308,11 @@ async function createWithdrawalRequest(client, payload) {
       payload.walletAddress,
       payload.network || null,
       payload.notes || null,
-      payload.status || 'pending'
+      payload.status || 'pending',
+      payload.adminFee,
+      payload.auctionBonusCredit,
+      payload.netPaidAmount,
+      payload.feeVersion
     ]
   );
   return rows[0] || null;
@@ -1393,8 +1400,13 @@ async function updateWithdrawalRequestStatus(client, id, payload) {
            WHEN COALESCE(notes, '') = '' THEN $3
            ELSE notes || E'\\n\\nAdmin Note: ' || $3
          END,
+         auction_bonus_credited_at = CASE
+           WHEN $2 = 'approved' AND fee_version = 2 THEN COALESCE(auction_bonus_credited_at, NOW())
+           ELSE auction_bonus_credited_at
+         END,
          updated_at = NOW()
      WHERE id = $1
+       AND status = 'pending'
      RETURNING *`,
     [id, payload.status, payload.adminNote || '']
   );

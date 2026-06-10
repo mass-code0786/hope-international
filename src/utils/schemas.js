@@ -518,6 +518,30 @@ const autopoolBuySchema = z.object({
   params: z.object({}),
   query: z.object({})
 });
+const hopeMillionairePackageAmountSchema = z.preprocess(
+  (value) => firstQueryValue(value),
+  z.union([z.string(), z.number()])
+).transform((value, ctx) => {
+  const amount = Number(value);
+  if (![3, 10, 25].includes(amount)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'packageAmount must be one of 3, 10, 25' });
+    return z.NEVER;
+  }
+  return amount;
+});
+const hopeMillionaireDashboardSchema = z.object({
+  body: z.object({}),
+  params: z.object({}),
+  query: z.object({})
+});
+const hopeMillionaireJoinSchema = z.object({
+  body: z.object({
+    packageAmount: hopeMillionairePackageAmountSchema,
+    requestId: uuid.optional()
+  }),
+  params: z.object({}),
+  query: z.object({})
+});
 const notificationIdParamSchema = z.object({ body: z.object({}), params: z.object({ id: uuid }), query: z.object({}) });
 const notificationReadAllSchema = z.object({ body: z.object({}).optional().default({}), params: z.object({}), query: z.object({}) });
 const assistantChatSchema = z.object({
@@ -634,6 +658,8 @@ module.exports = {
   autopoolHistoryQuerySchema,
   autopoolEnterSchema,
   autopoolBuySchema,
+  hopeMillionaireDashboardSchema,
+  hopeMillionaireJoinSchema,
   notificationsListQuerySchema,
   notificationIdParamSchema,
   notificationReadAllSchema,

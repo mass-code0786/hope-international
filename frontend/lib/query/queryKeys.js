@@ -9,6 +9,7 @@ export const queryKeys = {
   wallet: ['wallet'],
   autopool: ['autopool'],
   autopoolHistory: (type = 'total', page = 1, limit = 10) => ['autopool', 'history', type, page, limit],
+  hopeMillionaire: ['hope-millionaire'],
   walletTransactions: ['wallet', 'transactions'],
   walletDepositConfig: ['wallet', 'deposit-config'],
   walletDeposits: ['wallet', 'deposits'],

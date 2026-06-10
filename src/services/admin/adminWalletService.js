@@ -182,6 +182,31 @@ async function reviewWithdrawal(adminUserId, requestId, payload) {
       status: payload.status,
       adminNote: payload.adminNote || ''
     });
+    if (!updated) {
+      throw new ApiError(409, 'Withdrawal request was already reviewed');
+    }
+
+    if (payload.status === 'approved' && Number(updated.fee_version) === 2) {
+      await walletService.credit(
+        client,
+        request.user_id,
+        Number(updated.auction_bonus_credit),
+        'withdrawal_request',
+        request.id,
+        {
+          status: 'approved',
+          withdrawalRequestId: request.id,
+          walletType: 'auction_bonus',
+          creditType: 'withdrawal_auction_bonus',
+          withdrawalAmount: Number(updated.amount),
+          adminFee: Number(updated.admin_fee),
+          auctionBonusCredit: Number(updated.auction_bonus_credit),
+          netPaidAmount: Number(updated.net_paid_amount),
+          feeVersion: Number(updated.fee_version)
+        },
+        adminUserId
+      );
+    }
 
     if (payload.status === 'rejected') {
       await walletService.credit(

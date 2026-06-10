@@ -34,6 +34,15 @@ export default function WithdrawalHistoryPage() {
               </div>
               <p className="mt-1 text-[11px] text-slate-500">{item.network || 'network'} - {dateTime(item.created_at)}</p>
               <p className="mt-1 break-all text-[11px] text-slate-600">{item.wallet_address}</p>
+              {Number(item.fee_version) === 2 ? (
+                <div className="mt-2 rounded-lg bg-slate-50 p-2 text-[11px] text-slate-600">
+                  <p className="font-semibold text-slate-700">Withdrawal Fee Breakdown</p>
+                  <p>Withdrawal Amount: {currency(item.amount)}</p>
+                  <p>Admin Fee (10%): {currency(item.admin_fee)}</p>
+                  <p>Auction Bonus Credit (10%): {currency(item.auction_bonus_credit)}</p>
+                  <p>Net Paid Amount: {currency(item.net_paid_amount)}</p>
+                </div>
+              ) : null}
             </article>
           ))}
         </div>

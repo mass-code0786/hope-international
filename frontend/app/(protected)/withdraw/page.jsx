@@ -54,7 +54,7 @@ export default function WithdrawPage() {
         className="rounded-xl border border-slate-200 bg-white p-3 space-y-2"
       >
         <input name="amount" type="number" min="10" step="0.01" placeholder="Amount (min 10)" className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs" required />
-        <p className="text-[11px] text-slate-500">Withdrawals are allowed only from your Income Wallet.</p>
+        <p className="text-[11px] text-slate-500">Withdrawals are allowed only from your Income Wallet. Admin fee: 10%. Auction Bonus Wallet credit: 10%. Net payout: 80%.</p>
         <input name="walletAddress" defaultValue={walletBinding?.wallet_address || ''} placeholder="Wallet address" className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs" required />
         <input name="network" defaultValue={walletBinding?.network || ''} placeholder="Network" className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs" />
         <textarea name="notes" rows={2} placeholder="Notes (optional)" className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs" />
@@ -76,6 +76,9 @@ export default function WithdrawPage() {
                   <Badge variant={statusVariant(item.status)}>{item.status}</Badge>
                 </div>
                 <p className="mt-0.5 text-[10px] text-slate-500">{item.network || 'network'} · {dateTime(item.created_at)}</p>
+                {Number(item.fee_version) === 2 ? (
+                  <p className="mt-1 text-[10px] text-slate-500">Admin fee {currency(item.admin_fee)} · Auction bonus {currency(item.auction_bonus_credit)} · Net paid {currency(item.net_paid_amount)}</p>
+                ) : null}
               </div>
             ))}
           </div>

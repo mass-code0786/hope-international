@@ -60,8 +60,20 @@ export default function AdminWithdrawalsPage() {
         columns={[
           { key: 'id', title: 'Request', className: 'col-span-2', render: (row) => `#${String(row.id || '').slice(0, 8)}` },
           { key: 'username', title: 'User', className: 'col-span-2', render: (row) => row.username || '-' },
-          { key: 'amount', title: 'Amount', className: 'col-span-2', render: (row) => currency(row.amount) },
-          { key: 'wallet_address', title: 'Wallet', className: 'col-span-2', render: (row) => row.wallet_address || '-' },
+          {
+            key: 'amount',
+            title: 'Withdrawal Breakdown',
+            className: 'col-span-3',
+            render: (row) => Number(row.fee_version) === 2 ? (
+              <div className="space-y-0.5 text-xs">
+                <p>Amount: {currency(row.amount)}</p>
+                <p className="text-amber-300">{row.status === 'approved' ? 'Admin fee collected' : 'Admin fee'}: {currency(row.admin_fee)}</p>
+                <p className="text-sky-300">{row.auction_bonus_credited_at ? 'Auction bonus credited' : 'Auction bonus credit'}: {currency(row.auction_bonus_credit)}</p>
+                <p className="text-emerald-300">Net paid: {currency(row.net_paid_amount)}</p>
+              </div>
+            ) : currency(row.amount)
+          },
+          { key: 'wallet_address', title: 'Wallet', className: 'col-span-1', render: (row) => row.wallet_address || '-' },
           { key: 'status', title: 'Status', className: 'col-span-1', render: (row) => <StatusBadge status={row.status} /> },
           { key: 'created_at', title: 'Date', className: 'col-span-1', render: (row) => dateTime(row.created_at) },
           {

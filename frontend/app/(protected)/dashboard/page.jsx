@@ -35,10 +35,11 @@ import { getUserAddress } from '@/lib/services/userAddressService';
 import { getUnreadNotificationCount } from '@/lib/services/notificationsService';
 import { getWallet } from '@/lib/services/walletService';
 import { claimWelcomeSpin, getWelcomeSpinStatus } from '@/lib/services/welcomeSpinService';
+import { getHopeMillionaireDashboard, joinHopeMillionairePackage } from '@/lib/services/hopeMillionaireService';
 import { useHomeProducts } from '@/hooks/useProducts';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { addToCart, subscribeCart } from '@/lib/utils/cart';
-import { currency } from '@/lib/utils/format';
+import { currency, dateTime } from '@/lib/utils/format';
 import { getProductPricing } from '@/lib/utils/pricing';
 import { hasSufficientWalletBalance } from '@/lib/utils/wallet';
 
@@ -168,13 +169,14 @@ function AutopoolFeatureCard() {
 
 const millionairePackages = [3, 10, 25];
 
-function MatrixDiagram({ id }) {
+function MatrixDiagram({ id, filledSlots = 0 }) {
   const gradientId = `millionaire-matrix-line-${id}`;
+  const normalizedFilledSlots = Math.min(3, Math.max(0, Number(filledSlots) || 0));
 
   return (
-    <div className="relative mx-auto h-[74px] w-[150px]" aria-label="One by three matrix diagram">
+    <div className="relative mx-auto h-[82px] w-full max-w-[180px]" aria-label={`${normalizedFilledSlots} of 3 matrix positions filled`}>
       <svg
-        viewBox="0 0 150 74"
+        viewBox="0 0 180 82"
         aria-hidden="true"
         className="absolute inset-0 h-full w-full overflow-visible"
       >
@@ -184,21 +186,25 @@ function MatrixDiagram({ id }) {
             <stop offset="100%" stopColor="#c084fc" />
           </linearGradient>
         </defs>
-        <path d="M75 29 L25 55 M75 29 L75 55 M75 29 L125 55" fill="none" stroke={`url(#${gradientId})`} strokeWidth="1.5" strokeLinecap="round" opacity="0.9" />
+        <path d="M90 30 L30 58 M90 30 L90 58 M90 30 L150 58" fill="none" stroke={`url(#${gradientId})`} strokeWidth="1.5" strokeLinecap="round" opacity="0.9" />
       </svg>
 
-      <span className="absolute left-1/2 top-0 inline-flex h-8 w-12 -translate-x-1/2 items-center justify-center rounded-[10px] border border-blue-300/50 bg-[linear-gradient(145deg,rgba(37,99,235,0.58),rgba(109,40,217,0.56))] text-[9px] font-bold tracking-[0.08em] text-white shadow-[0_0_18px_rgba(96,165,250,0.28)]">
+      <span className="absolute left-1/2 top-0 inline-flex h-8 w-14 -translate-x-1/2 items-center justify-center rounded-[10px] border border-blue-300/50 bg-[linear-gradient(145deg,rgba(37,99,235,0.72),rgba(109,40,217,0.7))] text-[9px] font-bold tracking-[0.08em] text-white shadow-[0_0_18px_rgba(96,165,250,0.3)]">
         YOU
       </span>
-      {[25, 75, 125].map((left, index) => (
+      {[30, 90, 150].map((left, index) => {
+        const isFilled = index < normalizedFilledSlots;
+        return (
         <span
           key={left}
-          className="absolute top-[51px] inline-flex h-6 w-8 -translate-x-1/2 items-center justify-center rounded-[8px] border border-violet-300/40 bg-[rgba(15,23,42,0.78)] text-[8px] font-semibold text-violet-100 shadow-[0_0_12px_rgba(139,92,246,0.2)]"
+          aria-label={`Position ${index + 1}: ${isFilled ? 'occupied' : 'vacant'}`}
+          className={`absolute top-[56px] inline-flex h-7 w-10 -translate-x-1/2 items-center justify-center rounded-[9px] border text-[9px] font-bold transition-all duration-500 ease-out ${isFilled ? 'scale-105 border-blue-200 bg-[linear-gradient(145deg,#2563eb,#4f46e5)] text-white shadow-[0_0_8px_rgba(96,165,250,0.9),0_0_20px_rgba(37,99,235,0.7),inset_0_1px_0_rgba(255,255,255,0.35)]' : 'scale-100 border-white/90 bg-white text-slate-400 shadow-[0_5px_14px_rgba(2,6,23,0.28),inset_0_0_0_1px_rgba(148,163,184,0.2)]'}`}
           style={{ left }}
         >
-          {String.fromCharCode(65 + index)}
+          {isFilled ? index + 1 : ''}
         </span>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -238,7 +244,9 @@ function HopeMillionaireCard({ onOpen }) {
   );
 }
 
-function HopeMillionaireModal({ open, onClose }) {
+const millionaireFallbackPackages = millionairePackages.map((amount) => ({ amount, status: 'inactive', isActive: false, filledSlots: 0, fillLabel: '0/3' }));
+
+function HopeMillionaireModal({ open, onClose, dashboard, loading, joiningAmount, onJoin }) {
   useEffect(() => {
     if (!open) return undefined;
     const handleKeyDown = (event) => {
@@ -266,26 +274,72 @@ function HopeMillionaireModal({ open, onClose }) {
             </button>
           </div>
 
+          {loading ? <p className="mt-5 text-center text-xs text-slate-300">Loading Hope Millionaire packages...</p> : null}
           <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {millionairePackages.map((amount) => (
+          {(dashboard?.packages || millionaireFallbackPackages).map((pkg) => {
+            const filledSlots = Math.min(3, Math.max(0, Number(pkg.filledSlots) || 0));
+            const remainingSlots = 3 - filledSlots;
+            const cycleCompleted = filledSlots === 3;
+            return (
             <section
-              key={amount}
+              key={pkg.amount}
               className="relative overflow-hidden rounded-[20px] border border-[rgba(129,140,248,0.36)] bg-[linear-gradient(145deg,rgba(15,23,42,0.76),rgba(76,29,149,0.34))] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_12px_28px_rgba(2,6,23,0.24)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-blue-300/55 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_16px_34px_rgba(30,64,175,0.22)]"
             >
               <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-blue-300/80 to-transparent" />
-              <h3 className="text-center text-[15px] font-bold tracking-[-0.02em] text-white">${amount} Package</h3>
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-[15px] font-bold tracking-[-0.02em] text-white">${pkg.amount} Package</h3>
+                <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${pkg.isActive ? 'bg-emerald-500/20 text-emerald-200' : 'bg-rose-500/20 text-rose-200'}`}>{pkg.status}</span>
+              </div>
               <p className="mt-0.5 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-200">1&times;3 Matrix</p>
               <div className="mt-2">
-                <MatrixDiagram id={amount} />
+                <MatrixDiagram id={pkg.amount} filledSlots={filledSlots} />
               </div>
+              {cycleCompleted ? (
+                <div className="mx-auto mt-2 w-fit rounded-full border border-emerald-300/40 bg-emerald-500/20 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-emerald-200 shadow-[0_0_18px_rgba(16,185,129,0.22)]">
+                  Cycle Completed
+                </div>
+              ) : null}
+              <div className="mt-2 space-y-1 rounded-[12px] border border-white/8 bg-slate-950/25 px-2.5 py-2 text-[11px]">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-slate-400">Matrix Progress</span>
+                  <span className="font-bold text-blue-200">{filledSlots}/3</span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-slate-400">Remaining Positions</span>
+                  <span className="font-bold text-white">{remainingSlots}</span>
+                </div>
+              </div>
+              <p className="mt-1 text-center text-[10px] text-slate-400">Period earnings {currency(pkg.periodEarnings || 0)} / {currency(pkg.incomeCap || pkg.amount * 3)}</p>
               <button
                 type="button"
-                className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-[12px] border border-blue-300/45 bg-[linear-gradient(135deg,rgba(37,99,235,0.9),rgba(109,40,217,0.92))] text-[11px] font-bold text-white shadow-[0_8px_20px_rgba(37,99,235,0.24),inset_0_1px_0_rgba(255,255,255,0.18)] transition duration-200 hover:brightness-110 active:scale-[0.97]"
+                disabled={loading || pkg.isActive || joiningAmount === pkg.amount}
+                onClick={() => onJoin(pkg.amount)}
+                className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-[12px] border border-blue-300/45 bg-[linear-gradient(135deg,rgba(37,99,235,0.9),rgba(109,40,217,0.92))] text-[11px] font-bold text-white shadow-[0_8px_20px_rgba(37,99,235,0.24),inset_0_1px_0_rgba(255,255,255,0.18)] transition duration-200 hover:brightness-110 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Join Now
+                {joiningAmount === pkg.amount ? 'Joining...' : pkg.isActive ? 'Active' : pkg.hasPurchased ? 'Reactivate Package' : 'Join Now'}
               </button>
             </section>
-          ))}
+            );
+          })}
+          </div>
+
+          <div className="mt-5 rounded-[20px] border border-white/10 bg-slate-950/30 p-3">
+            <h3 className="text-sm font-semibold text-white">Transaction History</h3>
+            {!dashboard?.transactions?.length ? (
+              <p className="mt-2 text-[11px] text-slate-400">No Hope Millionaire transactions yet.</p>
+            ) : (
+              <div className="mt-2 max-h-52 divide-y divide-white/8 overflow-y-auto">
+                {dashboard.transactions.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between gap-3 py-2 text-[11px]">
+                    <div>
+                      <p className="font-semibold capitalize text-slate-100">{String(item.type).replaceAll('_', ' ')}</p>
+                      <p className="text-slate-400">${item.packageAmount} package{item.uplineLevel ? ` · Level ${item.uplineLevel}` : ''} · {dateTime(item.createdAt)}</p>
+                    </div>
+                    <p className={item.type === 'purchase' ? 'font-semibold text-rose-300' : item.type === 'automatic_reentry' ? 'font-semibold text-blue-300' : 'font-semibold text-emerald-300'}>{item.type === 'purchase' ? '-' : item.type === 'automatic_reentry' ? '' : '+'}{currency(item.amount)}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -424,6 +478,24 @@ export default function DashboardPage() {
     staleTime: 45_000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false
+  });
+  const hopeMillionaireQuery = useQuery({
+    queryKey: queryKeys.hopeMillionaire,
+    queryFn: getHopeMillionaireDashboard,
+    enabled: millionaireOpen,
+    staleTime: 15_000,
+    refetchOnWindowFocus: false
+  });
+  const hopeMillionaireMutation = useMutation({
+    mutationFn: joinHopeMillionairePackage,
+    onSuccess: async (result) => {
+      toast.success(result.message || 'Hope Millionaire package joined');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.hopeMillionaire }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.wallet })
+      ]);
+    },
+    onError: (error) => toast.error(error.message || 'Unable to join Hope Millionaire package')
   });
 
   const products = Array.isArray(productData) ? productData : [];
@@ -818,7 +890,14 @@ export default function DashboardPage() {
           }
         }}
       />
-      <HopeMillionaireModal open={millionaireOpen} onClose={() => setMillionaireOpen(false)} />
+      <HopeMillionaireModal
+        open={millionaireOpen}
+        onClose={() => setMillionaireOpen(false)}
+        dashboard={hopeMillionaireQuery.data?.data || null}
+        loading={hopeMillionaireQuery.isPending}
+        joiningAmount={hopeMillionaireMutation.isPending ? Number(hopeMillionaireMutation.variables || 0) : null}
+        onJoin={(amount) => hopeMillionaireMutation.mutate(amount)}
+      />
       <PurchaseConfirmModal
         open={Boolean(pendingPurchase)}
         product={pendingPurchase}
