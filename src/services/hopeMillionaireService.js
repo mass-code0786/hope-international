@@ -148,7 +148,6 @@ async function placeEntries(client, initialEntries, packageAmount) {
       continue;
     }
 
-    await syncReferralReactivation(client, parent.user_id, packageAmount);
     const slotPosition = Number(parent.filled_slots) + 1;
     const placed = await hopeMillionaireRepository.placeEntry(client, entry.id, parent.id, slotPosition);
     if (!placed) throw new ApiError(409, 'Hope Millionaire entry was already placed');

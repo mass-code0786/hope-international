@@ -26,3 +26,33 @@ test('Hope Millionaire packages use the required cycle distribution', () => {
     assert.equal(config.reentryAmount + config.memberIncome + config.uplineTotal, config.collection);
   }
 });
+
+test('a 1x3 FIFO queue produces breadth-first, left-to-right placement', () => {
+  const entries = 'ABCDEFGHIJ'.split('');
+  const placements = [];
+  const openParents = [{ id: entries[0], filledSlots: 0 }];
+
+  for (const entryId of entries.slice(1)) {
+    const parent = openParents[0];
+    parent.filledSlots += 1;
+    placements.push({
+      entryId,
+      parentEntryId: parent.id,
+      slotPosition: parent.filledSlots
+    });
+    openParents.push({ id: entryId, filledSlots: 0 });
+    if (parent.filledSlots === 3) openParents.shift();
+  }
+
+  assert.deepEqual(placements, [
+    { entryId: 'B', parentEntryId: 'A', slotPosition: 1 },
+    { entryId: 'C', parentEntryId: 'A', slotPosition: 2 },
+    { entryId: 'D', parentEntryId: 'A', slotPosition: 3 },
+    { entryId: 'E', parentEntryId: 'B', slotPosition: 1 },
+    { entryId: 'F', parentEntryId: 'B', slotPosition: 2 },
+    { entryId: 'G', parentEntryId: 'B', slotPosition: 3 },
+    { entryId: 'H', parentEntryId: 'C', slotPosition: 1 },
+    { entryId: 'I', parentEntryId: 'C', slotPosition: 2 },
+    { entryId: 'J', parentEntryId: 'C', slotPosition: 3 }
+  ]);
+});

@@ -125,22 +125,13 @@ async function findOpenParent(client, packageAmount, excludeEntryId) {
   const { rows } = await q(client).query(
     `SELECT e.*
      FROM hope_millionaire_entries e
-     JOIN hope_millionaire_package_states s
-       ON s.user_id = e.user_id AND s.package_amount = e.package_amount
      WHERE e.package_amount = $1
        AND e.id <> $2
        AND e.status = 'open'
        AND e.filled_slots < 3
-       AND (
-         s.is_active = TRUE
-         OR (s.inactive_at IS NOT NULL AND EXISTS (
-           SELECT 1 FROM users referral
-           WHERE referral.sponsor_id = s.user_id AND referral.created_at > s.inactive_at
-         ))
-       )
-     ORDER BY e.created_at ASC, e.id ASC
+     ORDER BY e.queue_position ASC
      LIMIT 1
-     FOR UPDATE OF e, s`,
+     FOR UPDATE OF e`,
     [packageAmount, excludeEntryId]
   );
   return rows[0] || null;
